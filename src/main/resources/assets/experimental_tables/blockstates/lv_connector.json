@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 0, "y": 90
+    },
+    "facing=up": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 180, "y": 90
+    },
+    "facing=north": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 90, "y": 180
+    },
+    "facing=south": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 90, "y": 0
+    },
+    "facing=west": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 90, "y": 90
+    },
+    "facing=east": {
+      "model": "experimental_tables:block/lv_connector",
+      "x": 90, "y": 270
+    }
+  }
+}

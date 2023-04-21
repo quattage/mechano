@@ -1,0 +1,23 @@
+{
+  "variants": {
+    "facing=east,model=main": {
+      "model": "experimental_tables:block/tool_station",
+      "y": 90
+    },
+    "facing=north,model=main": {
+      "model": "experimental_tables:block/tool_station",
+      "y": 0
+    }, 
+    "facing=south,model=main": {
+      "model": "experimental_tables:block/tool_station",
+      "y": 180
+    }, 
+    "facing=west,model=main": {
+      "model": "experimental_tables:block/tool_station",
+      "y": 270
+    },
+    "model=side": {
+      "model": "experimental_tables:block/tool_station_dummy"
+    }
+  }
+}

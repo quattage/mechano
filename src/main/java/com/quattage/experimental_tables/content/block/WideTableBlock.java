@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import com.quattage.experimental_tables.ExperimentalTables;
 import com.quattage.experimental_tables.content.block.entity.ToolStationBlockEntity;
 import com.quattage.experimental_tables.registry.ModBlockEntities;
 
@@ -70,7 +71,7 @@ public class WideTableBlock extends BlockWithEntity {
     }
 
     public enum WideBlockModelType implements StringIdentifiable {
-        MAIN, SIDE;
+        MAIN, SIDE, CONNECTED;
 
         @Override
         public String asString() {
@@ -93,7 +94,7 @@ public class WideTableBlock extends BlockWithEntity {
     public void onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
         if (!world.isClient) {
             WideBlockModelType wideBlockModel = state.get(MODEL_TYPE);
-            if (wideBlockModel == WideBlockModelType.MAIN) {
+            if (wideBlockModel == WideBlockModelType.MAIN || wideBlockModel == WideBlockModelType.CONNECTED) {
                 BlockPos otherpos = pos.offset(state.get(FACING).rotateYClockwise());
                 BlockState otherstate = world.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
@@ -130,6 +131,31 @@ public class WideTableBlock extends BlockWithEntity {
             world.setBlockState(possy, state.with(MODEL_TYPE, WideBlockModelType.SIDE), Block.NOTIFY_ALL);
             world.updateNeighbors(pos, Blocks.AIR);
             state.updateNeighbors(world, pos, Block.NOTIFY_ALL);
+        }
+    }
+
+    @Override
+    public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+        if(!world.isClient) {
+            WideBlockModelType wideBlockModel = state.get(MODEL_TYPE);
+            if(wideBlockModel == WideBlockModelType.SIDE) {
+                BlockPos adjacentPos = pos.offset(state.get(FACING).rotateYClockwise());
+                BlockState adjacentBlockState = world.getBlockState(adjacentPos);
+                if (adjacentBlockState.getBlock() == Blocks.DIRT) {
+                    BlockPos rootBlockPos = pos.offset(state.get(FACING).rotateYCounterclockwise());
+                    BlockState rootBlockState = world.getBlockState(rootBlockPos);
+                    if (rootBlockState.get(MODEL_TYPE) == WideBlockModelType.MAIN) {
+                        world.setBlockState(rootBlockPos, state.with(MODEL_TYPE, WideBlockModelType.CONNECTED), Block.NOTIFY_ALL);
+                    }
+                } else if (adjacentBlockState.getBlock() == Blocks.AIR) {
+                    BlockPos rootBlockPos = pos.offset(state.get(FACING).rotateYCounterclockwise());
+                    BlockState rootBlockState = world.getBlockState(rootBlockPos);
+                    if (rootBlockState.get(MODEL_TYPE) == WideBlockModelType.CONNECTED) {
+                        world.setBlockState(rootBlockPos, state.with(MODEL_TYPE, WideBlockModelType.MAIN), Block.NOTIFY_ALL);
+                    }
+                }
+            } 
         }
     }
 

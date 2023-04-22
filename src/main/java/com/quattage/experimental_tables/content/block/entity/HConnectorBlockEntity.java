@@ -29,7 +29,7 @@ import team.reborn.energy.api.EnergyStorage;
 
 
 
-public class HConnectorTileEntity extends BaseElectricTileEntity implements IWireNode, IObserveTileEntity, IHaveGoggleInformation {
+public class HConnectorBlockEntity extends BaseElectricTileEntity implements IWireNode, IObserveTileEntity, IHaveGoggleInformation {
     private final BlockPos[] connectionPos;
 	private final int[] connectionIndices;
 	private final WireType[] connectionTypes;
@@ -46,7 +46,7 @@ public class HConnectorTileEntity extends BaseElectricTileEntity implements IWir
     public static final long CAPACITY = 4096, MAX_IN = 2048, MAX_OUT = 2048;
 
     
-    public HConnectorTileEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
+    public HConnectorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
 		super(tileEntityTypeIn, pos, state, CAPACITY, MAX_IN, MAX_OUT);
 		
 		connectionPos = new BlockPos[getNodeCount()];

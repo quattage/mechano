@@ -2,7 +2,7 @@ package com.quattage.experimental_tables.content.block;
 
 import com.mrh0.createaddition.energy.IWireNode;
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.experimental_tables.content.block.entity.LConnectorTileEntity;
+import com.quattage.experimental_tables.content.block.entity.LConnectorBlockEntity;
 import com.quattage.experimental_tables.registry.ModBlockEntities;
 import com.simibubi.create.content.contraptions.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.ITE;
@@ -30,7 +30,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
 import net.minecraft.state.StateManager.Builder;
 
-public class LConnectorBlock extends Block implements ITE<LConnectorTileEntity>, IWrenchable {
+public class LConnectorBlock extends Block implements ITE<LConnectorBlockEntity>, IWrenchable {
     public static final VoxelShaper CONNECTOR_SHAPE = CAShapes.shape(5, 0, 5, 11, 8, 11).forDirectional();
 	public static final DirectionProperty FACING = Properties.FACING;
 	private static final VoxelShape boxwe = Block.createCuboidShape(0,7,7,10,9,9);
@@ -52,8 +52,8 @@ public class LConnectorBlock extends Block implements ITE<LConnectorTileEntity>,
 	}
 
 	@Override
-	public Class<LConnectorTileEntity> getTileEntityClass() {
-		return LConnectorTileEntity.class;
+	public Class<LConnectorBlockEntity> getTileEntityClass() {
+		return LConnectorBlockEntity.class;
 	}
 	
 	@Override
@@ -100,8 +100,8 @@ public class LConnectorBlock extends Block implements ITE<LConnectorTileEntity>,
 	public void neighborUpdate(BlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos, boolean isMoving) {
 		BlockEntity tileentity = state.hasBlockEntity() ? worldIn.getBlockEntity(pos) : null;
 		if(tileentity != null) {
-			if(tileentity instanceof LConnectorTileEntity) {
-				((LConnectorTileEntity)tileentity).updateCache();
+			if(tileentity instanceof LConnectorBlockEntity) {
+				((LConnectorBlockEntity)tileentity).updateCache();
 			}
 		}
 		if (!state.canPlaceAt(worldIn, pos)) {
@@ -126,7 +126,7 @@ public class LConnectorBlock extends Block implements ITE<LConnectorTileEntity>,
 	}
 
     @Override
-	public BlockEntityType<? extends LConnectorTileEntity> getTileEntityType() {
+	public BlockEntityType<? extends LConnectorBlockEntity> getTileEntityType() {
 		return ModBlockEntities.LOW_VOLTAGE_CONNECTOR.get();
 	}
 	

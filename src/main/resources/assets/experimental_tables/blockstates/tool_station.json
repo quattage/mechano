@@ -16,6 +16,22 @@
       "model": "experimental_tables:block/tool_station",
       "y": 270
     },
+    "facing=east,model=connected": {
+      "model": "experimental_tables:block/tool_station_connected",
+      "y": 90
+    },
+    "facing=north,model=connected": {
+      "model": "experimental_tables:block/tool_station_connected",
+      "y": 0
+    }, 
+    "facing=south,model=connected": {
+      "model": "experimental_tables:block/tool_station_connected",
+      "y": 180
+    }, 
+    "facing=west,model=connected": {
+      "model": "experimental_tables:block/tool_station_connected",
+      "y": 270
+    },
     "model=side": {
       "model": "experimental_tables:block/tool_station_dummy"
     }

@@ -3,7 +3,7 @@ package com.quattage.experimental_tables.content.block;
 import com.mrh0.createaddition.energy.IWireNode;
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.experimental_tables.ExperimentalTables;
-import com.quattage.experimental_tables.content.block.entity.HConnectorTileEntity;
+import com.quattage.experimental_tables.content.block.entity.HConnectorBlockEntity;
 import com.quattage.experimental_tables.registry.ModBlockEntities;
 import com.simibubi.create.content.contraptions.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.ITE;
@@ -31,7 +31,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
 import net.minecraft.state.StateManager.Builder;
 
-public class HConnectorBlock extends Block implements ITE<HConnectorTileEntity>, IWrenchable {
+public class HConnectorBlock extends Block implements ITE<HConnectorBlockEntity>, IWrenchable {
     public static final VoxelShaper CONNECTOR_SHAPE = CAShapes.shape(4, 0, 4, 12, 11, 12).forDirectional();
 	public static final DirectionProperty FACING = Properties.FACING;
 	private static final VoxelShape boxwe = Block.createCuboidShape(0,7,7,10,9,9);
@@ -53,8 +53,8 @@ public class HConnectorBlock extends Block implements ITE<HConnectorTileEntity>,
 	}
 
 	@Override
-	public Class<HConnectorTileEntity> getTileEntityClass() {
-		return HConnectorTileEntity.class;
+	public Class<HConnectorBlockEntity> getTileEntityClass() {
+		return HConnectorBlockEntity.class;
 	}
 	
 	@Override
@@ -94,6 +94,7 @@ public class HConnectorBlock extends Block implements ITE<HConnectorTileEntity>,
 		
 		cte.dropWires(world);
 	}
+	
     @Override
 	public ActionResult onSneakWrenched(BlockState state, ItemUsageContext c) {
 		if(c.getPlayer().isCreative()) {
@@ -120,8 +121,8 @@ public class HConnectorBlock extends Block implements ITE<HConnectorTileEntity>,
 	public void neighborUpdate(BlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos, boolean isMoving) {
 		BlockEntity tileentity = state.hasBlockEntity() ? worldIn.getBlockEntity(pos) : null;
 		if(tileentity != null) {
-			if(tileentity instanceof HConnectorTileEntity) {
-				((HConnectorTileEntity)tileentity).updateCache();
+			if(tileentity instanceof HConnectorBlockEntity) {
+				((HConnectorBlockEntity)tileentity).updateCache();
 			}
 		}
 		if (!state.canPlaceAt(worldIn, pos)) {
@@ -146,7 +147,7 @@ public class HConnectorBlock extends Block implements ITE<HConnectorTileEntity>,
 	}
 
     @Override
-	public BlockEntityType<? extends HConnectorTileEntity> getTileEntityType() {
+	public BlockEntityType<? extends HConnectorBlockEntity> getTileEntityType() {
 		return ModBlockEntities.HIGH_VOLTAGE_CONNECTOR.get();
 	}
 	

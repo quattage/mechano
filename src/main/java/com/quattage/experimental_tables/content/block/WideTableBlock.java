@@ -9,6 +9,9 @@ import com.google.common.base.Suppliers;
 import com.quattage.experimental_tables.ExperimentalTables;
 import com.quattage.experimental_tables.content.block.entity.ToolStationBlockEntity;
 import com.quattage.experimental_tables.registry.ModBlockEntities;
+import com.quattage.experimental_tables.registry.ModBlocks;
+import com.simibubi.create.AllSoundEvents;
+import com.simibubi.create.Create;
 
 import blue.endless.jankson.annotation.Nullable;
 import net.minecraft.block.Block;
@@ -58,8 +61,9 @@ public class WideTableBlock extends BlockWithEntity {
     protected static final VoxelShape BLOCK_SOUTH = Block.createCuboidShape(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
     protected static final VoxelShape BLOCK_EAST = Block.createCuboidShape(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
     protected static final VoxelShape BLOCK_WEST = Block.createCuboidShape(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
-    
+
     public static final DirectionProperty FACING = HorizontalFacingBlock.FACING;
+    
     private final ContainerManager container;
     private final Supplier<Text> containerName;
     
@@ -67,16 +71,15 @@ public class WideTableBlock extends BlockWithEntity {
         super(settings);
         this.container = container;
         containerName = Suppliers.memoize(() -> Text.translatable("container.tables." + Registry.BLOCK.getKey(WideTableBlock.this).toString()));
-        this.setDefaultState(this.stateManager.getDefaultState().with(FACING, Direction.NORTH).with(MODEL_TYPE, WideBlockModelType.MAIN));
+        this.setDefaultState(this.stateManager.getDefaultState().with(FACING, Direction.NORTH).with(MODEL_TYPE, WideBlockModelType.BASE));
     }
 
     public enum WideBlockModelType implements StringIdentifiable {
-        MAIN, SIDE, CONNECTED;
+        BASE, FORGED, HEATED, MAXIMIZED, DUMMY;
 
         @Override
         public String asString() {
             return name().toLowerCase(Locale.ROOT);
-
         }
 
         @Override
@@ -94,7 +97,7 @@ public class WideTableBlock extends BlockWithEntity {
     public void onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
         if (!world.isClient) {
             WideBlockModelType wideBlockModel = state.get(MODEL_TYPE);
-            if (wideBlockModel == WideBlockModelType.MAIN || wideBlockModel == WideBlockModelType.CONNECTED) {
+            if (wideBlockModel != WideBlockModelType.DUMMY) {
                 BlockPos otherpos = pos.offset(state.get(FACING).rotateYClockwise());
                 BlockState otherstate = world.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
@@ -102,7 +105,7 @@ public class WideTableBlock extends BlockWithEntity {
                     world.syncWorldEvent(player, WorldEvents.BLOCK_BROKEN, otherpos, Block.getRawIdFromState(otherstate));
                 }
             }
-            if (wideBlockModel == WideBlockModelType.SIDE) {
+            if (wideBlockModel == WideBlockModelType.DUMMY) {
                 BlockPos otherpos = pos.offset(state.get(FACING).rotateYCounterclockwise());
                 BlockState otherstate = world.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
@@ -128,9 +131,8 @@ public class WideTableBlock extends BlockWithEntity {
         super.onPlaced(world, pos, state, player, stack);
         if(!world.isClient) {
             BlockPos possy = pos.offset(state.get(FACING).rotateYClockwise());
-            world.setBlockState(possy, state.with(MODEL_TYPE, WideBlockModelType.SIDE), Block.NOTIFY_ALL);
+            world.setBlockState(possy, state.with(MODEL_TYPE, WideBlockModelType.DUMMY), Block.NOTIFY_ALL);
             world.updateNeighbors(pos, Blocks.AIR);
-            state.updateNeighbors(world, pos, Block.NOTIFY_ALL);
         }
     }
 
@@ -138,24 +140,41 @@ public class WideTableBlock extends BlockWithEntity {
     public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
         super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
         if(!world.isClient) {
-            WideBlockModelType wideBlockModel = state.get(MODEL_TYPE);
-            if(wideBlockModel == WideBlockModelType.SIDE) {
-                BlockPos adjacentPos = pos.offset(state.get(FACING).rotateYClockwise());
-                BlockState adjacentBlockState = world.getBlockState(adjacentPos);
-                if (adjacentBlockState.getBlock() == Blocks.DIRT) {
-                    BlockPos rootBlockPos = pos.offset(state.get(FACING).rotateYCounterclockwise());
-                    BlockState rootBlockState = world.getBlockState(rootBlockPos);
-                    if (rootBlockState.get(MODEL_TYPE) == WideBlockModelType.MAIN) {
-                        world.setBlockState(rootBlockPos, state.with(MODEL_TYPE, WideBlockModelType.CONNECTED), Block.NOTIFY_ALL);
-                    }
-                } else if (adjacentBlockState.getBlock() == Blocks.AIR) {
-                    BlockPos rootBlockPos = pos.offset(state.get(FACING).rotateYCounterclockwise());
-                    BlockState rootBlockState = world.getBlockState(rootBlockPos);
-                    if (rootBlockState.get(MODEL_TYPE) == WideBlockModelType.CONNECTED) {
-                        world.setBlockState(rootBlockPos, state.with(MODEL_TYPE, WideBlockModelType.MAIN), Block.NOTIFY_ALL);
-                    }
-                }
-            } 
+            if(state.get(MODEL_TYPE) == WideBlockModelType.DUMMY) {
+                referToMainBlockForUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+            } else {
+                mainBlockUpdate(state, world, pos, sourceBlock, sourcePos, notify);
+            }
+        }
+    }
+
+    private void referToMainBlockForUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        BlockPos mainBlockPos = pos.offset(state.get(FACING).rotateYCounterclockwise());
+        BlockState mainBlockState = world.getBlockState(mainBlockPos);
+        this.mainBlockUpdate(mainBlockState, world, mainBlockPos, sourceBlock, sourcePos, notify);
+    }
+    private void mainBlockUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        BlockPos left = pos.offset(state.get(FACING).rotateYCounterclockwise());
+        BlockPos right = pos.offset(state.get(FACING).rotateYClockwise(), 2);
+        if(sourcePos.equals(left) || sourcePos.equals(right)) {
+            ExperimentalTables.LOGGER.info("UPDATE ACCEPTED {(" + pos + "), (" + sourcePos + ")}, LEFT: (" + left + "), RIGHT: (" + right + ")");
+            BlockState leftBlockState = world.getBlockState(left);
+            BlockState rightBlockState = world.getBlockState(right);
+            if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE) && rightBlockState.getBlock().equals(Blocks.DIRT)) {
+                world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.MAXIMIZED), Block.NOTIFY_ALL);
+                ExperimentalTables.LOGGER.info("detected both upgrades");
+            } else if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE)) {
+                world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.FORGED), Block.NOTIFY_ALL);
+                ExperimentalTables.LOGGER.info("detected a forge upgrade");
+            } else if(rightBlockState.getBlock().equals(Blocks.DIRT)) {
+                world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.HEATED), Block.NOTIFY_ALL);
+                ExperimentalTables.LOGGER.info("detected a heated upgrade");
+            } else {
+                world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.BASE), Block.NOTIFY_ALL);
+                ExperimentalTables.LOGGER.info("detected no upgrades");
+            }
+        } else {
+            ExperimentalTables.LOGGER.info("UPDATE DUMPED {(" + pos + "), (" + sourcePos + ")}, LEFT: (" + left + "), RIGHT: (" + right + ")");
         }
     }
 

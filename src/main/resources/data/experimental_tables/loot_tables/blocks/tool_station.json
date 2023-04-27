@@ -1,0 +1,20 @@
+{
+    "type": "minecraft:block",
+    "pools": [
+      {
+        "name": "experimental_tables:tool_station",
+        "rolls": 1,
+        "entries": [
+          {
+            "type": "minecraft:item",
+            "name": "experimental_tables:tool_station"
+          }
+        ],
+        "conditions": [
+          {
+            "condition": "minecraft:survives_explosion"
+          }
+        ]
+      }
+    ]
+}

@@ -82,19 +82,6 @@ public class HConnectorBlock extends Block implements ITE<HConnectorBlockEntity>
 		cte.dropWires(worldIn);
 	}
 
-	@Override
-	public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
-		super.onStateReplaced(state, world, pos, newState, moved);
-		BlockEntity te = world.getBlockEntity(pos);
-		if(te == null)
-			return;
-		if(!(te instanceof IWireNode))
-			return;
-		IWireNode cte = (IWireNode) te;
-		
-		cte.dropWires(world);
-	}
-	
     @Override
 	public ActionResult onSneakWrenched(BlockState state, ItemUsageContext c) {
 		if(c.getPlayer().isCreative()) {
@@ -159,5 +146,18 @@ public class HConnectorBlock extends Block implements ITE<HConnectorBlockEntity>
 	@Override
 	public BlockState mirror(BlockState state, BlockMirror mirror) {
 		return state.with(FACING, mirror.apply(state.get(FACING)));
+	}
+
+	@Override
+	public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+		if(!world.isClient) {
+			BlockEntity entity = world.getBlockEntity(pos);
+			if(entity != null && !(newState.getBlock() instanceof HConnectorBlock)) {
+				if(entity instanceof HConnectorBlockEntity castedEntity) {
+					castedEntity.onBlockRemoved();
+				}
+			}
+		}
+		super.onStateReplaced(state, world, pos, newState, moved);
 	}
 }

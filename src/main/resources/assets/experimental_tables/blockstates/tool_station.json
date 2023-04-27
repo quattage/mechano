@@ -1,38 +1,70 @@
 {
   "variants": {
-    "facing=east,model=main": {
+    "facing=east,model=base": {
       "model": "experimental_tables:block/tool_station",
       "y": 90
     },
-    "facing=north,model=main": {
+    "facing=north,model=base": {
       "model": "experimental_tables:block/tool_station",
       "y": 0
     }, 
-    "facing=south,model=main": {
+    "facing=south,model=base": {
       "model": "experimental_tables:block/tool_station",
       "y": 180
     }, 
-    "facing=west,model=main": {
+    "facing=west,model=base": {
       "model": "experimental_tables:block/tool_station",
       "y": 270
     },
-    "facing=east,model=connected": {
-      "model": "experimental_tables:block/tool_station_connected",
+    "facing=east,model=heated": {
+      "model": "experimental_tables:block/tool_station_heated",
       "y": 90
     },
-    "facing=north,model=connected": {
-      "model": "experimental_tables:block/tool_station_connected",
+    "facing=north,model=heated": {
+      "model": "experimental_tables:block/tool_station_heated",
       "y": 0
     }, 
-    "facing=south,model=connected": {
-      "model": "experimental_tables:block/tool_station_connected",
+    "facing=south,model=heated": {
+      "model": "experimental_tables:block/tool_station_heated",
       "y": 180
     }, 
-    "facing=west,model=connected": {
-      "model": "experimental_tables:block/tool_station_connected",
+    "facing=west,model=heated": {
+      "model": "experimental_tables:block/tool_station_heated",
       "y": 270
     },
-    "model=side": {
+    "facing=east,model=forged": {
+      "model": "experimental_tables:block/tool_station_forged",
+      "y": 90
+    },
+    "facing=north,model=forged": {
+      "model": "experimental_tables:block/tool_station_forged",
+      "y": 0
+    }, 
+    "facing=south,model=forged": {
+      "model": "experimental_tables:block/tool_station_forged",
+      "y": 180
+    }, 
+    "facing=west,model=forged": {
+      "model": "experimental_tables:block/tool_station_forged",
+      "y": 270
+    },
+    "facing=east,model=maximized": {
+      "model": "experimental_tables:block/tool_station_maximized",
+      "y": 90
+    },
+    "facing=north,model=maximized": {
+      "model": "experimental_tables:block/tool_station_maximized",
+      "y": 0
+    }, 
+    "facing=south,model=maximized": {
+      "model": "experimental_tables:block/tool_station_maximized",
+      "y": 180
+    }, 
+    "facing=west,model=maximized": {
+      "model": "experimental_tables:block/tool_station_maximized",
+      "y": 270
+    },
+    "model=dummy": {
       "model": "experimental_tables:block/tool_station_dummy"
     }
   }

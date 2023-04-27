@@ -1,0 +1,15 @@
+{
+    "type": "minecraft:block",
+    "pools": [
+      {
+        "name": "experimental_tables:tool_forge",
+        "rolls": 1,
+        "entries": [
+          {
+            "type": "minecraft:item",
+            "name": "experimental_tables:tool_forge"
+          }
+        ]
+      }
+    ]
+}

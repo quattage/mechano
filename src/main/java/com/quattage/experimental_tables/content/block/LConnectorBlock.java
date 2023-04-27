@@ -139,4 +139,17 @@ public class LConnectorBlock extends Block implements ITE<LConnectorBlockEntity>
 	public BlockState mirror(BlockState state, BlockMirror mirror) {
 		return state.with(FACING, mirror.apply(state.get(FACING)));
 	}
+
+	@Override
+	public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+		if(!world.isClient) {
+			BlockEntity entity = world.getBlockEntity(pos);
+			if(entity != null && !(newState.getBlock() instanceof LConnectorBlock)) {
+				if(entity instanceof LConnectorBlockEntity castedEntity) {
+					castedEntity.onBlockRemoved();
+				}
+			}
+		}
+		super.onStateReplaced(state, world, pos, newState, moved);
+	}
 }

@@ -1,6 +1,7 @@
 package com.quattage.experimental_tables.content.block.entity;
 
 import com.mrh0.createaddition.energy.BaseElectricTileEntity;
+import com.quattage.experimental_tables.registry.ModBlockEntities;
 import com.simibubi.create.content.contraptions.goggles.IHaveGoggleInformation;
 
 import net.minecraft.block.BlockState;
@@ -23,7 +24,7 @@ public class InductorBlockEntity extends BaseElectricTileEntity implements IHave
     public static final long CAPACITY = 4096, MAX_IN = 2048, MAX_OUT = 2048;
     
     public InductorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
-        super(tileEntityTypeIn, pos, state, CAPACITY, MAX_IN, MAX_OUT);
+        super(ModBlockEntities.INDUCTOR.get(), pos, state, CAPACITY, MAX_IN, MAX_OUT);
     }
 
     @Override
@@ -42,8 +43,7 @@ public class InductorBlockEntity extends BaseElectricTileEntity implements IHave
     }
 
     private <E extends IAnimatable> PlayState predicate(AnimationEvent<E> event) {
-        event.getController().setAnimation(new AnimationBuilder().addAnimation("active", EDefaultLoopTypes.LOOP));
-
+        event.getController().setAnimation(new AnimationBuilder().addAnimation("animation.inductor.active", EDefaultLoopTypes.LOOP));
         return PlayState.CONTINUE;
     }
 

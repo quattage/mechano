@@ -12,6 +12,7 @@ import net.minecraft.util.registry.Registry;
 
 import com.quattage.experimental_tables.ExperimentalTables;
 import com.quattage.experimental_tables.content.block.HConnectorBlock;
+import com.quattage.experimental_tables.content.block.InductorBlock;
 import com.quattage.experimental_tables.content.block.LConnectorBlock;
 import com.quattage.experimental_tables.content.block.UpgradeBlock;
 import com.quattage.experimental_tables.content.block.WideTableBlock;
@@ -38,6 +39,11 @@ public class ModBlocks {
     
     // REGISTRATE
     private static final CreateRegistrate REGISTRATE = ExperimentalTables.registrate().creativeModeTab(() -> ModGroup.MAIN);
+    public static final BlockEntry<InductorBlock> INDUCTOR = REGISTRATE.block("inductor", InductorBlock::new)
+        .initialProperties(SharedProperties::stone)
+        .item()
+        .transform(customItemModel())
+        .register();
     public static final BlockEntry<LConnectorBlock> LOW_VOLTAGE_CONNECTOR_BLOCK = REGISTRATE.block("lv_connector", LConnectorBlock::new)
         .initialProperties(SharedProperties::stone)
         .item()

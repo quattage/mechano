@@ -1,0 +1,23 @@
+{
+  "variants": {
+    "facing=east,model=base": {
+      "model": "experimental_tables:block/inductor",
+      "y": 180
+    },
+    "facing=north,model=base": {
+      "model": "experimental_tables:block/inductor",
+      "y": 90
+    }, 
+    "facing=south,model=base": {
+      "model": "experimental_tables:block/inductor",
+      "y": 270
+    }, 
+    "facing=west,model=base": {
+      "model": "experimental_tables:block/inductor",
+      "y": 0
+    },
+    "model=dummy": {
+      "model": "experimental_tables:block/tool_station_dummy"
+    }
+  }
+}

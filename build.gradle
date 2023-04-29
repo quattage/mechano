@@ -12,10 +12,11 @@ repositories {
 	maven { url "https://ladysnake.jfrog.io/artifactory/mods" }      // cardinal components
 	maven { url = "https://jitpack.io/" }                            // mixin extras
 	maven { url = "https://maven.jamieswhiteshirt.com/libs-release" } // reach entity attributes
-	maven {url = "https://maven.fabricmc.net/teamreborn/energy/" }   // teamreborn energy API
+	maven { url = "https://maven.fabricmc.net/teamreborn/energy/" }   // teamreborn energy API
 	maven { url "https://maven.shedaniel.me/" }                      // cloth config, REI
 	maven { url "https://maven.terraformersmc.com/" }                // modmenu
 	maven { url = "https://api.modrinth.com/maven" }                 // lazydfu
+	maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' } //geckolib
 	
 	maven { url = "https://maven.tterrag.com/" }                     // flywheel
 	maven { url = "https://mvn.devos.one/snapshots/" }               // create, porting lib, forge tags, registrate
@@ -40,14 +41,17 @@ dependencies {
 	// cool APIs
 		implementation 'com.electronwill.night-config:core:3.6.5'
         implementation 'com.electronwill.night-config:toml:3.6.5'
-		
+
+		modImplementation "software.bernie.geckolib:geckolib-fabric-1.19:${project.geckolib_version}"
+
 		modImplementation(include("io.github.fabricators_of_create.Porting-Lib:extensions:1.0"))
-		modImplementation("dev.onyxstudios.cardinal-components-api:cardinal-components-base:${cardinal_components_version}")
+		modImplementation("dev.onyxstudios.cardinal-components-api:cardinal-components-base:${project.cardinal_components_version}")
 		modApi "dev.architectury:architectury-fabric:${project.architectury_version}"
 		
 		modCompileOnly "me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}"
 		modRuntimeOnly "me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}"
 		
+		modLocalRuntime("maven.modrinth:lazydfu:${lazydfu_version}")
 		include modApi("teamreborn:energy:${project.teamreborn_energy_api_version}") {
 			exclude(group: "net.fabricmc.fabric-api")
 		}

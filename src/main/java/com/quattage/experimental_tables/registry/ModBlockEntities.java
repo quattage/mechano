@@ -2,6 +2,7 @@ package com.quattage.experimental_tables.registry;
 
 import com.quattage.experimental_tables.ExperimentalTables;
 import com.quattage.experimental_tables.content.block.entity.HConnectorBlockEntity;
+import com.quattage.experimental_tables.content.block.entity.InductorBlockEntity;
 import com.quattage.experimental_tables.content.block.entity.LConnectorBlockEntity;
 import com.quattage.experimental_tables.content.block.entity.ToolStationBlockEntity;
 import com.quattage.experimental_tables.content.block.entity.renderer.HConnectorRenderer;
@@ -29,6 +30,11 @@ public class ModBlockEntities {
         .validBlocks(ModBlocks.HIGH_VOLTAGE_CONNECTOR_BLOCK)
         .renderer(() -> HConnectorRenderer::new)
         .register();
+    public static final BlockEntityEntry<InductorBlockEntity> INDUCTOR = ExperimentalTables.registrate()
+        .tileEntity("inductor", InductorBlockEntity::new)
+        .validBlocks(ModBlocks.INDUCTOR)
+        .register();
+
 
     public static void register() {
         TOOL_STATION = Registry.register(Registry.BLOCK_ENTITY_TYPE, 

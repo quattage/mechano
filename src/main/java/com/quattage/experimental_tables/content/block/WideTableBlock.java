@@ -160,13 +160,12 @@ public class WideTableBlock extends BlockWithEntity {
             ExperimentalTables.LOGGER.info("UPDATE ACCEPTED {(" + pos + "), (" + sourcePos + ")}, LEFT: (" + left + "), RIGHT: (" + right + ")");
             BlockState leftBlockState = world.getBlockState(left);
             BlockState rightBlockState = world.getBlockState(right);
-            if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE) && rightBlockState.getBlock().equals(Blocks.DIRT)) {
+            if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE) && rightBlockState.getBlock().equals(ModBlocks.INDUCTOR.get())) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.MAXIMIZED), Block.NOTIFY_ALL);
-                ExperimentalTables.LOGGER.info("detected both upgrades");
             } else if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE)) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.FORGED), Block.NOTIFY_ALL);
                 ExperimentalTables.LOGGER.info("detected a forge upgrade");
-            } else if(rightBlockState.getBlock().equals(Blocks.DIRT)) {
+            } else if(rightBlockState.getBlock().equals(ModBlocks.INDUCTOR.get())) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.HEATED), Block.NOTIFY_ALL);
                 ExperimentalTables.LOGGER.info("detected a heated upgrade");
             } else {

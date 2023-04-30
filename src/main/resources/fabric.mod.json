@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "experimental_tables",
+  "id": "mechano",
   "version": "${version}",
 
-  "name": "Experimental Tables",
-  "description": "cool tables :)",
+  "name": "Mechano",
+  "description": "cool stuff :)",
   "authors": [
     "quattage"
   ],
@@ -14,16 +14,16 @@
   },
 
   "license": "CC0-1.0",
-  "icon": "assets/experimental_tables/icon.png",
+  "icon": "assets/mechano/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.quattage.experimental_tables.ExperimentalTables"
+      "com.quattage.mechano.Mechano"
     ]
   },
   "mixins": [
-    "experimental_tables.mixins.json"
+    "mechano.mixins.json"
   ],
 
   "depends": {

@@ -1,0 +1,20 @@
+{
+    "type": "minecraft:block",
+    "pools": [
+      {
+        "name": "mechano:hv_connector",
+        "rolls": 1,
+        "entries": [
+          {
+            "type": "minecraft:item",
+            "name": "mechano:hv_connector"
+          }
+        ],
+        "conditions": [
+          {
+            "condition": "minecraft:survives_explosion"
+          }
+        ]
+      }
+    ]
+}

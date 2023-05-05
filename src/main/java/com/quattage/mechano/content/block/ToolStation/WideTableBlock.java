@@ -7,8 +7,8 @@ import org.jetbrains.annotations.NotNull;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.registry.ModBlockEntities;
-import com.quattage.mechano.registry.ModBlocks;
+import com.quattage.mechano.registry.MechanoBlockEntities;
+import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
 
@@ -95,8 +95,7 @@ public class WideTableBlock extends BlockWithEntity {
     @Override
     public void onBreak(World world, BlockPos pos, BlockState state, PlayerEntity player) {
         if (!world.isClient) {
-            WideBlockModelType wideBlockModel = state.get(MODEL_TYPE);
-            if (wideBlockModel != WideBlockModelType.DUMMY) {
+            if (state.get(MODEL_TYPE) != WideBlockModelType.DUMMY) {
                 BlockPos otherpos = pos.offset(state.get(FACING).rotateYClockwise());
                 BlockState otherstate = world.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
@@ -104,7 +103,7 @@ public class WideTableBlock extends BlockWithEntity {
                     world.syncWorldEvent(player, WorldEvents.BLOCK_BROKEN, otherpos, Block.getRawIdFromState(otherstate));
                 }
             }
-            if (wideBlockModel == WideBlockModelType.DUMMY) {
+            else {
                 BlockPos otherpos = pos.offset(state.get(FACING).rotateYCounterclockwise());
                 BlockState otherstate = world.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
@@ -156,23 +155,17 @@ public class WideTableBlock extends BlockWithEntity {
         BlockPos left = pos.offset(state.get(FACING).rotateYCounterclockwise());
         BlockPos right = pos.offset(state.get(FACING).rotateYClockwise(), 2);
         if(sourcePos.equals(left) || sourcePos.equals(right)) {
-            Mechano.LOGGER.info("UPDATE ACCEPTED {(" + pos + "), (" + sourcePos + ")}, LEFT: (" + left + "), RIGHT: (" + right + ")");
             BlockState leftBlockState = world.getBlockState(left);
             BlockState rightBlockState = world.getBlockState(right);
-            if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE) && rightBlockState.getBlock().equals(ModBlocks.INDUCTOR.get())) {
+            if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get()) && rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.MAXIMIZED), Block.NOTIFY_ALL);
-            } else if(leftBlockState.getBlock().equals(ModBlocks.FORGE_UPGRADE)) {
+            } else if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get())) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.FORGED), Block.NOTIFY_ALL);
-                Mechano.LOGGER.info("detected a forge upgrade");
-            } else if(rightBlockState.getBlock().equals(ModBlocks.INDUCTOR.get())) {
+            } else if(rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.HEATED), Block.NOTIFY_ALL);
-                Mechano.LOGGER.info("detected a heated upgrade");
             } else {
                 world.setBlockState(pos, state.with(MODEL_TYPE, WideBlockModelType.BASE), Block.NOTIFY_ALL);
-                Mechano.LOGGER.info("detected no upgrades");
             }
-        } else {
-            Mechano.LOGGER.info("UPDATE DUMPED {(" + pos + "), (" + sourcePos + ")}, LEFT: (" + left + "), RIGHT: (" + right + ")");
         }
     }
 
@@ -269,6 +262,6 @@ public class WideTableBlock extends BlockWithEntity {
 
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
-        return checkType(type, ModBlockEntities.TOOL_STATION, ToolStationBlockEntity::tick);
+        return checkType(type, MechanoBlockEntities.TOOL_STATION, ToolStationBlockEntity::tick);
     }
 }

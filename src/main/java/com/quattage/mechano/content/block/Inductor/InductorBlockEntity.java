@@ -1,13 +1,18 @@
 package com.quattage.mechano.content.block.Inductor;
 
+import java.util.List;
+
 import com.mrh0.createaddition.energy.BaseElectricTileEntity;
-import com.quattage.mechano.registry.ModBlockEntities;
+import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.content.contraptions.goggles.IHaveGoggleInformation;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.block.HorizontalFacingBlock;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.registry.Registry;
 import software.bernie.geckolib3.core.IAnimatable;
 import software.bernie.geckolib3.core.PlayState;
 import software.bernie.geckolib3.core.builder.AnimationBuilder;
@@ -22,9 +27,26 @@ public class InductorBlockEntity extends BaseElectricTileEntity implements IHave
 
     private AnimationFactory factory = GeckoLibUtil.createFactory(this);
     public static final long CAPACITY = 4096, MAX_IN = 2048, MAX_OUT = 2048;
-    
+
+    private BlockPos targetPos = null;
+    private String targetID = null;
+
+    public BlockPos getTargetPos() {
+        return targetPos;
+    }
+
+    public String getTargetID() {
+        return targetID;
+    }
+
+    public void setTargetID(BlockState targetState) {
+        this.targetID = Registry.BLOCK.getId(targetState.getBlock()).toString();
+    }
+
     public InductorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
-        super(ModBlockEntities.INDUCTOR.get(), pos, state, CAPACITY, MAX_IN, MAX_OUT);
+        super(tileEntityTypeIn, pos, state, CAPACITY, MAX_IN, MAX_OUT);
+        this.targetPos = pos.offset(state.get(HorizontalFacingBlock.FACING));
+        
     }
 
     @Override
@@ -39,7 +61,7 @@ public class InductorBlockEntity extends BaseElectricTileEntity implements IHave
 
     @Override
     public void registerControllers(AnimationData animationData) {
-        animationData.addAnimationController(new AnimationController<InductorBlockEntity>(this, "controller", 0, this::predicate));
+        animationData.addAnimationController(new AnimationController<>(this, "controller", 0, this::predicate));
     }
 
     private <E extends IAnimatable> PlayState predicate(AnimationEvent<E> event) {
@@ -50,5 +72,24 @@ public class InductorBlockEntity extends BaseElectricTileEntity implements IHave
     @Override
     public AnimationFactory getFactory() {
         return this.factory;
+    }
+
+    @Override
+    protected void read(NbtCompound nbt, boolean arg1) {
+        targetPos = new BlockPos(nbt.getInt("targetPosX"), nbt.getInt("targetPosY"), nbt.getInt("targetPosZ"));
+        if (nbt.contains("targetID"))
+            targetID = nbt.getString("targetID");
+        else
+            targetID = null;
+        super.read(nbt, arg1);
+    }
+
+    @Override
+    public void write(NbtCompound nbt, boolean clientPacket) {
+        nbt.putInt("targetPosX", targetPos.getX());
+        nbt.putInt("targetPosY", targetPos.getY());
+        nbt.putInt("targetPosZ", targetPos.getZ());
+        nbt.putString("targetID", targetID);
+        super.write(nbt, clientPacket);
     }
 }

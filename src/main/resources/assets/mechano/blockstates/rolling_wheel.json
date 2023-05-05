@@ -1,0 +1,17 @@
+{
+    "variants": {
+        "axis=x": {
+            "model": "mechano:block/rolling_wheel",
+            "x": 90,
+            "y": 180
+        },
+        "axis=y": {
+            "model": "mechano:block/rolling_wheel"
+        },
+        "axis=z": {
+            "model": "mechano:block/rolling_wheel",
+            "x": 90,
+            "y": 90
+        }
+    }
+}

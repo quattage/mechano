@@ -2,7 +2,7 @@ package com.quattage.mechano.content.block.Connector.LV;
 
 import com.mrh0.createaddition.energy.IWireNode;
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.registry.ModBlockEntities;
+import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.content.contraptions.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.ITE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -47,7 +47,7 @@ public class LVConnectorBlock extends Block implements ITE<LVConnectorBlockEntit
 	
 	@Override
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-		return ModBlockEntities.LOW_VOLTAGE_CONNECTOR.create(pos, state);
+		return MechanoBlockEntities.LOW_VOLTAGE_CONNECTOR.create(pos, state);
 	}
 
 	@Override
@@ -126,7 +126,7 @@ public class LVConnectorBlock extends Block implements ITE<LVConnectorBlockEntit
 
     @Override
 	public BlockEntityType<? extends LVConnectorBlockEntity> getTileEntityType() {
-		return ModBlockEntities.LOW_VOLTAGE_CONNECTOR.get();
+		return MechanoBlockEntities.LOW_VOLTAGE_CONNECTOR.get();
 	}
 	
 	@Override

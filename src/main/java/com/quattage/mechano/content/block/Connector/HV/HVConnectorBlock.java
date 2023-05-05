@@ -3,7 +3,7 @@ package com.quattage.mechano.content.block.Connector.HV;
 import com.mrh0.createaddition.energy.IWireNode;
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.registry.ModBlockEntities;
+import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.content.contraptions.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.ITE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -48,7 +48,7 @@ public class HVConnectorBlock extends Block implements ITE<HVConnectorBlockEntit
 	
 	@Override
 	public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-		return ModBlockEntities.HIGH_VOLTAGE_CONNECTOR.create(pos, state);
+		return MechanoBlockEntities.HIGH_VOLTAGE_CONNECTOR.create(pos, state);
 	}
 
 	@Override
@@ -134,7 +134,7 @@ public class HVConnectorBlock extends Block implements ITE<HVConnectorBlockEntit
 
     @Override
 	public BlockEntityType<? extends HVConnectorBlockEntity> getTileEntityType() {
-		return ModBlockEntities.HIGH_VOLTAGE_CONNECTOR.get();
+		return MechanoBlockEntities.HIGH_VOLTAGE_CONNECTOR.get();
 	}
 	
 	@Override

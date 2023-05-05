@@ -17,6 +17,7 @@ repositories {
 	maven { url "https://maven.terraformersmc.com/" }                // modmenu
 	maven { url = "https://api.modrinth.com/maven" }                 // lazydfu
 	maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' } //geckolib
+	maven { url 'https://maven.wispforest.io' }  // owo lib
 	
 	maven { url = "https://maven.tterrag.com/" }                     // flywheel
 	maven { url = "https://mvn.devos.one/snapshots/" }               // create, porting lib, forge tags, registrate
@@ -49,8 +50,7 @@ dependencies {
 		modApi "dev.architectury:architectury-fabric:${project.architectury_version}"
 		
 		modCompileOnly "me.shedaniel:RoughlyEnoughItems-api-fabric:${project.rei_version}"
-		modRuntimeOnly "me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}"
-		
+		modRuntimeOnly "me.shedaniel:RoughlyEnoughItems-fabric:${project.rei_version}"	
 		modLocalRuntime("maven.modrinth:lazydfu:${lazydfu_version}")
 		include modApi("teamreborn:energy:${project.teamreborn_energy_api_version}") {
 			exclude(group: "net.fabricmc.fabric-api")
@@ -63,6 +63,8 @@ dependencies {
 
 	// extras :)
 	modImplementation "com.terraformersmc:modmenu:${project.mod_menu_version}"
+	modLocalRuntime "io.wispforest:owo-lib:${project.owo_version}"
+	modLocalRuntime "curse.maven:alloy-forgery-438718:${project.alloy_forgery_version}"
 
 	
 	

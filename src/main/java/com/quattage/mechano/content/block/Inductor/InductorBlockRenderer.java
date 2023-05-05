@@ -1,5 +1,7 @@
 package com.quattage.mechano.content.block.Inductor;
 
+import com.quattage.mechano.Mechano;
+
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;

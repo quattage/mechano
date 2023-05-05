@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.ToolStation;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.registry.ModBlockEntities;
+import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.util.ImplementedInventory;
 
 import net.minecraft.block.BlockState;
@@ -28,7 +28,7 @@ public class ToolStationBlockEntity extends BlockEntity implements NamedScreenHa
     private int maxOperations = 25;
 
     public ToolStationBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.TOOL_STATION, pos, state);
+        super(MechanoBlockEntities.TOOL_STATION, pos, state);
         this.propertyDelegate = new PropertyDelegate() {
             public int get(int index) {
                 switch(index) {

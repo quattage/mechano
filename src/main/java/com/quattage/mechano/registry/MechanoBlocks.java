@@ -28,6 +28,7 @@ import com.quattage.mechano.content.block.Connector.LV.LVConnectorBlock;
 import com.quattage.mechano.content.block.Indrum.IndrumBlock;
 import com.quattage.mechano.content.block.Inductor.InductorBlock;
 import com.quattage.mechano.content.block.RollingWheel.RollingWheelBlock;
+import com.quattage.mechano.content.block.RollingWheel.RollingWheelControllerBlock;
 import com.quattage.mechano.content.block.ToolStation.WideTableBlock;
 import com.quattage.mechano.content.block.Upgrade.UpgradeBlock;
 
@@ -89,22 +90,24 @@ public class MechanoBlocks {
             .sounds(BlockSoundGroup.NETHERITE)
             .nonOpaque()
         )
-        .blockstate(BlockStateGen.axisBlockProvider(false))
+        .blockstate(BlockStateGen.horizontalAxisBlockProvider(false))
         .addLayer(() -> RenderLayer::getCutoutMipped)
         .transform(BlockStressDefaults.setImpact(8.0))
         .simpleItem()
         .register();
 
 
-    /*
     public static final BlockEntry<RollingWheelControllerBlock> ROLLING_WHEEL_CONTROLLER = REGISTRATE.block("rolling_wheel_controller", RollingWheelControllerBlock::new)
         .initialProperties(Material.METAL)
-        .properties(props -> 
-            props.sounds(BlockSoundGroup.NETHERITE)
-        )d
-        .transform(customItemModel())
+        .properties(props -> props
+            .sounds(BlockSoundGroup.NETHERITE)
+            .nonOpaque()
+        )
+        .blockstate(BlockStateGen.horizontalAxisBlockProvider(false))
+        .addLayer(() -> RenderLayer::getCutoutMipped)
+        .transform(BlockStressDefaults.setImpact(8.0))
+        .simpleItem()
         .register();
-    */
 
     public static void register() {
         Mechano.LOGGER.info("Registering Mod Blocks");

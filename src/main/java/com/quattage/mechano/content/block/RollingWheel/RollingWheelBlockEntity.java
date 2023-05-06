@@ -9,9 +9,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 
-public class RollingWheelTileEntity extends KineticTileEntity {
+public class RollingWheelBlockEntity extends KineticTileEntity {
 
-    public RollingWheelTileEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
+    public RollingWheelBlockEntity(BlockEntityType<?> typeIn, BlockPos pos, BlockState state) {
         super(typeIn, pos, state);
         setLazyTickRate(20);
     }

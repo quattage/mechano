@@ -1,6 +1,5 @@
 package com.quattage.mechano;
 
-import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
@@ -10,14 +9,12 @@ import software.bernie.geckolib3.GeckoLib;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.quattage.mechano.registry.MechanoItems;
+import com.quattage.mechano.registry.MechanoRecipes;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
-
-import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 
 public class Mechano implements ModInitializer {
 	public static final String MOD_ID = "mechano";
@@ -31,6 +28,7 @@ public class Mechano implements ModInitializer {
 		MechanoBlocks.register();
 		MechanoBlockEntities.register();
 		MechanoItems.register();
+		MechanoRecipes.register();
 		REGISTRATE.get().register();
 		GeckoLib.initialize();
 	}

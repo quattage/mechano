@@ -1,0 +1,15 @@
+{
+    "type": "minecraft:block",
+    "pools": [
+      {
+        "name": "mechano:rolling_wheel",
+        "rolls": 1,
+        "entries": [
+          {
+            "type": "minecraft:item",
+            "name": "mechano:rolling_wheel"
+          }
+        ]
+      }
+    ]
+}

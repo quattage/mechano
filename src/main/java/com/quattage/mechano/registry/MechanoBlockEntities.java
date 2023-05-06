@@ -6,7 +6,8 @@ import com.quattage.mechano.content.block.Connector.HV.HVConnectorRenderer;
 import com.quattage.mechano.content.block.Connector.LV.LVConnectorBlockEntity;
 import com.quattage.mechano.content.block.Connector.LV.LVConnectorRenderer;
 import com.quattage.mechano.content.block.Inductor.InductorBlockEntity;
-import com.quattage.mechano.content.block.RollingWheel.RollingWheelTileEntity;
+import com.quattage.mechano.content.block.RollingWheel.RollingWheelBlockEntity;
+import com.quattage.mechano.content.block.RollingWheel.RollingWheelControllerBlockEntity;
 import com.quattage.mechano.content.block.ToolStation.ToolStationBlockEntity;
 import com.simibubi.create.content.contraptions.base.CutoutRotatingInstance;
 import com.simibubi.create.content.contraptions.base.KineticTileEntityRenderer;
@@ -37,19 +38,20 @@ public class MechanoBlockEntities {
         .validBlocks(MechanoBlocks.INDUCTOR)
         .register();
 
-        public static final BlockEntityEntry<RollingWheelTileEntity> ROLLING_WHEEL = Mechano.registrate()
-		.tileEntity("crushing_wheel", RollingWheelTileEntity::new)
+    public static final BlockEntityEntry<RollingWheelBlockEntity> ROLLING_WHEEL = Mechano.registrate()
+		.tileEntity("rolling_wheel", RollingWheelBlockEntity::new)
 		.instance(() -> CutoutRotatingInstance::new, false)
 		.validBlocks(MechanoBlocks.ROLLING_WHEEL)
 		.renderer(() -> KineticTileEntityRenderer::new)
 		.register();
 
-    /*
-    public static final BlockEntityEntry<RollingWheelBlockEntity> ROLLING_WHEEL = Mechano.registrate()
-        .tileEntity("inductor", RollingWheelBlockEntity::new)
-        .validBlocks(MechanoBlocks.ROLLING_WHEEL)
-        .register();
-    */
+    public static final BlockEntityEntry<RollingWheelControllerBlockEntity> ROLLING_WHEEL_CONTROLLER = Mechano.registrate()
+		.tileEntity("rolling_wheel_controller", RollingWheelControllerBlockEntity::new)
+		.instance(() -> CutoutRotatingInstance::new, false)
+		.validBlocks(MechanoBlocks.ROLLING_WHEEL_CONTROLLER)
+		.renderer(() -> KineticTileEntityRenderer::new)
+		.register();
+
 
     public static void register() {
         TOOL_STATION = Registry.register(Registry.BLOCK_ENTITY_TYPE, 

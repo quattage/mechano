@@ -6,7 +6,6 @@ import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.content.contraptions.base.RotatedPillarKineticBlock;
 import com.simibubi.create.foundation.block.ITE;
 
-import io.github.fabricators_of_create.porting_lib.event.common.LivingEntityEvents.Tick;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -22,11 +21,9 @@ import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
 
-public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<RollingWheelBlockEntity> {
+public class RollingWheelControllerBlock extends RotatedPillarKineticBlock implements ITE<RollingWheelControllerBlockEntity> {
 
-    private boolean isControlled = false;
-
-    public RollingWheelBlock(Settings properties) {
+    public RollingWheelControllerBlock(Settings properties) {
         super(properties);
     }
 
@@ -34,13 +31,13 @@ public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<
     @Override
     public void neighborUpdate(BlockState state, World world, BlockPos pos, Block sourceBlock, BlockPos sourcePos,
             boolean notify) {
-        checkForController(pos, world, state);
+        checkForDummy(pos, world, state);
         super.neighborUpdate(state, world, pos, sourceBlock, sourcePos, notify);
     }
 
     @Override
     public void onPlaced(World worldIn, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
-        checkForController(pos, worldIn, state);
+        checkForDummy(pos, worldIn, state);
         super.onPlaced(worldIn, pos, state, placer, stack);
     }
 
@@ -51,10 +48,7 @@ public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<
 
     @Override
 	public VoxelShape getCollisionShape(BlockState state, BlockView view, BlockPos pos, ShapeContext context) {
-        if(isControlled)    // this doesn't actually work but it might not be necesary 
-            return CAShapes.shape(0, 5, 0, 16, 16, 16).build();
-        return CAShapes.shape(0, 0, 0, 16, 16, 16).build();
-        
+		return CAShapes.shape(0, 0, 0, 16, 9, 16).build();
 	}
 
     @Override
@@ -63,13 +57,13 @@ public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<
 	}
 
     @Override
-    public Class<RollingWheelBlockEntity> getTileEntityClass() {
-        return RollingWheelBlockEntity.class;
+    public Class<RollingWheelControllerBlockEntity> getTileEntityClass() {
+        return RollingWheelControllerBlockEntity.class;
     }
 
     @Override
-    public BlockEntityType<? extends RollingWheelBlockEntity> getTileEntityType() {
-        return MechanoBlockEntities.ROLLING_WHEEL.get();
+    public BlockEntityType<? extends RollingWheelControllerBlockEntity> getTileEntityType() {
+        return MechanoBlockEntities.ROLLING_WHEEL_CONTROLLER.get();
     }
 
     @Override
@@ -91,21 +85,22 @@ public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<
         return dir.getAxis() == state.get(AXIS);
     }
 
-    public void checkForController(BlockPos pos, World world, BlockState state) {
-        BlockPos below = pos.offset(Direction.DOWN);
-        if(world.getBlockState(below).getBlock() == MechanoBlocks.ROLLING_WHEEL.get()) {
-            world.setBlockState(below, MechanoBlocks.ROLLING_WHEEL_CONTROLLER.get().getDefaultState().with(RollingWheelControllerBlock.AXIS, state.get(AXIS)));
-            isControlled = true;
-        } else {
-            isControlled = false;
+    public void checkForDummy(BlockPos pos, World world, BlockState state) {
+        BlockPos above = pos.offset(Direction.UP);
+        if(world.getBlockState(above).getBlock() != MechanoBlocks.ROLLING_WHEEL.get()) {
+            world.setBlockState(pos, MechanoBlocks.ROLLING_WHEEL.get().getDefaultState().with(RollingWheelBlock.AXIS, state.get(AXIS)));
         }
     }
 
+    // holy moly
     public void updateControllers(BlockState state, World world, BlockPos pos, Direction dir) {
-        this.checkForController(pos, world, state);        
+        checkForDummy(pos, world, state);
         if (isShafted(dir, state))
 			return;
 		if (world == null)
 			return;
+
+        // i do not brain hard enough to continue
+        
     }
 }

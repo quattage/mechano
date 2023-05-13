@@ -9,6 +9,9 @@
             "model": "mechano:block/rolling_wheel",
             "x": 90,
             "y": 90
+        },
+        "axis=y": {
+            "model": "mechano:block/rolling_wheel"
         }
     }
 }

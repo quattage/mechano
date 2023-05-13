@@ -15,24 +15,6 @@ public class RollingWheelBlockEntity extends KineticTileEntity {
         super(typeIn, pos, state);
         setLazyTickRate(20);
     }
-    
-    private void syncControllers() {
-        for (Direction dir : Iterate.directions) {
-            ((RollingWheelBlock) getCachedState().getBlock()).updateControllers(getCachedState(), getWorld(), getPos(), dir);
-        }
-    }
-
-    @Override
-	public void onSpeedChanged(float prevSpeed) {
-		super.onSpeedChanged(prevSpeed);
-		syncControllers();
-	}
-
-    @Override
-	public void lazyTick() {
-		super.lazyTick();
-		syncControllers();
-	}
 
     @Override
 	protected Box createRenderBoundingBox() {

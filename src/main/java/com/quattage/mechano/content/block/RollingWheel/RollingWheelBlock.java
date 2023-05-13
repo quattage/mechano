@@ -108,4 +108,9 @@ public class RollingWheelBlock extends RotatedPillarKineticBlock implements ITE<
 		if (world == null)
 			return;
     }
+
+    @Override
+    public boolean canPlaceAt(BlockState state, WorldView world, BlockPos pos) {
+        return state.get(AXIS) != Axis.Y;           // makes sure the wheel can't face up
+    }                                               // idk how to remove this capability properly so deal with it
 }

@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"priority": 1000,
+	"package": "com.quattage.mechano.mixins",
+	"compatibilityLevel": "JAVA_17",
+	"refmap": "mechano.refmap.json",
+	"mixins": [
+		
+	],
+	"minVersion": "0.8.5"
+}

@@ -1,0 +1,71 @@
+{
+  "variants": {
+    "facing=east,model=base": {
+      "model": "mechano:block/tool_station",
+      "y": 90
+    },
+    "facing=north,model=base": {
+      "model": "mechano:block/tool_station",
+      "y": 0
+    }, 
+    "facing=south,model=base": {
+      "model": "mechano:block/tool_station",
+      "y": 180
+    }, 
+    "facing=west,model=base": {
+      "model": "mechano:block/tool_station",
+      "y": 270
+    },
+    "facing=east,model=heated": {
+      "model": "mechano:block/tool_station_heated",
+      "y": 90
+    },
+    "facing=north,model=heated": {
+      "model": "mechano:block/tool_station_heated",
+      "y": 0
+    }, 
+    "facing=south,model=heated": {
+      "model": "mechano:block/tool_station_heated",
+      "y": 180
+    }, 
+    "facing=west,model=heated": {
+      "model": "mechano:block/tool_station_heated",
+      "y": 270
+    },
+    "facing=east,model=forged": {
+      "model": "mechano:block/tool_station_forged",
+      "y": 90
+    },
+    "facing=north,model=forged": {
+      "model": "mechano:block/tool_station_forged",
+      "y": 0
+    }, 
+    "facing=south,model=forged": {
+      "model": "mechano:block/tool_station_forged",
+      "y": 180
+    }, 
+    "facing=west,model=forged": {
+      "model": "mechano:block/tool_station_forged",
+      "y": 270
+    },
+    "facing=east,model=maximized": {
+      "model": "mechano:block/tool_station_maximized",
+      "y": 90
+    },
+    "facing=north,model=maximized": {
+      "model": "mechano:block/tool_station_maximized",
+      "y": 0
+    }, 
+    "facing=south,model=maximized": {
+      "model": "mechano:block/tool_station_maximized",
+      "y": 180
+    }, 
+    "facing=west,model=maximized": {
+      "model": "mechano:block/tool_station_maximized",
+      "y": 270
+    },
+    "model=dummy": {
+      "model": "mechano:block/tool_station_dummy"
+    }
+  }
+}

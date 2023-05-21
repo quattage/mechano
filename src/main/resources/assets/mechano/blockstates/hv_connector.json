@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "mechano:block/hv_connector",
+      "x": 0, "y": 90
+    },
+    "facing=up": {
+      "model": "mechano:block/hv_connector",
+      "x": 180, "y": 90
+    },
+    "facing=north": {
+      "model": "mechano:block/hv_connector",
+      "x": 90, "y": 180
+    },
+    "facing=south": {
+      "model": "mechano:block/hv_connector",
+      "x": 90, "y": 0
+    },
+    "facing=west": {
+      "model": "mechano:block/hv_connector",
+      "x": 90, "y": 90
+    },
+    "facing=east": {
+      "model": "mechano:block/hv_connector",
+      "x": 90, "y": 270
+    }
+  }
+}

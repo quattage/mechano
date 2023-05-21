@@ -42,7 +42,7 @@ minecraft {
         client {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
+            property 'forge.logging.console.level', 'info'
             property 'forge.enabledGameTestNamespaces', 'mechano'
             property 'terminal.jline', 'true' // colors :)
 
@@ -56,7 +56,7 @@ minecraft {
         server {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
+            property 'forge.logging.console.level', 'info'
             property 'forge.enabledGameTestNamespaces', 'mechano'
             property 'terminal.jline', 'true' // colors :)
 
@@ -70,7 +70,7 @@ minecraft {
         gameTestServer {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
+            property 'forge.logging.console.level', 'info'
             property 'forge.enabledGameTestNamespaces', 'mechano'
 
             mods {
@@ -137,6 +137,7 @@ dependencies {
     implementation fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
     implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
+    implementation fg.deobf("curse.maven:createaddition-439890:${project.createaddition_version}")
 
     // JEI local runtime and API to compile against
     runtimeOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}"))

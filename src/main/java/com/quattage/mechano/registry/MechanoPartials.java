@@ -8,6 +8,6 @@ import com.quattage.mechano.Mechano;
 public class MechanoPartials {
 
     public static void register() {
-        Mechano.log("Registering mod partials");
+        Mechano.log("Registering Mechano partial models");
     }
 }

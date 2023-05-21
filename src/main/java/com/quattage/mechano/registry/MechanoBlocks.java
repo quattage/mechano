@@ -44,6 +44,7 @@ public class MechanoBlocks {
         .register();
 
     public static void register(IEventBus event) {
-        Mechano.log("Registering Mechano blocks");
+        Mechano.logReg("blocks");
+
     }
 }

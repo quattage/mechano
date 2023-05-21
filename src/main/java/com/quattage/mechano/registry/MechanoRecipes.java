@@ -14,6 +14,6 @@ public class MechanoRecipes {
 
     public static void register(IEventBus event) {
         TYPES.register(event);
-        Mechano.log("Registering Mechano recipes");
+        Mechano.logReg("recipes");
     }
 }

@@ -12,6 +12,7 @@ public class MechanoGroup extends CreativeModeTab {
 	
 	public MechanoGroup(String id) {
 		super(Mechano.MOD_ID+":" + id);
+		Mechano.logReg("group: '" + id + "'");
 		PRIMARY = this;
 	}
 

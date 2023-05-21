@@ -21,6 +21,7 @@ public class MechanoBlockEntities {
     
 
     public static void register(IEventBus event) {
-        Mechano.log("Registering Mechano block entities");
+        Mechano.logReg("block entities");
+
     }
 }

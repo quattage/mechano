@@ -114,7 +114,7 @@ repositories {
         url 'https://maven.blamejared.com'
     }
     maven {
-        name 'tterrag maven'                              // Registrate/Flywheel
+        name 'tterrag maven'                              // Registrate/Flywheel/Create
         url 'https://maven.tterrag.com'
     }
     maven {

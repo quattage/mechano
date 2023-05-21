@@ -27,6 +27,7 @@ public class MechanoContainers {
     }
     
     public static void register(IEventBus event) {
-        Mechano.log("Registering Mechano containers");
+        Mechano.logReg("containers");
+
     }
 }

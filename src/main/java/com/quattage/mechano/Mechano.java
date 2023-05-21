@@ -8,6 +8,7 @@ import com.quattage.mechano.registry.MechanoItems;
 import com.quattage.mechano.registry.MechanoPartials;
 import com.quattage.mechano.registry.MechanoRecipes;
 import com.quattage.mechano.registry.MechanoRenderers;
+import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
@@ -50,23 +51,29 @@ public class Mechano {
         MechanoBlockEntities.register(bussy);
         MechanoRecipes.register(bussy);
 
-        
+        bussy.addListener(this::clientSetup);
     }
 
     @SubscribeEvent
     public void registerRenderers(final EntityRenderersEvent.RegisterRenderers event) {
-        MechanoRenderers.register(event);
+        event.registerBlockEntityRenderer(MechanoBlockEntities.INDUCTOR.get(), InductorBlockRenderer::new);
     }
 
-    public void clientMisc(final FMLClientSetupEvent event) {
-        MechanoPartials.register();
+    public void clientSetup(final FMLClientSetupEvent event) {
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(MechanoRenderers::init);
+        MechanoPartials.register(); // this will likely cause issues but it doesn't do anything yet so its fine
     }
 
     public static void log(String message) {      
-        String prefix = ESC + "[1;35m[AMLS] >>" + ESC + "[1;36m";
-        String suffix = ESC + "[1;35m<<";
-        Mechano.LOGGER.info(prefix + message + suffix);
+        String prefix = ESC + "[1;35m[quattage/" + MOD_ID + "]>> " + ESC + "[1;36m";
+        String suffix = ESC + "[1;35m -" + ESC;
+        System.out.println(prefix + message + suffix);
     }
+
+    public static void logReg(String message) {      
+        log("Registering " + MOD_ID + " " + message);
+    }
+
 
     public static ResourceLocation asResource(String filepath) {
         return new ResourceLocation(MOD_ID, filepath);

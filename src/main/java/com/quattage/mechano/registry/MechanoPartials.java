@@ -6,8 +6,7 @@ import com.quattage.mechano.Mechano;
 // eg. The needle on Create's Stressometer.
 // CALLED BY LOGICAL CLIENT ONLY
 public class MechanoPartials {
-
     public static void register() {
-        Mechano.log("Registering Mechano partial models");
+        Mechano.logReg("partial models");
     }
 }

@@ -14,7 +14,6 @@ public class InductorBlockRenderer extends GeoBlockRenderer<InductorBlockEntity>
 
 	public InductorBlockRenderer(BlockEntityRendererProvider.Context rendererDispatcherIn) {
 		super(rendererDispatcherIn, new InductorBlockModel());
-		Mechano.log("Renderer hit");
 	}
 
 	@Override

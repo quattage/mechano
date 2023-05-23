@@ -22,8 +22,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
 
 import org.slf4j.Logger;
 
@@ -54,13 +52,9 @@ public class Mechano {
         bussy.addListener(this::clientSetup);
     }
 
-    @SubscribeEvent
-    public void registerRenderers(final EntityRenderersEvent.RegisterRenderers event) {
-        event.registerBlockEntityRenderer(MechanoBlockEntities.INDUCTOR.get(), InductorBlockRenderer::new);
-    }
-
     public void clientSetup(final FMLClientSetupEvent event) {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(MechanoRenderers::init);
+        logReg("renderers");
         MechanoPartials.register(); // this will likely cause issues but it doesn't do anything yet so its fine
     }
 

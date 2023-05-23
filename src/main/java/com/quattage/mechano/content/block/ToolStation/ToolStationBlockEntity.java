@@ -3,6 +3,8 @@ package com.quattage.mechano.content.block.ToolStation;
 import java.util.List;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.content.block.ToolStation.ToolStationBlock.WideBlockModelType;
+import com.quattage.mechano.core.effects.BoundParticleSpawner;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.tileEntity.SmartTileEntity;
 import com.simibubi.create.foundation.tileEntity.TileEntityBehaviour;
@@ -20,6 +22,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,6 +32,7 @@ public class ToolStationBlockEntity extends SmartTileEntity implements MenuProvi
 
     // storage data
     public final ToolStationInventory INVENTORY;
+    private BoundParticleSpawner particle;
 
     // progress data
     private int heat = 0;
@@ -39,6 +43,17 @@ public class ToolStationBlockEntity extends SmartTileEntity implements MenuProvi
     public ToolStationBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         INVENTORY = new ToolStationInventory(this);
+    }
+
+    @Override
+    public void setLevel(Level pLevel) {
+        super.setLevel(pLevel);
+        particle = new BoundParticleSpawner((BlockEntity)this)
+            .withDensity(5)
+            .withRandom(0.3f)
+            .withDensity(6)
+            .toNearestCenter()
+            .toOffset(0, 0.39, 0);
     }
 
     public void sendToContainer(FriendlyByteBuf buffer) {
@@ -85,5 +100,39 @@ public class ToolStationBlockEntity extends SmartTileEntity implements MenuProvi
     @Override
     public void addBehaviours(List<TileEntityBehaviour> behaviours) {
         // no implemtation
+    }
+
+    public void playUpSound(BlockState state, WideBlockModelType blockType) {
+        BoundParticleSpawner customParticle = particle;
+        Mechano.log("pee " + state);
+        if(level.isClientSide)
+            return;
+        switch (blockType) {
+            case BASE:
+                particle.spawn();
+                particle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                    .spawn();
+                break;
+            case FORGED:
+                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);
+                customParticle.spawn();
+                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                    .spawn();
+                break;
+            case HEATED:
+                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);  
+                customParticle.spawn();
+                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                    .spawn();
+                break;
+            case MAXIMIZED:
+                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);  
+                customParticle.spawn();
+                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                    .spawn();
+                break;
+            default:
+                return;
+        }
     }
 }

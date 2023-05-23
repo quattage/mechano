@@ -20,7 +20,5 @@ public class MechanoRenderers {
         event.registerBlockEntityRenderer(MechanoBlockEntities.INDUCTOR.get(), InductorBlockRenderer::new);
     }
 
-    public static void init(final FMLClientSetupEvent event) {
-        Mechano.logReg("renderers");
-    }
+    public static void init(final FMLClientSetupEvent event) {}
 }

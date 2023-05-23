@@ -32,7 +32,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class InductorBlock extends BaseEntityBlock implements ITE<InductorBlockEntity>, IWrenchable {
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
-    public static final VoxelShaper MAIN_SHAPE = CAShapes.shape(0, 0, 0, 0, 0, 0).forDirectional();
+    public static final VoxelShaper MAIN_SHAPE = CAShapes.shape(4.0, 3.0, 1.0, 11.0, 13.0, 3.0)
+                                                .add(1.5, 2.0, -11.8, 13.5, 14, 1.3)
+                                                .add(0.0, 3.0, 3.0, 16.0, 13.0, 13.0)
+                                                .forDirectional();
 
     public InductorBlock(Properties settings) {
         super(settings);

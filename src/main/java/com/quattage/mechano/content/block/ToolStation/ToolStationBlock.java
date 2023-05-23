@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.core.effects.BoundParticleSpawner;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.AllSoundEvents;
@@ -106,6 +107,8 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
             else {
                 BlockPos otherpos = pos.relative(state.getValue(FACING).getCounterClockWise());
                 BlockState otherstate = level.getBlockState(otherpos);
+
+                Mechano.log("POSITION: " + otherpos + " STATE: " + otherstate);
                 if (otherstate.getBlock() == this) {
                     level.setBlock(otherpos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                     level.levelEvent(player, LevelEvent.PARTICLES_DESTROY_BLOCK, otherpos, Block.getId(otherstate));
@@ -144,20 +147,32 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
     }
 
     private void mainBlockUpdate(BlockState state, Level world, BlockPos pos, Block sourceBlock, BlockPos sourcePos, boolean notify) {
+        if(state.getBlock() != this)
+            return;
+        
         BlockPos left = pos.relative(state.getValue(FACING).getCounterClockWise());
         BlockPos right = pos.relative(state.getValue(FACING).getClockWise(), 2);
         if(sourcePos.equals(left) || sourcePos.equals(right)) {
             BlockState leftBlockState = world.getBlockState(left);
             BlockState rightBlockState = world.getBlockState(right);
             if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get()) && rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
-                world.setBlock(pos, state.setValue(MODEL_TYPE, WideBlockModelType.MAXIMIZED), Block.UPDATE_ALL);
+                setLevel(world, pos, state, WideBlockModelType.MAXIMIZED);
             } else if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get())) {
-                world.setBlock(pos, state.setValue(MODEL_TYPE, WideBlockModelType.FORGED), Block.UPDATE_ALL);
+                setLevel(world, pos, state, WideBlockModelType.FORGED);
             } else if(rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
-                world.setBlock(pos, state.setValue(MODEL_TYPE, WideBlockModelType.HEATED), Block.UPDATE_ALL);
+                setLevel(world, pos, state, WideBlockModelType.HEATED);
             } else {
-                world.setBlock(pos, state.setValue(MODEL_TYPE, WideBlockModelType.BASE), Block.UPDATE_ALL);
+                setLevel(world, pos, state, WideBlockModelType.BASE);
             }
+        }
+    }
+
+    private void setLevel(Level world, BlockPos pos, BlockState state, WideBlockModelType bType) {
+        if(state.getValue(MODEL_TYPE) != bType) {
+            if (!state.hasBlockEntity())
+                return;
+            withTileEntityDo(world, pos, te -> te.playUpSound(state, bType));
+            world.setBlock(pos, state.setValue(MODEL_TYPE, bType), Block.UPDATE_ALL);
         }
     }
 

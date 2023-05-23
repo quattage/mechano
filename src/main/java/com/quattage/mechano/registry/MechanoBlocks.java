@@ -39,6 +39,10 @@ public class MechanoBlocks {
 
     public static final BlockEntry<ToolStationBlock> TOOL_STATION = REGISTRATE.block("tool_station", ToolStationBlock::new)
         .initialProperties(Material.WOOD)
+        .properties(props -> props
+            .sound(SoundType.WOOD)
+            .noOcclusion()
+        )
         .item()
         .transform(customItemModel())
         .register();

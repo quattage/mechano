@@ -87,7 +87,6 @@ public class ParticleSpawner {
 
     /***
      * Changes the particle ItemStack to the specified ItemStack.
-     * of particles.
      * @return a new ParticleSpawner with the modified value
      */
     public ParticleSpawner withCustom(ItemStack stack) {
@@ -98,7 +97,6 @@ public class ParticleSpawner {
 
     /***
      * Changes the particle ItemStack to the specified ItemStack.
-     * of particles.
      * @return a new ParticleSpawner with the modified value
      */
     public ParticleSpawner withCustom(Block block) {

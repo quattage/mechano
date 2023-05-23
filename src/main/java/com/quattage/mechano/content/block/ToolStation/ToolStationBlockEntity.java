@@ -104,31 +104,43 @@ public class ToolStationBlockEntity extends SmartTileEntity implements MenuProvi
 
     public void playUpSound(BlockState state, WideBlockModelType blockType) {
         BoundParticleSpawner customParticle = particle;
-        Mechano.log("pee " + state);
         if(level.isClientSide)
             return;
         switch (blockType) {
             case BASE:
                 particle.spawn();
-                particle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                particle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING)
+                    .getClockWise())
                     .spawn();
                 break;
             case FORGED:
-                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);
-                customParticle.spawn();
-                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toOffset(0, 0, 0)
+                    .spawn();
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
                     .spawn();
                 break;
             case HEATED:
-                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);  
-                customParticle.spawn();
-                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toOffset(0, 0, 0)
+                    .spawn();
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
                     .spawn();
                 break;
             case MAXIMIZED:
-                customParticle = particle.withCustom(Blocks.NETHERITE_BLOCK);  
-                customParticle.spawn();
-                customParticle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toOffset(0, 0, 0)
+                    .spawn();
+                particle
+                    .withCustom(Blocks.NETHERITE_BLOCK)
+                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
                     .spawn();
                 break;
             default:

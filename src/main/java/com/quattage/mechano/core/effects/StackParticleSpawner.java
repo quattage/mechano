@@ -19,7 +19,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
-public class ParticleSpawner {
+public class StackParticleSpawner {
     // assignment
     protected Vec3 pos = null;
     protected ItemStack stack = null;
@@ -28,9 +28,10 @@ public class ParticleSpawner {
     // particle data
     protected  ParticleOptions particle = null;
     protected int particleDensity = 3;
+    protected float particleSpeed = 0.3f;
     protected float randomStrength = 0f;
 
-    protected ParticleSpawner(ParticleSpawner original) {
+    protected StackParticleSpawner(StackParticleSpawner original) {
         this.world = original.world;
         this.pos = original.pos;
         this.stack = original.stack;
@@ -40,21 +41,21 @@ public class ParticleSpawner {
         instantiateParticle();
     }
 
-    public ParticleSpawner(Level world, BlockPos pos, ItemStack stack) {
+    public StackParticleSpawner(Level world, BlockPos pos, ItemStack stack) {
         this.world = world;
         this.pos = BlockMath.getVecFromPos(pos);
         this.stack = stack;
         instantiateParticle();
     }
 
-    public ParticleSpawner(Level world, Vec3 pos, ItemStack stack) {
+    public StackParticleSpawner(Level world, Vec3 pos, ItemStack stack) {
         this.world = world;
         this.pos = pos;
         this.stack = stack;
         instantiateParticle();
     }
 
-    public ParticleSpawner(Level world, ItemStack stack, int x, int y, int z) {
+    public StackParticleSpawner(Level world, ItemStack stack, int x, int y, int z) {
         this.world = world;
         this.pos = new Vec3(x, y, z);
         this.stack = stack;
@@ -66,9 +67,20 @@ public class ParticleSpawner {
      * @param particleDensity Density number. A ParticleSpawner's default value is 3
      * @return a new ParticleSpawner with the modified value
      */
-    public ParticleSpawner withDensity(int particleDensity) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner withDensity(int particleDensity) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.particleDensity = particleDensity;
+        return out;
+    }
+
+    /***
+     * Modified the stored particleSpeed value. Higher numbers will make particles fly further from the origin point.
+     * Default value is 0.3
+     * @return a new ParticleSpawner with the modified value
+     */
+    public StackParticleSpawner withSpeed(float particleSpeed) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
+        out.particleSpeed = particleSpeed;
         return out;
     }
 
@@ -79,8 +91,8 @@ public class ParticleSpawner {
      * of particles.
      * @return a new ParticleSpawner with the modified value
      */
-    public ParticleSpawner withRandom(float particleStrength) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner withRandom(float particleStrength) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.randomStrength = particleStrength;
         return out;
     }
@@ -89,8 +101,8 @@ public class ParticleSpawner {
      * Changes the particle ItemStack to the specified ItemStack.
      * @return a new ParticleSpawner with the modified value
      */
-    public ParticleSpawner withCustom(ItemStack stack) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner withCustom(ItemStack stack) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.stack = stack;
         return out;
     }
@@ -99,8 +111,8 @@ public class ParticleSpawner {
      * Changes the particle ItemStack to the specified ItemStack.
      * @return a new ParticleSpawner with the modified value
      */
-    public ParticleSpawner withCustom(Block block) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner withCustom(Block block) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.stack = new ItemStack(block.asItem());
         return out;
     }
@@ -109,9 +121,19 @@ public class ParticleSpawner {
      * Sets the ParticleSpawner's position to the nearest block's center.
      * @return a new ParticleSpawner with the modified value
      */
-    public ParticleSpawner toNearestCenter() {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner toNearestCenter() {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.pos = BlockMath.getCenter(out.pos);
+        return out;
+    }
+
+    /***
+     * Sets the stored position of this ParticleSpawner to an absolute position.
+     * @return a new ParticleSpawner with the modified value. 
+     */
+    public StackParticleSpawner toAbsolute(BlockPos pos) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
+        out.pos = BlockMath.getVecFromPos(pos);
         return out;
     }
 
@@ -122,8 +144,8 @@ public class ParticleSpawner {
      * <strong>before</strong> you use {@link #toOffset() toOffset}
      * @return a new ParticleSpawner with the modified value. 
      */
-    public ParticleSpawner toOffset(double offsetX, double offsetY, double offsetZ) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner toOffset(double offsetX, double offsetY, double offsetZ) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.pos = new Vec3(pos.x + offsetX, pos.y + offsetY, pos.z + offsetZ);
         return out;
     }
@@ -132,8 +154,8 @@ public class ParticleSpawner {
      * Does the same thing as {@link #toOffset() toOffset}, but uses a Direction instead of a concrete value.
      * @return a new ParticleSpawner with the modified value.
      */
-    public ParticleSpawner toDirectionalOffset(Direction direction) {
-        ParticleSpawner out = new ParticleSpawner(this);
+    public StackParticleSpawner toDirectionalOffset(Direction direction) {
+        StackParticleSpawner out = new StackParticleSpawner(this);
         out.pos = out.pos.relative(direction, 1);
         return out;
     }
@@ -181,7 +203,7 @@ public class ParticleSpawner {
             if(randomStrength > 0.1)
                 BlockMath.addRandomness(pos, randomStrength);
             if(world instanceof ServerLevel)
-                ((ServerLevel)world).sendParticles(particle, rv.x, rv.y, rv.z, (int)(particleDensity * 1.7), 0, 0, 0, 0.15);
+                ((ServerLevel)world).sendParticles(particle, rv.x, rv.y, rv.z, (int)(particleDensity * 1.7), 0, 0, 0, particleSpeed);
         }
     }
 

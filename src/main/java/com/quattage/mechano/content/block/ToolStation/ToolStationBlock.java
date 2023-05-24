@@ -14,7 +14,7 @@ import com.quattage.mechano.registry.MechanoBlocks;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.Create;
-import com.simibubi.create.foundation.block.ITE;
+import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.item.ItemHelper;
 
 import net.minecraft.core.BlockPos;
@@ -23,16 +23,12 @@ import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.Container;
-import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -60,7 +56,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 
 
-public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<ToolStationBlockEntity> {
+public class ToolStationBlock extends HorizontalDirectionalBlock implements IBE<ToolStationBlockEntity> {
     public static final EnumProperty<WideBlockModelType> MODEL_TYPE = EnumProperty.create("model", WideBlockModelType.class);
     protected static final VoxelShape BLOCK_NORTH = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
     protected static final VoxelShape BLOCK_SOUTH = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D);
@@ -101,7 +97,9 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
                 BlockState otherstate = level.getBlockState(otherpos);
                 if (otherstate.getBlock() == this) {
                     level.setBlock(otherpos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-                    level.levelEvent(player, LevelEvent.PARTICLES_DESTROY_BLOCK, otherpos, Block.getId(otherstate));
+                    if (!state.hasBlockEntity())
+                        return;
+                    withBlockEntityDo(level, pos, te -> te.spawnOpposingBreakParticles(otherpos));
                 }
             }
             else {
@@ -111,7 +109,9 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
                 Mechano.log("POSITION: " + otherpos + " STATE: " + otherstate);
                 if (otherstate.getBlock() == this) {
                     level.setBlock(otherpos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-                    level.levelEvent(player, LevelEvent.PARTICLES_DESTROY_BLOCK, otherpos, Block.getId(otherstate));
+                    if (!state.hasBlockEntity())
+                        return;
+                    withBlockEntityDo(level, pos, te -> te.spawnOpposingBreakParticles(otherpos));
                 }
             }
         }
@@ -171,7 +171,7 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
         if(state.getValue(MODEL_TYPE) != bType) {
             if (!state.hasBlockEntity())
                 return;
-            withTileEntityDo(world, pos, te -> te.playUpSound(state, bType));
+            withBlockEntityDo(world, pos, te -> te.doUpgradeEffects(state, bType));
             world.setBlock(pos, state.setValue(MODEL_TYPE, bType), Block.UPDATE_ALL);
         }
     }
@@ -231,7 +231,7 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
         if (!state.hasBlockEntity() || state.getBlock() == newState.getBlock())
 			return;
 
-		withTileEntityDo(level, pos, te -> ItemHelper.dropContents(level, pos, te.INVENTORY));
+		withBlockEntityDo(level, pos, te -> ItemHelper.dropContents(level, pos, te.INVENTORY));
 		level.removeBlockEntity(pos);
     }
 
@@ -240,18 +240,18 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements ITE<
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         } else {
-            withTileEntityDo(level, pos, entity -> NetworkHooks.openScreen((ServerPlayer) player, entity, entity::sendToContainer));
+            withBlockEntityDo(level, pos, entity -> NetworkHooks.openScreen((ServerPlayer) player, entity, entity::sendToMenu));
         }
         return InteractionResult.SUCCESS;
     }
 
     @Override
-	public BlockEntityType<? extends ToolStationBlockEntity> getTileEntityType() {
+	public BlockEntityType<? extends ToolStationBlockEntity> getBlockEntityType() {
 		return MechanoBlockEntities.TOOL_STATION.get();
 	}
 
     @Override
-    public Class<ToolStationBlockEntity> getTileEntityClass() {
+    public Class<ToolStationBlockEntity> getBlockEntityClass() {
         return ToolStationBlockEntity.class;
     }
 }

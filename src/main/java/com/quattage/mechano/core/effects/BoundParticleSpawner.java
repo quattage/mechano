@@ -3,6 +3,7 @@ package com.quattage.mechano.core.effects;
 import com.quattage.mechano.core.util.BlockMath;
 import com.quattage.mechano.core.util.Stacky;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -11,7 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
 
-public class BoundParticleSpawner extends ParticleSpawner {
+public class BoundParticleSpawner extends StackParticleSpawner {
     BlockEntity target = null;
 
     private BoundParticleSpawner(BoundParticleSpawner original) {
@@ -55,6 +56,13 @@ public class BoundParticleSpawner extends ParticleSpawner {
     }
 
     @Override
+    public BoundParticleSpawner withSpeed(float particleSpeed) {
+        BoundParticleSpawner out = new BoundParticleSpawner(this);
+        out.particleSpeed = particleSpeed;
+        return out;
+    }
+
+    @Override
     public BoundParticleSpawner withRandom(float randomStrength) {
         BoundParticleSpawner out = new BoundParticleSpawner(this);
         out.randomStrength = randomStrength;
@@ -80,6 +88,13 @@ public class BoundParticleSpawner extends ParticleSpawner {
     public BoundParticleSpawner toNearestCenter() {
         BoundParticleSpawner out = new BoundParticleSpawner(this);
         out.pos = BlockMath.getCenter(out.pos);
+        return out;
+    }
+
+    @Override
+    public BoundParticleSpawner toAbsolute(BlockPos pos) {
+        BoundParticleSpawner out = new BoundParticleSpawner(this);
+        out.pos = BlockMath.getVecFromPos(pos);
         return out;
     }
 

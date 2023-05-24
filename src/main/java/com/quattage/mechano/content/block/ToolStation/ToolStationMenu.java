@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.ToolStation;
 
-import com.quattage.mechano.registry.MechanoContainers;
-import com.simibubi.create.foundation.gui.container.ContainerBase;
+import com.quattage.mechano.registry.MechanoMenus;
+import com.simibubi.create.foundation.gui.menu.MenuBase;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -14,18 +14,18 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-public class ToolStationContainer extends ContainerBase<ToolStationBlockEntity> {
+public class ToolStationMenu extends MenuBase<ToolStationBlockEntity> {
 
-    public ToolStationContainer(MenuType<?> type, int id, Inventory inv, FriendlyByteBuf buffer) {
+    public ToolStationMenu(MenuType<?> type, int id, Inventory inv, FriendlyByteBuf buffer) {
 		super(type, id, inv, buffer);
 	}
 
-    public ToolStationContainer(MenuType<?> type, int id, Inventory inv, ToolStationBlockEntity te) {
+    public ToolStationMenu(MenuType<?> type, int id, Inventory inv, ToolStationBlockEntity te) {
 		super(type, id, inv, te);
 	}
 
-    public static ToolStationContainer create(int id, Inventory inv, ToolStationBlockEntity te) {
-		return new ToolStationContainer(MechanoContainers.TOOL_STATION.get(), id, inv, te);
+    public static ToolStationMenu create(int id, Inventory inv, ToolStationBlockEntity te) {
+		return new ToolStationMenu(MechanoMenus.TOOL_STATION.get(), id, inv, te);
 	}
 
     @Override

@@ -75,7 +75,7 @@
  - 43.1.17 Grindstone Events (#8934)
            One to modify the output, and one to modify the input.
  - 43.1.16 Fix the serialized names of the enum (#9014)
- - 43.1.15 Fix `tryEmptyContainerAndStow` duping fluids with stackable containers (#9004)
+ - 43.1.15 Fix `tryEmptyMenuAndStow` duping fluids with stackable menus (#9004)
  - 43.1.14 Add mod mismatch event (#8989)
  - 43.1.13 [1.19.x] add methods with more context to tree growers (#8956)
  - 43.1.12 [1.19.X] Adding more precise events for Advancements (#8360)
@@ -169,7 +169,7 @@
  - 41.0.106 Allow modded blocks overriding canStickTo prevent sticking to vanilla blocks/other modded blocks (#8837)
  - 41.0.105 Multiple tweaks and fixes to the recent changes in the client refactor PR: Part 3 (#8864)
             Fix weighted baked models not respecting children render types
-            Allow fluid container model to use base texture as particle
+            Allow fluid menu model to use base texture as particle
             Fix inverted behavior in composite model building. Fixes #8871
  - 41.0.104 Fix crossbows not firing ArrowLooseEvent (#8887)
  - 41.0.103 Add User-Agent header to requests made by the update checker (#8881)
@@ -202,8 +202,8 @@
             * Fixes BufferBuilder.putBulkData(ByteBuffer)
             * use nextElementByte
             * Fixed merge conflict
- - 41.0.85  [1.19.x] Fix shulker boxes allowing input of items, that return false for Item#canFitInsideContainerItems, through hoppers. (#8823)
-            * Make ShulkerBoxBlockEntity#canPlaceItemThroughFace delegate to Item#canFitInsideContainerItems.
+ - 41.0.85  [1.19.x] Fix shulker boxes allowing input of items, that return false for Item#canFitInsideMenuItems, through hoppers. (#8823)
+            * Make ShulkerBoxBlockEntity#canPlaceItemThroughFace delegate to Item#canFitInsideMenuItems.
             * Switch to using Or and add comment.
             * Switch Or to And.
  - 41.0.84  [1.19.x] Added RenderLevelStageEvent to replace RenderLevelLastEvent (#8820)
@@ -240,7 +240,7 @@
             * Add an easy way to get the NamedGuiOverlay from a vanilla overlay
             * Fix static member ordering crash in UnitTextureAtlasSprite
             * Allow boss bar rendering to be cancelled
-            * Make fluid container datagen use the new name
+            * Make fluid menu datagen use the new name
  - 41.0.74  Add FogMode to ViewportEvent.RenderFog (#8825)
  - 41.0.73  Provide additional context to the getFieldOfView event (#8830)
  - 41.0.72  Pass renderType to IForgeBakedModel.useAmbientOcclusion (#8834)
@@ -358,7 +358,7 @@
             * Forge model type refactors
             - Rename SeparatePerspectiveModel to SeparateTransformsModel
             - Rename ItemModelMesherForge to ForgeItemModelShaper
-            - Rename DynamicBucketModel to DynamicFluidContainerModel
+            - Rename DynamicBucketModel to DynamicFluidMenuModel
             - Prefix all OBJ-related classes with "Obj" and decouple parsing from construction
             - Extract ElementsModel from model loader registry
             - Add EmptyModel (baked, unbaked and loader)
@@ -385,7 +385,7 @@
             - Remove MinecraftForgeClient and move members to Minecraft, IForgeMinecraft and StencilManager
             - Allow non-default elements to be passed into VertexConsumer and add support to derived classes
             - Move array instantiation out of quad processing in lighting pipeline
-            - Fix flipped fluid container model
+            - Fix flipped fluid menu model
             - Set default UV1 to the correct values in the remapping pipeline
             - Minor documentation changes
             * Add/update EXC entries and fix AT comment
@@ -493,7 +493,7 @@
  - 41.0.11  Fix readAdditionalLevelSaveData (#8704)
  - 41.0.10  Fixes setPos to syncPacketPositionCodec (#8702)
  - 41.0.9   Fix wrong param passed to PlayLevelSoundEvent.AtEntity (#8688)
- - 41.0.8   Override initialize in SlotItemHandler, so it uses the itemhandler instead of container (#8679)
+ - 41.0.8   Override initialize in SlotItemHandler, so it uses the itemhandler instead of menu (#8679)
  - 41.0.7   Update MDK for 1.19 changes (#8675)
  - 41.0.6   Add helper to RecipeType, and fix eclipse compiler error in test class.
  - 41.0.5   Update modlauncher to latest (#8691)
@@ -502,7 +502,7 @@
             Custom registries are still fired in alphabetical order, after all vanilla registries.
             Move forge's data_serializers registry to forge namespace.
  - 41.0.2   Add method with pre/post wrap to allow setting/clearing mod context. (#8682)
-            Fixes ActiveContainer in ModContext not being present in registry events. Closes #8680
+            Fixes ActiveMenu in ModContext not being present in registry events. Closes #8680
  - 41.0.1   Fix the Curlie oopsie
  - 41.0.0   Forge 1.19
             * Bump pack.mcmeta formats

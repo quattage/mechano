@@ -1,0 +1,17 @@
+{
+    "variants": {
+        "axis=x": {
+            "model": "mechano:block/alternator/rotor/rotor_single",
+            "x": 90,
+            "y": 180
+        },
+        "axis=z": {
+            "model": "mechano:block/alternator/rotor/rotor_single",
+            "x": 90,
+            "y": 90
+        },
+        "axis=y": {
+            "model": "mechano:block/alternator/rotor/rotor_single"
+        }
+    }
+}

@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.Inductor;
 
 import com.mrh0.createaddition.energy.BaseElectricTileEntity;
-import com.simibubi.create.content.contraptions.goggles.IHaveGoggleInformation;
+import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

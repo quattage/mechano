@@ -2,12 +2,11 @@ package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.registry.MechanoBlocks;
-import com.quattage.mechano.registry.MechanoContainers;
+import com.quattage.mechano.registry.MechanoMenus;
 import com.quattage.mechano.registry.MechanoGroup;
 import com.quattage.mechano.registry.MechanoItems;
 import com.quattage.mechano.registry.MechanoPartials;
 import com.quattage.mechano.registry.MechanoRecipes;
-import com.quattage.mechano.registry.MechanoRenderers;
 import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -45,7 +44,7 @@ public class Mechano {
 
         MechanoBlocks.register(bussy);
         MechanoItems.register(bussy);
-        MechanoContainers.register(bussy);
+        MechanoMenus.register(bussy);
         MechanoBlockEntities.register(bussy);
         MechanoRecipes.register(bussy);
 
@@ -53,7 +52,7 @@ public class Mechano {
     }
 
     public void clientSetup(final FMLClientSetupEvent event) {
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(MechanoRenderers::init);
+        //FMLJavaModLoadingContext.get().getModEventBus().addListener(MechanoRenderers::init);
         logReg("renderers");
         MechanoPartials.register(); // this will likely cause issues but it doesn't do anything yet so its fine
     }

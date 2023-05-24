@@ -2,8 +2,8 @@ package com.quattage.mechano.content.block.Inductor;
 
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.simibubi.create.content.contraptions.wrench.IWrenchable;
-import com.simibubi.create.foundation.block.ITE;
+import com.simibubi.create.content.equipment.wrench.IWrenchable;
+import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
 
 import net.minecraft.core.BlockPos;
@@ -29,7 +29,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class InductorBlock extends BaseEntityBlock implements ITE<InductorBlockEntity>, IWrenchable {
+public class InductorBlock extends BaseEntityBlock implements IBE<InductorBlockEntity>, IWrenchable {
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final VoxelShaper MAIN_SHAPE = CAShapes.shape(4.0, 3.0, 1.0, 11.0, 13.0, 3.0)
@@ -68,12 +68,12 @@ public class InductorBlock extends BaseEntityBlock implements ITE<InductorBlockE
     }
 
     @Override
-    public Class<InductorBlockEntity> getTileEntityClass() {
+    public Class<InductorBlockEntity> getBlockEntityClass() {
         return InductorBlockEntity.class;
     }
 
     @Override
-	public BlockEntityType<? extends InductorBlockEntity> getTileEntityType() {
+	public BlockEntityType<? extends InductorBlockEntity> getBlockEntityType() {
 		return MechanoBlockEntities.INDUCTOR.get();
 	}
 

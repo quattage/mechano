@@ -4,6 +4,7 @@ import java.util.Locale;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
+import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.placement.StatorDirectionalHelper;
 import com.quattage.mechano.core.placement.StrictOrientation;
@@ -14,6 +15,7 @@ import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
 import com.simibubi.create.foundation.placement.PlacementOffset;
 import com.simibubi.create.foundation.placement.PoleHelper;
+import com.simibubi.create.foundation.utility.VoxelShaper;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -40,6 +42,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.accesstransformer.generated.AtParser.Return_valueContext;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -49,7 +53,8 @@ public class StatorBlock extends Block implements IBE<StatorBlockEntity>{
     public static final EnumProperty<StatorBlockModelType> MODEL_TYPE = EnumProperty.create("model", StatorBlockModelType.class);  // BASE or CORNER
     public static final EnumProperty<StrictOrientation> ORIENTATION = EnumProperty.create("orientation", StrictOrientation.class); //accomodates for up and down PER CARDINAL, ex. UP_NORTH, or DOWN_EAST
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
-
+    public static final VoxelShaper BASE_SHAPE = CAShapes.shape(0, 0, 0, 16, 11, 16).forDirectional();
+    public static final VoxelShaper CORNER_SHAPE = CAShapes.shape(0, 0, 0, 16, 11, 7).add(0, 9, 5, 16, 16, 16).forDirectional();
 
     public enum StatorBlockModelType implements StringRepresentable {
         BASE, CORNER;
@@ -63,6 +68,16 @@ public class StatorBlock extends Block implements IBE<StatorBlockEntity>{
         public String toString() {
             return getSerializedName();
         }
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
+        Axis orient = state.getValue(ORIENTATION).getOrient();
+        Direction cardinal = state.getValue(ORIENTATION).getCardinal();
+        if(state.getValue(MODEL_TYPE) == StatorBlockModelType.BASE) {
+            return BASE_SHAPE.get(cardinal);
+        }
+        return CORNER_SHAPE.get(cardinal);
     }
 
     ////////

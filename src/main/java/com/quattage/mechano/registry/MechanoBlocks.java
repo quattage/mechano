@@ -1,7 +1,9 @@
 package com.quattage.mechano.registry;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.content.block.Alternator.Collector.CollectorBlock;
 import com.quattage.mechano.content.block.Alternator.Rotor.RotorBlock;
+import com.quattage.mechano.content.block.Alternator.Stator.StatorBlock;
 import com.quattage.mechano.content.block.Inductor.InductorBlock;
 import com.quattage.mechano.content.block.ToolStation.ToolStationBlock;
 import com.quattage.mechano.content.block.Upgrade.UpgradeBlock;
@@ -60,6 +62,29 @@ public class MechanoBlocks {
             .noOcclusion()
         )
         .transform(BlockStressDefaults.setImpact(12.0))
+        .item()
+        .transform(customItemModel())
+        .register();
+
+    public static final BlockEntry<CollectorBlock> COLLECTOR = REGISTRATE.block("collector", CollectorBlock::new)
+        .initialProperties(Material.METAL)
+        .properties(props -> props
+            .sound(SoundType.NETHERITE_BLOCK)
+            .color(MaterialColor.COLOR_ORANGE)
+            .noOcclusion()
+        )
+        .transform(BlockStressDefaults.setImpact(12.0))
+        .item()
+        .transform(customItemModel())
+        .register();
+
+    public static final BlockEntry<StatorBlock> STATOR = REGISTRATE.block("stator", StatorBlock::new)
+        .initialProperties(Material.METAL)
+        .properties(props -> props
+            .sound(SoundType.NETHERITE_BLOCK)
+            .color(MaterialColor.COLOR_GRAY)
+            .noOcclusion()
+        )
         .item()
         .transform(customItemModel())
         .register();

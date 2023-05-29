@@ -16,7 +16,6 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LevelWriter;
-import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RenderShape;
@@ -29,7 +28,7 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class InductorBlock extends BaseEntityBlock implements IBE<InductorBlockEntity>, IWrenchable {
+public class InductorBlock extends Block implements IBE<InductorBlockEntity>, IWrenchable {
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final VoxelShaper MAIN_SHAPE = CAShapes.shape(4.0, 3.0, 1.0, 11.0, 13.0, 3.0)
@@ -47,9 +46,7 @@ public class InductorBlock extends BaseEntityBlock implements IBE<InductorBlockE
         return MAIN_SHAPE.get(state.getValue(FACING).getCounterClockWise());
     }
     
-
     @Override
-
     public RenderShape getRenderShape(BlockState state) {
         return RenderShape.ENTITYBLOCK_ANIMATED;
     }

@@ -1,7 +1,9 @@
 package com.quattage.mechano.registry;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.content.block.Alternator.Collector.CollectorBlockEntity;
 import com.quattage.mechano.content.block.Alternator.Rotor.RotorBlockEntity;
+import com.quattage.mechano.content.block.Alternator.Stator.StatorBlockEntity;
 import com.quattage.mechano.content.block.Inductor.InductorBlockEntity;
 import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
 import com.quattage.mechano.content.block.ToolStation.ToolStationBlockEntity;
@@ -24,12 +26,23 @@ public class MechanoBlockEntities {
         .validBlocks(MechanoBlocks.INDUCTOR)
         .register();
     
-
     public static final BlockEntityEntry<RotorBlockEntity> ROTOR = Mechano.REGISTRATE
 		.blockEntity("rotor", RotorBlockEntity::new)
         .instance(() -> CutoutRotatingInstance::new, false)
 		.validBlocks(MechanoBlocks.ROTOR)
 		.renderer(() -> KineticBlockEntityRenderer::new)
+		.register();
+
+    public static final BlockEntityEntry<CollectorBlockEntity> COLLECTOR = Mechano.REGISTRATE
+		.blockEntity("collector", CollectorBlockEntity::new)
+        .instance(() -> CutoutRotatingInstance::new, false)
+		.validBlocks(MechanoBlocks.COLLECTOR)
+		.renderer(() -> KineticBlockEntityRenderer::new)
+		.register();
+
+    public static final BlockEntityEntry<StatorBlockEntity> STATOR = Mechano.REGISTRATE
+		.blockEntity("stator", StatorBlockEntity::new)
+		.validBlocks(MechanoBlocks.STATOR)
 		.register();
 
     public static void register(IEventBus event) {

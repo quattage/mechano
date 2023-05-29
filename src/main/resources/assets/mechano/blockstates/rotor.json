@@ -1,17 +1,62 @@
 {
     "variants": {
-        "axis=x": {
+        "axis=x,model=single": {
             "model": "mechano:block/alternator/rotor/rotor_single",
             "x": 90,
             "y": 180
         },
-        "axis=z": {
+        "axis=z,model=single": {
             "model": "mechano:block/alternator/rotor/rotor_single",
             "x": 90,
             "y": 90
         },
-        "axis=y": {
+        "axis=y,model=single": {
             "model": "mechano:block/alternator/rotor/rotor_single"
+        },
+
+
+        "axis=x,model=middle": {
+            "model": "mechano:block/alternator/rotor/rotor_middle",
+            "x": 90,
+            "y": 180
+        },
+        "axis=z,model=middle": {
+            "model": "mechano:block/alternator/rotor/rotor_middle",
+            "x": 90,
+            "y": 90
+        },
+        "axis=y,model=middle": {
+            "model": "mechano:block/alternator/rotor/rotor_middle"
+        },
+
+
+        "axis=x,model=enda": {
+            "model": "mechano:block/alternator/rotor/rotor_end_a",
+            "x": 90,
+            "y": 180
+        },
+        "axis=z,model=enda": {
+            "model": "mechano:block/alternator/rotor/rotor_end_a",
+            "x": 90,
+            "y": 90
+        },
+        "axis=y,model=enda": {
+            "model": "mechano:block/alternator/rotor/rotor_end_a"
+        },
+
+
+        "axis=x,model=endb": {
+            "model": "mechano:block/alternator/rotor/rotor_end_b",
+            "x": 90,
+            "y": 180
+        },
+        "axis=z,model=endb": {
+            "model": "mechano:block/alternator/rotor/rotor_end_b",
+            "x": 90,
+            "y": 90
+        },
+        "axis=y,model=endb": {
+            "model": "mechano:block/alternator/rotor/rotor_end_b"
         }
     }
 }

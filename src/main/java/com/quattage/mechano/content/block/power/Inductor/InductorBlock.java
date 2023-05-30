@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Inductor;
+package com.quattage.mechano.content.block.power.Inductor;
 
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.registry.MechanoBlockEntities;

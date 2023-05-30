@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Inductor;
+package com.quattage.mechano.content.block.power.Inductor;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

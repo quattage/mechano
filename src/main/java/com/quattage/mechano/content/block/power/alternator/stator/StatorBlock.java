@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Stator;
+package com.quattage.mechano.content.block.power.alternator.stator;
 
 import java.util.Locale;
 
@@ -10,6 +10,8 @@ import com.quattage.mechano.core.placement.StatorDirectionalHelper;
 import com.quattage.mechano.core.placement.StrictOrientation;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
+import com.simibubi.create.content.equipment.wrench.IWrenchable;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
@@ -31,6 +33,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -48,7 +51,7 @@ import net.minecraftforge.accesstransformer.generated.AtParser.Return_valueConte
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
-public class StatorBlock extends Block implements IBE<StatorBlockEntity>{
+public class StatorBlock extends Block implements IBE<StatorBlockEntity>, IWrenchable{
 
     public static final EnumProperty<StatorBlockModelType> MODEL_TYPE = EnumProperty.create("model", StatorBlockModelType.class);  // BASE or CORNER
     public static final EnumProperty<StrictOrientation> ORIENTATION = EnumProperty.create("orientation", StrictOrientation.class); //accomodates for up and down PER CARDINAL, ex. UP_NORTH, or DOWN_EAST
@@ -145,11 +148,29 @@ public class StatorBlock extends Block implements IBE<StatorBlockEntity>{
     }
 
     @Override
+    public InteractionResult onWrenched(BlockState state, UseOnContext context) {
+        Level world = context.getLevel();
+		StrictOrientation rotatedOrient = StrictOrientation.cycle(state.getValue(ORIENTATION));
+        BlockState rotated = state.setValue(ORIENTATION, rotatedOrient);
+
+        if(rotated.getValue(MODEL_TYPE) == StatorBlockModelType.CORNER)
+            return InteractionResult.PASS;
+
+        if (!rotated.canSurvive(world, context.getClickedPos()))
+			return InteractionResult.PASS;
+
+        KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
+
+        if (world.getBlockState(context.getClickedPos()) != state)
+			playRotateSound(world, context.getClickedPos());
+
+		return InteractionResult.SUCCESS;
+    }
+
+    @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction orientation = context.getClickedFace();
         Direction followingDir = getTriQuadrant(context, orientation, true);
-    
-        BlockState clickedBlock = context.getLevel().getBlockState(context.getClickedPos());
 
         if(orientation == followingDir) followingDir = context.getHorizontalDirection();
         if(orientation.getAxis() == followingDir.getAxis()) followingDir = followingDir.getClockWise();

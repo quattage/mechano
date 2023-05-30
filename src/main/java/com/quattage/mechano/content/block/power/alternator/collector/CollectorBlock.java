@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Collector;
+package com.quattage.mechano.content.block.power.alternator.collector;
 
 import java.util.Locale;
 
@@ -58,9 +58,7 @@ public class CollectorBlock extends DirectionalKineticBlock implements IBE<Colle
     @Override
     public void setPlacedBy(Level world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(world, pos, state, placer, stack);
-        Direction ax = state.getValue(FACING).getOpposite();
-        if(world.getBlockState(pos.relative(ax)).getBlock() == MechanoBlocks.ROTOR.get())
-            world.setBlock(pos, state.setValue(MODEL_TYPE, CollectorBlockModelType.ROTORED), Block.UPDATE_ALL);
+        doRotorCheck(world, pos, state);
     }
 
     @Override
@@ -70,15 +68,30 @@ public class CollectorBlock extends DirectionalKineticBlock implements IBE<Colle
             Direction ax = state.getValue(FACING).getOpposite();
             if(world.getBlockState(pos.relative(ax)).getBlock() != MechanoBlocks.ROTOR.get())
                 world.destroyBlock(pos, true);
+        } else {
+            doRotorCheck(world, pos, state);
         }
+    }
+
+    private boolean doRotorCheck(Level world, BlockPos pos, BlockState state) {
+        Direction ax = state.getValue(FACING).getOpposite();
+        if(state.getValue(MODEL_TYPE) == CollectorBlockModelType.ROTORED)
+            return true;
+        if(world.getBlockState(pos.relative(ax)).getBlock() == MechanoBlocks.ROTOR.get()) {
+            world.setBlock(pos, state.setValue(MODEL_TYPE, CollectorBlockModelType.ROTORED), Block.UPDATE_ALL);
+            return true;
+        }
+        return false;
     }
 
     @Override
     public boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
         Direction ax = state.getValue(FACING);
-        if(ax == Direction.UP)
+        if(ax.getAxis() == Axis.Y)
             return false;
-        if(ax == Direction.DOWN)
+        if(world.getBlockState(pos.relative(ax)).getBlock() == MechanoBlocks.COLLECTOR.get())
+            return false;
+        if(world.getBlockState(pos.relative(ax.getOpposite())).getBlock() == MechanoBlocks.COLLECTOR.get())
             return false;
         return super.canSurvive(state, world, pos);
     }

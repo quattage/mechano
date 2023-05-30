@@ -1,8 +1,8 @@
 package com.quattage.mechano.registry;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.block.ToolStation.ToolStationMenu;
-import com.quattage.mechano.content.block.ToolStation.ToolStationScreen;
+import com.quattage.mechano.content.block.integrated.toolStation.ToolStationMenu;
+import com.quattage.mechano.content.block.integrated.toolStation.ToolStationScreen;
 import com.tterrag.registrate.builders.MenuBuilder.ForgeMenuFactory;
 import com.tterrag.registrate.builders.MenuBuilder.ScreenFactory;
 import com.tterrag.registrate.util.entry.MenuEntry;

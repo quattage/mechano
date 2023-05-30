@@ -73,6 +73,31 @@ public enum StrictOrientation implements StringRepresentable {
         return this.orient;
     }
 
+    public static StrictOrientation cycleOrient(StrictOrientation in) {
+        int pos = in.ordinal();
+        if(pos % 2 == 0) pos += 1;
+        else pos -= 1;
+        return StrictOrientation.values()[pos];
+    }
+
+    public static StrictOrientation cycle(StrictOrientation in) {
+        Direction cardinal = in.getCardinal();
+        // Axis orient = in.getOrient();
+        int pos = in.ordinal();
+        if(cardinal.getAxis() == Axis.Y) {
+            if(pos % 2 == 0) pos += 1;
+            else pos -= 1;
+            return StrictOrientation.values()[pos];
+        }
+        pos = pos += 2;
+        if(pos > 11) pos -= 11;
+        if(pos < 4) { 
+            if(pos % 2 == 0) pos = 5;
+            else pos = 4;
+        }
+        return StrictOrientation.values()[pos];
+    }
+
     @Override
     public String getSerializedName() {
         return name().toLowerCase(Locale.ROOT);

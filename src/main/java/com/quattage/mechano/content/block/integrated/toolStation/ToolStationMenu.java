@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.ToolStation;
+package com.quattage.mechano.content.block.integrated.toolStation;
 
 import com.quattage.mechano.registry.MechanoMenus;
 import com.simibubi.create.foundation.gui.menu.MenuBase;

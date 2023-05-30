@@ -1,9 +1,9 @@
-package com.quattage.mechano.content.block.ToolStation;
+package com.quattage.mechano.content.block.integrated.toolStation;
 
 import java.util.List;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.block.ToolStation.ToolStationBlock.WideBlockModelType;
+import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock.WideBlockModelType;
 import com.quattage.mechano.core.effects.BoundParticleSpawner;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;

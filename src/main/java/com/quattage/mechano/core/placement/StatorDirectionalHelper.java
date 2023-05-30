@@ -7,9 +7,9 @@ import java.util.function.Predicate;
 
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.block.Alternator.Rotor.RotorBlock;
-import com.quattage.mechano.content.block.Alternator.Stator.StatorBlock;
-import com.quattage.mechano.content.block.Alternator.Stator.StatorBlock.StatorBlockModelType;
+import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
+import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock;
+import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock.StatorBlockModelType;
 import com.quattage.mechano.core.util.BlockMath;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.content.equipment.extendoGrip.ExtendoGripItem;
@@ -39,7 +39,6 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
     protected final Predicate<BlockState> statePredicate;
 	protected final Property<T> property;
 	protected final Function<BlockState, StrictOrientation> strictDirFunc;
-
 	protected BlockPos straightPos = null;
 
     public StatorDirectionalHelper(Predicate<BlockState> statePredicate, Function<BlockState, StrictOrientation> strictDirFunc, Property<T> property) {
@@ -47,7 +46,6 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 		this.strictDirFunc = strictDirFunc;
 		this.property = property;
 	}
-
 
     @Override
 	public Predicate<ItemStack> getItemPredicate() {
@@ -133,16 +131,35 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 				}  
 			}
 		}
+		return PlacementOffset.fail();
+	}
+
+	private PlacementOffset getFreehandOffset(Player player, Level world, BlockState strictState, BlockPos pos, BlockHitResult ray) {
+		List<Direction> directions = getDirectionsForPlacement(strictState, pos, ray);
+		for (Direction dir : directions) {
+			int range = AllConfigs.server().equipment.placementAssistRange.get();
+			if (player != null) {
+				AttributeInstance reach = player.getAttribute(ForgeMod.REACH_DISTANCE.get());
+				if (reach != null && reach.hasModifier(ExtendoGripItem.singleRangeAttributeModifier))
+					range += 4;
+			}
+			int strictBlocks = getAttachedStrictBlocks(world, pos, dir);
+			if (strictBlocks >= range)
+				continue;
+
+			BlockPos newPos = pos.relative(dir, strictBlocks + 1);
+			BlockState newState = world.getBlockState(newPos);
+
+			if (newState.getMaterial().isReplaceable())
+				return PlacementOffset.success(newPos, bState -> bState.setValue(property, strictState.getValue(property)).setValue(StatorBlock.MODEL_TYPE, strictState.getValue(StatorBlock.MODEL_TYPE)));
+
+		}
 
 		return PlacementOffset.fail();
 	}
 
-	private static <T> void reverseList(List<T> list) {
-		if (list.size() <= 1 || list == null)
-            return;
-        T value = list.remove(0);
-        reverseList(list);
-        list.add(value);
+	private List<Direction> getDirectionsForPlacement(BlockState state, BlockPos pos, BlockHitResult ray) {
+		return IPlacementHelper.orderedByDistance(pos, ray.getLocation(), state.getValue(StrictOrientation.INSTANCE).getOrient());
 	}
 
 	private List<BlockPos> getCircle(BlockPos start, BlockPos center, Direction initialDir, Axis revolvingAxis) {
@@ -180,31 +197,11 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 		return output;
 	}
 
-	private PlacementOffset getFreehandOffset(Player player, Level world, BlockState strictState, BlockPos pos, BlockHitResult ray) {
-		List<Direction> directions = getDirectionsForPlacement(strictState, pos, ray);
-		for (Direction dir : directions) {
-			int range = AllConfigs.server().equipment.placementAssistRange.get();
-			if (player != null) {
-				AttributeInstance reach = player.getAttribute(ForgeMod.REACH_DISTANCE.get());
-				if (reach != null && reach.hasModifier(ExtendoGripItem.singleRangeAttributeModifier))
-					range += 4;
-			}
-			int strictBlocks = getAttachedStrictBlocks(world, pos, dir);
-			if (strictBlocks >= range)
-				continue;
-
-			BlockPos newPos = pos.relative(dir, strictBlocks + 1);
-			BlockState newState = world.getBlockState(newPos);
-
-			if (newState.getMaterial().isReplaceable())
-				return PlacementOffset.success(newPos, bState -> bState.setValue(property, strictState.getValue(property)));
-
-		}
-
-		return PlacementOffset.fail();
-	}
-
-	private List<Direction> getDirectionsForPlacement(BlockState state, BlockPos pos, BlockHitResult ray) {
-		return IPlacementHelper.orderedByDistance(pos, ray.getLocation(), state.getValue(StrictOrientation.INSTANCE).getOrient());
+	private static <T> void reverseList(List<T> list) {
+		if (list.size() <= 1 || list == null)
+            return;
+        T value = list.remove(0);
+        reverseList(list);
+        list.add(value);
 	}
 }

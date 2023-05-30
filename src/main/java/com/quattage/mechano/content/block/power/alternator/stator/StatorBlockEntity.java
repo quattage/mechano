@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Stator;
+package com.quattage.mechano.content.block.power.alternator.stator;
 
 import java.util.List;
 

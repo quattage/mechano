@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Inductor;
+package com.quattage.mechano.content.block.power.Inductor;
 
 import com.mrh0.createaddition.energy.BaseElectricTileEntity;
 import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;

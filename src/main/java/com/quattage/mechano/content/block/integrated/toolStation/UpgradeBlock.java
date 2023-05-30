@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Upgrade;
+package com.quattage.mechano.content.block.integrated.toolStation;
 
 import java.util.Locale;
 import com.quattage.mechano.registry.MechanoBlocks;

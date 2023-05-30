@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Rotor;
+package com.quattage.mechano.content.block.power.alternator.rotor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -126,7 +126,7 @@ public class RotorBlock extends RotatedPillarKineticBlock implements IBE<RotorBl
             return helper.getOffset(player, world, state, pos, ray)
                 .placeInWorld(world, (BlockItem) heldItem.getItem(), player, hand, ray);
 
-        return InteractionResult.SUCCESS;
+        return InteractionResult.PASS;
     }
 
     @Override

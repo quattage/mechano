@@ -1,12 +1,12 @@
 package com.quattage.mechano.registry;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.block.Alternator.Collector.CollectorBlockEntity;
-import com.quattage.mechano.content.block.Alternator.Rotor.RotorBlockEntity;
-import com.quattage.mechano.content.block.Alternator.Stator.StatorBlockEntity;
-import com.quattage.mechano.content.block.Inductor.InductorBlockEntity;
-import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
-import com.quattage.mechano.content.block.ToolStation.ToolStationBlockEntity;
+import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlockEntity;
+import com.quattage.mechano.content.block.power.Inductor.InductorBlockEntity;
+import com.quattage.mechano.content.block.power.Inductor.InductorBlockRenderer;
+import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlockEntity;
+import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlockEntity;
+import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEntity;
 import com.simibubi.create.content.kinetics.base.CutoutRotatingInstance;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;

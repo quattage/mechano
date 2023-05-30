@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Collector;
+package com.quattage.mechano.content.block.power.alternator.collector;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 

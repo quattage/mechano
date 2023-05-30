@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.ToolStation;
+package com.quattage.mechano.content.block.integrated.toolStation;
 
 import java.util.Locale;
 

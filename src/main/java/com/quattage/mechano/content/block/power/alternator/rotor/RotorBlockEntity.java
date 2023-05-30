@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.Alternator.Rotor;
+package com.quattage.mechano.content.block.power.alternator.rotor;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 

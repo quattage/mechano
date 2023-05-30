@@ -7,7 +7,7 @@ import com.quattage.mechano.registry.MechanoGroup;
 import com.quattage.mechano.registry.MechanoItems;
 import com.quattage.mechano.registry.MechanoPartials;
 import com.quattage.mechano.registry.MechanoRecipes;
-import com.quattage.mechano.content.block.Inductor.InductorBlockRenderer;
+import com.quattage.mechano.content.block.power.Inductor.InductorBlockRenderer;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 

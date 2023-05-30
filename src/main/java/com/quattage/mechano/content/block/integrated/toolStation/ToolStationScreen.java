@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.block.ToolStation;
+package com.quattage.mechano.content.block.integrated.toolStation;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;

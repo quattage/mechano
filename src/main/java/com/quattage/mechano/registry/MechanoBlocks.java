@@ -3,12 +3,17 @@ package com.quattage.mechano.registry;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock;
 import com.quattage.mechano.content.block.integrated.toolStation.UpgradeBlock;
-import com.quattage.mechano.content.block.power.Inductor.InductorBlock;
+import com.quattage.mechano.content.block.machine.inductor.InductorBlock;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock;
+import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlock;
+import com.quattage.mechano.content.block.power.transfer.adapter.TransmissionNodeBlock;
+import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlock;
+import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlock;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
 import com.simibubi.create.foundation.data.CreateRegistrate;
+import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 
@@ -61,7 +66,7 @@ public class MechanoBlocks {
             .color(MaterialColor.COLOR_ORANGE)
             .noOcclusion()
         )
-        .transform(BlockStressDefaults.setImpact(12.0))
+        .transform(BlockStressDefaults.setImpact(48.0))
         .item()
         .transform(customItemModel())
         .register();
@@ -73,7 +78,7 @@ public class MechanoBlocks {
             .color(MaterialColor.COLOR_ORANGE)
             .noOcclusion()
         )
-        .transform(BlockStressDefaults.setImpact(12.0))
+        .transform(BlockStressDefaults.setImpact(48.0))
         .item()
         .transform(customItemModel())
         .register();
@@ -85,6 +90,45 @@ public class MechanoBlocks {
             .color(MaterialColor.COLOR_GRAY)
             .noOcclusion()
         )
+        .item()
+        .transform(customItemModel())
+        .register();
+
+    public static final BlockEntry<CouplingNodeBlock> COUPLING_NODE = REGISTRATE.block("coupling_node", CouplingNodeBlock::new)
+        .initialProperties(Material.METAL)
+        .properties(props -> props
+        .sound(SoundType.NETHERITE_BLOCK)
+        .color(MaterialColor.COLOR_GRAY)
+        .noOcclusion()
+        )
+        .item()
+        .transform(customItemModel())
+        .register();
+
+
+    public static final BlockEntry<TransmissionNodeBlock> TRANSMISSION_NODE = REGISTRATE.block("transmission_node", TransmissionNodeBlock::new)
+        .initialProperties(Material.METAL)
+        .properties(props -> props
+            .sound(SoundType.NETHERITE_BLOCK)
+            .color(MaterialColor.COLOR_GRAY)
+            .noOcclusion()
+        )
+        .item()
+        .transform(customItemModel())
+        .register();
+
+    public static final BlockEntry<HeapConnectorBlock> HEAP_CONNECTOR = REGISTRATE.block("heap_connector", HeapConnectorBlock::new)
+        .initialProperties(SharedProperties::softMetal)
+        .properties(p -> p.sound(SoundType.METAL))
+        .transform(pickaxeOnly())
+        .item()
+        .transform(customItemModel())
+        .register();
+
+    public static final BlockEntry<HeapConnectorStackedBlock> HEAP_CONNECTOR_STACKED = REGISTRATE.block("heap_connector_stacked", HeapConnectorStackedBlock::new)
+        .initialProperties(SharedProperties::softMetal)
+        .properties(p -> p.sound(SoundType.METAL))
+        .transform(pickaxeOnly())
         .item()
         .transform(customItemModel())
         .register();

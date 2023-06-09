@@ -1,0 +1,15 @@
+{
+    "type": "minecraft:block",
+    "pools": [
+        {
+            "name": "mechano:heap_connector",
+            "rolls": 1,
+            "entries": [
+                {
+                    "type": "minecraft:item",
+                    "name": "mechano:heap_connector"
+                }
+            ]
+        }
+    ]
+}

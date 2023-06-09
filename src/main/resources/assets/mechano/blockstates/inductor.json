@@ -1,19 +1,19 @@
 {
 	"variants": {
 		"facing=east": {
-			"model": "mechano:block/inductor",
+			"model": "mechano:block/machine/inductor/inductor",
 			"y": 90
 		},
 		"facing=north": {
-			"model": "mechano:block/inductor",
+			"model": "mechano:block/machine/inductor/inductor",
 			"y": 0
 		}, 
 		"facing=south": {
-			"model": "mechano:block/inductor",
+			"model": "mechano:block/machine/inductor/inductor",
 			"y": 180
 		}, 
 		"facing=west": {
-			"model": "mechano:block/inductor",
+			"model": "mechano:block/machine/inductor/inductor",
 			"y": 270
 		}
 	}

@@ -1,15 +1,15 @@
 {
     "type": "minecraft:block",
     "pools": [
-      {
-        "name": "mechano:rotor",
-        "rolls": 1,
-        "entries": [
-          {
-            "type": "minecraft:item",
-            "name": "mechano:rotor"
-          }
-        ]
-      }
+        {
+            "name": "mechano:rotor",
+            "rolls": 1,
+            "entries": [
+                {
+                    "type": "minecraft:item",
+                    "name": "mechano:rotor"
+                }
+            ]
+        }
     ]
 }

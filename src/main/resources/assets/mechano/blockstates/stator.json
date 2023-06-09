@@ -1,65 +1,65 @@
 {
   "variants": {
     "orientation=up_x,model=base": {
-      "model": "mechano:block/alternator/stator/stator_flat",
+      "model": "mechano:block/power/alternator/stator/stator_flat",
       "x": 0,
       "y": 0,
       "z": 90
     },
     "orientation=up_z,model=base": {
-      "model": "mechano:block/alternator/stator/stator_flat",
+      "model": "mechano:block/power/alternator/stator/stator_flat",
       "x": 0,
       "y": 90
     },
     "orientation=down_x,model=base": {
-      "model": "mechano:block/alternator/stator/stator_flat",
+      "model": "mechano:block/power/alternator/stator/stator_flat",
       "x": 180,
       "y": 0
     },
     "orientation=down_z,model=base": {
-      "model": "mechano:block/alternator/stator/stator_flat",
+      "model": "mechano:block/power/alternator/stator/stator_flat",
       "x": 180,
       "y": 90
     },
 
     "orientation=north_y,model=base": {
-      "model": "mechano:block/alternator/stator/stator_vert",
+      "model": "mechano:block/power/alternator/stator/stator_vert",
       "y": 180,
       "z": 90
     },
     "orientation=north_x,model=base": {
-      "model": "mechano:block/alternator/stator/stator_side",
+      "model": "mechano:block/power/alternator/stator/stator_side",
       "y": 180,
       "x": 0
     },
     "orientation=south_y,model=base": {
-      "model": "mechano:block/alternator/stator/stator_vert",
+      "model": "mechano:block/power/alternator/stator/stator_vert",
       "y": 0,
       "z": 90
     },
     "orientation=south_x,model=base": {
-      "model": "mechano:block/alternator/stator/stator_side",
+      "model": "mechano:block/power/alternator/stator/stator_side",
       "y": 0,
       "z": 0
     },
 
     "orientation=east_y,model=base": {
-      "model": "mechano:block/alternator/stator/stator_vert",
+      "model": "mechano:block/power/alternator/stator/stator_vert",
       "y": 270,
       "z": 90
     },
     "orientation=east_z,model=base": {
-      "model": "mechano:block/alternator/stator/stator_side",
+      "model": "mechano:block/power/alternator/stator/stator_side",
       "y": 270,
       "z": 0
     },
     "orientation=west_y,model=base": {
-      "model": "mechano:block/alternator/stator/stator_vert",
+      "model": "mechano:block/power/alternator/stator/stator_vert",
       "y": 90,
       "z": 90
     },
     "orientation=west_z,model=base": {
-      "model": "mechano:block/alternator/stator/stator_side",
+      "model": "mechano:block/power/alternator/stator/stator_side",
       "y": 90,
       "z": 0
     },
@@ -67,65 +67,65 @@
 
 
     "orientation=up_x,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "x": 0,
       "y": 0,
       "z": 90
     },
     "orientation=up_z,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "x": 0,
       "y": 90
     },
     "orientation=down_x,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "x": 180,
       "y": 0
     },
     "orientation=down_z,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "x": 180,
       "y": 90
     },
 
     "orientation=north_y,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 180,
       "z": 90
     },
     "orientation=north_x,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 0,
       "x": 90
     },
     "orientation=south_y,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 0,
       "z": 90
     },
     "orientation=south_x,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 180,
       "z": 0
     },
 
     "orientation=east_y,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 270,
       "z": 90
     },
     "orientation=east_z,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 90,
       "x": 90
     },
     "orientation=west_y,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 90,
       "z": 90
     },
     "orientation=west_z,model=corner": {
-      "model": "mechano:block/alternator/stator/stator_corner",
+      "model": "mechano:block/power/alternator/stator/stator_corner",
       "y": 270,
       "z": 0
     }

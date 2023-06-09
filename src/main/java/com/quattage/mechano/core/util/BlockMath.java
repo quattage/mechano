@@ -44,6 +44,25 @@ public class BlockMath {
         return null;
     }
 
+
+    public static Direction getWorldlyDirection(BlockPos workingPos, BlockPos originPos) {
+        if(workingPos == originPos)
+            throw new IllegalArgumentException("cannot compare direction: workingPos and originPos are the same!");
+        Axis greatest = Axis.Y;
+        BlockPos difference = workingPos.subtract(originPos);
+        double avg = average(difference);
+        BlockPos average = difference.subtract(new BlockPos(avg, avg, avg));
+        Mechano.log("average: " + average);
+
+        return Direction.UP;
+    }
+
+
+    public static double average(BlockPos pos) {
+        return (pos.getX() + pos.getY() + pos.getZ()) / 3;
+    }
+
+
     public static boolean isNegative(Direction dir) {
         return dir == Direction.NORTH || 
             dir == Direction.WEST ||

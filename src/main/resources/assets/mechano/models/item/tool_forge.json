@@ -1,3 +1,3 @@
 {
-  "parent": "mechano:block/tool_forge"
+  "parent": "mechano:block/integrated/tool_station/tool_forge"
 }

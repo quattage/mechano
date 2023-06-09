@@ -1,0 +1,99 @@
+{
+	"variants": {
+		"facing=north,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 270,
+			"y": 0
+		}, 
+		"facing=south,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 90,
+			"y": 0
+		},
+		"facing=east,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 270,
+			"y": 90
+		}, 
+		"facing=west,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 90,
+			"y": 90
+		}, 
+		"facing=down,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 0,
+			"y": 0
+		}, 
+		"facing=up,model=base": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_base",
+			"x": 180,
+			"y": 0
+		},
+		
+
+
+		"facing=north,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 270,
+			"y": 0
+		}, 
+		"facing=south,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 90,
+			"y": 0
+		},
+		"facing=east,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 270,
+			"y": 90
+		}, 
+		"facing=west,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 90,
+			"y": 90
+		}, 
+		"facing=down,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 0,
+			"y": 0
+		}, 
+		"facing=up,model=girdered": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_girdered",
+			"x": 180,
+			"y": 0
+		},
+
+
+		"facing=north,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 270,
+			"y": 0
+		}, 
+		"facing=south,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 90,
+			"y": 0
+		},
+		"facing=east,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 270,
+			"y": 90
+		}, 
+		"facing=west,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 90,
+			"y": 90
+		}, 
+		"facing=down,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 0,
+			"y": 0
+		}, 
+		"facing=up,model=coupled": {
+			"model": "mechano:block/power/transfer/heap_connector/heap_connector_coupled",
+			"x": 180,
+			"y": 0
+		}
+	}
+}

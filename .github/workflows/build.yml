@@ -76,8 +76,7 @@ jobs:
           prerelease: true
           body: |
                 ##`${{ steps.date.outputs.date }}` 
-                ### Commit summary:
-                `${{ github.event.head_commit.message }}`
+                ### Built from commit: `${{ github.event.head_commit.message }}`
                 <sub><sup>Release description automatically generated. No changelogs will be provided for live releases</sup></sub>
 
       - name: download artifact

@@ -75,3 +75,14 @@ jobs:
           pattern: "build/libs/*"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           release-url: ${{ steps.create_release.outputs.upload_url }}
+
+      - name: notify annoying people
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_USERNAME: beep boop robot man
+        uses: Ilshidur/action-discord@master
+        with:
+          args: |
+            '@LOOPED IN 
+            ### New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``'
+            ```${{ github.event.head_commit.message }}```

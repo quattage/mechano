@@ -5,8 +5,7 @@ on:
   workflow_run:
     workflows: ["build"]
     types: [requested]
-    branches:
-      - 'refs/head/main'
+
 jobs:
   release:
     name: "publish release"

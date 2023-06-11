@@ -3,7 +3,7 @@
 name: build
   on: 
     push:
-      - 'testable/**'
+      - 'refs/heads/main'
 
 jobs:
   build:

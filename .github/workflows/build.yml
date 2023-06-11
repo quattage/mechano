@@ -55,11 +55,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_id }}-${{ github.run_attempt }}
+          tag_name: ${{ github.run_id }}:${{ github.run_attempt }}
           release_name: |
-            Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
+            Build ${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}
           draft: false
-          prerelease: true
+          prerelease: false
           body: |
                 ### From commit: `${{ github.event.head_commit.message }}`
                 <sub><sup>Release description automatically generated. No changelogs will be provided for live releases.</sup></sub>

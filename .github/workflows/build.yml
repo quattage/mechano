@@ -46,7 +46,7 @@ jobs:
           path: build/libs/
 
       - name: create new release
-        id: create_new_release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

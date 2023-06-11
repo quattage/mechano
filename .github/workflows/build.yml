@@ -63,8 +63,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: 'artifact'
-          path: ${{ github.workspace }}
-
 
       - name: push release assets
         id: upload-release-asset 
@@ -73,8 +71,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/artifacts.zip
-          asset_name: artifacts.zip
+          asset_path: ${{ github.workspace }}/artifact.zip
+          asset_name: artifact.zip
           asset_content_type: application/zip
 
 

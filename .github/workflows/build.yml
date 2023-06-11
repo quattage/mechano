@@ -90,7 +90,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: build/libs/mechano-1.19.2-0.1.jar
-          asset_name: mechano-1.19.2-0.1.jar
+          asset_name: mechano-${{ github.run_id }}-${{ github.run_attempt }}.jar
           asset_content_type: application/zip
 
 

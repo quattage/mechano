@@ -62,7 +62,7 @@ jobs:
         id: download-artifact
         uses: actions/download-artifact@v3
         with:
-          name: 'artifact.zip'
+          name: 'artifact'
           path: ${{ github.workspace }}
 
 

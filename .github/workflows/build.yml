@@ -16,10 +16,6 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v2
 
-      - name: get commit message
-        id: get_head_commit_message
-        run: echo "::set-output name=headCommitMsg::$(git show -s --format=%s)"
-
       - name: validate gradle wrapper
         uses: gradle/wrapper-validation-action@v1
 
@@ -82,8 +78,7 @@ jobs:
                 This is an automatically generated message. Changelogs won't be made for live releases.
 
                 ## Commit summary:
-                ${{ steps.get_head_commit_message.outputs }}
-
+                ${{ github.event.head_commit.message }}
 
       - name: download artifact
         id: download-artifact

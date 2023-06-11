@@ -90,6 +90,6 @@ jobs:
             ```fix 
               ${{ github.event.head_commit.message }}
             ```
-            **Get it here: ${{ steps.create_release.outputs.upload_url }}**
+            **Get it here: https://github.com/quattage/mechano/releases/latest**
             ───────────────────────
 

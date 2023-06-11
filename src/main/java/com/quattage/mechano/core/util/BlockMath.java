@@ -46,6 +46,8 @@ public class BlockMath {
 
 
     public static Direction getWorldlyDirection(BlockPos workingPos, BlockPos originPos) {
+
+        // TODO NOT IMPLEMENTED
         if(workingPos == originPos)
             throw new IllegalArgumentException("cannot compare direction: workingPos and originPos are the same!");
         Axis greatest = Axis.Y;

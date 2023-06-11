@@ -69,7 +69,6 @@ public class RotorBlock extends RotatedPillarKineticBlock implements IBE<RotorBl
         super.neighborChanged(state, world, pos, block, fromPos, isMoving);
         ArrayList<BlockState> adjacentBlockStates = getAdjacentShaftBlocks(state.getValue(AXIS), pos, world); // front block = 0, rear block = 1
         String neighborStatus = getRotorStatus(adjacentBlockStates);
-        Mechano.log("Rotor at " + pos + " is broadcasting a neighborChange! front block: " + adjacentBlockStates.get(0) + ", " + "  rear block: " + adjacentBlockStates.get(1));
         if(neighborStatus == "BOTH")
             setModel(world, pos, state, RotorModelType.MIDDLE);
         else if(neighborStatus == "FRONT")

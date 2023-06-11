@@ -1,200 +1,184 @@
 {
-  "variants": {
-    "orientation=up_x,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=up_z,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=down_x,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
-      "x": 180,
-      "y": 0
-    },
-    "orientation=down_z,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
-      "x": 180,
-      "y": 90
-    },
-
-    "orientation=north_y,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=north_x,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 90,
-      "y": 90
-    },
-    "orientation=south_y,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 0,
-      "y": 270
-    },
-    "orientation=south_x,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 90,
-      "y": 270
-    },
-
-    "orientation=east_y,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 0,
-      "y": 180
-    },
-    "orientation=east_z,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 90,
-      "y": 180
-    },
-    "orientation=west_y,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=west_z,model=base": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
-      "x": 90,
-      "y": 0
-    },
-
-
-
-
-
-    "orientation=up_x,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=up_z,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=down_x,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
-      "x": 180,
-      "y": 0
-    },
-    "orientation=down_z,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
-      "x": 180,
-      "y": 90
-    },
-
-    "orientation=north_y,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=north_x,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 90,
-      "y": 90
-    },
-    "orientation=south_y,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 0,
-      "y": 270
-    },
-    "orientation=south_x,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 90,
-      "y": 270
-    },
-
-    "orientation=east_y,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 0,
-      "y": 180
-    },
-    "orientation=east_z,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 90,
-      "y": 180
-    },
-    "orientation=west_y,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=west_z,model=grounded": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
-      "x": 90,
-      "y": 0
-    },
-
-
-
-
-
-    "orientation=up_x,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=up_z,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=down_x,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
-      "x": 180,
-      "y": 0
-    },
-    "orientation=down_z,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
-      "x": 180,
-      "y": 90
-    },
-
-    "orientation=north_y,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 0,
-      "y": 90
-    },
-    "orientation=north_x,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 90,
-      "y": 90
-    },
-    "orientation=south_y,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 0,
-      "y": 270
-    },
-    "orientation=south_x,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 90,
-      "y": 270
-    },
-
-    "orientation=east_y,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 0,
-      "y": 180
-    },
-    "orientation=east_z,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 90,
-      "y": 180
-    },
-    "orientation=west_y,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 0,
-      "y": 0
-    },
-    "orientation=west_z,model=girdered": {
-      "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
-      "x": 90,
-      "y": 0
+    "variants": {
+        "orientation=up_x,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=up_z,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=down_x,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
+            "x": 180,
+            "y": 0
+        },
+        "orientation=down_z,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base",
+            "x": 180,
+            "y": 90
+        },
+        "orientation=north_y,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=north_x,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 90,
+            "y": 90
+        },
+        "orientation=south_y,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 0,
+            "y": 270
+        },
+        "orientation=south_x,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 90,
+            "y": 270
+        },
+        "orientation=east_y,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 0,
+            "y": 180
+        },
+        "orientation=east_z,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 90,
+            "y": 180
+        },
+        "orientation=west_y,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=west_z,model=base": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_base_side",
+            "x": 90,
+            "y": 0
+        },
+        "orientation=up_x,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=up_z,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=down_x,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
+            "x": 180,
+            "y": 0
+        },
+        "orientation=down_z,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded",
+            "x": 180,
+            "y": 90
+        },
+        "orientation=north_y,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=north_x,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 90,
+            "y": 90
+        },
+        "orientation=south_y,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 0,
+            "y": 270
+        },
+        "orientation=south_x,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 90,
+            "y": 270
+        },
+        "orientation=east_y,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 0,
+            "y": 180
+        },
+        "orientation=east_z,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 90,
+            "y": 180
+        },
+        "orientation=west_y,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=west_z,model=grounded": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_grounded_side",
+            "x": 90,
+            "y": 0
+        },
+        "orientation=up_x,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=up_z,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=down_x,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
+            "x": 180,
+            "y": 0
+        },
+        "orientation=down_z,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered",
+            "x": 180,
+            "y": 90
+        },
+        "orientation=north_y,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 0,
+            "y": 90
+        },
+        "orientation=north_x,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 90,
+            "y": 90
+        },
+        "orientation=south_y,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 0,
+            "y": 270
+        },
+        "orientation=south_x,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 90,
+            "y": 270
+        },
+        "orientation=east_y,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 0,
+            "y": 180
+        },
+        "orientation=east_z,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 90,
+            "y": 180
+        },
+        "orientation=west_y,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 0,
+            "y": 0
+        },
+        "orientation=west_z,model=girdered": {
+            "model": "mechano:block/power/transfer/transmission_node/transmission_node_girdered_side",
+            "x": 90,
+            "y": 0
+        }
     }
-  }
 }

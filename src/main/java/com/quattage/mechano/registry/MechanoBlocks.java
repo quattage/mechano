@@ -20,6 +20,7 @@ import com.tterrag.registrate.util.nullness.NonNullFunction;
 import static com.simibubi.create.foundation.data.ModelGen.customItemModel;
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.Material;
 import net.minecraft.world.level.material.MaterialColor;
@@ -119,18 +120,14 @@ public class MechanoBlocks {
 
     public static final BlockEntry<HeapConnectorBlock> HEAP_CONNECTOR = REGISTRATE.block("heap_connector", HeapConnectorBlock::new)
         .initialProperties(SharedProperties::softMetal)
-        .properties(p -> p.sound(SoundType.METAL))
         .transform(pickaxeOnly())
-        .item()
-        .transform(customItemModel())
+        .simpleItem()
         .register();
 
     public static final BlockEntry<HeapConnectorStackedBlock> HEAP_CONNECTOR_STACKED = REGISTRATE.block("heap_connector_stacked", HeapConnectorStackedBlock::new)
         .initialProperties(SharedProperties::softMetal)
-        .properties(p -> p.sound(SoundType.METAL))
         .transform(pickaxeOnly())
-        .item()
-        .transform(customItemModel())
+        .simpleItem()
         .register();
 
     public static void register(IEventBus event) {

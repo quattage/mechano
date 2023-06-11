@@ -38,7 +38,6 @@ public class HeapConnectorBlock extends DirectionalBlock implements IBE<HeapConn
 
     public static final EnumProperty<HeapConnectorModelType> MODEL_TYPE = EnumProperty.create("model", HeapConnectorModelType.class);
     public static final VoxelShaper BASE_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 15, 10.5).forDirectional();
-    private boolean canMakeLarge = false;
 
     public enum HeapConnectorModelType implements StringRepresentable {
         BASE, GIRDERED, COUPLED;

@@ -68,10 +68,6 @@ public class TransmissionNodeBlock extends ComplexDirectionalBlock {
         super.playerWillDestroy(world, pos, state, player);
         BlockPos adjacent = pos.relative(state.getValue(ORIENTATION).getCardinal());
         BlockState connectorState = world.getBlockState(adjacent);
-        if(connectorState.getBlock() == MechanoBlocks.HEAP_CONNECTOR_STACKED.get()) {
-            // HeapConnectorStackedBlock connector = (HeapConnectorStackedBlock) connectorState.getBlock();
-            world.destroyBlock(adjacent, true);
-        }
     }
     
     @Override

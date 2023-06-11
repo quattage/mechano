@@ -69,8 +69,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{steps.download-artifact.outputs.download-path}}/artifact/artifact.zip
-          asset_name: artifact.zip
+          asset_path: build/libs/mechano-1.19.2-0.1.jar
+          asset_name: mechano-1.19.2-0.1.jar
           asset_content_type: application/zip
 
 

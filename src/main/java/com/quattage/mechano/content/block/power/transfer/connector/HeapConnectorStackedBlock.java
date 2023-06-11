@@ -184,7 +184,7 @@ public class HeapConnectorStackedBlock extends ComplexDirectionalBlock implement
         }
     }
 
-
+    // TODO drop wires as well
     public void dropConnectors(BlockState state, Level world, BlockPos pos) {
         StackedTier tier = state.getValue(TIER);
         if(tier != StackedTier.ONE) {

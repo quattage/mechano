@@ -1,10 +1,11 @@
 # Pushes the latest successful build to release
 
-name: release
+name: test-release
 on:
   workflow_run:
-    workflows: ["build"]
-    types: [requested]
+    workflows: ["test-build"]
+    types:
+      - completed
 
 jobs:
   release:

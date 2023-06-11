@@ -1,6 +1,6 @@
 # Builds and deposits artifacts automatically. Based on Fabric's configs
 
-name: build
+name: test-build
 on: [pull_request, push]
 
 jobs:

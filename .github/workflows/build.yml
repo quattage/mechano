@@ -75,10 +75,9 @@ jobs:
           prerelease: true
           body: |
                 # Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
-                This is an automatically generated message. Changelogs won't be made for live releases.
+                Built on ${{ steps.date.outputs.date }} from commit "${{ github.event.head_commit.message }}"
 
-                ## Commit summary:
-                ${{ github.event.head_commit.message }}
+                This is an automatically generated message. Changelogs won't be made for live releases.
 
       - name: download artifact
         id: download-artifact

@@ -17,4 +17,4 @@ jobs:
       - name: "publish release"
         uses: "ergebnis/.github/actions/github/release/create@1.8.0"
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          github-token: "${{ secrets.MUH_KEY }}"

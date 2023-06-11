@@ -83,6 +83,7 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: |
-            '@LOOPED IN 
-            ### New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``'
+            @LOOPED IN 
+            ## New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``'
+            ### Commit details:
             ```${{ github.event.head_commit.message }}```

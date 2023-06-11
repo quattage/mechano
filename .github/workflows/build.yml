@@ -55,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_id }}:${{ github.run_attempt }}
+          tag_name: ${{ github.run_id }}-${{ github.run_attempt }}
           release_name: |
             Build ${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}
           draft: false

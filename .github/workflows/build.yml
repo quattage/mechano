@@ -16,6 +16,10 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v2
 
+      - name: get commit message
+        id: get_head_commit_message
+        run: echo "::set-output name=headCommitMsg::$(git show -s --format=%s)"
+
       - name: validate gradle wrapper
         uses: gradle/wrapper-validation-action@v1
 
@@ -49,6 +53,20 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
 
+      - name: get commit info
+        id: commit_info
+        run: |
+          echo "All:"
+          echo "${{ steps.abc.outputs.all }}"
+          echo "Added:"
+          echo "${{ steps.abc.outputs.added }}"
+          echo "Removed:"
+          echo "${{ steps.abc.outputs.removed }}"
+          echo "Renamed:"
+          echo "${{ steps.abc.outputs.renamed }}"
+          echo "Modified:"
+          echo "${{ steps.abc.outputs.modified }}"
+
       - name: create new release
         id: create_release
         uses: actions/create-release@v1
@@ -60,10 +78,11 @@ jobs:
           draft: false
           prerelease: true
           body: |
-                # Build ${{ github.run_id }}-${{ github.run_attempt }}
-                Committed on ${{ steps.date.outputs.date }}
+                # Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
+                This is an automatically generated message. Changelogs won't be made for live releases.
 
-                * This is an automatically generated message. Changelogs won't be made for live releases.
+                ## Commit summary:
+                ${{ steps.get_head_commit_message.outputs }}
 
 
       - name: download artifact

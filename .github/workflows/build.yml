@@ -5,11 +5,13 @@ on: [pull_request, push]
 
 jobs:
   build:
+    name: build artifact
     permissions: write-all
     strategy:
       matrix:
         java: [ 17 ]
     runs-on: ubuntu-latest
+
     steps:
       - name: checkout repository
         uses: actions/checkout@v2
@@ -43,8 +45,8 @@ jobs:
           name: artifacts
           path: build/libs/
 
-      - name: create release
-        id: create_release
+      - name: create new release
+        id: create_new_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.capture_artifact.outputs.upload_path }}
+          asset_path: ./bin/artifacts.zip
           asset_name: artifacts.zip
           asset_content_type: application/zip
 

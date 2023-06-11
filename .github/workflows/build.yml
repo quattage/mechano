@@ -39,5 +39,29 @@ jobs:
       - name: capture build artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: Artifacts
+          name: mechano-test-prerelease
           path: build/libs/
+
+      - name: create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MUH_TOKEN }}
+        with:
+          tag_name: test-release
+          release_name: test-release
+          draft: false
+          prerelease: true
+      - name: push release assets
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MUH_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./mechano-test-prerelease.zip
+          asset_name: mechano-test-prerelease.zip
+          asset_content_type: application/zip
+
+
+      

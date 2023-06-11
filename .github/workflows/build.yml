@@ -70,16 +70,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.run_id }}-${{ github.run_attempt }}
-          release_name: test-release
+          release_name: |
+            Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
           draft: false
           prerelease: true
           body: |
-                # Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
-                Built on `${{ steps.date.outputs.date }}` 
+                ##`${{ steps.date.outputs.date }}` 
                 ### Commit summary:
                 `${{ github.event.head_commit.message }}`
-
-                This is an automatically generated message. Changelogs won't be made for live releases.
+                <sub><sup>Release description automatically generated. No changelogs will be provided for live releases</sup></sub>
 
       - name: download artifact
         id: download-artifact

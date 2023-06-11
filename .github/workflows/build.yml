@@ -75,7 +75,9 @@ jobs:
           prerelease: true
           body: |
                 # Build ${{ github.run_id }}-${{ github.run_attempt }}: ${{ steps.date.outputs.date }}
-                Built on ${{ steps.date.outputs.date }} from commit "${{ github.event.head_commit.message }}"
+                Built on `${{ steps.date.outputs.date }}` 
+                ### Commit summary:
+                `${{ github.event.head_commit.message }}`
 
                 This is an automatically generated message. Changelogs won't be made for live releases.
 

@@ -49,20 +49,6 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
 
-      - name: get commit info
-        id: commit_info
-        run: |
-          echo "All:"
-          echo "${{ steps.abc.outputs.all }}"
-          echo "Added:"
-          echo "${{ steps.abc.outputs.added }}"
-          echo "Removed:"
-          echo "${{ steps.abc.outputs.removed }}"
-          echo "Renamed:"
-          echo "${{ steps.abc.outputs.renamed }}"
-          echo "Modified:"
-          echo "${{ steps.abc.outputs.modified }}"
-
       - name: create new release
         id: create_release
         uses: actions/create-release@v1
@@ -89,7 +75,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/libs/mechano-1.19.2-0.1.jar
+          asset_path: build/libs/*
           asset_name: mechano-${{ github.run_id }}-${{ github.run_attempt }}.jar
           asset_content_type: application/zip
 

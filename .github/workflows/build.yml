@@ -58,6 +58,14 @@ jobs:
           body: |
                 THIS IS AN AUTOMATICALLY GENERATED PRE-RELEASE CONTAINING THE LATEST CHANGES.
 
+      - name: download artifact
+        id: download-artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: 'artifact.zip'
+          path: ${{ github.workspace }}
+
+
       - name: push release assets
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
@@ -65,7 +73,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./bin/artifacts.zip
+          asset_path: ${{ github.workspace }}-/artifacts.zip
           asset_name: artifacts.zip
           asset_content_type: application/zip
 

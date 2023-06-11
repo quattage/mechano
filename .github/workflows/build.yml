@@ -5,6 +5,7 @@ on: [pull_request, push]
 
 jobs:
   build:
+    permissions: write-all
     strategy:
       matrix:
         java: [ 17 ]
@@ -20,7 +21,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-
       - uses: actions/cache@v2
         with:
           path: |

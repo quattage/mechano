@@ -9,12 +9,12 @@ on:
       - 'refs/head/main'
 jobs:
   release:
-    name: "Release"
+    name: "publish release"
 
     runs-on: "ubuntu-latest"
 
     steps:
-      - name: "Create release"
+      - name: "publish release"
         uses: "ergebnis/.github/actions/github/release/create@1.8.0"
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"

@@ -45,6 +45,10 @@ jobs:
           name: artifact
           path: build/libs/
 
+      - name: get date/time
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
       - name: create new release
         id: create_release
         uses: actions/create-release@v1
@@ -56,7 +60,11 @@ jobs:
           draft: false
           prerelease: true
           body: |
-                THIS IS AN AUTOMATICALLY GENERATED PRE-RELEASE CONTAINING THE LATEST CHANGES.
+                # Build ${{ github.run_id }}-${{ github.run_attempt }}
+                Committed on ${{ steps.date.outputs.date }}
+
+                * This is an automatically generated message. Changelogs won't be made for live releases.
+
 
       - name: download artifact
         id: download-artifact

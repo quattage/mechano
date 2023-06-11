@@ -62,7 +62,7 @@ jobs:
           prerelease: false
           body: |
                 ### From commit: ${{ github.event.head_commit.message }}
-                <sub><sup>Release description automatically generated. Minimal will be provided for live releases.</sup></sub>
+                <sub><sup>Release description automatically generated. Minimal changelogs (if any, really) will be provided for live releases.</sup></sub>
 
       - name: download artifact
         id: download-artifact

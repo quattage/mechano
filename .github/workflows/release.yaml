@@ -1,12 +1,12 @@
 # Pushes the latest successful build to release
 
-name: "Release"
-
+name: release
 on:
-  push:
-    tags:
-      - "**"
-
+  workflow_run:
+    workflows: ["build"]
+    types: [requested]
+    branches:
+      - 'refs/head/main'
 jobs:
   release:
     name: "Release"

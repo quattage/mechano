@@ -37,6 +37,7 @@ jobs:
         run: ./gradlew build
 
       - name: capture build artifacts
+        id: capture_artifact
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
@@ -62,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/libs/
+          asset_path: ${{ steps.capture_artifact.outputs.upload_path }}
           asset_name: artifacts.zip
           asset_content_type: application/zip
 

@@ -83,9 +83,13 @@ jobs:
         uses: Ilshidur/action-discord@master
         with:
           args: |
-            ───────────────────────
             <@&1117137065956606083>
+            ───────────────────────
             ## New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``
             ### Commit details:
-            ```${{ github.event.head_commit.message }}```
+            ```fix 
+              ${{ github.event.head_commit.message }}
+            ```
+            **Get it here: ${{ steps.create_release.outputs.upload_url }}**
             ───────────────────────
+

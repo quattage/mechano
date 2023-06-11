@@ -42,7 +42,7 @@ jobs:
         id: capture_artifact
         uses: actions/upload-artifact@v2
         with:
-          name: artifacts
+          name: artifact
           path: build/libs/
 
       - name: create new release

@@ -87,7 +87,7 @@ jobs:
             ───────────────────────
             ## New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``
             ### Commit details:
-            ```fix 
+            ```
               ${{ github.event.head_commit.message }}
             ```
             **Get it here: https://github.com/quattage/mechano/releases/latest**

@@ -39,9 +39,11 @@ public class NodeLocation {
      * @param z
      */
     public NodeLocation(float x, float y, float z) {
-        this.x = (getNearestQuarter(x) / 16);
-        this.y = (getNearestQuarter(y) / 16);
-        this.z = (getNearestQuarter(z) / 16);
+        this.location = new Vec3(
+            getNearestQuarter(x) / 16, 
+            getNearestQuarter(y) / 16,
+            getNearestQuarter(z) / 16
+        );
         maxAttachments = 1;
     }
 
@@ -62,7 +64,7 @@ public class NodeLocation {
     }
 
     public NodeLocation transform(Direction dir) {
-        return 
+        return new NodeLocation
     }
 
     public float getX() {

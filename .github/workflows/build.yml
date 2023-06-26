@@ -1,7 +1,13 @@
 # Builds and deposits artifacts automatically. Based on Fabric's configs
 
 name: test-build
-on: [pull_request, push]
+on:
+  push:
+    branches:
+      - "**-testable"
+  pull_request:
+    branches:
+      - "**-testable" 
 
 jobs:
   build:

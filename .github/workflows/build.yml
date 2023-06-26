@@ -4,10 +4,10 @@ name: test-build
 on:
   push:
     branches:
-      - "**-testable"
+      - '**-testable'
   pull_request:
     branches:
-      - "**-testable" 
+      - '**-testable'
 
 jobs:
   build:

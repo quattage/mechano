@@ -122,14 +122,12 @@ public class CouplingNodeBlock extends StrictComplexDirectionalBlock implements 
         StrictComplexDirection strictCD = StrictComplexDirection.cycleLocalForward(state.getValue(ORIENTATION));
         NodeModelType modelType = NodeModelType.cycleRotor(state.getValue(NODE_MODEL_TYPE));
         if(state.getValue(NODE_MODEL_TYPE) == NodeModelType.ROTORED || state.getValue(NODE_MODEL_TYPE) == NodeModelType.ROTOR_CANTED) {
-            Mechano.log("ROTORED");
             BlockState rotated = state.setValue(NODE_MODEL_TYPE, modelType);
             if (!rotated.canSurvive(world, context.getClickedPos()))
                 return InteractionResult.PASS;
 
             KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
         } else {
-            Mechano.log("NO");
             BlockState rotated = state.setValue(ORIENTATION, strictCD);
             if (!rotated.canSurvive(world, context.getClickedPos()))
                 return InteractionResult.PASS;

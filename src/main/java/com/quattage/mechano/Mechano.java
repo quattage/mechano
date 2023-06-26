@@ -27,11 +27,14 @@ import org.slf4j.Logger;
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Mechano.MOD_ID)
 public class Mechano {
+    
     public static final String MOD_ID = "mechano";
     public static final String ESC = "\u001b";
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.MOD_ID);
     
+    private static  int slowCount = 0;
+
     public Mechano() {
         genericSetup();
         new MechanoGroup("main");
@@ -66,6 +69,21 @@ public class Mechano {
     public static void logReg(String message) {      
         log("Registering " + MOD_ID + " " + message);
     }
+
+    public static void logSlow(String message) {
+        logSlow(message, 20);
+    }
+
+    public static void logSlow(String message, int ticks) {
+        slowCount++;
+
+        if(slowCount > ticks) {
+            log(message);
+            slowCount = 0;
+        }
+    }
+
+    
 
 
     public static ResourceLocation asResource(String filepath) {

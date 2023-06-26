@@ -94,10 +94,6 @@ public class HeapConnectorBlock extends DirectionalBlock implements IBE<HeapConn
         }
     }
 
-    private void playUpgradeFx(Level world, BlockPos pos, BlockState state) {
-        return;
-    }
-
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         return BASE_SHAPE.get(state.getValue(FACING).getOpposite());

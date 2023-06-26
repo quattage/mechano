@@ -1,0 +1,54 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 32],
+	"textures": {
+		"0": "mechano:block/power/transfer/voltometer/voltometer",
+		"particle": "mechano:block/power/transfer/voltometer/voltometer"
+	},
+	"elements": [
+		{
+			"name": "needle",
+			"from": [8, 5, 0.25],
+			"to": [13, 6, 1.25],
+			"rotation": {"angle": 0, "axis": "z", "origin": [8, 5.5, 0]},
+			"faces": {
+				"north": {"uv": [9, 15, 11.5, 15.5], "texture": "#0"},
+				"east": {"uv": [9, 15, 9.5, 15.5], "texture": "#0"},
+				"west": {"uv": [9, 15, 9.5, 15.5], "texture": "#0"},
+				"up": {"uv": [11.5, 15, 9, 15.5], "texture": "#0"},
+				"down": {"uv": [11.5, 15, 9, 15.5], "texture": "#0"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [75, 45, 0],
+			"translation": [0, 2.5, 0],
+			"scale": [0.375, 0.375, 0.375]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [75, 45, 0],
+			"translation": [0, 2.5, 0],
+			"scale": [0.375, 0.375, 0.375]
+		},
+		"firstperson_righthand": {
+			"rotation": [0, 45, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"firstperson_lefthand": {
+			"rotation": [0, 225, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"ground": {
+			"translation": [0, 3, 0],
+			"scale": [0.25, 0.25, 0.25]
+		},
+		"gui": {
+			"rotation": [30, 130, 0],
+			"scale": [0.625, 0.625, 0.625]
+		},
+		"fixed": {
+			"scale": [0.5, 0.5, 0.5]
+		}
+	}
+}

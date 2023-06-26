@@ -122,14 +122,6 @@ public enum StrictComplexDirection implements StringRepresentable {
         return 1;
     }
 
-
-    /*
-    int groupSize = 4;
-    int groupIndex = getGroupIndex(in);
-    int posInc = (in.ordinal()) % groupSize;
-    return posInc + (4 * (getGroupIndex(in) - 1));
-    */
-
     private static int getGroupMaxRange(int in) {
         return getGroupIndex(in) * 4;
     }

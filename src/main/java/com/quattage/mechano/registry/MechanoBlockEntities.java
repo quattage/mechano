@@ -10,6 +10,10 @@ import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEnt
 import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlockEntity;
+import com.quattage.mechano.content.block.power.transfer.voltometer.VolotmeterRenderer;
+import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlockEntity;
+import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlockEntity;
+import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderRenderer;
 import com.simibubi.create.content.kinetics.base.CutoutRotatingInstance;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
@@ -61,6 +65,18 @@ public class MechanoBlockEntities {
     public static final BlockEntityEntry<HeapConnectorStackedBlockEntity> HEAP_CONNECTOR_STACKED = Mechano.REGISTRATE
             .blockEntity("heap_connector", HeapConnectorStackedBlockEntity::new)
             .validBlocks(MechanoBlocks.HEAP_CONNECTOR)
+            .register();
+
+    public static final BlockEntityEntry<DiagonalGirderBlockEntity> DIAGONAL_GIRDER = Mechano.REGISTRATE
+            .blockEntity("diagonal_girder", DiagonalGirderBlockEntity::new)
+            .validBlocks(MechanoBlocks.DIAGONAL_GIRDER)
+            .renderer(() -> DiagonalGirderRenderer::new)
+            .register();
+
+    public static final BlockEntityEntry<VoltometerBlockEntity> VOLTOMETER = Mechano.REGISTRATE
+            .blockEntity("voltometer", VoltometerBlockEntity::new)
+            .validBlocks(MechanoBlocks.VOLTOMETER)
+            .renderer(() -> VolotmeterRenderer::new)
             .register();
 
     public static void register(IEventBus event) {

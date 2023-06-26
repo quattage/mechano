@@ -1,0 +1,129 @@
+{
+    "variants": {
+        "facing=north,model=short_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_double",
+            "y":180
+        },
+        "facing=south,model=short_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_double",
+            "y": 0
+        },
+        "facing=east,model=short_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_double",
+            "y": 270
+        },
+        "facing=west,model=short_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_double",
+            "y": 90
+        },
+
+
+        "facing=north,model=long_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_up",
+            "y":180
+        },
+        "facing=south,model=long_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_up",
+            "y": 0
+        },
+        "facing=east,model=long_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_up",
+            "y": 270
+        },
+        "facing=west,model=long_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_up",
+            "y": 90
+        },
+
+
+        "facing=north,model=long_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_down",
+            "y":180
+        },
+        "facing=south,model=long_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_down",
+            "y": 0
+        },
+        "facing=east,model=long_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_down",
+            "y": 270
+        },
+        "facing=west,model=long_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_end_down",
+            "y": 90
+        },
+
+
+        "facing=north,model=middle": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_middle",
+            "y":180
+        },
+        "facing=south,model=middle": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_middle",
+            "y": 0
+        },
+        "facing=east,model=middle": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_middle",
+            "y": 270
+        },
+        "facing=west,model=middle": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_middle",
+            "y": 90
+        },
+
+
+        "facing=north,model=short_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_up",
+            "y":180
+        },
+        "facing=south,model=short_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_up",
+            "y": 0
+        },
+        "facing=east,model=short_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_up",
+            "y": 270
+        },
+        "facing=west,model=short_end_up": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_up",
+            "y": 90
+        },
+
+
+        "facing=north,model=short_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_down",
+            "y":180
+        },
+        "facing=south,model=short_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_down",
+            "y": 0
+        },
+        "facing=east,model=short_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_down",
+            "y": 270
+        },
+        "facing=west,model=short_end_down": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_short_end_down",
+            "y": 90
+        },
+
+
+
+        "facing=north,model=long_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_double",
+            "y":180
+        },
+        "facing=south,model=long_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_double",
+            "y": 0
+        },
+        "facing=east,model=long_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_double",
+            "y": 270
+        },
+        "facing=west,model=long_double": {
+            "model": "mechano:block/simple/diagonal_girder/diagonal_girder_long_double",
+            "y": 90
+        }
+    }
+}

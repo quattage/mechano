@@ -1,0 +1,23 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 16],
+	"textures": {
+		"0": "mechano:block/simple/diagonal_girder/diagonal_girder",
+		"particle": "mechano:block/simple/diagonal_girder/diagonal_girder"
+	},
+	"elements": [
+		{
+			"from": [5, 0.65, 5],
+			"to": [11, 19.35, 11],
+			"rotation": {"angle": 45, "axis": "x", "origin": [8, 8, 8]},
+			"faces": {
+				"north": {"uv": [3, 0, 14.35, 6], "rotation": 90, "texture": "#0"},
+				"east": {"uv": [3.15, 0, 14.5, 6], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [3, 0, 14.35, 6], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [3.15, 0, 14.5, 6], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [0, 0, 3, 6], "texture": "#0"},
+				"down": {"uv": [0, 0, 3, 6], "texture": "#0"}
+			}
+		}
+	]
+}

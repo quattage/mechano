@@ -1,9 +1,10 @@
 package com.quattage.mechano.core.events;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
+import com.quattage.mechano.content.item.wire.ElectricNodeWireBehavior;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent.ClientTickEvent;
 import net.minecraftforge.event.TickEvent.Phase;
@@ -13,18 +14,20 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
+    public static final ElectricNodeWireBehavior SPOOL_BEHAVIOR = new ElectricNodeWireBehavior("WireSpoolOnElectricNode");
+    public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
+
     @SubscribeEvent
 	public static void onTick(ClientTickEvent event) {
 		if (!isGameActive())
 			return;
 
-        Minecraft instance = Minecraft.getInstance();
-		//Level world = instance.level;
-		if (event.phase == Phase.START) {
-			// starting phase events
-		}
+		if (event.phase == Phase.START) {}
 
-        DiagonalGirderWrenchBehavior.tick(instance);
+        for(ClientBehavior behavior : ClientBehavior.behaviors.values()) {
+            Mechano.log("Registering behavior: '" + behavior + "', (" + behavior.getClass().getName() + ")"); 
+            behavior.tick();
+        }
     }
 
     protected static boolean isGameActive() {

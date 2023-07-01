@@ -10,6 +10,8 @@ import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEnt
 import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlockEntity;
+import com.quattage.mechano.content.block.power.transfer.test.ElectricBlockEntity;
+import com.quattage.mechano.content.block.power.transfer.test.TestBlockRenderer;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VolotmeterRenderer;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlockEntity;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlockEntity;
@@ -77,6 +79,12 @@ public class MechanoBlockEntities {
             .blockEntity("voltometer", VoltometerBlockEntity::new)
             .validBlocks(MechanoBlocks.VOLTOMETER)
             .renderer(() -> VolotmeterRenderer::new)
+            .register();
+
+    public static final BlockEntityEntry<ElectricBlockEntity> TEST = Mechano.REGISTRATE
+            .blockEntity("test", ElectricBlockEntity::new)
+            .validBlocks(MechanoBlocks.TEST)
+            .renderer(() -> TestBlockRenderer::new)
             .register();
 
     public static void register(IEventBus event) {

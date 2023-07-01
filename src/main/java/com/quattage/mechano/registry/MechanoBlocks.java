@@ -11,6 +11,7 @@ import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlo
 import com.quattage.mechano.content.block.power.transfer.adapter.TransmissionNodeBlock;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlock;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlock;
+import com.quattage.mechano.content.block.power.transfer.test.TestBlock;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlock;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
@@ -153,6 +154,15 @@ public class MechanoBlocks {
 		.transform(customItemModel())
 		.register();
     
+
+    public static final BlockEntry<TestBlock> TEST = REGISTRATE.block("test", TestBlock::new)
+		.initialProperties(SharedProperties::softMetal)
+		.properties(p -> p.color(MaterialColor.COLOR_GRAY))
+		.properties(p -> p.sound(SoundType.NETHERITE_BLOCK))
+		.transform(pickaxeOnly())
+		.item()
+		.transform(customItemModel())
+		.register();
 
     public static void register(IEventBus event) {
         Mechano.logReg("blocks");

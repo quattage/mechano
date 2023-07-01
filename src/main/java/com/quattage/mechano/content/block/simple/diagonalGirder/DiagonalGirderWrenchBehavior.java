@@ -7,13 +7,13 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.GirderPartial;
+import com.quattage.mechano.core.events.ClientBehavior;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -23,44 +23,39 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.phys.Vec3; 
 
-public class DiagonalGirderWrenchBehavior {
+public class DiagonalGirderWrenchBehavior extends ClientBehavior {
 
-    @OnlyIn(Dist.CLIENT)
-	public static void tick(Minecraft instance) {
+    public DiagonalGirderWrenchBehavior(String name) {
+        super(name);
+    }
 
-		if (instance.player == null || instance.level == null || !(instance.hitResult instanceof BlockHitResult result))
-			return;
+    @Override
+    public boolean shouldTick(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand,
+            Vec3 lookingPosition, BlockPos lookingBlockPos) {    
+        return AllItems.WRENCH.isIn(mainHand) && 
+            MechanoBlocks.DIAGONAL_GIRDER.has(world.getBlockState(lookingBlockPos)) &&
+            !isShifting();
+    }
 
-		ClientLevel world = instance.level;
-		BlockPos pos = result.getBlockPos();
-        Vec3 hit = instance.hitResult.getLocation();
-		Player player = instance.player;
-
-		ItemStack heldItem = player.getMainHandItem();
-
-        if (!AllItems.WRENCH.isIn(heldItem)) return;
-		if (player.isSteppingCarefully()) return;
-		if (!MechanoBlocks.DIAGONAL_GIRDER.has(world.getBlockState(pos))) 
-            return;
-
-        BlockState girderState = world.getBlockState(pos);
+    @Override
+    public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
+            BlockPos lookingBlockPos) {
+        BlockState girderState = world.getBlockState(lookingBlockPos);
         DiagonalGirderBlock girderBlock = ((DiagonalGirderBlock)girderState.getBlock());
         List<Pair<AABB, GirderPartial>> possibleShapes = girderBlock.getRelevantPartials(girderState);    
-        Pair<AABB, GirderPartial> shapeCheck = getClosest(pos, hit, possibleShapes);
+        Pair<AABB, GirderPartial> shapeCheck = getClosest(lookingBlockPos, lookingPosition, possibleShapes);
 
         if(shapeCheck != null) {
-            CreateClient.OUTLINER.showAABB("diagonalGirderWrench", shapeCheck.getFirst().move(pos))
+            CreateClient.OUTLINER.showAABB("diagonalGirderWrench", shapeCheck.getFirst().move(lookingBlockPos))
                 .lineWidth(1 / 32f)
                 .colored(new Color(127, 127, 127));
         }
     }
 
     @Nullable
-    private static Pair<AABB, GirderPartial> getClosest(BlockPos pos, Vec3 hit, List<Pair<AABB, GirderPartial>> hitboxes) {
+    private Pair<AABB, GirderPartial> getClosest(BlockPos pos, Vec3 hit, List<Pair<AABB, GirderPartial>> hitboxes) {
         if(hitboxes.isEmpty()) return null;
 
         Pair<AABB, GirderPartial> out = null;
@@ -84,7 +79,7 @@ public class DiagonalGirderWrenchBehavior {
         return out;
 	}
 
-    public static boolean handleClick(Level world, BlockPos pos, BlockState state, BlockHitResult ray, BlockEntity entity) {
+    public boolean handleClick(Level world, BlockPos pos, BlockState state, BlockHitResult ray, BlockEntity entity) {
         BlockState girderState = world.getBlockState(pos);
         DiagonalGirderBlock girderBlock = ((DiagonalGirderBlock)girderState.getBlock());
         List<Pair<AABB, GirderPartial>> possibleShapes = girderBlock.getRelevantPartials(girderState);    

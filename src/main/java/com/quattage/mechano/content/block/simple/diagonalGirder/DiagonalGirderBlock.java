@@ -9,6 +9,7 @@ import com.google.common.base.Predicates;
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.core.events.MechanoClientEvents;
 import com.quattage.mechano.core.placement.helpers.GirderDirectionalHelper;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
@@ -281,7 +282,7 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
 				.placeInWorld(world, (BlockItem) heldItem.getItem(), player, hand, ray);
 
         if (AllItems.WRENCH.isIn(heldItem) && !player.isSteppingCarefully()) {
-            if (DiagonalGirderWrenchBehavior.handleClick(world, pos, state, ray, getBlockEntity(world, pos))) {
+            if (MechanoClientEvents.GIRDER_BEHAVIOR.handleClick(world, pos, state, ray, getBlockEntity(world, pos))) {
                 world.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 0.5f, 0.9f);
                 world.playSound(null, pos, SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.BLOCKS, 0.2f, 1);   
                 

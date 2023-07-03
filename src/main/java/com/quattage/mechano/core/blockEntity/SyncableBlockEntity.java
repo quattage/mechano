@@ -1,4 +1,4 @@
-package com.quattage.mechano.core.electricity.base;
+package com.quattage.mechano.core.blockEntity;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public abstract class SyncableBlockEntity extends SmartBlockEntity {
 
-    public static final TagManager data = new TagManager();
+    private static final TagManager data = new TagManager();
     private boolean wasContraption = false;
 
     public SyncableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -50,7 +50,7 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
      */
     @Override
     protected void write(CompoundTag nbt, boolean clientPacket) {
-        setData();
+        setData(data);
         data.writeAll(nbt);
         super.write(nbt, clientPacket);
     }
@@ -72,7 +72,7 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
      * automatically.
      * Called before write(). Use this where you'd normally use write().
      */
-    protected abstract void setData();
+    protected abstract void setData(TagManager data);
 
     /*** 
      * This is where you pull values from the TagManager (and, by extension, NBT itself). 

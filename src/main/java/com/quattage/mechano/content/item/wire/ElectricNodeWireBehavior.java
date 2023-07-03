@@ -2,8 +2,9 @@ package com.quattage.mechano.content.item.wire;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.base.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.base.SyncableBlockEntity;
+import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.blockEntity.SyncableBlockEntity;
+import com.quattage.mechano.core.blockEntity.observe.IObservable;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.quattage.mechano.registry.MechanoBlocks;
@@ -37,8 +38,8 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos) {
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
-            Mechano.logSlow("" + blockEntity.NODES);
-            for(ElectricNode node : blockEntity.NODES.values()) {
+            Mechano.logSlow("" + blockEntity.nodes);
+            for(ElectricNode node : blockEntity.nodes.values()) {
                 Color c = new Color(255, 255, 255);
                 if(node.getId().equals("INPUT")) c = new Color(0, 255, 0);
                 else if(node.getId().equals("OUTPUT")) c = new Color(255, 0, 0);

@@ -2,11 +2,13 @@ package com.quattage.mechano.core.electricity.node.base;
 
 import com.mrh0.createaddition.energy.LocalNode;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.util.BlockMath;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -92,12 +94,19 @@ public class NodeLocation {
         updateHitbox();
     }
 
+    public CompoundTag writeTo(CompoundTag in) {
+        in.putDouble("xOffset", northOffset.x);
+        in.putDouble("yOffset", northOffset.y);
+        in.putDouble("zOffset", northOffset.z);
+        return in;
+    }
+
     /***
      * Generates a new hitbox from this NodeLocation's x, y, & z
      * @return 
      */
     public AABB boxFromOffset() {
-        Vec3 raw = get(currentDirection);
+        Vec3 raw = get();
         return new AABB (
             raw.x - SIZE, raw.y - SIZE, raw.z - SIZE, 
             SIZE + raw.x, SIZE + raw.y, SIZE + raw.z
@@ -170,6 +179,7 @@ public class NodeLocation {
     }
 
     private Vec3 getRotated(Vec3 vec, Direction dir) {
+        currentDirection = dir;
         switch(dir) {
             case NORTH:
                 return new Vec3(
@@ -233,16 +243,6 @@ public class NodeLocation {
     }
 
     /***
-     * Returns a new Vec3 representing this node's location relative to the world.
-     * @param dir Direction to rotate this NodeLocation before getting
-     * @return A new Vec3 which is the sum of this NodeLocation's root position and directional offset.
-     */
-    public Vec3 get(Direction dir) {
-        rotate(dir);
-        return new Vec3(directionalOffset.x + root.getX(), directionalOffset.y + root.getY(), directionalOffset.z + root.getZ());
-    }
-
-    /***
      * Returns the Vec3 of this NodeLoation's live offset position.
      * @return Vec3, relative to the center of the parent block.
      */
@@ -275,7 +275,7 @@ public class NodeLocation {
      * @return
      */
     public String locationAsString() {
-        Vec3 raw = get(currentDirection);
+        Vec3 raw = get();
         return raw.x + ", " + raw.y + ", " + raw.z;
     }
 

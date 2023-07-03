@@ -81,9 +81,9 @@ public class MechanoBlockEntities {
             .renderer(() -> VolotmeterRenderer::new)
             .register();
 
-    public static final BlockEntityEntry<TestBlockEntity> TEST = Mechano.REGISTRATE
+    public static final BlockEntityEntry<TestBlockEntity> TEST_BLOCK = Mechano.REGISTRATE
             .blockEntity("test", TestBlockEntity::new)
-            .validBlocks(MechanoBlocks.TEST)
+            .validBlocks(MechanoBlocks.TEST_BLOCK)
             .renderer(() -> TestBlockRenderer::new)
             .register();
 

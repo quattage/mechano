@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.power.transfer.test;
 
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.electricity.base.StrictElectricalBlock;
+import com.quattage.mechano.core.electricity.StrictElectricalBlock;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.block.IBE;
 
@@ -23,6 +23,6 @@ public class TestBlock extends StrictElectricalBlock implements IBE<TestBlockEnt
 
     @Override
     public BlockEntityType<? extends TestBlockEntity> getBlockEntityType() {
-        return MechanoBlockEntities.TEST.get();
+        return MechanoBlockEntities.TEST_BLOCK.get();
     }
 }

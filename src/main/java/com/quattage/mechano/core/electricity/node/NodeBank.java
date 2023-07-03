@@ -2,11 +2,13 @@ package com.quattage.mechano.core.electricity.node;
 
 import java.util.ArrayList;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class NodeBank {
@@ -54,16 +56,20 @@ public class NodeBank {
         return out;
     }
 
-    public void setOrient(Direction dir) {
+    public NodeBank setOrient(Direction dir) {
         for(ElectricNode node : NODES) {
-            node.setOrient(dir);
+            node = node.setOrient(dir);
+            //Mechano.log("NODE: " + node);
         }
+        return this;
     }
 
-    public void setOrient(CombinedOrientation dir) {
+    public NodeBank setOrient(CombinedOrientation dir) {
         for(ElectricNode node : NODES) {
-            node.setOrient(dir);
+            node = node.setOrient(dir);
+            //Mechano.log("NODE: " + node);
         }
+        return this;
     }
 
     public ElectricNode[] values() {
@@ -74,11 +80,18 @@ public class NodeBank {
         return NODES.length;
     }
 
+    public CompoundTag writeTo(CompoundTag in) {
+        CompoundTag out = new CompoundTag();
+        for(int x = 0; x < NODES.length; x++)
+            out.put("Node" + x, NODES[x].writeTo(new CompoundTag()));
+        in.put("NodeBank", out);
+        return in;
+    }
+
     public String toString() {
         String out = "NodeBank bound to " + target.getClass().getSimpleName() + " at " + target.getBlockPos() + ":\n";
-        for(int x = 0; x < NODES.length; x++) {
+        for(int x = 0; x < NODES.length; x++) 
             out += "Node " + x + ": " + NODES[x] + "\n";
-        }
         return out;
     }
 }

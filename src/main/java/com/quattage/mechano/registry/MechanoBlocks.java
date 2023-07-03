@@ -155,7 +155,7 @@ public class MechanoBlocks {
 		.register();
     
 
-    public static final BlockEntry<TestBlock> TEST = REGISTRATE.block("test_block", TestBlock::new)
+    public static final BlockEntry<TestBlock> TEST_BLOCK = REGISTRATE.block("test_block", TestBlock::new)
 		.initialProperties(SharedProperties::softMetal)
 		.properties(p -> p
             .sound(SoundType.NETHERITE_BLOCK)

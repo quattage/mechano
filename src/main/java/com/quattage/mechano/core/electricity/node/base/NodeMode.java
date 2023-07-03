@@ -2,6 +2,7 @@ package com.quattage.mechano.core.electricity.node.base;
 
 import java.util.Locale;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.StringRepresentable;
 
 public enum NodeMode implements StringRepresentable{
@@ -15,6 +16,11 @@ public enum NodeMode implements StringRepresentable{
     private NodeMode(boolean isInput, boolean isOutput) {
         this.isInput = isInput;
         this.isOutput = isOutput;
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.putString("NodeMode", getSerializedName());
+        return in;
     }
 
     public String toString() {
@@ -35,6 +41,16 @@ public enum NodeMode implements StringRepresentable{
         pos += 1;
         if(pos >= NodeMode.values().length) pos = 0;
         return NodeMode.values()[pos];
+    }
+
+    public static NodeMode fromNbt(CompoundTag in) {
+        if(in.contains("NodeMode")) {
+            String mode = in.getString("NodeMode");
+            if(mode.equals("insert")) return from(true, false);
+            if(mode.equals("extract")) return from(false, true);
+            if(mode.equals("both")) return from(true, true);
+        }
+        throw new IllegalArgumentException("CompoundTag " + in + " doesn't contain relevent values to read!");
     }
 
     public static NodeMode from(boolean isInput, boolean isOutput) {

@@ -26,7 +26,6 @@ public class MechanoClientEvents {
 		if (event.phase == Phase.START) {}
 
         for(ClientBehavior behavior : ClientBehavior.behaviors.values()) {
-            //Mechano.log("Registering behavior: '" + behavior + "', (" + behavior.getClass().getName() + ")"); 
             behavior.tick();
         }
     }

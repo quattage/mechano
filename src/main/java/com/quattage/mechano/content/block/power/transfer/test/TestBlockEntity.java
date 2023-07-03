@@ -3,8 +3,8 @@ package com.quattage.mechano.content.block.power.transfer.test;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.quattage.mechano.core.electricity.base.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.base.SyncableBlockEntity;
+import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.blockEntity.SyncableBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.util.nbt.TagManager;
@@ -20,17 +20,6 @@ public class TestBlockEntity extends ElectricBlockEntity {
 
     public TestBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
-    }
-
-    @Override
-    protected void setData() {
-        if(!getLevel().isClientSide()) test = 1;
-        data.put("test", test);
-    }
-
-    @Override
-    protected void getData(TagManager data) {
-        test = data.getInt("test");
     }
 
     @Override

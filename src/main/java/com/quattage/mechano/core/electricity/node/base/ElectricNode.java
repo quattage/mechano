@@ -1,9 +1,11 @@
 package com.quattage.mechano.core.electricity.node.base;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -18,9 +20,17 @@ public class ElectricNode {
     public ElectricNode(NodeLocation location, String id, int maxConnections) {
         this.maxConnections = maxConnections;
         this.location = location;
-        this.id = id.toUpperCase();
+        this.id = id.toLowerCase();
         this.mode = NodeMode.from(true, true);
         connections = new NodeConnection[maxConnections];
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        CompoundTag out = new CompoundTag();
+        out.put("NodeLocation", location.writeTo(new CompoundTag()));
+        mode.writeTo(out);
+        in.put(id, out);
+        return in;
     }
 
     public String toString() {

@@ -1,24 +1,34 @@
-package com.quattage.mechano.core.electricity.base;
+package com.quattage.mechano.core.blockEntity;
 
+import java.util.List;
+
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 import com.quattage.mechano.core.util.nbt.TagManager;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public abstract class ElectricBlockEntity extends SyncableBlockEntity {
+public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
-    public final NodeBank NODES;
+    public NodeBank nodes;
+
+    @Override
+    public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
 
     public ElectricBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         NodeBankBuilder init = new NodeBankBuilder().at(this);
         addConnections(init);
-        NODES = init.build();
+        nodes = init.build();
     }
 
     /***
@@ -35,16 +45,23 @@ public abstract class ElectricBlockEntity extends SyncableBlockEntity {
     public abstract void addConnections(NodeBankBuilder builder);
 
     public void setOrient(Direction dir) {
-        NODES.setOrient(dir);
+        nodes = nodes.setOrient(dir);
+        Mechano.log("INSTANCE: " + nodes);
     }
 
     public void setOrient(CombinedOrientation dir) {
-        NODES.setOrient(dir);
+        nodes = nodes.setOrient(dir);
+        Mechano.log("INSTANCE: " + nodes);
     }
     
     @Override
-    protected void setData() {}
+    protected void write(CompoundTag tag, boolean clientPacket) {
+        super.write(tag, clientPacket);
+        nodes.writeTo(tag);
+    }
 
     @Override
-    protected void getData(TagManager data) {}
+    public CompoundTag getUpdateTag() {
+        return nodes.writeTo(new CompoundTag());
+    }
 }

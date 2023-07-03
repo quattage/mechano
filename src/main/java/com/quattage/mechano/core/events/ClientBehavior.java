@@ -35,7 +35,6 @@ public abstract class ClientBehavior {
 
     public void updateValues() {
         world = instance.level;
-        hit = instance.hitResult.getLocation();
 		player = instance.player;
 		mainHandStack = player.getMainHandItem();
         offHandStack = player.getOffhandItem();
@@ -48,12 +47,14 @@ public abstract class ClientBehavior {
     @OnlyIn(Dist.CLIENT)
 	public void tick() {
         updateValues();
-		if (player == null || world == null || !(instance.hitResult instanceof BlockHitResult result))
+		if (player == null || world == null || !(instance.hitResult instanceof BlockHitResult hit))
 			return;
-        BlockPos hitBlockPos = result.getBlockPos();
 
-        if(!shouldTick(world, player, mainHandStack, offHandStack, hit, hitBlockPos)) return;
-        tickSafe(world, player, mainHandStack, offHandStack, hit, hitBlockPos);
+        this.hit = hit.getLocation();
+        BlockPos hitBlockPos = hit.getBlockPos();
+
+        if(!shouldTick(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos)) return;
+        tickSafe(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos);
     }
 
     public String toString() {

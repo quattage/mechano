@@ -14,6 +14,7 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -70,8 +71,8 @@ public class Mechano {
         log("Registering " + MOD_ID + " " + message);
     }
 
-    public static void logSlow(String message) {
-        logSlow(message, 20);
+    public static void logSlow(String text) {
+        logSlow(text, 20);
     }
 
     public static void logSlow(String message, int ticks) {
@@ -82,9 +83,6 @@ public class Mechano {
             slowCount = 0;
         }
     }
-
-    
-
 
     public static ResourceLocation asResource(String filepath) {
         return new ResourceLocation(MOD_ID, filepath);

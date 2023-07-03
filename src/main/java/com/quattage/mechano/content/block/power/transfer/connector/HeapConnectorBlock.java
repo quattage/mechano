@@ -5,7 +5,7 @@ import java.util.Locale;
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlock;
 import com.quattage.mechano.content.block.power.transfer.adapter.TransmissionNodeBlock;
-import com.quattage.mechano.core.placement.ComplexDirection;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllBlocks;
@@ -85,7 +85,7 @@ public class HeapConnectorBlock extends DirectionalBlock implements IBE<HeapConn
 
         if(under.getBlock() == MechanoBlocks.TRANSMISSION_NODE.get()) {
             BlockState newLargeConnector = MechanoBlocks.HEAP_CONNECTOR_STACKED.get().defaultBlockState()
-                .setValue(HeapConnectorStackedBlock.ORIENTATION, ComplexDirection.combine(
+                .setValue(HeapConnectorStackedBlock.ORIENTATION, SimpleOrientation.combine(
                     under.getValue(TransmissionNodeBlock.ORIENTATION).getCardinal().getOpposite(),
                     under.getValue(TransmissionNodeBlock.ORIENTATION).getOrient()
                 ));

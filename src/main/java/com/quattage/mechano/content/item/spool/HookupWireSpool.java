@@ -4,7 +4,7 @@ import com.quattage.mechano.registry.MechanoItems;
 
 import net.minecraft.world.item.Item;
 
-public class HookupWireSpool extends WireSpool{
+public class HookupWireSpool extends WireSpool {
 
     public HookupWireSpool(Properties properties) {
         super(properties);

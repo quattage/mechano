@@ -155,10 +155,13 @@ public class MechanoBlocks {
 		.register();
     
 
-    public static final BlockEntry<TestBlock> TEST = REGISTRATE.block("test", TestBlock::new)
+    public static final BlockEntry<TestBlock> TEST = REGISTRATE.block("test_block", TestBlock::new)
 		.initialProperties(SharedProperties::softMetal)
-		.properties(p -> p.color(MaterialColor.COLOR_GRAY))
-		.properties(p -> p.sound(SoundType.NETHERITE_BLOCK))
+		.properties(p -> p
+            .sound(SoundType.NETHERITE_BLOCK)
+            .color(MaterialColor.COLOR_GRAY)
+            .noOcclusion()
+        )
 		.transform(pickaxeOnly())
 		.item()
 		.transform(customItemModel())

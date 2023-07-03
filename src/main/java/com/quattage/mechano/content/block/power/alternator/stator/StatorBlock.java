@@ -5,9 +5,9 @@ import java.util.Locale;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.core.block.ComplexDirectionalBlock;
-import com.quattage.mechano.core.placement.ComplexDirection;
-import com.quattage.mechano.core.placement.helpers.StatorDirectionalHelper;
+import com.quattage.mechano.core.block.SimpleOrientedBlock;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.block.placementHelper.StatorDirectionalHelper;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.foundation.block.IBE;
@@ -38,7 +38,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
-public class StatorBlock extends ComplexDirectionalBlock implements IBE<StatorBlockEntity> {
+public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockEntity> {
 
     public static final EnumProperty<StatorBlockModelType> MODEL_TYPE = EnumProperty.create("model", StatorBlockModelType.class);  // BASE or CORNER
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
@@ -127,7 +127,7 @@ public class StatorBlock extends ComplexDirectionalBlock implements IBE<StatorBl
 	}
 
     @MethodsReturnNonnullByDefault
-	private static class PlacementHelper extends StatorDirectionalHelper<ComplexDirection> {
+	private static class PlacementHelper extends StatorDirectionalHelper<SimpleOrientation> {
 		// co-opted from Create's shaft placement helper, but this uses StrictOrientation instead of simple Axis
 
 		private PlacementHelper() {

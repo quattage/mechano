@@ -2,9 +2,7 @@ package com.quattage.mechano.core.electricity.base;
 
 import java.util.List;
 
-import com.quattage.mechano.core.nbt.ITagHelper;
-import com.quattage.mechano.core.nbt.TagManager;
-import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;
+import com.quattage.mechano.core.util.nbt.TagManager;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
@@ -14,7 +12,6 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.event.GrindstoneEvent.OnplaceItem;
 
 public abstract class SyncableBlockEntity extends SmartBlockEntity {
 
@@ -24,10 +21,6 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
     public SyncableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         setLazyTickRate(20);
-    }
-
-    private class TagProperty implements ITagHelper {
-        
     }
 
     @Override
@@ -41,7 +34,8 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
     @Override
     public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet) {
         super.onDataPacket(connection, packet);
-        this.load(packet.getTag());
+        CompoundTag cTag = packet.getTag();
+        if(cTag != null) this.load(cTag);
     }
 
     @Override
@@ -50,7 +44,7 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
     }
 
     /***
-     * When extending from SyncableBLockEntity, using
+     * When extending from SyncableBlockEntity, using
      * {@link #setData() setData()} instead of write is reccomended.
      * It will deal with server/client syncing for you
      */
@@ -62,7 +56,7 @@ public abstract class SyncableBlockEntity extends SmartBlockEntity {
     }
 
     /***
-     * When extending from SyncableBLockEntity, using
+     * When extending from SyncableBlockEntity, using
      * {@link #getData() getData()} instead of read is reccomended.
      * It will deal with server/client syncing for you
      */

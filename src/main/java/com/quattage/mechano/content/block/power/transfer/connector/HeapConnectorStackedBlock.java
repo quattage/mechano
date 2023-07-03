@@ -3,8 +3,8 @@ package com.quattage.mechano.content.block.power.transfer.connector;
 import java.util.Locale;
 
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.core.block.ComplexDirectionalBlock;
-import com.quattage.mechano.core.placement.ComplexDirection;
+import com.quattage.mechano.core.block.SimpleOrientedBlock;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -33,7 +33,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class HeapConnectorStackedBlock extends ComplexDirectionalBlock implements IBE<HeapConnectorStackedBlockEntity> {
+public class HeapConnectorStackedBlock extends SimpleOrientedBlock implements IBE<HeapConnectorStackedBlockEntity> {
 
     public static final EnumProperty<StackedTier> TIER = EnumProperty.create("tier", StackedTier.class);
     public static final VoxelShaper ONE_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 15, 10.5).forDirectional();
@@ -82,7 +82,7 @@ public class HeapConnectorStackedBlock extends ComplexDirectionalBlock implement
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
-		ComplexDirection rotatedOrient = ComplexDirection.cycleOrient(state.getValue(ORIENTATION));
+		SimpleOrientation rotatedOrient = SimpleOrientation.cycleOrient(state.getValue(ORIENTATION));
         BlockState rotated = state.setValue(ORIENTATION, rotatedOrient);
         KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
 

@@ -7,7 +7,7 @@ import com.quattage.mechano.registry.MechanoItems;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-public abstract class WireSpool extends Item{
+public abstract class WireSpool extends Item {
 
     protected final String PREFIX = "wire_";
     protected final int rate;
@@ -27,7 +27,7 @@ public abstract class WireSpool extends Item{
         super(properties);
         this.name = setName().toLowerCase();
         this.rate = setRate();
-        this.emptySpoolDrop = new ItemStack(setRawDrop());
+        this.emptySpoolDrop = new ItemStack(setEmptySpoolDrop());
         this.rawDrop = new ItemStack(setRawDrop());
         WireSpool.addType(this);
     }

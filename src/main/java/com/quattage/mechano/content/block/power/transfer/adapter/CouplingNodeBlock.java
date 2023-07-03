@@ -3,11 +3,11 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
 
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.core.block.StrictComplexDirectionalBlock;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
-import com.quattage.mechano.core.block.ComplexDirectionalBlock;
-import com.quattage.mechano.core.placement.StrictComplexDirection;
+import com.quattage.mechano.core.block.SimpleOrientedBlock;
+import com.quattage.mechano.core.block.CombinedOrientedBlock;
+import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllBlocks;
@@ -31,7 +31,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class CouplingNodeBlock extends StrictComplexDirectionalBlock implements IBE<CouplingNodeBlockEntity> {
+public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<CouplingNodeBlockEntity> {
 
     public static final VoxelShaper NODE_SHAPE_CANTED = CAShapes.shape(1, 2, 1, 15, 16, 15).forDirectional();
     public static final VoxelShaper NODE_SHAPE_BASE = CAShapes.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
@@ -62,16 +62,16 @@ public class CouplingNodeBlock extends StrictComplexDirectionalBlock implements 
         BlockState behindState = context.getLevel().getBlockState(context.getClickedPos().relative(localUp.getOpposite()));
         if(behindState.getBlock() != MechanoBlocks.COLLECTOR.get()) {
             if(localUp.getAxis() == localForward.getAxis())
-                localForward = ComplexDirectionalBlock.getTriQuadrant(context, localUp, false);
+                localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
 
             if(context.getPlayer().isCrouching()) localForward = localForward.getOpposite();
-            return this.defaultBlockState().setValue(ORIENTATION, StrictComplexDirection.combine(localUp, localForward));
+            return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward));
         }
 
         localForward = behindState.getValue(CollectorBlock.FACING);
         if(localForward.getAxis() == localUp.getAxis())
-            localForward = ComplexDirectionalBlock.getTriQuadrant(context, localUp, false);
-        return this.defaultBlockState().setValue(ORIENTATION, StrictComplexDirection.combine(localUp, localForward));
+            localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
+        return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward));
     }
 
     @Override
@@ -119,7 +119,7 @@ public class CouplingNodeBlock extends StrictComplexDirectionalBlock implements 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
-        StrictComplexDirection strictCD = StrictComplexDirection.cycleLocalForward(state.getValue(ORIENTATION));
+        CombinedOrientation strictCD = CombinedOrientation.cycleLocalForward(state.getValue(ORIENTATION));
         NodeModelType modelType = NodeModelType.cycleRotor(state.getValue(NODE_MODEL_TYPE));
         if(state.getValue(NODE_MODEL_TYPE) == NodeModelType.ROTORED || state.getValue(NODE_MODEL_TYPE) == NodeModelType.ROTOR_CANTED) {
             BlockState rotated = state.setValue(NODE_MODEL_TYPE, modelType);

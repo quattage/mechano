@@ -4,8 +4,8 @@ import static com.quattage.mechano.content.block.power.transfer.adapter.NodeMode
 
 import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlock;
-import com.quattage.mechano.core.block.ComplexDirectionalBlock;
-import com.quattage.mechano.core.placement.ComplexDirection;
+import com.quattage.mechano.core.block.SimpleOrientedBlock;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class TransmissionNodeBlock extends ComplexDirectionalBlock {
+public class TransmissionNodeBlock extends SimpleOrientedBlock {
 
     public static final VoxelShaper BASE_SHAPE = CAShapes.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
 
@@ -51,9 +51,9 @@ public class TransmissionNodeBlock extends ComplexDirectionalBlock {
         Direction localForward = context.getHorizontalDirection().getOpposite();
 
         if(localUp.getAxis() == localForward.getAxis())
-            localForward = ComplexDirectionalBlock.getTriQuadrant(context, localUp, false);
+            localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
 
-        return this.defaultBlockState().setValue(ORIENTATION, ComplexDirection.combine(localUp, localForward.getAxis()));
+        return this.defaultBlockState().setValue(ORIENTATION, SimpleOrientation.combine(localUp, localForward.getAxis()));
     }
 
     @Override
@@ -100,7 +100,7 @@ public class TransmissionNodeBlock extends ComplexDirectionalBlock {
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
-        ComplexDirection cd = ComplexDirection.cycleOrient(state.getValue(ORIENTATION));
+        SimpleOrientation cd = SimpleOrientation.cycleOrient(state.getValue(ORIENTATION));
         BlockState rotated = state.setValue(ORIENTATION, cd);
 
         if (!rotated.canSurvive(world, context.getClickedPos()))

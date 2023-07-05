@@ -31,12 +31,15 @@ public class DiagonalGirderRenderer extends SafeBlockEntityRenderer<DiagonalGird
             MultiBufferSource bufferSource, int light, int overlay) {
         BlockState state = blockEntity.getBlockState();
         VertexConsumer vertexBuffer = bufferSource.getBuffer(RenderType.solid());
-        render(blockEntity, state, poseStack, (sbb) -> sbb.light(light).renderInto(poseStack, vertexBuffer));
+        render(blockEntity, state, poseStack, (sbb) -> sbb.light(light).renderInto(poseStack, vertexBuffer));   
+
+        //Mechano.log("TICK: " + partialTicks);
     }
-    
+
     private static void render(DiagonalGirderBlockEntity blockEntity, BlockState state, PoseStack local, Consumer<SuperByteBuffer> drawCall) {
         List<PartialModel> relevantPartials = blockEntity.getRelevantPartials();
 
+        
         for(PartialModel component : relevantPartials) {
             SuperByteBuffer girderModel = CachedBufferer.partial(component, state);
 

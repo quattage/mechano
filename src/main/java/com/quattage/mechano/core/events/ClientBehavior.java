@@ -25,6 +25,11 @@ public abstract class ClientBehavior {
 	private ItemStack mainHandStack = null;
     private ItemStack offHandStack = null;
 
+    private double pTicks = 0;
+
+    private long lastTime = 0;
+    private long thisTime = 0;
+
     public static HashMap<String, ClientBehavior> behaviors = new HashMap<String, ClientBehavior>();
 
     public ClientBehavior(String name) {
@@ -54,7 +59,22 @@ public abstract class ClientBehavior {
         BlockPos hitBlockPos = hit.getBlockPos();
 
         if(!shouldTick(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos)) return;
-        tickSafe(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos);
+        
+        tickSafe(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos, pTicks);
+
+        pTicks += setTickIncrement() / 1000000000;
+        if(pTicks >= setTickRate() || pTicks < 0) pTicks = 0;
+    }
+
+    public double setTickRate() {
+        return 1;
+    }
+
+    public double setTickIncrement() {
+        lastTime = thisTime;
+        thisTime = System.nanoTime();
+        
+        return thisTime - lastTime;
     }
 
     public String toString() {
@@ -86,5 +106,5 @@ public abstract class ClientBehavior {
      */
     @OnlyIn(Dist.CLIENT)
     public abstract void tickSafe(ClientLevel world, Player player, ItemStack mainHand, 
-        ItemStack offHand, Vec3 lookingPosition, BlockPos lookingBlockPos);
+        ItemStack offHand, Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks);
 }

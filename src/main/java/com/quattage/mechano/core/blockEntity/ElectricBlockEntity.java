@@ -46,12 +46,10 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
     public void setOrient(Direction dir) {
         nodes = nodes.setOrient(dir);
-        Mechano.log("INSTANCE: " + nodes);
     }
 
     public void setOrient(CombinedOrientation dir) {
         nodes = nodes.setOrient(dir);
-        Mechano.log("INSTANCE: " + nodes);
     }
     
     @Override
@@ -61,7 +59,19 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     }
 
     @Override
+    protected void read(CompoundTag tag, boolean clientPacket) {
+        nodes.readFrom(tag);
+        super.read(tag, clientPacket);
+    }
+
+    @Override
     public CompoundTag getUpdateTag() {
         return nodes.writeTo(new CompoundTag());
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag) {
+        super.handleUpdateTag(tag);
+        nodes.readFrom(tag);
     }
 }

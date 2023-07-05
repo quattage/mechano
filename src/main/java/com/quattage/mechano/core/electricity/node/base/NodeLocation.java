@@ -67,7 +67,7 @@ public class NodeLocation {
      * I'd reccomend using the parent block's defaultBlockState, but this may not always be what you want.
      */
     public NodeLocation(BlockPos root, int x, int y, int z, Direction defaultFacing) {
-        Vec3 offset = new Vec3(vecToPixel(x), vecToPixel(y), vecToPixel(z));
+        Vec3 offset = new Vec3(pixToVec(x), pixToVec(y), pixToVec(z));
         this.root = root;
         this.defaultFacing = defaultFacing;
         this.northOffset = calibrateToNorth(offset, defaultFacing);
@@ -86,10 +86,26 @@ public class NodeLocation {
      * matches up with the parent block's defaultBlockState, but this may not always be what you want.
      */
     public NodeLocation(BlockPos root, double x, double y, double z, Direction defaultFacing) {
-        Vec3 offset = new Vec3(vecToPixel(x), vecToPixel(y), vecToPixel(z));
+        Vec3 offset = new Vec3(pixToVec(x), pixToVec(y), pixToVec(z));
         this.root = root;
         this.defaultFacing = defaultFacing;
         this.northOffset = calibrateToNorth(offset, defaultFacing);
+        this.directionalOffset = northOffset;
+        updateHitbox();
+    }
+
+    /***
+     * Create a new NodeLocation derived from values stored within an NBT tag.
+     * This requires your NBT to have a properly formatted compound called "NodeLocation."
+     */
+    public NodeLocation(BlockPos root, CompoundTag tag) {
+        this.northOffset = new Vec3(
+            tag.getDouble("xOffset"), 
+            tag.getDouble("yOffset"), 
+            tag.getDouble("zOffset")
+        );
+        this.defaultFacing = Direction.NORTH;
+        this.root = root;
         this.directionalOffset = northOffset;
         updateHitbox();
     }
@@ -145,8 +161,12 @@ public class NodeLocation {
      * Converts an integer value representing a pixel measurement to a Vector measurement.
      * @param x 
     */
-    public static double vecToPixel(double x) {
+    public static double pixToVec(double x) {
         return (0.0625 * x);
+    }
+
+    public static double vecToPix(double x) {
+        return (x / 0.0625);
     }
 
     /***
@@ -173,8 +193,7 @@ public class NodeLocation {
      * @return this NodeLocation after rotating
      */
     public NodeLocation rotate(CombinedOrientation cDir) {
-        Vec3 localUpOffset = getRotated(northOffset, cDir.getLocalUp());
-        directionalOffset = getRotated(localUpOffset, cDir.getLocalForward());
+        directionalOffset = getRotated(northOffset, cDir);
         return this;
     }
 
@@ -189,33 +208,180 @@ public class NodeLocation {
                 );
             case EAST:
                 return new Vec3(
-                    vec.z,
+                    iv(vec.z),
                     vec.y,
                     vec.x
                 );
             case SOUTH:
                 return new Vec3(
-                    -vec.x,
+                    iv(vec.x),
                     vec.y,
-                    vec.z
+                    iv(vec.z)
                 );
             case WEST:
                 return new Vec3(
                     vec.z,
                     vec.y,
-                    -vec.x
+                    iv(vec.x)
                 );
-            case UP:
+            default:
+                return new Vec3(
+                    vec.x,
+                    vec.y,
+                    vec.z
+                );
+        }
+    }
+
+    /***
+     * we don't speak of this.
+     */
+    private Vec3 getRotated(Vec3 vec, CombinedOrientation cDir) {
+        currentDirection = cDir.getLocalForward();
+        switch(cDir) {
+            case DOWN_EAST:
+                return new Vec3(
+                    iv(vec.z),
+                    iv(vec.y),
+                    iv(vec.x)
+                );
+            case DOWN_NORTH:
+                return new Vec3(
+                    iv(vec.x),
+                    iv(vec.y),
+                    vec.z
+                );
+            case DOWN_SOUTH:
+                return new Vec3(
+                    vec.x,
+                    iv(vec.y),
+                    iv(vec.z)
+                );
+            case DOWN_WEST:
+                return new Vec3(
+                    vec.z,
+                    iv(vec.y),
+                    vec.x
+                );
+            case EAST_DOWN:
+                return new Vec3(
+                    vec.y,
+                    vec.z,
+                    vec.x
+                );
+            case EAST_NORTH:
+                return new Vec3(
+                    vec.y,
+                    iv(vec.x),
+                    vec.z
+                );
+            case EAST_SOUTH:
+                return new Vec3(
+                    vec.y,
+                    vec.x,
+                    iv(vec.z)
+                );
+            case EAST_UP:
+                return new Vec3(
+                    vec.y,
+                    iv(vec.z),
+                    iv(vec.x)
+                );
+            case NORTH_DOWN:
+                return new Vec3(
+                    vec.x,
+                    vec.z,
+                    iv(vec.y)
+                );
+            case NORTH_EAST:
+                return new Vec3(
+                    iv(vec.z),
+                    vec.x,
+                    iv(vec.y)
+                );
+            case NORTH_UP:
+                return new Vec3(
+                    iv(vec.x),
+                    iv(vec.z),
+                    iv(vec.y)
+                );
+            case NORTH_WEST:
+                return new Vec3(
+                    vec.z,
+                    iv(vec.x),
+                    iv(vec.y)
+                );
+            case SOUTH_DOWN:
+                return new Vec3(
+                    iv(vec.x),
+                    vec.z,
+                    vec.y
+                );
+            case SOUTH_EAST:
+                return new Vec3(
+                    iv(vec.z),
+                    iv(vec.x),
+                    vec.y
+                );
+            case SOUTH_UP:
+                return new Vec3(
+                    vec.x,
+                    iv(vec.z),
+                    vec.y
+                );
+            case SOUTH_WEST:
                 return new Vec3(
                     vec.z,
                     vec.x,
                     vec.y
                 );
-            case DOWN:
+            case UP_EAST:
+                return new Vec3(
+                    iv(vec.z),
+                    vec.y,
+                    vec.x
+                );
+            case UP_NORTH:
+                return new Vec3(
+                    vec.x,
+                    vec.y,
+                    vec.z
+                );
+            case UP_SOUTH:
+                return new Vec3(
+                    iv(vec.x),
+                    vec.y,
+                    iv(vec.z)
+                );
+            case UP_WEST:
                 return new Vec3(
                     vec.z,
-                    -vec.x,
-                    -vec.y
+                    vec.y,
+                    iv(vec.x)
+                );
+            case WEST_DOWN:
+                return new Vec3(
+                    iv(vec.y),
+                    vec.z,
+                    iv(vec.x)
+                );
+            case WEST_NORTH:
+                return new Vec3(
+                    iv(vec.y),
+                    vec.x,
+                    vec.z
+                );
+            case WEST_SOUTH:
+                return new Vec3(
+                    iv(vec.y),
+                    iv(vec.x),
+                    iv(vec.z)
+                );
+            case WEST_UP:
+                return new Vec3(
+                    iv(vec.y),
+                    iv(vec.z),
+                    vec.x
                 );
         }
         return new Vec3(
@@ -225,6 +391,19 @@ public class NodeLocation {
         );
     }
 
+    /***
+     * Inverts a double ranging from 0 to 1
+     * @param in
+     * @return
+     */
+    private double iv(double in) {
+        double out = in;
+        if(in < 0.5) out = in + ((0.5 - in) * 2);
+        if(in > 0.5) out = in + ((0.5 - in) * 2);
+        Mechano.log(in + " => " + out);
+        return out;
+    }
+
     public Direction getDefaultFacing() {
         return defaultFacing;
     }
@@ -232,6 +411,10 @@ public class NodeLocation {
     public AABB getHitbox() {
         updateHitbox();
         return hitbox;
+    }
+
+    public float getHitSize() {
+        return SIZE;
     }
 
     /***
@@ -271,12 +454,22 @@ public class NodeLocation {
     }
 
     /***
+     * Combines both the pixel-converted measurement and the raw measurement
+     * into a user-friendly String for debugging
+     * @param x double to work with
+     * @return A user-friendly String.
+     */
+    private String describe(double x) {
+        return vecToPix(x) + " (" + x + ")";
+    }
+
+    /***
      * A helper that returns this NodeLocation's location formatted as a string
      * @return
      */
     public String locationAsString() {
-        Vec3 raw = get();
-        return raw.x + ", " + raw.y + ", " + raw.z;
+        Vec3 raw = getDirectionalOffset();
+        return describe(raw.x) + ", " + describe(raw.y) + ", " + describe(raw.z);
     }
 
     public String toString() {

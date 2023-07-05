@@ -41,7 +41,7 @@ public class DiagonalGirderWrenchBehavior extends ClientBehavior {
 
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
-            BlockPos lookingBlockPos) {
+            BlockPos lookingBlockPos, double pTicks) {
         BlockState girderState = world.getBlockState(lookingBlockPos);
         DiagonalGirderBlock girderBlock = ((DiagonalGirderBlock)girderState.getBlock());
         List<Pair<AABB, GirderPartial>> possibleShapes = girderBlock.getRelevantPartials(girderState);    

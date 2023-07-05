@@ -3,6 +3,7 @@ package com.quattage.mechano.registry;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
 import com.quattage.mechano.content.item.wire.ElectricNodeWireBehavior;
+import com.quattage.mechano.core.electricity.ElectricNodeWireDebugger;
 import com.quattage.mechano.core.events.ClientBehavior;
 
 import net.minecraft.client.Minecraft;
@@ -17,6 +18,7 @@ public class MechanoClientEvents {
 
     public static final ElectricNodeWireBehavior SPOOL_BEHAVIOR = new ElectricNodeWireBehavior("WireSpoolOnElectricNode");
     public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
+    public static final ElectricNodeWireDebugger WIRE_DEBUG_BEHAVIOR = new ElectricNodeWireDebugger("ElectricNodeDebugger");
 
     @SubscribeEvent
 	public static void onTick(ClientTickEvent event) {

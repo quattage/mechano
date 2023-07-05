@@ -3,7 +3,9 @@ package com.quattage.mechano.core.electricity.node;
 import java.util.ArrayList;
 
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
+import com.quattage.mechano.core.electricity.node.base.ElectricNodeBuilder;
 import com.quattage.mechano.core.electricity.node.base.NodeLocation;
+import com.quattage.mechano.core.electricity.node.base.NodeMode;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,8 +32,16 @@ public class NodeBankBuilder {
         return this;
     }
 
+    public ElectricNodeBuilder newNode() {
+        return new ElectricNodeBuilder(this, target);
+    }
+
     public NodeBankBuilder add(NodeLocation location, String id, int maxConnections) {
         return add(new ElectricNode(location, id, maxConnections));
+    }
+
+    public NodeBankBuilder add(NodeLocation location, String id, NodeMode mode, int maxConnections) {
+        return add(new ElectricNode(location, id, mode, maxConnections));
     }
 
     public NodeBankBuilder add(int x, int y, int z, String id, int maxConnections) {

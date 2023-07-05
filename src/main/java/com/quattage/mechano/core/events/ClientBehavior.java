@@ -62,7 +62,7 @@ public abstract class ClientBehavior {
         
         tickSafe(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos, pTicks);
 
-        pTicks += setTickIncrement() / 1000000000;
+        pTicks += setTickIncrement();
         if(pTicks >= setTickRate() || pTicks < 0) pTicks = 0;
     }
 
@@ -74,7 +74,7 @@ public abstract class ClientBehavior {
         lastTime = thisTime;
         thisTime = System.nanoTime();
         
-        return thisTime - lastTime;
+        return (thisTime - lastTime) / 1000000000;
     }
 
     public String toString() {

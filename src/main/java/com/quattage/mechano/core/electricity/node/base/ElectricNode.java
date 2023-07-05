@@ -37,6 +37,21 @@ public class ElectricNode {
     }
 
     /***
+     * Create a new ElectricNode
+     * @param location NodeLocation to represent this node in the world
+     * @param id User-friendly name (converted to lowercase automatically)
+     * @param NodeMode Default mode for this ElectricNode
+     * @param maxConnections Maximum amount of allowed connections for this ElectricNode
+     */
+    public ElectricNode(NodeLocation location, String id, NodeMode mode, int maxConnections) {
+        this.maxConnections = maxConnections;
+        this.location = location;
+        this.id = id.toLowerCase();
+        this.mode = mode;
+        connections = new NodeConnection[maxConnections];
+    }
+
+    /***
      * Create a new ElectricNode from the data stored within a CompoundTag. <p>
      * This constructor operates in a vaccuum, you shouldn't ordinarily have to run it yourself  
      * since it's done for you by the NodeBank, but it's public f you want to use it. <p>
@@ -153,6 +168,10 @@ public class ElectricNode {
 
     public Color getColor(float percent) {
         return mode.getColor(percent);
+    }
+
+    public NodeMode getMode() {
+        return mode;
     }
 
     public void clearConnection(int index) {

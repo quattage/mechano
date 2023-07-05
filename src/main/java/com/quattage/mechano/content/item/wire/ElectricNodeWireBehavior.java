@@ -11,6 +11,7 @@ import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllItems;
+import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
 import com.simibubi.create.foundation.utility.Pair;
@@ -18,6 +19,7 @@ import com.simibubi.create.foundation.utility.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -53,20 +55,24 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
             Pair<ElectricNode, Double> target = blockEntity.nodes.getClosest(lookingPosition);
 
             if(target != null) {
+
                 ElectricNode node = target.getFirst();
                 double distance = target.getSecond().doubleValue();
+                AABB nodeBox = node.getHitbox();                
 
-                AABB nodeBox = node.getHitbox();
-                
                 if(distance < (node.getHitSize() * 1.5) + (growProgress * 0.3))
                     newGrow = incrementGrow() * 0.03;
                 else
                     newGrow = decrementGrow() * 0.03;
-                Mechano.log("TICK: " + pTicks);
+
                 nodeBox = nodeBox.inflate(Mth.lerp(pTicks, oldGrow, newGrow));
                 CreateClient.OUTLINER.showAABB(node.getId() + name, nodeBox)
-                    .lineWidth((float)Mth.clamp(newGrow, 0.01, 1))
+                    .disableLineNormals()
+                    .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+                    .lineWidth((float)Mth.clamp(newGrow, 0.006, 0.8))
                     .colored(node.getColor((float)growProgress));
+
+                Mechano.logSlow("MODE: " + node.getMode());
 
                 oldGrow = newGrow;
             }

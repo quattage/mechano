@@ -25,7 +25,15 @@ public class TestBlockEntity extends ElectricBlockEntity {
     @Override
     public void addConnections(NodeBankBuilder builder) {
         builder
-            .add(16, 10, 6, "INPUT", 1)
-            .add(0, 6, 11, "OUTPUT", 1);
+            .newNode()
+                .id("in1")
+                .at(16, 10, 6) 
+                .mode("I")
+                .build()
+            .newNode()
+                .id("out1")
+                .at(0, 6, 11)
+                .mode("O")
+                .build();
     }
 }

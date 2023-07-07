@@ -8,9 +8,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.Util;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public enum CombinedOrientation implements StringRepresentable {
     // stores both the diretion the model is facing in its local Y, and the direction the model is "looking" in its local Z.

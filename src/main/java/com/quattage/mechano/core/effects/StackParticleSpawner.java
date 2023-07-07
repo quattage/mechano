@@ -1,8 +1,5 @@
 package com.quattage.mechano.core.effects;
 
-import org.apache.commons.lang3.NotImplementedException;
-
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.util.BlockMath;
 
 import net.minecraft.core.BlockPos;
@@ -12,7 +9,6 @@ import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;

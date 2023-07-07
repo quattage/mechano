@@ -1,6 +1,5 @@
 package com.quattage.mechano.registry;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
 import com.quattage.mechano.content.item.wire.ElectricNodeWireBehavior;
 import com.quattage.mechano.core.electricity.ElectricNodeWireDebugger;

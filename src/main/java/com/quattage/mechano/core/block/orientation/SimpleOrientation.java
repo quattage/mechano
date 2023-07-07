@@ -8,7 +8,6 @@ import net.minecraft.Util;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public enum SimpleOrientation implements StringRepresentable {
     // stores both the direction the model is facing in its local Y, and the axis that the model's front lies on.

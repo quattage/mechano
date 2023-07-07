@@ -3,10 +3,8 @@ package com.quattage.mechano.content.block.power.transfer.voltometer;
 import java.util.Locale;
 
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
-import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
 
@@ -17,7 +15,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;

@@ -1,12 +1,10 @@
 package com.quattage.mechano.content.block.power.alternator.rotor;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
 
 import com.google.common.base.Predicates;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
@@ -27,7 +25,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -35,8 +32,6 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 

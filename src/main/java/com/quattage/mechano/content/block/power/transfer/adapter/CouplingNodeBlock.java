@@ -3,7 +3,6 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
 
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
@@ -11,14 +10,12 @@ import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllBlocks;
-import com.simibubi.create.AllShapes;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Direction.Axis;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;

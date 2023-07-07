@@ -6,7 +6,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock.StatorBlockModelType;
@@ -28,7 +27,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;

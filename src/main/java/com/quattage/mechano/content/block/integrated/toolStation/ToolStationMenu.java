@@ -6,7 +6,6 @@ import com.simibubi.create.foundation.gui.menu.MenuBase;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
@@ -30,6 +29,7 @@ public class ToolStationMenu extends MenuBase<ToolStationBlockEntity> {
 
     @Override
     protected ToolStationBlockEntity createOnClient(FriendlyByteBuf extraData) {
+        
 		ClientLevel world = Minecraft.getInstance().level;
 		BlockEntity tileEntity = world.getBlockEntity(extraData.readBlockPos());
 		if (tileEntity instanceof ToolStationBlockEntity toolStation) {

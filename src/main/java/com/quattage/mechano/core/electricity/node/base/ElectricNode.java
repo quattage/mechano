@@ -1,6 +1,5 @@
 package com.quattage.mechano.core.electricity.node.base;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.simibubi.create.foundation.utility.Color;
 
@@ -15,11 +14,14 @@ import net.minecraft.world.phys.Vec3;
  * mostly designed to be stored by a NodeBank.
  */
 public class ElectricNode {
+
+    private final String id;
+    private final int index;
+
     private final int maxConnections;
     private final NodeConnection[] connections;
-    private NodeLocation location;
-    private final String id;
 
+    private NodeLocation location;
     private NodeMode mode;
 
     /***
@@ -28,7 +30,8 @@ public class ElectricNode {
      * @param id User-friendly name (converted to lowercase automatically)
      * @param maxConnections Maximum amount of allowed connections for this ElectricNode
      */
-    public ElectricNode(NodeLocation location, String id, int maxConnections) {
+    public ElectricNode(NodeLocation location, String id, int maxConnections, int index) {
+        this.index = index;
         this.maxConnections = maxConnections;
         this.location = location;
         this.id = id.toLowerCase();
@@ -43,7 +46,8 @@ public class ElectricNode {
      * @param NodeMode Default mode for this ElectricNode
      * @param maxConnections Maximum amount of allowed connections for this ElectricNode
      */
-    public ElectricNode(NodeLocation location, String id, NodeMode mode, int maxConnections) {
+    public ElectricNode(NodeLocation location, String id, NodeMode mode, int maxConnections, int index) {
+        this.index = index;
         this.maxConnections = maxConnections;
         this.location = location;
         this.id = id.toLowerCase();
@@ -61,12 +65,13 @@ public class ElectricNode {
      * @param id User-friendly name (converted to lowercase automatically)
      * @param tag Tag containing the relevent data
      */
-    public ElectricNode(BlockPos root, String id, CompoundTag tag) {
-        this.maxConnections = tag.getInt("Connections");
+    public ElectricNode(BlockPos root, CompoundTag tag) {
+        this.id = tag.getString("ID");
+        this.index = tag.getInt("Index");
         this.location = new NodeLocation(root, tag.getCompound("NodeLocation"));
         this.mode = NodeMode.fromTag(tag);
-        this.id = id;
-        connections = new NodeConnection[maxConnections];
+        this.maxConnections = tag.getCompound("Connections").size();
+        this.connections = readAllConnections(tag);
     }
 
     /***
@@ -76,10 +81,33 @@ public class ElectricNode {
      */
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
+        out.putString("ID", id);
+        out.putInt("Index", index);
         out.put("NodeLocation", location.writeTo(new CompoundTag()));
         mode.writeTo(out);
-        out.putInt("Connections", maxConnections);
+        writeAllConnections(out);
         in.put(id, out);
+        return in;
+    }
+
+    private NodeConnection[] readAllConnections(CompoundTag in) {
+        CompoundTag connections = in.getCompound("Connections");
+        NodeConnection[] out = new NodeConnection[connections.size()];
+        for(String connect : connections.getAllKeys()) {
+            out[Integer.parseInt(connect)] = new NodeConnection(in.getCompound(connect));
+        }
+        return out;
+    }   
+
+    private CompoundTag writeAllConnections(CompoundTag in) {
+        CompoundTag out = new CompoundTag();
+        for(int x = 0; x < connections.length; x++) {
+            CompoundTag connect = new CompoundTag();
+            if(connections[x] != null) 
+                connect = connections[x].writeTo(new CompoundTag());
+            out.put("" + x, connect);
+        }
+        in.put("Connections", out);
         return in;
     }
 
@@ -179,7 +207,7 @@ public class ElectricNode {
     }
 
     public void clearConnection(int index, boolean shouldDropWire) {
-        NodeConnection removed = popConnection(index);
+        //NodeConnection removed = popConnection(index);
         
     }
 }

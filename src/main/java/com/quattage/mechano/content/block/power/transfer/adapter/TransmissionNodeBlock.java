@@ -3,10 +3,8 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
 
 import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlock;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.VoxelShaper;

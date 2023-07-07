@@ -1,6 +1,5 @@
 package com.quattage.mechano.core.electricity;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;

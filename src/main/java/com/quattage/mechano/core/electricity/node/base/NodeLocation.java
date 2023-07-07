@@ -1,16 +1,12 @@
 package com.quattage.mechano.core.electricity.node.base;
 
-import com.mrh0.createaddition.energy.LocalNode;
-import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.util.BlockMath;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class NodeLocation {

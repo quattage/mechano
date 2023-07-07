@@ -146,8 +146,8 @@ public class ElectricNodeBuilder {
     /***
      * Non-formatted, non-strict, colloquial name for this ElectricNode.
      * This ID will be serialized to and from NBT, so it's probably best to keep it brief, but it's up to you.
-     * @param name
-     * @return
+     * @param id ID to set this Builder to
+     * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder id(String id) {
         this.id = id;

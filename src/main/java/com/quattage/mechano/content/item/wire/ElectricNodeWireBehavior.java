@@ -1,29 +1,19 @@
 package com.quattage.mechano.content.item.wire;
 
-import javax.lang.model.util.ElementScanner14;
-
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.blockEntity.SyncableBlockEntity;
-import com.quattage.mechano.core.blockEntity.observe.IObservable;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
-import com.quattage.mechano.registry.MechanoBlocks;
-import com.simibubi.create.AllItems;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Color;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 

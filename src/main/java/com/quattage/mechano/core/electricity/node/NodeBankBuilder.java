@@ -7,7 +7,6 @@ import com.quattage.mechano.core.electricity.node.base.ElectricNodeBuilder;
 import com.quattage.mechano.core.electricity.node.base.NodeLocation;
 import com.quattage.mechano.core.electricity.node.base.NodeMode;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -37,19 +36,19 @@ public class NodeBankBuilder {
     }
 
     public NodeBankBuilder add(NodeLocation location, String id, int maxConnections) {
-        return add(new ElectricNode(location, id, maxConnections));
+        return add(new ElectricNode(location, id, maxConnections, nodesToAdd.size()));
     }
 
     public NodeBankBuilder add(NodeLocation location, String id, NodeMode mode, int maxConnections) {
-        return add(new ElectricNode(location, id, mode, maxConnections));
+        return add(new ElectricNode(location, id, mode, maxConnections, nodesToAdd.size()));
     }
 
     public NodeBankBuilder add(int x, int y, int z, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, Direction.NORTH), id, maxConnections));
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, Direction.NORTH), id, maxConnections, nodesToAdd.size()));
     }
 
     public NodeBankBuilder add(int x, int y, int z, Direction defaultDir, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, defaultDir), id, maxConnections));
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, defaultDir), id, maxConnections, nodesToAdd.size()));
     }
 
     private void doCompleteCheck() {

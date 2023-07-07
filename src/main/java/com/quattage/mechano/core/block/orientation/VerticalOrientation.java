@@ -2,15 +2,12 @@ package com.quattage.mechano.core.block.orientation;
 
 import java.util.Locale;
 
-import com.quattage.mechano.Mechano;
-
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.Util;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public enum VerticalOrientation implements StringRepresentable {
     // stores t

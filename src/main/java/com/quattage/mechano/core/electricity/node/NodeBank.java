@@ -200,7 +200,7 @@ public class NodeBank {
      * <strong>The best way to avoid any issues while using this method is to
      * always ensure the CompoundTag you provide was written by this NodeBank in the first place. <p>
      * (See {@link #writeTo(CompoundTag) writeTo})
-     * </strong> 
+     * </strong> Bank
      * @param in CompoundTag to use
      * @throws IllegalArgumentException if the given CompoundTag doesn't contain a "NodeBank" tag.
      * @throws IllegalArgumentException if the given CompoundTag's NodeBank is incompatable with this NodeBank.
@@ -236,6 +236,21 @@ public class NodeBank {
         return new BlockPos(in.getInt("BankX"), in.getInt("BankY"), in.getInt("BankZ"));
     }
 
+    public boolean contains(String id) {
+        for(int x = 0; x < NODES.length; x++) 
+            if(NODES[x].getId().equals(id)) return true;
+        
+        return false;
+    }
+
+    @Nullable
+    public ElectricNode get(String id) {
+        for(int x = 0; x < NODES.length; x++) 
+            if(NODES[x].getId().equals(id)) return NODES[x];
+        
+        return null;
+    }
+
     public String toString() {
         String out = "NodeBank bound to " + target.getClass().getSimpleName() + " at " + target.getBlockPos() + ":\n";
         for(int x = 0; x < NODES.length; x++) 
@@ -248,20 +263,29 @@ public class NodeBank {
     }
 
     /***
-     * Establish a NodeConnection between two ElectricNodes in a NodeBank
+     * Establish a NodeConnection between one ElectricNode in this NodeBank,
+     * and one ElectricNode in another bank. <p>
+     * 
+     * @param spoolType Type of connection to create - Determines transfer rate, wire model, etc.
+     * @param targetBank The other NodeBank, where the destination ElectricNode is.
+     * @param targetID The name of the destinationElectricNode in the targetBank.
      */
-    public void connect(WireSpool spoolType, NodeBank connectTo, int fromIndex, int toIndex) {
-        if(fromIndex > NODES.length) return;
-        if(toIndex > connectTo.NODES.length) return;
+    public void connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
 
-        NodeConnection fromConnection = new NodeConnection(fromIndex, toIndex, spoolType, pos, connectTo.pos);
-        NodeConnection toConnection = new NodeConnection(toIndex, fromIndex, spoolType, connectTo.pos, pos);
+        ElectricNode from = get(fromID);
+        ElectricNode to = targetBank.get(targetID);
 
+        if(from == null) throw new IllegalArgumentException("Connection couldn't be made - Origin NodeBank doesn't contain the ID '" + fromID + "'");
+        if(to == null) throw new IllegalArgumentException("Connection couldn't be made - Target NodeBank doesn't contain the ID '" + targetID + "'");
+
+        //TODO remove unnecessary declarations
+        NodeConnection fromConnection = new NodeConnection(targetID, spoolType, pos, targetBank.pos);
+        NodeConnection toConnection = new NodeConnection(fromID, spoolType, targetBank.pos, pos);
         Mechano.log("Connection established from: " + fromConnection + "  to: " + toConnection);
 
-        NODES[fromIndex].addConnection(fromConnection);
-        connectTo.NODES[toIndex].addConnection(toConnection);
+        from.addConnection(new NodeConnection(targetID, spoolType, pos, targetBank.pos));
+        to.addConnection(new NodeConnection(fromID, spoolType, targetBank.pos, pos));
 
-        markDirty(); connectTo.markDirty();
+        markDirty(); targetBank.markDirty();
     }
 }

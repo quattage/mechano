@@ -130,7 +130,7 @@ public abstract class WireSpool extends Item {
 
         if(be != null && be instanceof ElectricBlockEntity ebe) {
             if(handStack.hasTag()) {
-                if(handStack.getTag().contains("At") && handStack.getTag().contains("Index"))
+                if(handStack.getTag().contains("At") && handStack.getTag().contains("From"))
                     return handleTo(world, handStack, ebe, clickedPos, clickedLoc);
             }
             return handleFrom(world, handStack, ebe, clickedPos, clickedLoc);
@@ -152,7 +152,7 @@ public abstract class WireSpool extends Item {
 
                 CompoundTag nbt = wireStack.getOrCreateTag();   
                 nbt.put("At", writePos(clickedPos));
-                nbt.putInt("Index", node.getIndex());
+                nbt.putString("From", node.getId());
             }
             return InteractionResult.FAIL;
     }
@@ -164,12 +164,12 @@ public abstract class WireSpool extends Item {
             Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
             double distance = (double)clicked.getSecond();
             ElectricNode toNode = clicked.getFirst();
-            if(distance > toNode.getHitSize() * 1.45) return InteractionResult.PASS;
+            if(distance > toNode.getHitSize() * 1.47) return InteractionResult.PASS;
 
             if(wireStack.getItem() instanceof WireSpool spool) {
                 CompoundTag nbt = wireStack.getTag();
                 if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
-                    ebeFrom.nodes.connect(spool, ebe.nodes, nbt.getInt("Index"), toNode.getIndex());
+                    ebeFrom.nodes.connect(spool, nbt.getString("From"), ebe.nodes, toNode.getId());
                     clearTag(wireStack);
                     return InteractionResult.PASS;
                 }

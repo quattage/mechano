@@ -44,7 +44,7 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         boolean isOccupied = false;
 
         if(mainHand.hasTag()) {
-            isOccupied = mainHand.getTag().contains("At") || mainHand.getTag().contains("Index");
+            isOccupied = mainHand.getTag().contains("At") || mainHand.getTag().contains("From");
         }
     
         drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
@@ -85,7 +85,7 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         }
     }
 
-    private boolean bound(BlockEntity be, ItemStack wireStack) {
+    private boolean isBound(BlockEntity be, ItemStack wireStack) {
         if(wireStack.getTag() == null) return false;
         CompoundTag nbt = wireStack.getTag().getCompound("At");
         BlockPos targetPos = new BlockPos(

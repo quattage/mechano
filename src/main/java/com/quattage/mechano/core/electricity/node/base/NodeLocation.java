@@ -96,9 +96,9 @@ public class NodeLocation {
      */
     public NodeLocation(BlockPos root, CompoundTag tag) {
         this.northOffset = new Vec3(
-            tag.getDouble("xOffset"), 
-            tag.getDouble("yOffset"), 
-            tag.getDouble("zOffset")
+            tag.getDouble("oX"), 
+            tag.getDouble("oY"), 
+            tag.getDouble("oZ")
         );
         this.defaultFacing = Direction.NORTH;
         this.root = root;
@@ -107,9 +107,9 @@ public class NodeLocation {
     }
 
     public CompoundTag writeTo(CompoundTag in) {
-        in.putDouble("xOffset", northOffset.x);
-        in.putDouble("yOffset", northOffset.y);
-        in.putDouble("zOffset", northOffset.z);
+        in.putDouble("oX", northOffset.x);
+        in.putDouble("oY", northOffset.y);
+        in.putDouble("oZ", northOffset.z);
         return in;
     }
 

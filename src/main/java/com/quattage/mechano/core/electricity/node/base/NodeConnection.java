@@ -11,21 +11,18 @@ import net.minecraft.nbt.CompoundTag;
  */
 public class NodeConnection {
 
-	private final int fromIndex;
-	private final int toIndex;
+	private final String destinationId;
 	private final WireSpool spoolType;
 	private Vec3i relativePos;
 
-	public NodeConnection(int fromIndex, int toIndex, WireSpool spoolType, BlockPos from, BlockPos to) {
-		this.fromIndex = fromIndex;
-		this.toIndex = toIndex;
+	public NodeConnection(String destinationId, WireSpool spoolType, BlockPos from, BlockPos to) {
+		this.destinationId = destinationId;
 		this.spoolType = spoolType;
 		this.relativePos = from.subtract(to);
 	}
 
-    public NodeConnection(int fromIndex, int toIndex, WireSpool spoolType, Vec3i relativePos) {
-		this.fromIndex = fromIndex;
-		this.toIndex = toIndex;
+    public NodeConnection(String destinationId, WireSpool spoolType, Vec3i relativePos) {
+		this.destinationId = destinationId;
 		this.spoolType = spoolType;
 		this.relativePos = relativePos;
 	}
@@ -40,13 +37,12 @@ public class NodeConnection {
      * @param tag CompoundTag to pull data from
      */
 	public NodeConnection(CompoundTag tag) {
-		this.fromIndex = tag.getInt("From");
-		this.toIndex = tag.getInt("To");
+		this.destinationId = tag.getString("Target");
 		this.spoolType = WireSpool.get(tag.getString("SpoolType"));
 		this.relativePos = new Vec3i(
-            tag.getInt("Rx"), 
-            tag.getInt("Ry"), 
-            tag.getInt("Rz")
+            tag.getInt("rX"), 
+            tag.getInt("rY"), 
+            tag.getInt("rZ")
         );
 	}
 
@@ -55,16 +51,9 @@ public class NodeConnection {
                 + relativePos.getX() + ", " 
                 + relativePos.getY() + ", " 
                 + relativePos.getZ() + "]"
-                + ", From Index: " + fromIndex +
-                ", To Index: " + toIndex + "}";
-    }
-
-    /***
-     * Returns the inverse NodeConnection, where the toIndex and fromIndex are inverted.
-     * @return
-     */
-    public NodeConnection getInverse() {
-        return new NodeConnection(this.toIndex, this.fromIndex, this.spoolType, this.relativePos);
+                + ", Destination: " + destinationId
+                + ", Type: " + spoolType.getId() 
+                + "}";
     }
 
     /***
@@ -72,11 +61,10 @@ public class NodeConnection {
      * @param in CompoundTag to modify
      */
 	public CompoundTag writeTo(CompoundTag in) {
-		in.putInt("Rx", this.relativePos.getX());
-		in.putInt("Ry", this.relativePos.getY());
-		in.putInt("Rz", this.relativePos.getZ());
-		in.putInt("From", this.fromIndex);
-		in.putInt("To", this.toIndex);
+		in.putInt("rX", this.relativePos.getX());
+		in.putInt("rY", this.relativePos.getY());
+		in.putInt("rZ", this.relativePos.getZ());
+		in.putString("Destination", this.destinationId);
         if(spoolType == null) 
             in.putString("SpoolType", "none");
         else
@@ -89,19 +77,11 @@ public class NodeConnection {
 	}
 
     /***
-     * Gets the index of this NodeConnection's "from" connection
-     * @return Index of the "from" ElectricNode
+     * Gets the destination of this NodeConnection
+     * @return The ID of the ElectricNode targeted by this NodeConnection
      */
-	public int getFromIndex() {
-		return fromIndex;
-	}
-
-    /***
-     * Gets the index of this NodeConnection's "to" connection
-     * @return Index of the "to" ElectricNode
-     */
-	public int getToIndex() {
-		return toIndex;
+	public String getDestinationId() {
+		return destinationId;
 	}
 
     /***

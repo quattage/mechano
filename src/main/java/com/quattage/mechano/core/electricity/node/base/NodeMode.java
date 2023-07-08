@@ -57,27 +57,24 @@ public enum NodeMode implements StringRepresentable{
     }
 
     /***
-     * Populates a given CompoundTag with this NodeMode
+     * Populates a given CompoundTag with this NodeMode.
      * @param in CompoundTag to modify
      * @return The modified CompoundTag 
      */
     public CompoundTag writeTo(CompoundTag in) {
-        in.putString("NodeMode", getSerializedName());
+        in.putInt("mode", this.ordinal());
         return in;
     }
 
     /***
-     * 
+     * Creates a new NodeMode from the given tag.
      * @param in
      * @return The relevent NodeMode from this CompoundTag
      */
     public static NodeMode fromTag(CompoundTag in) {
-        if(in.contains("NodeMode")) {
-            String mode = in.getString("NodeMode");
-            if(mode.equals("insert")) return from(true, false);
-            if(mode.equals("extract")) return from(false, true);
-            if(mode.equals("both")) return from(true, true);
-            if(mode.equals("none")) return from(false, false);
+        if(in.contains("mode")) {
+            int mode = in.getInt("mode");
+            return NodeMode.values()[mode];
         }
         throw new IllegalArgumentException("CompoundTag " + in + " doesn't contain relevent values to read!");
     }

@@ -67,11 +67,11 @@ public class ElectricNode {
      * @param tag Tag containing the relevent data
      */
     public ElectricNode(BlockPos root, CompoundTag tag) {
-        this.id = tag.getString("ID");
-        this.index = tag.getInt("Index");
-        this.location = new NodeLocation(root, tag.getCompound("NodeLocation"));
+        this.id = tag.getString("id");
+        this.index = tag.getInt("num");
+        this.location = new NodeLocation(root, tag.getCompound("loc"));
         this.mode = NodeMode.fromTag(tag);
-        this.maxConnections = tag.getCompound("Connections").size();
+        this.maxConnections = tag.getCompound("nodes").size();
         this.connections = readAllConnections(tag);
     }
 
@@ -82,17 +82,17 @@ public class ElectricNode {
      */
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
-        out.putString("ID", id);
-        out.putInt("Index", index);
-        out.put("NodeLocation", location.writeTo(new CompoundTag()));
+        out.putString("id", id);
+        out.putInt("num", index);
+        out.put("loc", location.writeTo(new CompoundTag()));
         mode.writeTo(out);
-        out.put("Connections", writeAllConnections(new CompoundTag()));
+        out.put("nodes", writeAllConnections(new CompoundTag()));
         in.put(id, out);
         return in;
     }
 
     private NodeConnection[] readAllConnections(CompoundTag in) {
-        CompoundTag connections = in.getCompound("Connections");
+        CompoundTag connections = in.getCompound("nodes");
         NodeConnection[] out = new NodeConnection[connections.size()];
         for(String connect : connections.getAllKeys()) {
             Mechano.log("IN " + connect + ": " + in.getCompound(connect));
@@ -145,10 +145,12 @@ public class ElectricNode {
      * @return True if this Connection was successfully added
      */
     public boolean addConnection(NodeConnection connection) {
-        if(getConnectionAmount() == maxConnections) return false;
 
-        Mechano.log("Connection " + connection.getFromIndex() + " -> " + connection.getToIndex());
-        connections[connection.getFromIndex()] = connection;
+        int firstNotNullIndex = getConnectionAmount();
+        if(firstNotNullIndex == maxConnections) return false;     // this node is full
+
+        Mechano.log("Connection to " + connection.getDestinationId());
+        connections[firstNotNullIndex] = connection;
         Mechano.log(getConnectionsAsString());
 
         return true;

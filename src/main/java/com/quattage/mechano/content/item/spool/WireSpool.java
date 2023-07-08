@@ -2,10 +2,28 @@ package com.quattage.mechano.content.item.spool;
 
 import java.util.HashMap;
 
-import com.quattage.mechano.registry.MechanoItems;
+import javax.annotation.Nullable;
 
+import org.antlr.v4.parse.ANTLRParser.qid_return;
+
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.node.NodeBank;
+import com.quattage.mechano.core.electricity.node.base.ElectricNode;
+import com.quattage.mechano.registry.MechanoItems;
+import com.simibubi.create.foundation.utility.Pair;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 
 public abstract class WireSpool extends Item {
 
@@ -92,11 +110,112 @@ public abstract class WireSpool extends Item {
         return emptySpoolDrop;
     }
     
-    public final ItemStack getrawDrop() {
+    public final ItemStack getRawDrop() {
         return rawDrop;
     }
 
     public final int getRate() {
         return rate;
     }
+
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        Level world = context.getLevel();
+        BlockPos clickedPos = context.getClickedPos();
+        Vec3 clickedLoc = context.getClickLocation();
+        BlockEntity be = world.getBlockEntity(clickedPos);
+
+        ItemStack handStack = context.getItemInHand();
+        
+
+        if(be != null && be instanceof ElectricBlockEntity ebe) {
+            if(handStack.hasTag()) {
+                if(handStack.getTag().contains("At") && handStack.getTag().contains("Index"))
+                    return handleTo(world, handStack, ebe, clickedPos, clickedLoc);
+            }
+            return handleFrom(world, handStack, ebe, clickedPos, clickedLoc);
+        } 
+            
+        return InteractionResult.PASS;
+    }
+
+    private InteractionResult handleFrom(Level world, ItemStack wireStack, ElectricBlockEntity ebe, 
+        BlockPos clickedPos, Vec3 clickedLoc ) {
+
+            if(!world.isClientSide) {
+                Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+                double distance = (double)clicked.getSecond();
+                ElectricNode node = clicked.getFirst();
+
+                if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
+                //if(world.isClientSide) return InteractionResult.SUCCESS;
+
+                CompoundTag nbt = wireStack.getOrCreateTag();   
+                nbt.put("At", writePos(clickedPos));
+                nbt.putInt("Index", node.getIndex());
+            }
+            return InteractionResult.FAIL;
+    }
+
+    private InteractionResult handleTo(Level world, ItemStack wireStack, ElectricBlockEntity ebe,
+        BlockPos clickedPos, Vec3 clickedLoc) {
+
+        if(!world.isClientSide) {
+            Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+            double distance = (double)clicked.getSecond();
+            ElectricNode toNode = clicked.getFirst();
+            if(distance > toNode.getHitSize() * 1.45) return InteractionResult.PASS;
+
+            if(wireStack.getItem() instanceof WireSpool spool) {
+                CompoundTag nbt = wireStack.getTag();
+                if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
+                    ebeFrom.nodes.connect(spool, ebe.nodes, nbt.getInt("Index"), toNode.getIndex());
+                    clearTag(wireStack);
+                    return InteractionResult.PASS;
+                }
+            }
+        }
+        return InteractionResult.FAIL;
+    }
+
+    private CompoundTag writePos(BlockPos pos) {
+        CompoundTag out = new CompoundTag();
+        out.putInt("x", pos.getX());
+        out.putInt("y", pos.getY());
+        out.putInt("z", pos.getZ());
+        return out;
+    }
+
+    @Nullable
+    public BlockPos getPos(CompoundTag in) {
+
+        if(!in.contains("At")) return null;
+
+        CompoundTag at = in.getCompound("At");
+        BlockPos out = new BlockPos(
+            at.getInt("x"),
+            at.getInt("y"),
+            at.getInt("z")
+        );
+
+        return out;
+    }
+
+    @Override
+    public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
+        super.inventoryTick(stack, world, entity, slot, isSelected);
+        if(entity instanceof Player player) {
+            if(player.oAttackAnim == 0) return; // stupid way to tell if the player left clicks without writing an event
+            if(player.getMainHandItem().getItem() != stack.getItem()) return;
+            clearTag(stack);
+        }
+    }
+
+    private void clearTag(ItemStack stack) {
+        if(!stack.hasTag()) return;
+        stack.removeTagKey("At");
+        stack.removeTagKey("Index");
+        Mechano.log(name + " spool: Tags cleared");
+    }
+
 }

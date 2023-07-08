@@ -1,5 +1,6 @@
 package com.quattage.mechano.core.electricity.node.base;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.simibubi.create.foundation.utility.Color;
 
@@ -85,7 +86,7 @@ public class ElectricNode {
         out.putInt("Index", index);
         out.put("NodeLocation", location.writeTo(new CompoundTag()));
         mode.writeTo(out);
-        writeAllConnections(out);
+        out.put("Connections", writeAllConnections(new CompoundTag()));
         in.put(id, out);
         return in;
     }
@@ -94,20 +95,20 @@ public class ElectricNode {
         CompoundTag connections = in.getCompound("Connections");
         NodeConnection[] out = new NodeConnection[connections.size()];
         for(String connect : connections.getAllKeys()) {
-            out[Integer.parseInt(connect)] = new NodeConnection(in.getCompound(connect));
+            Mechano.log("IN " + connect + ": " + in.getCompound(connect));
+            if(!in.getCompound(connect).isEmpty())
+                out[Integer.parseInt(connect)] = new NodeConnection(in.getCompound(connect));
         }
         return out;
     }   
 
     private CompoundTag writeAllConnections(CompoundTag in) {
-        CompoundTag out = new CompoundTag();
         for(int x = 0; x < connections.length; x++) {
             CompoundTag connect = new CompoundTag();
             if(connections[x] != null) 
                 connect = connections[x].writeTo(new CompoundTag());
-            out.put("" + x, connect);
+            in.put("" + x, connect);
         }
-        in.put("Connections", out);
         return in;
     }
 
@@ -117,6 +118,10 @@ public class ElectricNode {
 
     public String getId() {
         return id;
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     public int getMaxConnections() {
@@ -130,15 +135,43 @@ public class ElectricNode {
     public double getHitSize() {
         return location.getHitSize();
     }
+    
+    /***
+     * Establish a new connection between two ElectricNodes. <p>
+     * When an ElectricNode is added, both ends of the connection recieve a
+     * NodeConnection. The root connection recieves the normal connnection,
+     * and the destination recieves the same connection but inverted.
+     * @param connection NodeConnection to add
+     * @return True if this Connection was successfully added
+     */
+    public boolean addConnection(NodeConnection connection) {
+        if(getConnectionAmount() == maxConnections) return false;
+
+        Mechano.log("Connection " + connection.getFromIndex() + " -> " + connection.getToIndex());
+        connections[connection.getFromIndex()] = connection;
+        Mechano.log(getConnectionsAsString());
+
+        return true;
+        //TODO verbose connection results
+    }
 
     /***
-     * Create a new connection 
-     * @param from from this node
-     * @param pos to this BLockPos
-     * @param to to this node @ the given BlockPos
+     * The amount of connections this ElectricNode currently has attached to it.
+     * @return
      */
-    public void createConnection(int from, int to, BlockPos pos) {
-        
+    public int getConnectionAmount() {
+        for(int x = 0; x < connections.length; x++) {
+            if(connections[x] == null) return x;
+        }
+        return connections.length;
+    }
+
+    public String getConnectionsAsString() {
+        String out = "";
+        for(int x = 0; x < connections.length; x++) {
+            out += "" + x + ": " + connections[x] + "\n";
+        }
+        return out;
     }
 
     /***

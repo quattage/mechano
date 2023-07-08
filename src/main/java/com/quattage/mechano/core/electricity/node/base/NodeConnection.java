@@ -23,6 +23,13 @@ public class NodeConnection {
 		this.relativePos = from.subtract(to);
 	}
 
+    public NodeConnection(int fromIndex, int toIndex, WireSpool spoolType, Vec3i relativePos) {
+		this.fromIndex = fromIndex;
+		this.toIndex = toIndex;
+		this.spoolType = spoolType;
+		this.relativePos = relativePos;
+	}
+
     /***
      * Create a new NodeConnection from the data stored within a CompoundTag. <p>
      * This constructor operates in a vaccuum, you shouldn't ordinarily have to run it yourself  
@@ -43,6 +50,23 @@ public class NodeConnection {
         );
 	}
 
+    public String toString() {
+        return "NodeConnection: {At [" 
+                + relativePos.getX() + ", " 
+                + relativePos.getY() + ", " 
+                + relativePos.getZ() + "]"
+                + ", From Index: " + fromIndex +
+                ", To Index: " + toIndex + "}";
+    }
+
+    /***
+     * Returns the inverse NodeConnection, where the toIndex and fromIndex are inverted.
+     * @return
+     */
+    public NodeConnection getInverse() {
+        return new NodeConnection(this.toIndex, this.fromIndex, this.spoolType, this.relativePos);
+    }
+
     /***
      * Po
      * @param in CompoundTag to modify
@@ -53,7 +77,10 @@ public class NodeConnection {
 		in.putInt("Rz", this.relativePos.getZ());
 		in.putInt("From", this.fromIndex);
 		in.putInt("To", this.toIndex);
-        in.putString("SpoolType", this.spoolType.getId());
+        if(spoolType == null) 
+            in.putString("SpoolType", "none");
+        else
+            in.putString("SpoolType", this.spoolType.getId());
         return in;
 	}
 

@@ -31,11 +31,21 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     /***
      * Add connections to the NodeBankBuilder here. Example:<pre>
      * builder
-     *  .add(8, 8, 8, Direction.NORTH, "MYNODE1", 1)
-     *  .add(8, 8, 8, Direction.NORTH, "MYNODE2", 1);
+     *  builder
+            .newNode()
+                .id("out1")
+                .at(0, 6, 11)
+                .mode("O")
+                .connections(2)
+                .build()
+            .newNode()
+                .id("in1")
+                .at(16, 10, 6) 
+                .mode("I")
+                .connections(2)
+                .build()
+        ;
      * </pre>
-     * This example adds two nodes to the NodeBankBuilder. Both of 
-     * which lie at the exact center of the parent block, and have allow
      * only 1 connection.
      * @param builder The NodeBuilder to add connections to
      */

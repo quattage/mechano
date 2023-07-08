@@ -11,9 +11,11 @@ import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -31,19 +33,31 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
     public boolean shouldTick(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand,
             Vec3 lookingPosition, BlockPos lookingBlockPos) {
 
-        return (mainHand.getItem() instanceof WireSpool 
-            && world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity
-            && !instance.options.renderDebug)
-            || growProgress > 0;
-            
+        return mainHand.getItem() instanceof WireSpool
+            && !instance.options.renderDebug;
     }
 
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos, double pTicks) {
+
+        boolean isOccupied = false;
+
+        if(mainHand.hasTag()) {
+            isOccupied = mainHand.getTag().contains("At") || mainHand.getTag().contains("Index");
+        }
+    
+        drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
+    }
+
+    /***
+     * Renders the on-screen information relevent to the player when they're holding a WireSpool.
+     * This renders the boxes that represent ElectricNodes.
+     */
+    private void drawNodes(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
+    BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
             Pair<ElectricNode, Double> target = blockEntity.nodes.getClosest(lookingPosition);
-
             if(target != null) {
 
                 ElectricNode node = target.getFirst();
@@ -69,6 +83,18 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         } else {
             oldGrow = 0; newGrow = 0; growProgress = 0.0;
         }
+    }
+
+    private boolean bound(BlockEntity be, ItemStack wireStack) {
+        if(wireStack.getTag() == null) return false;
+        CompoundTag nbt = wireStack.getTag().getCompound("At");
+        BlockPos targetPos = new BlockPos(
+            nbt.getInt("x"),
+            nbt.getInt("y"),
+            nbt.getInt("z")
+        );
+
+        return be.getBlockPos() != targetPos;
     }
 
     private double incrementGrow() {

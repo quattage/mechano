@@ -4,9 +4,12 @@ import java.util.ArrayList;
 
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.electricity.StrictElectricalBlock;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
+import com.quattage.mechano.core.electricity.node.base.NodeConnection;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -25,8 +28,8 @@ public class NodeBank {
     /**
      * The Version String is serialized directly to NBT
      * just in case any of this NBT stuff changes between
-     * releases. It can be used later to invalidate old 
-     * blocks to avoid breaking worlds
+     * releases. It can be changed later to invalidate old 
+     * blocks and avoid breaking worlds
      */
     private final String VERSION = "0";
     private final BlockEntity target;
@@ -155,6 +158,22 @@ public class NodeBank {
     }
 
     /***
+     * You'll probably want to use
+     * <pre>
+     * ElectricNode.getIndex()
+     * </pre>
+     * instead.
+     * @param node
+     * @return
+     */
+    public int forceFindIndex(ElectricNode node) {
+        if(node == null || NODES.length == 0 )  return -1;
+        for(int x = 0; x < NODES.length; x++)
+            if(NODES[x] == node) return x;
+        return -1;
+    }
+
+    /***
      * Write this NodeBank to the given CompoundTag
      * @param in CompoundTag to modify with additional data
      * @return the modified CompoundTag
@@ -189,7 +208,6 @@ public class NodeBank {
      * given CompoundTag.
      */
     public void readFrom(CompoundTag in) {
-
         String v = in.getString("BankVersion");
         if(v == null || !v.equals(VERSION)) return;
 
@@ -223,5 +241,27 @@ public class NodeBank {
         for(int x = 0; x < NODES.length; x++) 
             out += "Node " + x + ": " + NODES[x] + "\n";
         return out;
+    }
+
+    public void markDirty() {
+        target.setChanged();
+    }
+
+    /***
+     * Establish a NodeConnection between two ElectricNodes in a NodeBank
+     */
+    public void connect(WireSpool spoolType, NodeBank connectTo, int fromIndex, int toIndex) {
+        if(fromIndex > NODES.length) return;
+        if(toIndex > connectTo.NODES.length) return;
+
+        NodeConnection fromConnection = new NodeConnection(fromIndex, toIndex, spoolType, pos, connectTo.pos);
+        NodeConnection toConnection = new NodeConnection(toIndex, fromIndex, spoolType, connectTo.pos, pos);
+
+        Mechano.log("Connection established from: " + fromConnection + "  to: " + toConnection);
+
+        NODES[fromIndex].addConnection(fromConnection);
+        connectTo.NODES[toIndex].addConnection(toConnection);
+
+        markDirty(); connectTo.markDirty();
     }
 }

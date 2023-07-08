@@ -15,9 +15,9 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
-    public static final ElectricNodeWireBehavior SPOOL_BEHAVIOR = new ElectricNodeWireBehavior("WireSpoolOnElectricNode");
+    public static final ElectricNodeWireBehavior SPOOL_BEHAVIOR = new ElectricNodeWireBehavior("SpoolLookingAtElectricNode");
     public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
-    public static final ElectricNodeWireDebugger WIRE_DEBUG_BEHAVIOR = new ElectricNodeWireDebugger("ElectricNodeDebugger");
+    public static final ElectricNodeWireDebugger WIRE_DEBUG_BEHAVIOR = new ElectricNodeWireDebugger("DebugMenuElectricNode");
 
     @SubscribeEvent
 	public static void onTick(ClientTickEvent event) {

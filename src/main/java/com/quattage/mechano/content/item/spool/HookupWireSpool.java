@@ -24,5 +24,4 @@ public class HookupWireSpool extends WireSpool {
     protected Item setRawDrop() {
         return MechanoItems.HOOKUP_WIRE.get();
     }
-    
 }

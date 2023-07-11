@@ -72,7 +72,7 @@ public class ElectricNode {
         this.location = new NodeLocation(root, tag.getCompound("loc"));
         this.mode = NodeMode.fromTag(tag);
         this.maxConnections = tag.getCompound("nodes").size();
-        this.connections = readAllConnections(tag);
+        this.connections = readAllConnections(tag.getCompound("nodes"));
     }
 
     /***
@@ -92,13 +92,18 @@ public class ElectricNode {
     }
 
     private NodeConnection[] readAllConnections(CompoundTag in) {
-        CompoundTag connections = in.getCompound("nodes");
-        NodeConnection[] out = new NodeConnection[connections.size()];
-        for(String connect : connections.getAllKeys()) {
-            Mechano.log("IN " + connect + ": " + in.getCompound(connect));
-            if(!in.getCompound(connect).isEmpty())
-                out[Integer.parseInt(connect)] = new NodeConnection(in.getCompound(connect));
+        NodeConnection[] out = new NodeConnection[in.size()];
+        for(String connect : in.getAllKeys()) {
+            //Mechano.log(connect + " READ: " + in.getCompound(connect));
+            if(!in.getCompound(connect).isEmpty()) {
+                Mechano.log("TAG CONTAINS: " + in.getCompound(connect));
+                out[Integer.parseInt(connect.substring(1))] = 
+                    new NodeConnection(in.getCompound(connect));
+
+                Mechano.log("OBJECT GENERATED: " + out[Integer.parseInt(connect.substring(1))]);
+            }
         }
+        
         return out;
     }   
 
@@ -107,13 +112,14 @@ public class ElectricNode {
             CompoundTag connect = new CompoundTag();
             if(connections[x] != null) 
                 connect = connections[x].writeTo(new CompoundTag());
-            in.put("" + x, connect);
+            in.put("n" + x, connect);
         }
         return in;
     }
 
     public String toString() {
-        return "'" + id + "' -> {" + location + ", " + mode + "}";
+        return "'" + id + "' -> {" + location + ", " + mode + ", " 
+            + "Connections: " + getConnectionsAsString() + "}";
     }
 
     public String getId() {
@@ -145,14 +151,9 @@ public class ElectricNode {
      * @return True if this Connection was successfully added
      */
     public boolean addConnection(NodeConnection connection) {
-
         int firstNotNullIndex = getConnectionAmount();
-        if(firstNotNullIndex == maxConnections) return false;     // this node is full
-
-        Mechano.log("Connection to " + connection.getDestinationId());
+        if(firstNotNullIndex == maxConnections) return false;    // this node is full
         connections[firstNotNullIndex] = connection;
-        Mechano.log(getConnectionsAsString());
-
         return true;
         //TODO verbose connection results
     }
@@ -186,12 +187,17 @@ public class ElectricNode {
         return connections[index];
     }
 
+    public NodeConnection[] getConnections() {
+        return connections;
+    }
+
     /***
      * Whether there is a connection at the given index.
      * @param index Index to look
      * @return True of a connection exists at this index
      */
     public boolean hasConnection(int index) {
+        //Mechano.log("C:" + getConnection(index));
         return getConnection(index) != null;
     }
 
@@ -207,20 +213,41 @@ public class ElectricNode {
         return out;
     }
 
+    /***
+     * Rotates this ElectricNode to face the given Direction.
+     * @param dir Direction to rotate.
+     * @return This ElectricNode, but rotated.
+     */
     public ElectricNode setOrient(Direction dir) {
         location = location.rotate(dir);
         return this;
     }
 
+    /***
+     * Rotates this ElectricNode to face the given CombinedDirection. <p>
+     * CombinedDirection accomodates for any combination of directions, so
+     * you should probably use a CombinedDirection over 
+     * {@link #setOrient(Direction dir) a normal one}.
+     * @param dir CombinedDirection to rotate.
+     * @return This ElectricNode, but rotateed.
+     */
     public ElectricNode setOrient(CombinedOrientation dir) {
         location = location.rotate(dir);
         return this;
     }
 
+    /***
+     * Gets the NodeLocation object attached to this ElectricNode
+     * @return The NodeLocation attached to this ELectricNode
+     */
     public NodeLocation getNodeLocation() {
         return location;
     }
 
+    /***
+     * Gets the position of this ElectircNode
+     * @return A Vec3 representing the absolute position of this ElectricNode
+     */
     public Vec3 getPosition() {
         return location.get();
     }

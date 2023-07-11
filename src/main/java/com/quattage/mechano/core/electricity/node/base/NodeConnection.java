@@ -1,5 +1,6 @@
 package com.quattage.mechano.core.electricity.node.base;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 
 import net.minecraft.core.BlockPos;
@@ -37,8 +38,9 @@ public class NodeConnection {
      * @param tag CompoundTag to pull data from
      */
 	public NodeConnection(CompoundTag tag) {
-		this.destinationId = tag.getString("Target");
-		this.spoolType = WireSpool.get(tag.getString("SpoolType"));
+        Mechano.log("TAG: " + tag);
+		this.destinationId = tag.getString("target");
+		this.spoolType = WireSpool.get(tag.getString("type"));
 		this.relativePos = new Vec3i(
             tag.getInt("rX"), 
             tag.getInt("rY"), 
@@ -47,12 +49,16 @@ public class NodeConnection {
 	}
 
     public String toString() {
+        String type = "None";
+        if(spoolType != null) 
+            type = spoolType.getId(); 
+
         return "NodeConnection: {At [" 
                 + relativePos.getX() + ", " 
                 + relativePos.getY() + ", " 
                 + relativePos.getZ() + "]"
                 + ", Destination: " + destinationId
-                + ", Type: " + spoolType.getId() 
+                + ", Type: " + type 
                 + "}";
     }
 
@@ -64,11 +70,11 @@ public class NodeConnection {
 		in.putInt("rX", this.relativePos.getX());
 		in.putInt("rY", this.relativePos.getY());
 		in.putInt("rZ", this.relativePos.getZ());
-		in.putString("Destination", this.destinationId);
+		in.putString("target", this.destinationId);
         if(spoolType == null) 
-            in.putString("SpoolType", "none");
+            in.putString("type", "none");
         else
-            in.putString("SpoolType", this.spoolType.getId());
+            in.putString("type", this.spoolType.getId());
         return in;
 	}
 

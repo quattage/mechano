@@ -59,8 +59,9 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
             Pair<ElectricNode, Double> target = blockEntity.nodes.getClosest(lookingPosition);
             if(target != null) {
-
+                
                 ElectricNode node = target.getFirst();
+
                 double distance = target.getSecond().doubleValue();
                 AABB nodeBox = node.getHitbox();                
 
@@ -75,9 +76,6 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
                     .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
                     .lineWidth((float)Mth.clamp(newGrow, 0.006, 0.8))
                     .colored(node.getColor((float)growProgress));
-
-                Mechano.logSlow("MODE: " + node.getMode());
-
                 oldGrow = newGrow;
             }
         } else {

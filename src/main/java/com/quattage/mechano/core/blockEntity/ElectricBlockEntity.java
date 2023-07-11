@@ -11,6 +11,8 @@ import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -75,6 +77,14 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     public CompoundTag getUpdateTag() {
         return nodes.writeTo(new CompoundTag());
     }
+
+    @Override
+    public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet) {
+        // TODO Auto-generated method stub
+        super.onDataPacket(connection, packet);
+    }
+
+    
 
     @Override
     public void handleUpdateTag(CompoundTag tag) {

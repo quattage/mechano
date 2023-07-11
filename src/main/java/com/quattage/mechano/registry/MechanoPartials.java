@@ -7,18 +7,20 @@ import com.quattage.mechano.Mechano;
 // eg. The needle on Create's Stressometer.
 // CALLED BY LOGICAL CLIENT ONLY
 public class MechanoPartials {
-    public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_FLAT = makePartialBlock("simple/diagonal_girder/partials/partial_short_down_flat");
-    public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_VERT = makePartialBlock("simple/diagonal_girder/partials/partial_short_down_vert");
-    public static final PartialModel DIAGONAL_GIRDER_SHORT_UP_FLAT = makePartialBlock("simple/diagonal_girder/partials/partial_short_up_flat");
-    public static final PartialModel DIAGONAL_GIRDER_SHORT_UP_VERT = makePartialBlock("simple/diagonal_girder/partials/partial_short_up_vert");
-    public static final PartialModel DIAGONAL_GIRDER_LONG_DOWN_FLAT = makePartialBlock("simple/diagonal_girder/partials/partial_long_down_flat");
-    public static final PartialModel DIAGONAL_GIRDER_LONG_DOWN_VERT = makePartialBlock("simple/diagonal_girder/partials/partial_long_down_vert");
-    public static final PartialModel DIAGONAL_GIRDER_LONG_UP_FLAT = makePartialBlock("simple/diagonal_girder/partials/partial_long_up_flat");
-    public static final PartialModel DIAGONAL_GIRDER_LONG_UP_VERT = makePartialBlock("simple/diagonal_girder/partials/partial_long_up_vert");
+    public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_FLAT = newPartial("simple/diagonal_girder/partials/partial_short_down_flat");
+    public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_VERT = newPartial("simple/diagonal_girder/partials/partial_short_down_vert");
+    public static final PartialModel DIAGONAL_GIRDER_SHORT_UP_FLAT = newPartial("simple/diagonal_girder/partials/partial_short_up_flat");
+    public static final PartialModel DIAGONAL_GIRDER_SHORT_UP_VERT = newPartial("simple/diagonal_girder/partials/partial_short_up_vert");
+    public static final PartialModel DIAGONAL_GIRDER_LONG_DOWN_FLAT = newPartial("simple/diagonal_girder/partials/partial_long_down_flat");
+    public static final PartialModel DIAGONAL_GIRDER_LONG_DOWN_VERT = newPartial("simple/diagonal_girder/partials/partial_long_down_vert");
+    public static final PartialModel DIAGONAL_GIRDER_LONG_UP_FLAT = newPartial("simple/diagonal_girder/partials/partial_long_up_flat");
+    public static final PartialModel DIAGONAL_GIRDER_LONG_UP_VERT = newPartial("simple/diagonal_girder/partials/partial_long_up_vert");
 
-    public static final PartialModel VOLTOMETER_NEEDLE = makePartialBlock("power/transfer/voltometer/voltometer_needle");
 
-    private static PartialModel makePartialBlock(String path) {
+    public static final PartialModel VOLTOMETER_NEEDLE = newPartial("power/transfer/voltometer/voltometer_needle");
+    public static final PartialModel DEBUG_RED = newPartial("test/basic/cube");
+
+    private static PartialModel newPartial(String path) {
         return new PartialModel(Mechano.asResource("block/" + path));
 	}
 

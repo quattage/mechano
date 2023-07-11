@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
+import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.StrictElectricalBlock;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.base.NodeConnection;
@@ -14,7 +15,9 @@ import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -157,15 +160,6 @@ public class NodeBank {
         return out;
     }
 
-    /***
-     * You'll probably want to use
-     * <pre>
-     * ElectricNode.getIndex()
-     * </pre>
-     * instead.
-     * @param node
-     * @return
-     */
     public int forceFindIndex(ElectricNode node) {
         if(node == null || NODES.length == 0 )  return -1;
         for(int x = 0; x < NODES.length; x++)
@@ -251,6 +245,12 @@ public class NodeBank {
         return null;
     }
 
+    public int indexOf(String id) {
+        for(int x = 0; x < NODES.length; x++) 
+            if(NODES[x].getId().equals(id)) return x;
+        return -1;
+    }
+
     public String toString() {
         String out = "NodeBank bound to " + target.getClass().getSimpleName() + " at " + target.getBlockPos() + ":\n";
         for(int x = 0; x < NODES.length; x++) 
@@ -259,12 +259,22 @@ public class NodeBank {
     }
 
     public void markDirty() {
+        target.getLevel().sendBlockUpdated(pos,
+            target.getBlockState(), 
+            target.getBlockState(), 
+            3);
+
         target.setChanged();
     }
 
     /***
      * Establish a NodeConnection between one ElectricNode in this NodeBank,
      * and one ElectricNode in another bank. <p>
+     * A connection between two ElectricNodes is made of two NodeConnections, where both 
+     * ends store mirrored copies of the connection. <p> In practice, this means that the
+     * ElectricNode that the player selects first, <strong>(the "from" node)</strong>, recieves
+     * a normal NodeConnection, and the ElectricNode that the player selects second, 
+     * <strong>(the "target" node)</strong>, receives an inverted copy of the same NodeConnection.
      * 
      * @param spoolType Type of connection to create - Determines transfer rate, wire model, etc.
      * @param targetBank The other NodeBank, where the destination ElectricNode is.
@@ -272,20 +282,42 @@ public class NodeBank {
      */
     public void connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
 
-        ElectricNode from = get(fromID);
-        ElectricNode to = targetBank.get(targetID);
-
-        if(from == null) throw new IllegalArgumentException("Connection couldn't be made - Origin NodeBank doesn't contain the ID '" + fromID + "'");
-        if(to == null) throw new IllegalArgumentException("Connection couldn't be made - Target NodeBank doesn't contain the ID '" + targetID + "'");
-
-        //TODO remove unnecessary declarations
         NodeConnection fromConnection = new NodeConnection(targetID, spoolType, pos, targetBank.pos);
-        NodeConnection toConnection = new NodeConnection(fromID, spoolType, targetBank.pos, pos);
-        Mechano.log("Connection established from: " + fromConnection + "  to: " + toConnection);
+        NodeConnection targetConnection = new NodeConnection(fromID, spoolType, targetBank.pos, pos);
+        Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
-        from.addConnection(new NodeConnection(targetID, spoolType, pos, targetBank.pos));
-        to.addConnection(new NodeConnection(fromID, spoolType, targetBank.pos, pos));
+        NODES[indexOf(fromID)].addConnection(fromConnection);
+        targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
 
         markDirty(); targetBank.markDirty();
+    }
+
+    /***
+     * Get the NodeBank at the given location.
+     * @param world World to operate within
+     * @param pos BlockPos of the target BlockEntity
+     * @return The NodeBank at the given BlockPos, or null if none exists.
+     */
+    @Nullable
+    public static NodeBank retrieve(Level world, BlockPos pos) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be == null) return null;
+
+        if(be instanceof ElectricBlockEntity ebe)
+            return ebe.nodes;
+        return null;
+    }
+
+    /***
+     * Gets the NodeBank at the location determined by the given offset
+     * @param world World to operate within
+     * @param root The root ElectricBlockEntity, the one getting the NodeBank
+     * @param relativePos Relative position of the target NodeBank, usually acquired
+     * from a NodeConnection
+     * @return The NodeBank at the surmised BlockPos, or null if one does not exist.
+     */
+    @Nullable
+    public static NodeBank retrieveFrom(Level world, ElectricBlockEntity root, Vec3i relativePos) {
+        return retrieve(world, root.getBlockPos().subtract(relativePos));
     }
 }

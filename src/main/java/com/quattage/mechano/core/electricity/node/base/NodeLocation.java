@@ -396,7 +396,6 @@ public class NodeLocation {
         double out = in;
         if(in < 0.5) out = in + ((0.5 - in) * 2);
         if(in > 0.5) out = in + ((0.5 - in) * 2);
-        Mechano.log(in + " => " + out);
         return out;
     }
 

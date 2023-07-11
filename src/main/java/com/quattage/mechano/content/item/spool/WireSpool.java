@@ -142,37 +142,34 @@ public abstract class WireSpool extends Item {
     private InteractionResult handleFrom(Level world, ItemStack wireStack, ElectricBlockEntity ebe, 
         BlockPos clickedPos, Vec3 clickedLoc ) {
 
-            if(!world.isClientSide) {
-                Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
-                double distance = (double)clicked.getSecond();
-                ElectricNode node = clicked.getFirst();
+        Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+        double distance = clicked.getSecond().doubleValue();
+        ElectricNode node = clicked.getFirst();
 
-                if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
-                //if(world.isClientSide) return InteractionResult.SUCCESS;
+        if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
 
-                CompoundTag nbt = wireStack.getOrCreateTag();   
-                nbt.put("At", writePos(clickedPos));
-                nbt.putString("From", node.getId());
-            }
-            return InteractionResult.FAIL;
+        CompoundTag nbt = wireStack.getOrCreateTag();   
+        nbt.put("At", writePos(clickedPos));
+        nbt.putString("From", node.getId());
+
+        return InteractionResult.FAIL;
     }
 
     private InteractionResult handleTo(Level world, ItemStack wireStack, ElectricBlockEntity ebe,
         BlockPos clickedPos, Vec3 clickedLoc) {
 
-        if(!world.isClientSide) {
-            Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
-            double distance = (double)clicked.getSecond();
-            ElectricNode toNode = clicked.getFirst();
-            if(distance > toNode.getHitSize() * 1.47) return InteractionResult.PASS;
+        Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+        double distance = clicked.getSecond().doubleValue();
+        ElectricNode toNode = clicked.getFirst();
 
-            if(wireStack.getItem() instanceof WireSpool spool) {
-                CompoundTag nbt = wireStack.getTag();
-                if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
-                    ebeFrom.nodes.connect(spool, nbt.getString("From"), ebe.nodes, toNode.getId());
-                    clearTag(wireStack);
-                    return InteractionResult.PASS;
-                }
+        if(distance > toNode.getHitSize() * 1.47) return InteractionResult.PASS;
+
+        if(wireStack.getItem() instanceof WireSpool spool) {
+            CompoundTag nbt = wireStack.getTag();
+            if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
+                ebeFrom.nodes.connect(spool, nbt.getString("From"), ebe.nodes, toNode.getId());
+                clearTag(wireStack);
+                return InteractionResult.PASS;
             }
         }
         return InteractionResult.FAIL;

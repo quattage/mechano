@@ -10,9 +10,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 /***
- * Manages serialization of data relating to ElectricNodes as well as
- * active connections to other Electric Nodes. <p> The ElectricNode is 
- * mostly designed to be stored by a NodeBank.
+ * An ElectricNode is an object that stores important information about the relative location,
+ * active connections, and insertion/extraction modes of an arbitrary electrical connection.
  */
 public class ElectricNode {
 

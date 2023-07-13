@@ -23,8 +23,9 @@ import net.minecraft.world.phys.Vec3;
 
 
 /***
- * Manages an Array containing ElectricNodes. <p> The NodeBank is the "master" object
- * used by Electrically-enabled BlockEntities to allow wire attachments and power transfer.
+ * A NodeBank addresses, modifies, and serializes a pre-defined list of ElectricNodes.
+ * A NodeBank instance can be stored in any electrically-enabled BlockEntity to provide
+ * all related functionality, such as making connections and transfering power.
  */
 public class NodeBank {
 

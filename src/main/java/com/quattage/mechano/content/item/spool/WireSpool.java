@@ -13,6 +13,7 @@ import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.registry.MechanoItems;
 import com.simibubi.create.foundation.utility.Pair;
 
+import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionResult;
@@ -197,6 +198,8 @@ public abstract class WireSpool extends Item {
 
         return out;
     }
+
+    
 
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {

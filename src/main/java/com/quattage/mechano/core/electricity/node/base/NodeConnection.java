@@ -8,7 +8,10 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 
 /**
- * A class representing a node connected to a {@link IWireNode}.
+ * A logical representation of a connection between a pair of ElectricNodes.
+ * Pertinant information regarding connections are serialized to and from NBT,
+ * and include both the relative position of the connection's destination, as well
+ * as the type (or "tier") of connection being made.
  */
 public class NodeConnection {
 

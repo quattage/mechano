@@ -5,6 +5,10 @@ import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+/***
+ * A builder class that makes creating ElectricNode instances safer
+ * and somewhat more intuitive.
+ */
 public class ElectricNodeBuilder {
     
     private NodeBankBuilder activeBuilder;

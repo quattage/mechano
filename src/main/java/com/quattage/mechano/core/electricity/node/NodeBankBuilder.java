@@ -52,8 +52,8 @@ public class NodeBankBuilder {
     }
 
     private void doCompleteCheck() {
-        if(target == null) throw new IllegalArgumentException("NodeBank cannot be built with a null BlockEntity! use .at() during construction!");
-        if(nodesToAdd.isEmpty()) throw new IllegalArgumentException("NodeBank cannot be built with no ElectricNodes! use .add() to add nodes!");
+        if(target == null) throw new IllegalStateException("NodeBank cannot be built with a null BlockEntity! use .at() during construction!");
+        if(nodesToAdd.isEmpty()) throw new IllegalStateException("NodeBank cannot be built with no ElectricNodes! use .add() to add nodes!");
     }
 
     public NodeBank build() {

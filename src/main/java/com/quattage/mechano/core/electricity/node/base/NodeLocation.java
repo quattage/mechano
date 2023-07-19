@@ -87,6 +87,7 @@ public class NodeLocation {
         this.defaultFacing = defaultFacing;
         this.northOffset = calibrateToNorth(offset, defaultFacing);
         this.directionalOffset = northOffset;
+        this.currentDirection = Direction.NORTH;
         updateHitbox();
     }
 
@@ -103,6 +104,9 @@ public class NodeLocation {
         this.defaultFacing = Direction.NORTH;
         this.root = root;
         this.directionalOffset = northOffset;
+
+        Mechano.log("INIT OFFSET: " + directionalOffset);
+
         updateHitbox();
     }
 

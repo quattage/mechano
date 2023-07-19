@@ -10,13 +10,16 @@ import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.StrictElectricalBlock;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
-import com.quattage.mechano.core.electricity.node.base.NodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
@@ -36,9 +39,10 @@ public class NodeBank {
      * blocks and avoid breaking worlds
      */
     private final String VERSION = "0";
-    private final BlockEntity target;
-    private final BlockPos pos;
     private final ElectricNode[] NODES;
+
+    public final BlockEntity target;
+    public final BlockPos pos;
 
     /***
      * Creates a new NodeBank from an ArrayList of nodes.
@@ -180,11 +184,19 @@ public class NodeBank {
             NODES[x].writeTo(out);
         }
         in.putString("BankVersion", VERSION);
-        in.putInt("BankX", pos.getX());
-        in.putInt("BankY", pos.getY());
-        in.putInt("BankZ", pos.getZ());
         in.put("NodeBank", out);
         return in;
+    }
+
+    /***
+     * Returns true if there is a connection in this NodeBank
+     * that needs to be updated every tick.
+     * @return
+     */
+    public boolean shouldAlwaysRender() {
+        for(ElectricNode n : NODES) 
+            if(n.shouldAlwaysRender())return true;
+        return false;
     }
 
     /***
@@ -219,22 +231,17 @@ public class NodeBank {
             if(!bank.contains(thisID)) throw new IllegalArgumentException("This NodeBank instance contains an ElectricNode called '" 
                 + thisID + "', but the provided NodeBank NBT data does not!");
 
-            NODES[x] = new ElectricNode(posFromTag(in), bank.getCompound(thisID));
+            NODES[x] = new ElectricNode(target, bank.getCompound(thisID));
+            
 
-            if(target.getBlockState().getBlock() instanceof StrictElectricalBlock eBlock) {
+            if(target.getBlockState().getBlock() instanceof StrictElectricalBlock eBlock)
                 NODES[x].setOrient(target.getBlockState().getValue(StrictElectricalBlock.ORIENTATION));
-            }
         }
-    }
-
-    private BlockPos posFromTag(CompoundTag in) {
-        return new BlockPos(in.getInt("BankX"), in.getInt("BankY"), in.getInt("BankZ"));
     }
 
     public boolean contains(String id) {
         for(int x = 0; x < NODES.length; x++) 
             if(NODES[x].getId().equals(id)) return true;
-        
         return false;
     }
 
@@ -242,7 +249,6 @@ public class NodeBank {
     public ElectricNode get(String id) {
         for(int x = 0; x < NODES.length; x++) 
             if(NODES[x].getId().equals(id)) return NODES[x];
-        
         return null;
     }
 
@@ -264,8 +270,38 @@ public class NodeBank {
             target.getBlockState(), 
             target.getBlockState(), 
             3);
-
         target.setChanged();
+    }
+
+    public void initConnections() {
+        for(int x = 0; x < NODES.length; x++) {
+            NODES[x].initConnections(target);
+        }
+    }
+
+    /***
+     * Adds a FakeNodeConnection at the given fromID in this NodeBank.
+     * Fake Connections hold a connection between a source BlockEntity and a
+     * destination Entity, rather than to BlockEntity positions. 
+     * This means that they can be updated in real-time, for things like 
+     * attaching a wire to a player.
+     */
+    public FakeNodeConnection makeFakeConnection(WireSpool spoolType, String fromID, Entity targetEntity) {
+        Vec3 sourcePos = get(fromID).getPosition();
+        FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
+        Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
+
+        NODES[indexOf(fromID)].addConnection(fakeConnection);
+        return fakeConnection;
+    }
+
+    /***
+     * Establish an ElectricNodeConnection between two ElectricNodes, where the
+     * input is the FakeNodeConnection to "upgrade" into an ElectricNodeConnection
+     */
+    public void makeFullConnection(FakeNodeConnection fake, NodeBank targetBank, String targetID) {
+        NODES[indexOf(fake.getSourceID())].nullifyLastConnection();
+        connect(fake.getSpoolType(), fake.getSourceID(), targetBank, targetID);
     }
 
     /***
@@ -282,9 +318,11 @@ public class NodeBank {
      * @param targetID The name of the destinationElectricNode in the targetBank.
      */
     public void connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
+        Vec3 sourcePos = get(fromID).getPosition();
+        Vec3 destPos = targetBank.get(targetID).getPosition();
 
-        NodeConnection fromConnection = new NodeConnection(targetID, spoolType, pos, targetBank.pos);
-        NodeConnection targetConnection = new NodeConnection(fromID, spoolType, targetBank.pos, pos);
+        NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
+        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
         NODES[indexOf(fromID)].addConnection(fromConnection);
@@ -303,7 +341,6 @@ public class NodeBank {
     public static NodeBank retrieve(Level world, BlockPos pos) {
         BlockEntity be = world.getBlockEntity(pos);
         if(be == null) return null;
-
         if(be instanceof ElectricBlockEntity ebe)
             return ebe.nodes;
         return null;
@@ -318,7 +355,7 @@ public class NodeBank {
      * @return The NodeBank at the surmised BlockPos, or null if one does not exist.
      */
     @Nullable
-    public static NodeBank retrieveFrom(Level world, ElectricBlockEntity root, Vec3i relativePos) {
+    public static NodeBank retrieveFrom(Level world, BlockEntity root, Vec3i relativePos) {
         return retrieve(world, root.getBlockPos().subtract(relativePos));
     }
 }

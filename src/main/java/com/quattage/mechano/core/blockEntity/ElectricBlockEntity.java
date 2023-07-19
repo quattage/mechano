@@ -2,6 +2,7 @@ package com.quattage.mechano.core.blockEntity;
 
 import java.util.List;
 
+import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
@@ -57,8 +58,32 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         nodes = nodes.setOrient(dir);
     }
 
+    /***
+     * Sets the orientation of this ElectricBlockEntity's NodeBank to the given 
+     * CombinedDirection. <p> Changing the orientation of a NodeBank effectively 
+     * rotates every ElectricNode about this BlockEntity's origin (0.5, 0.5, 0.5). 
+     * @param dir
+     */
     public void setOrient(CombinedOrientation dir) {
         nodes = nodes.setOrient(dir);
+    }
+
+    /***
+     * Sets the orientation of this ElectricBlockEntity's NodeBank to the 
+     * current direction of the parent block's BlockState.
+     */
+    public void refreshOrient() {
+        BlockState state = this.getBlockState();
+        if(state != null && state.getBlock() instanceof CombinedOrientedBlock) 
+            setOrient(state.getValue(CombinedOrientedBlock.ORIENTATION));
+    }
+
+    @Override
+    public void initialize() {        
+        super.initialize();
+
+        nodes.initConnections();
+        refreshOrient();
     }
     
     @Override

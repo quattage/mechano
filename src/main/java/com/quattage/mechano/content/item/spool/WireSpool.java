@@ -10,6 +10,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
+import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.registry.MechanoItems;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -34,6 +35,9 @@ public abstract class WireSpool extends Item {
     protected final ItemStack emptySpoolDrop;
     protected final ItemStack rawDrop;
     public static final HashMap<String, WireSpool> spoolTypes = new HashMap<String, WireSpool>();
+
+    public FakeNodeConnection intermediary;
+    public ElectricBlockEntity target;
 
     /***
      * Create a new WireSpool object
@@ -128,38 +132,44 @@ public abstract class WireSpool extends Item {
 
         ItemStack handStack = context.getItemInHand();
         
-
         if(be != null && be instanceof ElectricBlockEntity ebe) {
+
+            target = ebe;
             if(handStack.hasTag()) {
-                if(handStack.getTag().contains("At") && handStack.getTag().contains("From"))
-                    return handleTo(world, handStack, ebe, clickedPos, clickedLoc);
+                if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
+                    return handleTo(world, handStack, clickedPos, clickedLoc);
             }
-            return handleFrom(world, handStack, ebe, clickedPos, clickedLoc);
+            return handleFrom(world, handStack, clickedPos, clickedLoc, context.getPlayer());
         } 
             
         return InteractionResult.PASS;
     }
 
-    private InteractionResult handleFrom(Level world, ItemStack wireStack, ElectricBlockEntity ebe, 
-        BlockPos clickedPos, Vec3 clickedLoc ) {
+    private InteractionResult handleFrom(Level world, ItemStack wireStack,
+        BlockPos clickedPos, Vec3 clickedLoc, Entity placer) {
 
-        Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+        Pair<ElectricNode, Double> clicked = target.nodes.getClosest(clickedLoc);
+        if(clicked == null) return InteractionResult.PASS;
+
         double distance = clicked.getSecond().doubleValue();
         ElectricNode node = clicked.getFirst();
 
         if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
 
         CompoundTag nbt = wireStack.getOrCreateTag();   
-        nbt.put("At", writePos(clickedPos));
-        nbt.putString("From", node.getId());
+        nbt.put("at", writePos(clickedPos));
+        nbt.putString("from", node.getId());
 
+        intermediary = target.nodes.makeFakeConnection(this, node.getId(), placer);
         return InteractionResult.FAIL;
     }
 
-    private InteractionResult handleTo(Level world, ItemStack wireStack, ElectricBlockEntity ebe,
+    private InteractionResult handleTo(Level world, ItemStack wireStack,
         BlockPos clickedPos, Vec3 clickedLoc) {
 
-        Pair<ElectricNode, Double> clicked = ebe.nodes.getClosest(clickedLoc);
+        Pair<ElectricNode, Double> clicked = target.nodes.getClosest(clickedLoc);
+        if(clicked == null) return InteractionResult.PASS;
+    
         double distance = clicked.getSecond().doubleValue();
         ElectricNode toNode = clicked.getFirst();
 
@@ -168,7 +178,7 @@ public abstract class WireSpool extends Item {
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
             if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
-                ebeFrom.nodes.connect(spool, nbt.getString("From"), ebe.nodes, toNode.getId());
+                ebeFrom.nodes.makeFullConnection(intermediary, target.nodes, toNode.getId());
                 clearTag(wireStack);
                 return InteractionResult.PASS;
             }
@@ -187,9 +197,9 @@ public abstract class WireSpool extends Item {
     @Nullable
     public BlockPos getPos(CompoundTag in) {
 
-        if(!in.contains("At")) return null;
+        if(!in.contains("at")) return null;
 
-        CompoundTag at = in.getCompound("At");
+        CompoundTag at = in.getCompound("at");
         BlockPos out = new BlockPos(
             at.getInt("x"),
             at.getInt("y"),
@@ -204,18 +214,37 @@ public abstract class WireSpool extends Item {
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
         super.inventoryTick(stack, world, entity, slot, isSelected);
-        if(entity instanceof Player player) {
-            if(player.oAttackAnim == 0) return; // stupid way to tell if the player left clicks without writing an event
-            if(player.getMainHandItem().getItem() != stack.getItem()) return;
-            clearTag(stack);
+        if(entity instanceof Player player && stack.getTag() != null) {
+            if(stack.getTag().contains("at") || stack.getTag().contains("from")) {
+                if(player.oAttackAnim != 0 || player.getMainHandItem().getItem() != stack.getItem()) {
+                    clearTag(stack);
+                    if(intermediary != null) cancelConnection(target, intermediary.getSourceID());
+                }
+            }
         }
+    }
+
+    private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
+        Mechano.log(name + ": Connection removed");
+        Mechano.log("My honest reaction: " + ebe.nodes.get(sourceID));
+
+        //ElectricBlockEntity refreshed = refresh(ebe); 
+        //Mechano.log("BEFORE: " + ebe + "REFRESHED: " + refreshed);
+        if(ebe != null) ebe.nodes.get(sourceID).nullifyLastConnection();
+        intermediary = null;
+    }
+
+    private ElectricBlockEntity refresh(ElectricBlockEntity in) {
+        BlockEntity out = in.getLevel().getBlockEntity(in.getBlockPos());
+        if(out instanceof ElectricBlockEntity ebe)
+            return ebe;
+        return null;
     }
 
     private void clearTag(ItemStack stack) {
         if(!stack.hasTag()) return;
-        stack.removeTagKey("At");
-        stack.removeTagKey("Index");
-        Mechano.log(name + " spool: Tags cleared");
+        stack.removeTagKey("at");
+        stack.removeTagKey("from");
     }
 
 }

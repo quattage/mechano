@@ -1,85 +1,52 @@
+
+
 package com.quattage.mechano.core.electricity.rendering;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
+import com.quattage.mechano.core.util.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.world.phys.Vec3;
 
+/***
+ * Populates a given PoseStack with a dynamically generated WireModel
+ */
 public class WireModelRenderer {
 
-    private static final float SCALE = 1f;
+    /***
+     * Overall scale, or "thickness" of the wire
+     */
+    private static final float SCALE = 0.6f;
+
+    /***
+     * The rotation (in degrees) of the wire's profile
+     */
+    private static final int SKEW = 0;
+
+    /***
+     * How much the wire hangs
+     */
+    private static final float SAGGINESS = 20;  
+
+    /***
+     * The wire's Level of Detail
+     */
     private static final int LOD = 4;
+
+    /***
+     * The maximum amount of iterations for a single wire. Used
+     * to prevent lag or stack overflows in extreme edge cases 
+     */
     private static final int LOD_LIMIT = 512;
+    
+    
 
-    private final Object2ObjectOpenHashMap<BakedModelHashKey, WireModel> modelCache = new Object2ObjectOpenHashMap<>(256);
-
-    public void renderFromCache(VertexConsumer buffer, PoseStack matrix, BakedModelHashKey key, Vector3f origin, 
-        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
-
-        WireModel model = null;
-
-        if(modelCache.containsKey(key)) model = modelCache.get(key);
-        else {
-            model = buildWireModel(origin);
-            modelCache.put(key, model);
-        }
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
-    }
-
-    private WireModel buildWireModel(Vector3f origin) {
-        float segmentLength = 1 / LOD;
-        int capacity = (int)(2 * new Vec3(origin).lengthSqr());
-        WireModel.WireBuilder builder = WireModel.builder(capacity);
-
-        if(Float.isNaN(origin.x()) && Float.isNaN(origin.z())) {
-            buildVerticalGeo()
-        }
-    }
-
-    private void buildFaceVertical(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
-        vec.setX(0);
-        vec.setZ(0);
-        float actualSegmentLength = 1f / LOD;
-        float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
-
-        Vector3f normal = new Vector3f((float) Math.cos(Math.toRadians(angle)), 0, (float) Math.sin(Math.toRadians(angle)));
-        normal.normalize(fullWidth);
-
-        Vector3f vert00 = new Vector3f(-normal.x() / 2, 0, -normal.z() / 2), 
-            vert01 = new Vector3f(vert00.x(), vert00.y(), vert00.z());
-
-        Vector3f vert10 = new Vector3f(-normal.x() / 2, 0, -normal.z() / 2), 
-            vert11 = new Vector3f(vert10.x(), vert10.y(), vert10.z());
-
-        float uvv0 = 0, uvv1 = 0;
-        boolean lastIter = false;
-        for (int segment = 0; segment < LOD_LIMIT; segment++) {
-            if (vert00.y() + actualSegmentLength >= v.y()) {
-                lastIter = true;
-                actualSegmentLength = v.y() - vert00.y();
-            }
-
-            vert10.add(0, actualSegmentLength, 0);
-            vert11.add(0, actualSegmentLength, 0);
-
-            uvv1 += actualSegmentLength / SCALE;
-
-            builder.addVertex(vert00).withUV(uv.x0() / 16f, uvv0).next();
-            builder.addVertex(vert01).withUV(uv.x1() / 16f, uvv0).next();
-            builder.addVertex(vert11).withUV(uv.x1() / 16f, uvv1).next();
-            builder.addVertex(vert10).withUV(uv.x0() / 16f, uvv1).next();
-
-            if (lastIter) break;
-
-            uvv0 = uvv1;
-
-            vert00.sub(vert10);
-            vert01.sub(vert11);
-        }
-    }
-
+    /***
+     * Represents a hash, used as an identifier for a WireModel's place in the cache.
+     */
     public static class BakedModelHashKey {
         private final int hash;
 
@@ -105,5 +72,200 @@ public class WireModelRenderer {
         public int hashCode() {
             return hash;
         }
+    }
+
+    private final Object2ObjectOpenHashMap<BakedModelHashKey, WireModel> modelCache = new Object2ObjectOpenHashMap<>(256);
+
+    /***
+     * Renders a WireModel from the cache, or builds a new one if it does not exist.
+     * @param buffer
+     * @param matrix
+     * @param key
+     * @param origin
+     * @param fromBlockLight
+     * @param toBlockLight
+     * @param fromSkyLight
+     * @param toSkyLight
+     */
+    public void renderFromCache(VertexConsumer buffer, PoseStack matrix, BakedModelHashKey key, Vector3f origin, 
+        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
+
+        WireModel model;
+        if(modelCache.containsKey(key)) model = modelCache.get(key);
+        else {
+            model = buildWireModel(origin);
+            modelCache.put(key, model);
+        }
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+    }
+
+    /***
+     * Renders a WireModel while ignoring the cache.
+     * @param buffer
+     * @param matrices
+     * @param chainVec
+     * @param blockLight0
+     * @param blockLight1
+     * @param skyLight0
+     * @param skyLight1
+     */
+    public void renderFrequent(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
+            
+        WireModel model = buildWireModel(origin);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+    }
+
+    private WireModel buildWireModel(Vector3f origin) {
+        int capacity = (int)(2 * new Vec3(origin).lengthSqr());
+        WireModel.WireBuilder builder = WireModel.builder(capacity);
+
+        if(Float.isNaN(origin.x()) && Float.isNaN(origin.z())) {
+            buildVertical(builder, origin, SKEW, WireUV.SKEW_A);        //      | 
+            buildVertical(builder, origin, SKEW + 90, WireUV.SKEW_B);   //      —
+        } else {
+            buildNominal(builder, origin, SKEW, WireUV.SKEW_A);         //      |  
+            buildNominal(builder, origin, SKEW + 90, WireUV.SKEW_B);    //      —
+        }
+        return builder.build();
+    }
+
+    /***
+     * Builds a model, but only when the wire is perfectly vertical.
+     * This is done for optimization purposes, and because {@link #buildNominal buildNominal}
+     * breaks down when rendering perfectly vertical wires.
+     * @param builder
+     * @param vec
+     * @param angle
+     * @param uv
+     */
+    private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
+        float contextualLength = 1f / LOD;
+        float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
+
+        Vector3f unit = new Vector3f((float) Math.cos(Math.toRadians(angle)), 0, (float) Math.sin(Math.toRadians(angle)));
+        unit.mul(fullWidth);
+
+        Vector3f vertA1 = new Vector3f(-unit.x() / 2, 0, -unit.z() / 2), 
+            vertA2 = vertA1.copy();
+        vertA2.add(unit);
+
+        Vector3f vertB1 = new Vector3f(-unit.x() / 2, 0, -unit.z() / 2), 
+            vertB2 = vertB1.copy();
+        vertA2.add(unit);
+
+        float uvv0 = 0, uvv1 = 0;
+        boolean lastIter = false;
+        for (int segment = 0; segment < LOD_LIMIT; segment++) {
+            if (vertA1.y() + contextualLength >= vec.y()) {
+                lastIter = true;
+                contextualLength = vec.y() - vertA1.y();
+            }
+
+            vertB1.add(0, contextualLength, 0);
+            vertB2.add(0, contextualLength, 0);
+
+            uvv1 += contextualLength / SCALE;
+
+            builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
+            builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
+            builder.addVertex(vertB2).withUV(uv.x1() / 16f, uvv1).next();
+            builder.addVertex(vertB1).withUV(uv.x0() / 16f, uvv1).next();
+
+            if (lastIter) break;
+
+            uvv0 = uvv1;
+
+            vertA1.load(vertB1);
+            vertA2.load(vertB2);
+        }
+    }
+
+    private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
+        
+        float contextualLength = 1f / LOD;
+        float distance = VectorHelper.getLength(vec), distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
+        float wrongDistanceFactor = distance / distanceXZ;
+
+        Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
+            vertB2 = new Vector3f(), vertB1 = new Vector3f();
+
+        Vector3f normal = new Vector3f(), rotAxis = new Vector3f();
+        float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
+
+        float uvv0, uvv1 = 0, gradient, x, y;
+        Vector3f point0 = new Vector3f(), point1 = new Vector3f();
+
+        point0.set(0, (float) VectorHelper.drip2(SAGGINESS, 0, distance, vec.y()), 0);
+        gradient = (float) VectorHelper.drip2prime(SAGGINESS, 0, distance, vec.y());
+        normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
+        normal.normalize();
+
+        x = VectorHelper.estimateDeltaX(contextualLength, gradient);
+        gradient = (float) VectorHelper.drip2prime(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+        y = (float) VectorHelper.drip2(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+        point1.set(x, y, 0);
+
+        rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
+        rotAxis.normalize();
+
+        Quaternion rotator = rotAxis.rotationDegrees(angle);
+        normal.transform(rotator);
+
+        normal.mul(fullWidth);
+        vertB1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
+        vertB2.load(vertB1);
+        vertB2.add(normal);
+
+        contextualLength = VectorHelper.distanceBetween(point0, point1);
+    
+        // thanks to legoatoom's ConnectableChains for most of this code
+        boolean lastIter = false;
+        for (int segment = 0; segment < LOD_LIMIT; segment++) {
+
+            rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
+            rotAxis.normalize();
+            rotator = rotAxis.rotationDegrees(angle);
+
+            normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
+            normal.normalize();
+            normal.transform(rotator);
+            normal.mul(fullWidth);
+
+            vertA1.load(vertB1);
+            vertA2.load(vertB2);
+
+            vertB1.set(point1.x() - normal.x() / 2, point1.y() - normal.y() / 2, point1.z() - normal.z() / 2);
+            vertB2.load(vertB1);
+            vertB2.add(normal);
+
+            uvv0 = uvv1;
+            uvv1 = uvv0 + contextualLength / SCALE;
+
+            builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
+            builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
+            builder.addVertex(vertB2).withUV(uv.x1() / 16f, uvv1).next();
+            builder.addVertex(vertB1).withUV(uv.x0() / 16f, uvv1).next();
+
+            if (lastIter) break;
+
+            point0.load(point1);
+
+            x += VectorHelper.estimateDeltaX(contextualLength, gradient);
+            if (x >= distanceXZ) {
+                lastIter = true;
+                x = distanceXZ;
+            }
+
+            gradient = (float) VectorHelper.drip2prime(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+            y = (float) VectorHelper.drip2(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+            point1.set(x, y, 0);
+
+            contextualLength = VectorHelper.distanceBetween(point0, point1);
+        }
+    }
+
+    public void purgeCache() {
+        modelCache.clear();
     }
 }

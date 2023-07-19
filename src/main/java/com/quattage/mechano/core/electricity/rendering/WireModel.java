@@ -38,6 +38,7 @@ public record WireModel(float[] vertices, float[] uvs) {
         
         // step through in deliniations of 3 ([x,y,z,x,y,z,x,y,z, etc])
         int count = vertices.length / 3;
+
         for (int i = 0; i < count; i++) {
             float iter = (i % (count / 2f)) / (count / 2f);
             int light = lightmapPack(iter, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo);
@@ -55,8 +56,8 @@ public record WireModel(float[] vertices, float[] uvs) {
 
     public int lightmapPack(float iter, int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo) {
         return LightTexture.pack(
-            (int) Mth.lerp(iter, (float) blockLightFrom, (float) blockLightTo),
-            (int) Mth.lerp(iter, (float) skyLightFrom, (float) skyLightTo)
+            (int)Mth.lerp(iter, (float)blockLightFrom, (float)blockLightTo),
+            (int)Mth.lerp(iter, (float)skyLightFrom, (float)skyLightTo)
         );
     }
 

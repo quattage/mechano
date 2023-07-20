@@ -1,10 +1,17 @@
 package com.quattage.mechano.core.electricity.node.base;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Set;
+
+import com.google.j2objc.annotations.ReflectionSupport.Level;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.simibubi.create.foundation.utility.Color;
 
@@ -170,6 +177,13 @@ public class ElectricNode {
     public double getHitSize() {
         return location.getHitSize();
     }
+
+    public boolean connectionExists(NodeConnection checkConnection) {
+        for(NodeConnection thisConnection : connections)
+            if(checkConnection.equals(thisConnection)) return true; 
+        Mechano.log(">>>>>>>No connection exists.");
+        return false;
+    }
     
     /***
      * Establish a new connection between two ElectricNodes. <p>
@@ -177,23 +191,41 @@ public class ElectricNode {
      * NodeConnection. The root connection recieves the normal connnection,
      * and the destination recieves the same connection but inverted.
      * @param connection NodeConnection to add
-     * @return True if this Connection was successfully added
+     * @return NodeConnectResult - NODE_FULL or LINK_EXISTS if this connection 
+     * fails, LINK_ADDED if this connection succeeds.
      */
-    public boolean addConnection(NodeConnection connection) {
+    public NodeConnectResult addConnection(NodeConnection connection) {
         int firstNullIndex = getFirstNullIndex();
-        if(firstNullIndex == -1) return false;    // this node is full
+
+        if(firstNullIndex == -1) return NodeConnectResult.NODE_FULL;
+        if(connectionExists(connection)) return NodeConnectResult.LINK_EXISTS;
+
         connections[firstNullIndex] = connection;
-        return true;
-        //TODO verbose connection results
+        return NodeConnectResult.LINK_ADDED;
+    }
+
+    /***
+     * Informally swaps out the last connection in this NodeBank with the given connection.
+     * Note that this doesn't do any checks or wire dropping. Useful for replacing fake
+     * connections with real ones.
+     * @param connection
+     * @return NodeConnectResult WIRE_SUCCESS if the connection was successfully replaced.
+     */
+    public NodeConnectResult replaceLastConnection(NodeConnection connection) {
+        int firstNull = getConnectionAmount();
+        if(connectionExists(connection)) return NodeConnectResult.LINK_EXISTS;
+        connections[firstNull] = connection;
+        return NodeConnectResult.WIRE_SUCCESS;
     }
 
     /***
      * Sets the latest connection to this ElectricNode to null.
      */
     public void nullifyLastConnection() {
-        int lastPopulated = getConnectionAmount(); 
-        if(lastPopulated >= 0) {
-            connections[lastPopulated] = null;
+        Mechano.log("CANCEL");
+        int lastIndex = getConnectionAmount(); 
+        if(lastIndex >= 0) {
+            connections[lastIndex] = null;
         }
     }
 
@@ -222,13 +254,62 @@ public class ElectricNode {
     }
 
     /***
+     * Removes all connections from this ElectricNode that target the provided 
+     * NodeBank.
+     * @param bank NodeBank target to remove.
+     * @return True if this ElectricNode's connections were altered in any way.
+     */
+    public boolean removeConnectionsInvolving(NodeBank bank) {
+        boolean changed = false;
+        for(int x = 0; x < connections.length; x++) {
+            if(connections[x] instanceof ElectricNodeConnection ec) {
+                NodeBank suspect = ec.getTargetBank(bank);
+                if(bank.equals(suspect)) {
+                    clearConnection(x, true, false);
+                    changed = true;
+                }
+            }
+        }
+        if(changed) sortConnections();
+        return changed;
+    }
+    
+    /***
+     * Gets all of the NodeBanks referenced by the connections in
+     * this ElectricNode.
+     * @return A new ArrayList of NodeBanks.
+     */
+    public Set<NodeBank> getAllTargets(Level world) {
+        //Set<NodeBank> out = new Set<NodeBank>();
+        //for()
+        return null;
+    }
+
+    /***
+     * Sorts the list of connections, where non-null values are first.
+     */
+    public void sortConnections() {
+        Arrays.sort(connections, new Comparator<NodeConnection>() {
+            public int compare(NodeConnection n1, NodeConnection n2) {
+                if (n1 == null && n2 == null)
+                    return 0;
+                if (n1 == null)
+                    return 1;
+                if (n2 == null)
+                    return -1;
+                return n1.compareTo(n2);
+            }
+        });
+    }
+
+    /***
      * The gets the amount of connections made to this ElectricNode.
      * @return
      */
     public int getConnectionAmount() {
         int nullIndex = getFirstNullIndex();
         if(nullIndex == 0) return 0;
-        if(nullIndex == -1) return connections.length;
+        if(nullIndex == -1) return connections.length - 1;
         return nullIndex - 1;
     }
 
@@ -339,11 +420,11 @@ public class ElectricNode {
     }
 
     public void clearConnection(int index) {
-        clearConnection(index, true);
+        clearConnection(index, true, true);
     }
 
-    public void clearConnection(int index, boolean shouldDropWire) {
-        //NodeConnection removed = popConnection(index);
-        
+    public void clearConnection(int index, boolean shouldDropWire, boolean shouldSort) {
+        connections[index] = null;
+        if(shouldSort) sortConnections();
     }
 }

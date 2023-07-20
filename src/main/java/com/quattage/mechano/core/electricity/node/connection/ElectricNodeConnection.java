@@ -2,7 +2,9 @@ package com.quattage.mechano.core.electricity.node.connection;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
+import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
@@ -69,6 +71,12 @@ public class ElectricNodeConnection extends NodeConnection {
         return in;
 	}
 
+    /***
+     * Destination positions will be null during world load, so initializing
+     * them on the first BlockEntity tick is required when initially populating
+     * from NBT.
+     * @param vec
+     */
     public void initDestPos(Vec3 vec) {
         destPos = vec;
     }
@@ -86,6 +94,20 @@ public class ElectricNodeConnection extends NodeConnection {
     @Override
     protected boolean setTransferPower() {
         return true;
+    }
+
+    /***
+     * Gets the target bank of this ElectricNodeConnection
+     * @param from
+     * @return NodeBank at the given target, or null if one cannot be found.
+     */
+    public NodeBank getTargetBank(NodeBank bank) {
+        Level world = bank.getWorld();
+        if(world == null) return null;
+        BlockEntity be = world.getBlockEntity(bank.pos.subtract(relativePos));
+        if(be instanceof ElectricBlockEntity ebe)
+            return ebe.nodes;
+        return null;
     }
 
     public String getDestinationID() {

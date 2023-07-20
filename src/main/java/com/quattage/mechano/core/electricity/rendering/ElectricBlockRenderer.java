@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.registry.MechanoRenderTypes;
@@ -48,7 +48,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                 if(!thisConnection.isValid()) continue;
 
                 Vec3 from = thisConnection.getSourcePos();
-                Vec3 to = thisConnection.getDestinationPos();
+                Vec3 to = thisConnection.getDestPos();
                 boolean needsConstantUpdates = false;
 
                 if(thisConnection.needsLerped()) {

@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.block.power.transfer.test;
 
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 
 import net.minecraft.core.BlockPos;

@@ -99,7 +99,6 @@ public enum CombinedOrientation implements StringRepresentable {
             if(pos < 8) pos = 8 + (pos % 4);
             return CombinedOrientation.values()[pos];
         }
-        Mechano.log("cycling horizontal");
         pos += 4;
         if(pos > 23) pos -= 23;
         if(pos < 8) pos += 8;

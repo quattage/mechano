@@ -2,19 +2,19 @@ package com.quattage.mechano.core.electricity;
 
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.blockEntity.observe.IObservable;
-import com.quattage.mechano.core.blockEntity.observe.NodeDataPacket;
+import com.quattage.mechano.core.electricity.observe.IObservable;
+import com.quattage.mechano.core.electricity.observe.NodeDataPacket;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class StrictElectricalBlock extends CombinedOrientedBlock implements IObservable {
+public class ElectricBlock extends CombinedOrientedBlock implements IObservable {
 
-    public StrictElectricalBlock(Properties pProperties) {
+    public ElectricBlock(Properties pProperties) {
         super(pProperties);
     }
 
@@ -30,6 +30,12 @@ public class StrictElectricalBlock extends CombinedOrientedBlock implements IObs
         if(be instanceof ElectricBlockEntity ebe) {
             ebe.setOrient(dir);
         }
+    }
+
+    @Override
+    public void playerWillDestroy(Level pLevel, BlockPos pPos, BlockState pState, Player pPlayer) {
+        
+        super.playerWillDestroy(pLevel, pPos, pState, pPlayer);
     }
 
     @Override

@@ -34,7 +34,7 @@ public class WireModelRenderer {
     /***
      * The wire's Level of Detail
      */
-    private static final int LOD = 4;
+    private static final float LOD = 2f;
 
     /***
      * The maximum amount of iterations for a single wire. Used
@@ -140,7 +140,7 @@ public class WireModelRenderer {
      * @param uv
      */
     private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
-        float contextualLength = 1f / LOD;
+        float contextualLength = 1f * LOD;
         float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
 
         Vector3f unit = new Vector3f((float) Math.cos(Math.toRadians(angle)), 0, (float) Math.sin(Math.toRadians(angle)));
@@ -183,7 +183,7 @@ public class WireModelRenderer {
 
     private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
         
-        float contextualLength = 1f / LOD;
+        float contextualLength = 1f * LOD;
         float distance = VectorHelper.getLength(vec), distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
         float wrongDistanceFactor = distance / distanceXZ;
 

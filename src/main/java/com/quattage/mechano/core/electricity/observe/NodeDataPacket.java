@@ -1,4 +1,4 @@
-package com.quattage.mechano.core.blockEntity.observe;
+package com.quattage.mechano.core.electricity.observe;
 
 import com.quattage.mechano.core.electricity.node.NodeBank;
 

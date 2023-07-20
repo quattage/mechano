@@ -4,13 +4,13 @@ import java.util.HashMap;
 
 import javax.annotation.Nullable;
 
-import org.antlr.v4.parse.ANTLRParser.qid_return;
-
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
+import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.registry.MechanoItems;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -36,8 +36,9 @@ public abstract class WireSpool extends Item {
     protected final ItemStack rawDrop;
     public static final HashMap<String, WireSpool> spoolTypes = new HashMap<String, WireSpool>();
 
-    public FakeNodeConnection intermediary;
-    public ElectricBlockEntity target;
+    private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
+    private Player player;
+    private ElectricBlockEntity target;
 
     /***
      * Create a new WireSpool object
@@ -129,6 +130,7 @@ public abstract class WireSpool extends Item {
         BlockPos clickedPos = context.getClickedPos();
         Vec3 clickedLoc = context.getClickLocation();
         BlockEntity be = world.getBlockEntity(clickedPos);
+        player = context.getPlayer();
 
         ItemStack handStack = context.getItemInHand();
         
@@ -161,6 +163,12 @@ public abstract class WireSpool extends Item {
         nbt.putString("from", node.getId());
 
         intermediary = target.nodes.makeFakeConnection(this, node.getId(), placer);
+
+        if(!intermediary.getFirst().isSuccessful())
+            revert(wireStack, false);
+
+        sendInfo(intermediary.getFirst());
+
         return InteractionResult.FAIL;
     }
 
@@ -178,7 +186,17 @@ public abstract class WireSpool extends Item {
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
             if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
-                ebeFrom.nodes.makeFullConnection(intermediary, target.nodes, toNode.getId());
+
+                if(intermediary == null && wireStack.hasTag()) { // on world load this item may have NBT but no valid intermediary
+                    clearTag(wireStack);
+                    return InteractionResult.PASS;
+                }
+
+                NodeConnectResult result = ebeFrom.nodes.connect(intermediary.getSecond(), target.nodes, toNode.getId());
+                if(!result.isSuccessful())
+                    revert(wireStack, false);
+
+                sendInfo(result);
                 clearTag(wireStack);
                 return InteractionResult.PASS;
             }
@@ -209,42 +227,39 @@ public abstract class WireSpool extends Item {
         return out;
     }
 
-    
-
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
         super.inventoryTick(stack, world, entity, slot, isSelected);
         if(entity instanceof Player player && stack.getTag() != null) {
             if(stack.getTag().contains("at") || stack.getTag().contains("from")) {
                 if(player.oAttackAnim != 0 || player.getMainHandItem().getItem() != stack.getItem()) {
-                    clearTag(stack);
-                    if(intermediary != null) cancelConnection(target, intermediary.getSourceID());
+                    if(!world.isClientSide) {
+                        revert(stack, true);
+                        Mechano.log("CANCEL");
+                    }
                 }
             }
         }
     }
 
-    private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
-        Mechano.log(name + ": Connection removed");
-        Mechano.log("My honest reaction: " + ebe.nodes.get(sourceID));
-
-        //ElectricBlockEntity refreshed = refresh(ebe); 
-        //Mechano.log("BEFORE: " + ebe + "REFRESHED: " + refreshed);
-        if(ebe != null) ebe.nodes.get(sourceID).nullifyLastConnection();
-        intermediary = null;
+    private void revert(ItemStack stack, boolean clear) {
+        Mechano.log("REVERT");
+        clearTag(stack);
+        if(clear && intermediary != null) cancelConnection(target, intermediary.getSecond().getSourceID());
     }
 
-    private ElectricBlockEntity refresh(ElectricBlockEntity in) {
-        BlockEntity out = in.getLevel().getBlockEntity(in.getBlockPos());
-        if(out instanceof ElectricBlockEntity ebe)
-            return ebe;
-        return null;
+    private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
+        if(ebe != null) ebe.nodes.cancelConnection(sourceID);
+        sendInfo(NodeConnectResult.LINK_CANCELLED);
+    }
+
+    private void sendInfo(NodeConnectResult result) {
+        player.displayClientMessage(result.getMessage(), true);
     }
 
     private void clearTag(ItemStack stack) {
-        if(!stack.hasTag()) return;
+        //if(!stack.hasTag()) return;
         stack.removeTagKey("at");
         stack.removeTagKey("from");
     }
-
 }

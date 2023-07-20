@@ -1,8 +1,10 @@
 package com.quattage.mechano.core.electricity.node.connection;
 
+import org.antlr.v4.parse.ANTLRParser.parserRule_return;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.NodeRotation;
 
 import net.minecraft.core.BlockPos;
@@ -113,7 +115,7 @@ public abstract class NodeConnection {
      * Gets the position of this connection's destination
      * @return
      */
-    public Vec3 getDestinationPos() {
+    public Vec3 getDestPos() {
         return destPos;
     }
 
@@ -123,11 +125,37 @@ public abstract class NodeConnection {
 
     /***
      * Converts this NodeConnection's source and destination positions into a single Vec3
-     * representing the relative position from source to destination
+     * representing the relative position from source to destination.
      * @return A Vec3 ({@code sourcePos - destPos})
      */
     public Vec3 getRelative() {
         return sourcePos.subtract(destPos);
+    }
+
+    /***
+     * Compare two NodeConnections based on their source and destination positions.
+     * @param other NodeConnection to compare.
+     * @return True if both the source and destination positions the same.
+     */
+    public boolean equals(Object other) {
+        if(other instanceof NodeConnection c) {
+            return (this.sourcePos.equals(c.getSourcePos()))
+                && (this.destPos.equals(c.getDestPos()));
+        }
+        return false;
+    }
+    
+    /***
+     * Compares NodeConnections by distance
+     * @param other
+     * @return
+     */
+    public int compareTo(NodeConnection other) {
+        if(this.equals(other)) return 0;
+        double distance1 = sourcePos.distanceTo(destPos);
+        double distance2 = other.getSourcePos().distanceTo(other.getDestPos());
+        
+        return Double.compare(distance1, distance2);
     }
 
     /***

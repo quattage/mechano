@@ -7,11 +7,12 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.StrictElectricalBlock;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlock;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
+import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -68,6 +69,24 @@ public class NodeBank {
         this.target = null;
         this.pos = null;
         this.NODES = new ElectricNode[size];
+    }
+
+    public Level getWorld() {
+        return target.getLevel();
+    }
+
+    /***
+     * Compares NodeBanks. At the moment, this only compares based on
+     * location.
+     * @param other NodeBank to compare. 
+     * @return True if both NodeBanks share the same target BlockPos.
+     */
+    public boolean equals(NodeBank other) {
+        return other.pos.equals(this.pos);
+    }
+
+    public int hashCode() {
+        return target.getBlockPos().hashCode();
     }
 
     /***
@@ -234,8 +253,8 @@ public class NodeBank {
             NODES[x] = new ElectricNode(target, bank.getCompound(thisID));
             
 
-            if(target.getBlockState().getBlock() instanceof StrictElectricalBlock eBlock)
-                NODES[x].setOrient(target.getBlockState().getValue(StrictElectricalBlock.ORIENTATION));
+            if(target.getBlockState().getBlock() instanceof ElectricBlock eBlock)
+                NODES[x].setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
         }
     }
 
@@ -265,6 +284,9 @@ public class NodeBank {
         return out;
     }
 
+    /***
+     * Instructs the parent BlockEntity to send the block update.
+     */
     public void markDirty() {
         target.getLevel().sendBlockUpdated(pos,
             target.getBlockState(), 
@@ -273,10 +295,41 @@ public class NodeBank {
         target.setChanged();
     }
 
+    /***
+     * Removes all connections that involve both the given NodeBank and this NodeBank
+     * @param from NodeBank to use for comparison - All connections that exist to the
+     * provided NodeBank will be removed from this NodeBank.
+     */
+    public boolean removeAllConnectionsTo(NodeBank bank) {
+        boolean changed = false;
+        for(ElectricNode node : NODES) {
+            if(node.removeConnectionsInvolving(bank))
+                changed = true;
+        }
+        return changed;
+    }
+
+    /***
+     * Initializes the connections stored in this NodeBank. For now, all this does is
+     * set the NodeConnection's destination positions in every ElectricNode in this bank. <p>
+     * It does this because the actual vectors for the destination positions cannot be
+     * obtained while the level is loading, beacuse the level doesn't yet exist in a callable
+     * form.
+     */
     public void initConnections() {
         for(int x = 0; x < NODES.length; x++) {
             NODES[x].initConnections(target);
         }
+    }
+
+    /***
+     * Removes the last connection made to this NodeBank. Used primarily to cancel
+     * a connection, where the latest connection made to this NodeBank is a FakeNodeConnection.
+     * @param sourceID ElectricNode to remove the last connection from.
+     */
+    public void cancelConnection(String sourceID) {
+        get(sourceID).nullifyLastConnection();
+        markDirty();
     }
 
     /***
@@ -286,22 +339,12 @@ public class NodeBank {
      * This means that they can be updated in real-time, for things like 
      * attaching a wire to a player.
      */
-    public FakeNodeConnection makeFakeConnection(WireSpool spoolType, String fromID, Entity targetEntity) {
+    public Pair<NodeConnectResult, FakeNodeConnection> makeFakeConnection(WireSpool spoolType, String fromID, Entity targetEntity) {
         Vec3 sourcePos = get(fromID).getPosition();
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
         Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
-
-        NODES[indexOf(fromID)].addConnection(fakeConnection);
-        return fakeConnection;
-    }
-
-    /***
-     * Establish an ElectricNodeConnection between two ElectricNodes, where the
-     * input is the FakeNodeConnection to "upgrade" into an ElectricNodeConnection
-     */
-    public void makeFullConnection(FakeNodeConnection fake, NodeBank targetBank, String targetID) {
-        NODES[indexOf(fake.getSourceID())].nullifyLastConnection();
-        connect(fake.getSpoolType(), fake.getSourceID(), targetBank, targetID);
+        NodeConnectResult result = NODES[indexOf(fromID)].addConnection(fakeConnection);
+        return Pair.of(result, fakeConnection);
     }
 
     /***
@@ -317,7 +360,38 @@ public class NodeBank {
      * @param targetBank The other NodeBank, where the destination ElectricNode is.
      * @param targetID The name of the destinationElectricNode in the targetBank.
      */
-    public void connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
+    public NodeConnectResult connect(FakeNodeConnection fake, NodeBank targetBank, String targetID) {
+        Vec3 sourcePos = fake.getSourcePos();
+        Vec3 destPos = targetBank.get(targetID).getPosition();
+        String fromID = fake.getSourceID();
+        WireSpool spoolType = fake.getSpoolType();
+
+        NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
+        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
+        Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
+
+        NodeConnectResult r1 = NODES[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
+        NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
+        markDirty(); targetBank.markDirty();
+
+        if(r1.isSuccessful() && r2.isSuccessful()) return NodeConnectResult.WIRE_SUCCESS;
+        return r2;
+    }
+
+    /***
+     * Establish a NodeConnection between one ElectricNode in this NodeBank,
+     * and one ElectricNode in another bank. <p>
+     * A connection between two ElectricNodes is made of two NodeConnections, where both 
+     * ends store mirrored copies of the connection. <p> In practice, this means that the
+     * ElectricNode that the player selects first, <strong>(the "from" node)</strong>, recieves
+     * a normal NodeConnection, and the ElectricNode that the player selects second, 
+     * <strong>(the "target" node)</strong>, receives an inverted copy of the same NodeConnection.
+     * 
+     * @param spoolType Type of connection to create - Determines transfer rate, wire model, etc.
+     * @param targetBank The other NodeBank, where the destination ElectricNode is.
+     * @param targetID The name of the destinationElectricNode in the targetBank.
+     */
+    public NodeConnectResult connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
         Vec3 sourcePos = get(fromID).getPosition();
         Vec3 destPos = targetBank.get(targetID).getPosition();
 
@@ -325,10 +399,12 @@ public class NodeBank {
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
-        NODES[indexOf(fromID)].addConnection(fromConnection);
-        targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
-
+        NodeConnectResult r1 = NODES[indexOf(fromID)].addConnection(fromConnection);
+        NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
         markDirty(); targetBank.markDirty();
+
+        if(r1.isSuccessful() && r2.isSuccessful()) return NodeConnectResult.WIRE_SUCCESS;
+        return r1;
     }
 
     /***

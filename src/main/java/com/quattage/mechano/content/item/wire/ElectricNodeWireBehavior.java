@@ -2,7 +2,7 @@ package com.quattage.mechano.content.item.wire;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.simibubi.create.AllSpecialTextures;

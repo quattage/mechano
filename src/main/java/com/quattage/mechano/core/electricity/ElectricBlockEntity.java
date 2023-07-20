@@ -1,4 +1,4 @@
-package com.quattage.mechano.core.blockEntity;
+package com.quattage.mechano.core.electricity;
 
 import java.util.List;
 

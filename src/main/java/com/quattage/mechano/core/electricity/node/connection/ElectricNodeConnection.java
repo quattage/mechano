@@ -39,6 +39,7 @@ public class ElectricNodeConnection extends NodeConnection {
         this.destinationID = in.getString("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
+        if(target.getLevel() == null) super.setAge(-1);
         this.relativePos = new Vec3i(
             in.getInt("rX"), 
             in.getInt("rY"), 

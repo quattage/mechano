@@ -343,7 +343,9 @@ public class NodeBank {
         Vec3 sourcePos = get(fromID).getPosition();
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
         Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
+
         NodeConnectResult result = NODES[indexOf(fromID)].addConnection(fakeConnection);
+
         return Pair.of(result, fakeConnection);
     }
 
@@ -370,11 +372,18 @@ public class NodeBank {
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
+        if(targetBank.equals(this)) { 
+            get(fake.getSourceID()).nullifyLastConnection();
+            return NodeConnectResult.LINK_CONFLICT;
+        }
+
         NodeConnectResult r1 = NODES[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
         NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
-        markDirty(); targetBank.markDirty();
-
-        if(r1.isSuccessful() && r2.isSuccessful()) return NodeConnectResult.WIRE_SUCCESS;
+        
+        if(r1.isSuccessful() && r2.isSuccessful()) {
+            markDirty(); targetBank.markDirty();
+            return NodeConnectResult.WIRE_SUCCESS;
+        }
         return r2;
     }
 
@@ -401,9 +410,11 @@ public class NodeBank {
 
         NodeConnectResult r1 = NODES[indexOf(fromID)].addConnection(fromConnection);
         NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
-        markDirty(); targetBank.markDirty();
-
-        if(r1.isSuccessful() && r2.isSuccessful()) return NodeConnectResult.WIRE_SUCCESS;
+    
+        if(r1.isSuccessful() && r2.isSuccessful()) {
+            markDirty(); targetBank.markDirty();
+            return NodeConnectResult.WIRE_SUCCESS;
+        }
         return r1;
     }
 

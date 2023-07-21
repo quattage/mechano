@@ -7,6 +7,7 @@ import com.quattage.mechano.registry.MechanoGroup;
 import com.quattage.mechano.registry.MechanoItems;
 import com.quattage.mechano.registry.MechanoPartials;
 import com.quattage.mechano.registry.MechanoRecipes;
+import com.quattage.mechano.registry.MechanoSounds;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.MinecraftForge;
@@ -67,15 +69,14 @@ public class Mechano {
         MechanoMenus.register(bussy);
         MechanoBlockEntities.register(bussy);
         MechanoRecipes.register(bussy);
+        MechanoSounds.register(bussy);
 
         bussy.addListener(this::clientSetup);
         bussy.addListener(this::postSetup);
     }
 
     public void clientSetup(final FMLClientSetupEvent event) {
-        //FMLJavaModLoadingContext.get().getModEventBus().addListener(MechanoRenderers::init);
-        logReg("renderers");
-        MechanoPartials.register(); // this will likely cause issues but it doesn't do anything yet so its fine
+        MechanoPartials.register();
     }
 
     public void postSetup(FMLLoadCompleteEvent event) {

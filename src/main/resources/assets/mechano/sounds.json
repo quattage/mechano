@@ -1,0 +1,8 @@
+{
+    "cable_create": {
+        "subtitle": "sounds.mechano.cable_create",
+        "sounds": [
+            "mechano:cable/cable_create"
+        ]
+    }
+}

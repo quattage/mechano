@@ -31,7 +31,10 @@ public class VectorHelper {
         return Math.log(x + Math.sqrt(x * x + 1.0));
     }
 
-    // fairy dust and magic wizard gnome code
+    
+    /***
+     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
+     */
     public static double drip2prime(double a, double x, double d, double h) {
         double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
         return Math.sinh((2 * x + 2 * p1 - d) / (2 * a));

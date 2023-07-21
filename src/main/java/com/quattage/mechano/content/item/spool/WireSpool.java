@@ -167,7 +167,7 @@ public abstract class WireSpool extends Item {
         if(!intermediary.getFirst().isSuccessful())
             revert(wireStack, false);
 
-        sendInfo(intermediary.getFirst());
+        sendInfo(world, clickedPos, intermediary.getFirst());
 
         return InteractionResult.FAIL;
     }
@@ -196,7 +196,7 @@ public abstract class WireSpool extends Item {
                 if(!result.isSuccessful())
                     revert(wireStack, false);
 
-                sendInfo(result);
+                sendInfo(world, clickedPos, result);
                 clearTag(wireStack);
                 return InteractionResult.PASS;
             }
@@ -235,7 +235,6 @@ public abstract class WireSpool extends Item {
                 if(player.oAttackAnim != 0 || player.getMainHandItem().getItem() != stack.getItem()) {
                     if(!world.isClientSide) {
                         revert(stack, true);
-                        Mechano.log("CANCEL");
                     }
                 }
             }
@@ -250,11 +249,12 @@ public abstract class WireSpool extends Item {
 
     private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
         if(ebe != null) ebe.nodes.cancelConnection(sourceID);
-        sendInfo(NodeConnectResult.LINK_CANCELLED);
+        sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }
 
-    private void sendInfo(NodeConnectResult result) {
+    private void sendInfo(Level world, BlockPos pos, NodeConnectResult result) {
         player.displayClientMessage(result.getMessage(), true);
+        result.playConnectSound(world, pos);
     }
 
     private void clearTag(ItemStack stack) {

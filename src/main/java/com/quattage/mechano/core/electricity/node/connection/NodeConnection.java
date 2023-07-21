@@ -26,6 +26,7 @@ public abstract class NodeConnection {
      */
     protected final boolean needsLerped = setNeedsLerped();
     protected final boolean canTransferPower = setTransferPower();
+    private int age = 0;
 
     /***
      * The type of spool used to make the connection. Determines things like transfer rate.
@@ -64,6 +65,25 @@ public abstract class NodeConnection {
                 + sourcePos.z + "]"
                 + ", to [NULL]"
                 + ", Type: " + type;
+    }
+
+    /***
+     * Increments the age value and returns it. <p>
+     * A connection's age, up to 120 ticks, can be used to define special
+     * behaviors such as decay time. It can also be used to drive animation
+     * steps, which is how cables wiggle when they're created.
+     * @return age++ or -1 if age > 120
+     */
+    public int getAge() {
+        if(age > 120 || age == -1) {
+            age = -1;
+            return -1;
+        }
+        return (age++) - 1;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
     }
 
     public boolean isValid() {

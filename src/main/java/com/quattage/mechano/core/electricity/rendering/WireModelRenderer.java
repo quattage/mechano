@@ -6,9 +6,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.util.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 /***
@@ -29,12 +31,13 @@ public class WireModelRenderer {
     /***
      * How much the wire hangs
      */
-    private static final float SAGGINESS = 20;  
+    private static final float SAGGINESS = 25;  
+    private float lastSag = SAGGINESS;
 
     /***
      * The wire's Level of Detail
      */
-    private static final float LOD = 2f;
+    private static final float LOD = 1.5f;
 
     /***
      * The maximum amount of iterations for a single wire. Used
@@ -42,7 +45,7 @@ public class WireModelRenderer {
      */
     private static final int LOD_LIMIT = 512;
     
-    
+    private static final int MAX_DISTANCE = 40;
 
     /***
      * Represents a hash, used as an identifier for a WireModel's place in the cache.
@@ -116,16 +119,53 @@ public class WireModelRenderer {
         model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
     }
 
+    /***
+     * Renders a WireModel with a step value and partial ticks, used to drive pre-defined animations.
+     * In this case, A wiggly wire will jiggle (and wiggle) until you giggle.
+     * @param buffer
+     * @param matrices
+     * @param chainVec
+     * @param age
+     * @param blockLight0
+     * @param blockLight1
+     * @param skyLight0
+     * @param skyLight1
+     */
+    public void renderWiggly(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+        int age, float pTicks, int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
+        
+        WireModel model = buildWireModel(age, pTicks, origin);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+    }
+
+    /***
+     * Adds vertices to a WireModel based on the given Origin vector
+     * @param origin
+     * @param age - Optional, to drive animations
+     * @param pTicks - Optional, to lerp animations
+     * @return
+     */
     private WireModel buildWireModel(Vector3f origin) {
+        return buildWireModel(-1, 0, origin);
+    }
+
+    /***
+     * Adds vertices to a WireModel based on the given Origin vector
+     * @param origin
+     * @param age - Optional, to drive animations
+     * @param pTicks - Optional, to lerp animations
+     * @return
+     */
+    private WireModel buildWireModel(int age, float pTicks, Vector3f origin) {
         int capacity = (int)(2 * new Vec3(origin).lengthSqr());
         WireModel.WireBuilder builder = WireModel.builder(capacity);
 
         if(Float.isNaN(origin.x()) && Float.isNaN(origin.z())) {
-            buildVertical(builder, origin, SKEW, WireUV.SKEW_A);        //      | 
-            buildVertical(builder, origin, SKEW + 90, WireUV.SKEW_B);   //      —
+            buildVertical(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);        //      | 
+            buildVertical(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);   //      —
         } else {
-            buildNominal(builder, origin, SKEW, WireUV.SKEW_A);         //      |  
-            buildNominal(builder, origin, SKEW + 90, WireUV.SKEW_B);    //      —
+            buildNominal(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);         //      |  
+            buildNominal(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);    //      —
         }
         return builder.build();
     }
@@ -139,7 +179,9 @@ public class WireModelRenderer {
      * @param angle
      * @param uv
      */
-    private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
+    private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, int age, 
+        float pTicks, float angle, WireUV uv) {
+
         float contextualLength = 1f * LOD;
         float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
 
@@ -181,11 +223,24 @@ public class WireModelRenderer {
         }
     }
 
-    private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, float angle, WireUV uv) {
+    private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, int age, 
+        float pTicks, float angle, WireUV uv) {
         
         float contextualLength = 1f * LOD;
-        float distance = VectorHelper.getLength(vec), distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
+        float distance = VectorHelper.getLength(vec) * 0.7f, distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
         float wrongDistanceFactor = distance / distanceXZ;
+
+        float animatedSag = SAGGINESS;
+        
+        if(age > -1) {
+            lastSag = animatedSag;
+            float subduedness = 1.6263f + 0.1664f * distance;                                 // variable tamping factor to decrease the wiggle vigor
+            float speed = age * (0.576f - 0.003f * age) / (subduedness * 0.6f);               // ramped speed of the wiggleness
+            float intensity = SAGGINESS * (float)(Math.sin((age * -0.00773f)) + 0.8f);        // sin ramped wiggle distance value
+            animatedSag = SAGGINESS + (float)(Math.cos(speed)) * (intensity / subduedness);   // overall sag value as a cosine wave
+            Mechano.log("A:" + animatedSag);
+            Mechano.log("D: " + distance);
+        }
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
             vertB2 = new Vector3f(), vertB1 = new Vector3f();
@@ -196,14 +251,14 @@ public class WireModelRenderer {
         float uvv0, uvv1 = 0, gradient, x, y;
         Vector3f point0 = new Vector3f(), point1 = new Vector3f();
 
-        point0.set(0, (float) VectorHelper.drip2(SAGGINESS, 0, distance, vec.y()), 0);
-        gradient = (float) VectorHelper.drip2prime(SAGGINESS, 0, distance, vec.y());
+        point0.set(0, (float) VectorHelper.drip2(animatedSag, 0, distance, vec.y()), 0);
+        gradient = (float) VectorHelper.drip2prime(animatedSag, 0, distance, vec.y());
         normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
         normal.normalize();
 
         x = VectorHelper.estimateDeltaX(contextualLength, gradient);
-        gradient = (float) VectorHelper.drip2prime(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
-        y = (float) VectorHelper.drip2(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+        gradient = (float) VectorHelper.drip2prime(animatedSag, x * wrongDistanceFactor, distance, vec.y());
+        y = (float) VectorHelper.drip2(animatedSag, x * wrongDistanceFactor, distance, vec.y());
         point1.set(x, y, 0);
 
         rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
@@ -257,12 +312,13 @@ public class WireModelRenderer {
                 x = distanceXZ;
             }
 
-            gradient = (float) VectorHelper.drip2prime(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
-            y = (float) VectorHelper.drip2(SAGGINESS, x * wrongDistanceFactor, distance, vec.y());
+            gradient = (float) VectorHelper.drip2prime(animatedSag, x * wrongDistanceFactor, distance, vec.y());
+            y = (float) VectorHelper.drip2(animatedSag, x * wrongDistanceFactor, distance, vec.y());
             point1.set(x, y, 0);
 
             contextualLength = VectorHelper.distanceBetween(point0, point1);
         }
+        lastSag = animatedSag;
     }
 
     public void purgeCache() {

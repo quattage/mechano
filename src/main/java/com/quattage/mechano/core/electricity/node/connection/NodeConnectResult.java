@@ -2,7 +2,9 @@ package com.quattage.mechano.core.electricity.node.connection;
 
 import java.util.Locale;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 
 public enum NodeConnectResult {
     // status 
@@ -23,23 +25,46 @@ public enum NodeConnectResult {
     WIRE_OBSTRUCTED(false),   // this wire is obstructed by blocks (unused for now)
 
     // success
-    WIRE_SUCCESS(true),    // this wire was successfully created by the player
+    WIRE_SUCCESS(true, NodeConnectSound.CONFIRM),    // this wire was successfully created by the player
     WIRE_REMOVED(true);      // this wire was successfully removed by the player
 
     private final String key;
     private final Component message;
     private final boolean success;
+    private final NodeConnectSound sound;
 
     private NodeConnectResult(boolean success) {
         this.success = success;
         this.key = makeKey();
         this.message = Component.translatable(key);
+        this.sound = NodeConnectSound.DENY_SOFT;
+    }
+
+    private NodeConnectResult(boolean success, NodeConnectSound sound) {
+        this.success = success;
+        this.key = makeKey();
+        this.message = Component.translatable(key);
+        this.sound = sound;
+    }
+
+    /***
+     * Play the sound associated with this NodeConnectResult.
+     * @param world World to play the sound in.
+     * @param pos BlockPos to play the sound at.
+     */
+    public void playConnectSound(Level world, BlockPos pos) {
+        if(sound == null) return;
+        sound.play(world, pos);
     }
 
     private String makeKey() {
-        return "mechano.statusbar.connection." + this;
+        return "actionbar.mechano.connection." + this;
     }
     
+    /***
+     * Whether this condition represents a successful connection or not
+     * @return True if this condition can proceed without potential errors.
+     */
     public boolean isSuccessful() {
         return success;
     }

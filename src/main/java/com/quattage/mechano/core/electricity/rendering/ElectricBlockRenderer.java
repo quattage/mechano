@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
+    private final int animate = 0;
 
     public ElectricBlockRenderer(BlockEntityRendererProvider.Context context) {
         super();
@@ -34,7 +35,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
     @Override
     protected void renderSafe(ElectricBlockEntity ebe, float partialTicks, PoseStack local, 
         MultiBufferSource bufferSource, int light, int overlay) {
-
+    
         ElectricNode[] nodes = ebe.nodes.values();
 
         for(int n = 0; n < nodes.length; n++) {
@@ -58,7 +59,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
 
                 //Mechano.logSlow("Direction: " + thisNode.getNodeLocation().getCurrentDirection());
 
-                renderWire(ebe, thisNode.getLocalPosition(), from, to, partialTicks, local, bufferSource, needsConstantUpdates);
+                renderWire(ebe, thisNode.getLocalPosition(), from, to, thisConnection.getAge(), partialTicks, local, bufferSource, needsConstantUpdates);
 
                 // debug tomfoolery
                 if(Minecraft.getInstance().options.renderDebug == true) 
@@ -86,7 +87,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         return true;
     }
 
-    private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, 
+    private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, int age,
         float pTicks, PoseStack matrix, MultiBufferSource buffers, boolean needsConstantUpdates) {
 
         matrix.pushPose();
@@ -108,10 +109,13 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         float angleY = -(float)Math.atan2(wireOrigin.z(), wireOrigin.x());
         matrix.mulPose(Quaternion.fromXYZ(0, angleY, 0));
 
-        if(needsConstantUpdates) 
+        if(age > -1)
+            wireRenderer.renderWiggly(buffer, matrix, wireOrigin, age, pTicks, lights[0], lights[1], lights[2], lights[3]);
+        else if(needsConstantUpdates)
             wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
         else
             wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
+            // TODO ^^ actually use the caching system ^^
         
 
         matrix.popPose();

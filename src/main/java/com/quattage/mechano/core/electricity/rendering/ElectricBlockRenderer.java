@@ -5,6 +5,8 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoClient;
+import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
@@ -26,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
-    private final int animate = 0;
+    private final HashMap<Con>
 
     public ElectricBlockRenderer(BlockEntityRendererProvider.Context context) {
         super();
@@ -46,7 +48,9 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                 if(!thisNode.hasConnection(c)) continue;
 
                 NodeConnection thisConnection = theseConnections[c];
+
                 if(!thisConnection.isValid()) continue;
+                if(thisConnection.isInverse()) continue;
 
                 Vec3 from = thisConnection.getSourcePos();
                 Vec3 to = thisConnection.getDestPos();
@@ -57,9 +61,8 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                     needsConstantUpdates = true;
                 }
 
-                //Mechano.logSlow("Direction: " + thisNode.getNodeLocation().getCurrentDirection());
-
-                renderWire(ebe, thisNode.getLocalPosition(), from, to, thisConnection.getAge(), partialTicks, local, bufferSource, needsConstantUpdates);
+                renderWire(ebe, thisNode.getLocalPosition(), from, to, thisConnection.getSpoolType(), 
+                    thisConnection.getAge(), partialTicks, local, bufferSource, needsConstantUpdates);
 
                 // debug tomfoolery
                 if(Minecraft.getInstance().options.renderDebug == true) 
@@ -87,15 +90,15 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         return true;
     }
 
-    private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, int age,
+    private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, WireSpool spoolType, int age,
         float pTicks, PoseStack matrix, MultiBufferSource buffers, boolean needsConstantUpdates) {
+
+        //Mechano.logSlow("Wire from: " + fromPos + "   Wire To: " + toPos, 500);
 
         matrix.pushPose();
 
         matrix.translate(fromOffset.x, fromOffset.y, fromOffset.z);
-    
-        RenderType wireRenderLayer = MechanoRenderTypes.WIRE_ALL;
-        VertexConsumer buffer = buffers.getBuffer(wireRenderLayer);
+        VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(spoolType.asResource()));
 
         Vector3f offset = getWireOffset(fromPos, toPos);
         matrix.translate(offset.x(), 0, offset.z());
@@ -103,19 +106,22 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         int[] lights = lightmapGet(ebe.getLevel(), fromPos, toPos);
 
         Vec3 startPos = fromPos.add(offset.x(), 0, offset.z());
-        Vec3 endPos = toPos.add(-offset.z(), 0, -offset.z());
+        Vec3 endPos = toPos.add(-offset.x(), 0, -offset.z());
+
         Vector3f wireOrigin = new Vector3f((float)(endPos.x - startPos.x), (float)(endPos.y - startPos.y), (float)(endPos.z - startPos.z));
 
         float angleY = -(float)Math.atan2(wireOrigin.z(), wireOrigin.x());
         matrix.mulPose(Quaternion.fromXYZ(0, angleY, 0));
 
+
         if(age > -1)
             wireRenderer.renderWiggly(buffer, matrix, wireOrigin, age, pTicks, lights[0], lights[1], lights[2], lights[3]);
         else if(needsConstantUpdates)
             wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
-        else
-            wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
-            // TODO ^^ actually use the caching system ^^
+        else {
+            WireModelRenderer.BakedModelHashKey key = new  WireModelRenderer.BakedModelHashKey(fromPos, toPos);
+            wireRenderer.renderFromCache(buffer, matrix, key, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
+        }
         
 
         matrix.popPose();
@@ -150,12 +156,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                 .lineWidth(1/32f);
             CreateClient.OUTLINER.showAABB("wireVT" + iteration + fromPos + toPos, boxFromPos(toPos))
                 .lineWidth(1/32f);
-
-            CreateClient.OUTLINER.showLine("N" + iteration + fromPos + toPos, fromPos, toPos)
-                .colored(new Color(255, 120, 255))
-                .lineWidth(1/16f);
         }
-        
     }
 
     private AABB boxFromPos(Vec3 pos) {

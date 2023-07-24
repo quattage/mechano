@@ -5,6 +5,7 @@ import java.util.HashMap;
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.core.electricity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
@@ -17,6 +18,7 @@ import com.simibubi.create.foundation.utility.Pair;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -27,6 +29,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
+/***
+ * A WireSpool object is both a Minecraft Item as well as a logical representation
+ * of an electric connection's properties. 
+ */
 public abstract class WireSpool extends Item {
 
     protected final String PREFIX = "wire_";
@@ -37,7 +43,7 @@ public abstract class WireSpool extends Item {
     public static final HashMap<String, WireSpool> spoolTypes = new HashMap<String, WireSpool>();
 
     private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
-    private Player player;
+    private Player player; 
     private ElectricBlockEntity target;
 
     /***
@@ -77,9 +83,18 @@ public abstract class WireSpool extends Item {
     }
 
     /***
+     * Gets the stored singleton HashMap of spool ItemStacks.
+     * @return
+     */
+    public static final HashMap<String, WireSpool> getAllTypes() {
+        return spoolTypes;
+    }
+
+    /***
      * The name of this Spool's wire. This is used as the ID of this spool. 
      * ex. a name of "hookup" results in an ID of "wire_hookup"
-     * This is used to look up the wire's texture.
+     * This is used to look up the wire's texture and transmission
+     * properties.
      * @return
      */
     protected abstract String setName();
@@ -112,6 +127,10 @@ public abstract class WireSpool extends Item {
         return PREFIX + name;
     }
 
+    public final ResourceLocation asResource() {
+        return MechanoClient.WIRE_TEXTURE_PROVIDER.get(this);
+    }
+
     public final ItemStack getEmptySpool() {
         return emptySpoolDrop;
     }
@@ -135,7 +154,6 @@ public abstract class WireSpool extends Item {
         ItemStack handStack = context.getItemInHand();
         
         if(be != null && be instanceof ElectricBlockEntity ebe) {
-
             target = ebe;
             if(handStack.hasTag()) {
                 if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
@@ -158,11 +176,13 @@ public abstract class WireSpool extends Item {
 
         if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
 
-        CompoundTag nbt = wireStack.getOrCreateTag();   
-        nbt.put("at", writePos(clickedPos));
-        nbt.putString("from", node.getId());
-
         intermediary = target.nodes.makeFakeConnection(this, node.getId(), placer);
+
+        if(intermediary.getFirst().isSuccessful()) {
+            CompoundTag nbt = wireStack.getOrCreateTag();   
+            nbt.put("at", writePos(clickedPos));
+            nbt.putString("from", node.getId());
+        }
 
         if(!intermediary.getFirst().isSuccessful())
             revert(wireStack, false);
@@ -193,11 +213,14 @@ public abstract class WireSpool extends Item {
                 }
 
                 NodeConnectResult result = ebeFrom.nodes.connect(intermediary.getSecond(), target.nodes, toNode.getId());
-                if(!result.isSuccessful())
-                    revert(wireStack, false);
 
+                if(!world.isClientSide() && !result.isSuccessful() && result.isFatal()) {
+                    revert(wireStack, false);
+                    target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                    Mechano.log("TARGET: " + target.getBlockPos() + "   " + target.toString());
+                }
                 sendInfo(world, clickedPos, result);
-                clearTag(wireStack);
+                clearTag(result, wireStack);
                 return InteractionResult.PASS;
             }
         }
@@ -241,24 +264,59 @@ public abstract class WireSpool extends Item {
         }
     }
 
+    /***
+     * Clears tags and cancels the connection.
+     * @param stack
+     * @param clear
+     */
     private void revert(ItemStack stack, boolean clear) {
         Mechano.log("REVERT");
         clearTag(stack);
         if(clear && intermediary != null) cancelConnection(target, intermediary.getSecond().getSourceID());
     }
 
+    /***
+     * Clears tags and cancels the connection.
+     * @param stack
+     * @param clear
+     */
+    private void revert(ElectricBlockEntity ebe, ItemStack stack, boolean clear) {
+        Mechano.log("REVERT");
+        clearTag(stack);
+        if(clear && intermediary != null) cancelConnection(ebe, intermediary.getSecond().getSourceID());
+    }
+
+    /***
+     * Reverts connection to reflect the state of the NodeBank before the connection was attempted.
+     */
     private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
         if(ebe != null) ebe.nodes.cancelConnection(sourceID);
         sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }
 
+    /***
+     * Provides player tactility in the form of sound and an informational message
+     * @param world World to play sound in
+     * @param pos Position to play sound
+     * @param result NodeConnectResult to get the sound and info message from
+     */
     private void sendInfo(Level world, BlockPos pos, NodeConnectResult result) {
         player.displayClientMessage(result.getMessage(), true);
         result.playConnectSound(world, pos);
     }
 
+    /***
+     * Clears the relevent tags from this WireSpool
+     * @param stack
+     */
     private void clearTag(ItemStack stack) {
         //if(!stack.hasTag()) return;
+        stack.removeTagKey("at");
+        stack.removeTagKey("from");
+    }
+
+    private void clearTag(NodeConnectResult result, ItemStack stack) {
+        if(!result.isSuccessful() && !result.isFatal()) return;
         stack.removeTagKey("at");
         stack.removeTagKey("from");
     }

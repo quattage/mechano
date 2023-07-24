@@ -167,6 +167,5 @@ public class MechanoBlocks {
 
     public static void register(IEventBus event) {
         Mechano.logReg("blocks");
-
     }
 }

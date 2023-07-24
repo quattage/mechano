@@ -21,18 +21,17 @@ public class WireModelRenderer {
     /***
      * Overall scale, or "thickness" of the wire
      */
-    private static final float SCALE = 0.6f;
+    private static final float SCALE = 0.9f;
 
     /***
      * The rotation (in degrees) of the wire's profile
      */
-    private static final int SKEW = 0;
+    private static final int SKEW = 45;
 
     /***
      * How much the wire hangs
      */
-    private static final float SAGGINESS = 25;  
-    private float lastSag = SAGGINESS;
+    private static final float SAGGINESS = 25;
 
     /***
      * The wire's Level of Detail
@@ -75,6 +74,10 @@ public class WireModelRenderer {
         public int hashCode() {
             return hash;
         }
+
+        public String toString() {
+            return "[" + hash + "]";
+        }
     }
 
     private final Object2ObjectOpenHashMap<BakedModelHashKey, WireModel> modelCache = new Object2ObjectOpenHashMap<>(256);
@@ -94,11 +97,13 @@ public class WireModelRenderer {
         int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
 
         WireModel model;
-        if(modelCache.containsKey(key)) model = modelCache.get(key);
+        if(modelCache.containsKey(key)) 
+            model = modelCache.get(key);
         else {
             model = buildWireModel(origin);
             modelCache.put(key, model);
         }
+        
         model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
     }
 
@@ -164,8 +169,8 @@ public class WireModelRenderer {
             buildVertical(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);        //      | 
             buildVertical(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);   //      —
         } else {
-            buildNominal(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);         //      |  
-            buildNominal(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);    //      —
+            buildNominal(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A, 1f);         //      |  
+            buildNominal(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B, 1f);    //      —
         }
         return builder.build();
     }
@@ -224,7 +229,7 @@ public class WireModelRenderer {
     }
 
     private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, int age, 
-        float pTicks, float angle, WireUV uv) {
+        float pTicks, float angle, WireUV uv, float offset) {
         
         float contextualLength = 1f * LOD;
         float distance = VectorHelper.getLength(vec) * 0.7f, distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
@@ -233,13 +238,10 @@ public class WireModelRenderer {
         float animatedSag = SAGGINESS;
         
         if(age > -1) {
-            lastSag = animatedSag;
             float subduedness = 1.6263f + 0.1664f * distance;                                 // variable tamping factor to decrease the wiggle vigor
             float speed = age * (0.576f - 0.003f * age) / (subduedness * 0.6f);               // ramped speed of the wiggleness
             float intensity = SAGGINESS * (float)(Math.sin((age * -0.00773f)) + 0.8f);        // sin ramped wiggle distance value
             animatedSag = SAGGINESS + (float)(Math.cos(speed)) * (intensity / subduedness);   // overall sag value as a cosine wave
-            Mechano.log("A:" + animatedSag);
-            Mechano.log("D: " + distance);
         }
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
@@ -248,7 +250,9 @@ public class WireModelRenderer {
         Vector3f normal = new Vector3f(), rotAxis = new Vector3f();
         float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
 
-        float uvv0, uvv1 = 0, gradient, x, y;
+        float uvv0, uvv1 = 0; 
+        float gradient;
+        float x, y;
         Vector3f point0 = new Vector3f(), point1 = new Vector3f();
 
         point0.set(0, (float) VectorHelper.drip2(animatedSag, 0, distance, vec.y()), 0);
@@ -266,9 +270,10 @@ public class WireModelRenderer {
 
         Quaternion rotator = rotAxis.rotationDegrees(angle);
         normal.transform(rotator);
-
         normal.mul(fullWidth);
+
         vertB1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
+
         vertB2.load(vertB1);
         vertB2.add(normal);
 
@@ -289,6 +294,8 @@ public class WireModelRenderer {
 
             vertA1.load(vertB1);
             vertA2.load(vertB2);
+
+            
 
             vertB1.set(point1.x() - normal.x() / 2, point1.y() - normal.y() / 2, point1.z() - normal.z() / 2);
             vertB2.load(vertB1);
@@ -318,7 +325,10 @@ public class WireModelRenderer {
 
             contextualLength = VectorHelper.distanceBetween(point0, point1);
         }
-        lastSag = animatedSag;
+    }
+
+    public static float getScale() {
+        return SCALE;
     }
 
     public void purgeCache() {

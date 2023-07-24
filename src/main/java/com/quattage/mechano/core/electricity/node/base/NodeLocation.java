@@ -2,10 +2,12 @@ package com.quattage.mechano.core.electricity.node.base;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
+import com.quattage.mechano.core.electricity.ElectricBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -95,17 +97,17 @@ public class NodeLocation {
      * Create a new NodeLocation derived from values stored within an NBT tag.
      * This requires your NBT to have a properly formatted compound called "NodeLocation."
      */
-    public NodeLocation(BlockPos root, CompoundTag tag) {
+    public NodeLocation(BlockEntity target, CompoundTag tag) {
         this.northOffset = new Vec3(
             tag.getDouble("oX"), 
             tag.getDouble("oY"), 
             tag.getDouble("oZ")
         );
         this.defaultFacing = Direction.NORTH;
-        this.root = root;
+        this.root = target.getBlockPos();
         this.directionalOffset = northOffset;
 
-        Mechano.log("INIT OFFSET: " + directionalOffset);
+        rotate(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
 
         updateHitbox();
     }

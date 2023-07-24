@@ -7,6 +7,7 @@ import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
+import com.simibubi.create.foundation.utility.Color;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -44,7 +45,7 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         boolean isOccupied = false;
 
         if(mainHand.hasTag()) {
-            isOccupied = mainHand.getTag().contains("At") || mainHand.getTag().contains("From");
+            isOccupied = mainHand.getTag().contains("at") || mainHand.getTag().contains("from");
         }
     
         drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
@@ -81,6 +82,11 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         } else {
             oldGrow = 0; newGrow = 0; growProgress = 0.0;
         }
+    }
+
+    private AABB boxFromPos(Vec3 pos, float s) {
+        Vec3 size = new Vec3(s, s, s);
+        return new AABB(pos.subtract(size), pos.add(size));
     }
 
     private boolean isBound(BlockEntity be, ItemStack wireStack) {

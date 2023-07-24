@@ -36,7 +36,7 @@ public record WireModel(float[] vertices, float[] uvs) {
         Matrix4f modelMatrix = matrix.last().pose();
         Matrix3f normalMatrix = matrix.last().normal();
         
-        // step through in deliniations of 3 ([x,y,z,x,y,z,x,y,z, etc])
+        // step through in deliniations of 3 ([x,y,z,x,y,z,x,y,z...] etc)
         int count = vertices.length / 3;
 
         for (int i = 0; i < count; i++) {
@@ -47,8 +47,8 @@ public record WireModel(float[] vertices, float[] uvs) {
                 .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
                 .color(255, 255, 255, 255)                           // vertex color doesn't matter but is required anyway
                 .uv(uvs[i * 2], uvs[i * 2 + 1])                      // texture UVs
-                .uv2(light)                                          // lightmap UVs
                 .overlayCoords(OverlayTexture.NO_OVERLAY)            // i have no idea what this is
+                .uv2(light)                                          // lightmap UVs
                 .normal(normalMatrix, 1, 0.35f, 0)                   // normal (arbitrary numbers)
                 .endVertex();                                        // mojang mappings suck balls
         }

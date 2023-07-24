@@ -23,12 +23,22 @@ public class ElectricNodeConnection extends NodeConnection {
     private Vec3i relativePos;
     private String destinationID;
 
+    public ElectricNodeConnection(WireSpool spoolType, NodeBank fromBank, Vec3 sourcePos, NodeBank toBank, String destinationID, boolean inverse) {
+        this.sourcePos = sourcePos;
+        destPos = toBank.get(destinationID).getPosition();
+        relativePos = fromBank.pos.subtract(toBank.pos);
+        this.destinationID= destinationID;
+        this.spoolType = spoolType;
+        this.isInverse = inverse;
+    }
+
     public ElectricNodeConnection(WireSpool spoolType, NodeBank fromBank, Vec3 sourcePos, NodeBank toBank, String destinationID) {
         this.sourcePos = sourcePos;
         destPos = toBank.get(destinationID).getPosition();
         relativePos = fromBank.pos.subtract(toBank.pos);
         this.destinationID= destinationID;
         this.spoolType = spoolType;
+        this.isInverse = false;
     }
 
     /***
@@ -39,6 +49,7 @@ public class ElectricNodeConnection extends NodeConnection {
         this.destinationID = in.getString("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
+        this.isInverse = in.getBoolean("inv");
         if(target.getLevel() == null) super.setAge(-1);
         this.relativePos = new Vec3i(
             in.getInt("rX"), 
@@ -65,6 +76,7 @@ public class ElectricNodeConnection extends NodeConnection {
 		in.putInt("rY", this.relativePos.getY());
 		in.putInt("rZ", this.relativePos.getZ());
 		in.putString("to", this.destinationID);
+        in.putBoolean("inv", this.isInverse);
         if(spoolType == null) 
             in.putString("type", "none");
         else

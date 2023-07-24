@@ -53,7 +53,6 @@ public class BlockMath {
         BlockPos difference = workingPos.subtract(originPos);
         double avg = average(difference);
         BlockPos average = difference.subtract(new BlockPos(avg, avg, avg));
-        Mechano.log("average: " + average);
 
         return Direction.UP;
     }

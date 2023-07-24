@@ -33,6 +33,7 @@ public class FakeNodeConnection extends NodeConnection {
         super.setAge(-1);
         destPos = placer.position().add(0.0D, (double)placer.getEyeHeight() * 0.7d, 0.0d);
         this.spoolType = spoolType;
+        this.isInverse = false;
     }
 
     /***
@@ -48,7 +49,7 @@ public class FakeNodeConnection extends NodeConnection {
      * @return
      */
     public ElectricNodeConnection realize(NodeBank fromBank, NodeBank destinationBank, String destinationId) {
-        return new ElectricNodeConnection(spoolType, fromBank, sourcePos, destinationBank, destinationId);
+        return new ElectricNodeConnection(spoolType, fromBank, sourcePos, destinationBank, destinationId, false);
     }
 
     public Entity getAttachedEntity() {

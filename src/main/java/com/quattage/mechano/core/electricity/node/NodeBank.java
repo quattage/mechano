@@ -199,7 +199,6 @@ public class NodeBank {
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
         for(int x = 0; x < NODES.length; x++) {
-            //Mechano.log(x + ": " + NODES[x].getId());
             NODES[x].writeTo(out);
         }
         in.putString("BankVersion", VERSION);
@@ -251,10 +250,6 @@ public class NodeBank {
                 + thisID + "', but the provided NodeBank NBT data does not!");
 
             NODES[x] = new ElectricNode(target, bank.getCompound(thisID));
-            
-
-            if(target.getBlockState().getBlock() instanceof ElectricBlock eBlock)
-                NODES[x].setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
         }
     }
 
@@ -299,6 +294,7 @@ public class NodeBank {
      * Removes all connections that involve both the given NodeBank and this NodeBank
      * @param from NodeBank to use for comparison - All connections that exist to the
      * provided NodeBank will be removed from this NodeBank.
+     * 
      */
     public boolean removeAllConnectionsTo(NodeBank bank) {
         boolean changed = false;
@@ -340,6 +336,9 @@ public class NodeBank {
      * attaching a wire to a player.
      */
     public Pair<NodeConnectResult, FakeNodeConnection> makeFakeConnection(WireSpool spoolType, String fromID, Entity targetEntity) {
+        
+        setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
+
         Vec3 sourcePos = get(fromID).getPosition();
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
         Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
@@ -358,6 +357,7 @@ public class NodeBank {
      * a normal NodeConnection, and the ElectricNode that the player selects second, 
      * <strong>(the "target" node)</strong>, receives an inverted copy of the same NodeConnection.
      * 
+     * @param fake Fake Connection, usually from a BlockEntity to a player, to make into a real connection.
      * @param spoolType Type of connection to create - Determines transfer rate, wire model, etc.
      * @param targetBank The other NodeBank, where the destination ElectricNode is.
      * @param targetID The name of the destinationElectricNode in the targetBank.
@@ -368,8 +368,11 @@ public class NodeBank {
         String fromID = fake.getSourceID();
         WireSpool spoolType = fake.getSpoolType();
 
+        setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
+        targetBank.setOrient(targetBank.target.getBlockState().getValue(ElectricBlock.ORIENTATION));
+
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
-        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
+        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
         if(targetBank.equals(this)) { 
@@ -377,14 +380,15 @@ public class NodeBank {
             return NodeConnectResult.LINK_CONFLICT;
         }
 
-        NodeConnectResult r1 = NODES[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
-        NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
+        NodeConnectResult r1 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
         
-        if(r1.isSuccessful() && r2.isSuccessful()) {
+        if(r1.isSuccessful()) {
+            NODES[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
             return NodeConnectResult.WIRE_SUCCESS;
         }
-        return r2;
+        
+        return r1;
     }
 
     /***
@@ -405,7 +409,7 @@ public class NodeBank {
         Vec3 destPos = targetBank.get(targetID).getPosition();
 
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
-        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID);
+        NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
         NodeConnectResult r1 = NODES[indexOf(fromID)].addConnection(fromConnection);

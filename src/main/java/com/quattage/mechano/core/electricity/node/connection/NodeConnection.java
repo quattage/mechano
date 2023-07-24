@@ -26,6 +26,7 @@ public abstract class NodeConnection {
      */
     protected final boolean needsLerped = setNeedsLerped();
     protected final boolean canTransferPower = setTransferPower();
+    protected boolean isInverse = false;
     private int age = 0;
 
     /***
@@ -100,6 +101,10 @@ public abstract class NodeConnection {
      */
     public boolean shouldIgnoreFrustrum() {
         return false;
+    }
+
+    public boolean isInverse() {
+        return isInverse;
     }
     
     /***

@@ -81,7 +81,7 @@ public class ElectricNode {
         this.id = tag.getString("id");
         this.index = tag.getInt("num");
 
-        this.location = new NodeLocation(target.getBlockPos(), tag.getCompound("loc"));
+        this.location = new NodeLocation(target, tag.getCompound("loc"));
 
         this.mode = NodeMode.fromTag(tag);
         this.maxConnections = tag.getCompound("nodes").size();
@@ -107,7 +107,8 @@ public class ElectricNode {
             NodeConnection connection = connections[x];
             if(connection instanceof ElectricNodeConnection ec && ec.needsUpdate()) {
                 NodeBank bank = NodeBank.retrieveFrom(target.getLevel(), target, ec.getRelativePos());
-                ec.initDestPos(bank.get(ec.getDestinationID()).getPosition());
+                if(bank != null)
+                    ec.initDestPos(bank.get(ec.getDestinationID()).getPosition());
             }
         }
     }
@@ -131,13 +132,9 @@ public class ElectricNode {
     private NodeConnection[] readAllConnections(BlockEntity target, CompoundTag in) {
         NodeConnection[] out = new NodeConnection[in.size()];
         for(String connect : in.getAllKeys()) {
-            //Mechano.log(connect + " READ: " + in.getCompound(connect));
             if(!in.getCompound(connect).isEmpty()) {
-                Mechano.log("TAG CONTAINS: " + in.getCompound(connect));
                 out[Integer.parseInt(connect.substring(1))] = 
                     new ElectricNodeConnection(target, getPosition(), in.getCompound(connect));
-
-                Mechano.log("OBJECT GENERATED: " + out[Integer.parseInt(connect.substring(1))]);
             }
         }
         return out;
@@ -181,7 +178,6 @@ public class ElectricNode {
     public boolean connectionExists(NodeConnection checkConnection) {
         for(NodeConnection thisConnection : connections)
             if(checkConnection.equals(thisConnection)) return true; 
-        Mechano.log(">>>>>>>No connection exists.");
         return false;
     }
     
@@ -222,7 +218,6 @@ public class ElectricNode {
      * Sets the latest connection to this ElectricNode to null.
      */
     public void nullifyLastConnection() {
-        Mechano.log("CANCEL");
         int lastIndex = getConnectionAmount(); 
         if(lastIndex >= 0) {
             connections[lastIndex] = null;
@@ -341,7 +336,6 @@ public class ElectricNode {
      * @return True of a connection exists at this index
      */
     public boolean hasConnection(int index) {
-        //Mechano.log("C:" + getConnection(index));
         return getConnection(index) != null;
     }
 
@@ -377,7 +371,6 @@ public class ElectricNode {
      */
     public ElectricNode setOrient(CombinedOrientation dir) {
         location = location.rotate(dir);
-        Mechano.log("ACTUAL OFFSET: " + location.getDirectionalOffset());
         return this;
     }
 

@@ -8,7 +8,9 @@ import java.util.Set;
 import com.google.j2objc.annotations.ReflectionSupport.Level;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.block.orientation.VerticalOrientation;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
@@ -352,24 +354,49 @@ public class ElectricNode {
     }
 
     /***
-     * Rotates this ElectricNode to face the given Direction.
-     * @param dir Direction to rotate.
+     * Rotates this ElectricNode to face the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
      * @return This ElectricNode, but rotated.
      */
-    public ElectricNode setOrient(Direction dir) {
+    public ElectricNode rotateNode(Direction dir) {
         location = location.rotate(dir);
         return this;
     }
 
     /***
-     * Rotates this ElectricNode to face the given CombinedDirection. <p>
-     * CombinedDirection accomodates for any combination of directions, so
-     * you should probably use a CombinedDirection over 
-     * {@link #setOrient(Direction dir) a normal one}.
-     * @param dir CombinedDirection to rotate.
-     * @return This ElectricNode, but rotateed.
+     * Rotates this ElectricNode to face the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     * @return This ElectricNode, but rotated.
      */
-    public ElectricNode setOrient(CombinedOrientation dir) {
+    public ElectricNode rotateNode(CombinedOrientation dir) {
+        location = location.rotate(dir);
+        return this;
+    }
+
+    /***
+     * Rotates this ElectricNode to face the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     * @return This ElectricNode, but rotated.
+     */
+    public ElectricNode rotateNode(SimpleOrientation dir) {
+        location = location.rotate(dir);
+        return this;
+    }
+
+    /***
+     * Rotates this ElectricNode to face the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     * @return This ElectricNode, but rotated.
+     */
+    public ElectricNode rotateNode(VerticalOrientation dir) {
         location = location.rotate(dir);
         return this;
     }

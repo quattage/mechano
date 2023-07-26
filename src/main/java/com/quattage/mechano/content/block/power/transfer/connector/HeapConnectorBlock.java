@@ -18,6 +18,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.BeaconBeamBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.SupportType;
@@ -127,9 +128,9 @@ public class HeapConnectorBlock extends DirectionalBlock implements IBE<HeapConn
     @Override
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block, BlockPos fromPos,
             boolean pIsMoving) {
-        BlockEntity tileentity = state.hasBlockEntity() ? world.getBlockEntity(pos) : null;
-		if(tileentity != null)
-			if(tileentity instanceof HeapConnectorBlockEntity) ((HeapConnectorBlockEntity)tileentity).updateCache();
+        BlockEntity be = state.hasBlockEntity() ? world.getBlockEntity(pos) : null;
+		//if(be != null)
+			//if(be instanceof HeapConnectorBlockEntity hbe) hbe.updateCache();
 
         if (!state.canSurvive(world, pos)) {
             world.destroyBlock(pos, true); 

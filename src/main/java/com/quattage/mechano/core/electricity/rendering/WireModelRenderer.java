@@ -43,8 +43,6 @@ public class WireModelRenderer {
      * to prevent lag or stack overflows in extreme edge cases 
      */
     private static final int LOD_LIMIT = 512;
-    
-    private static final int MAX_DISTANCE = 40;
 
     /***
      * Represents a hash, used as an identifier for a WireModel's place in the cache.
@@ -233,6 +231,7 @@ public class WireModelRenderer {
         
         float contextualLength = 1f * LOD;
         float distance = VectorHelper.getLength(vec) * 0.7f, distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
+
         float wrongDistanceFactor = distance / distanceXZ;
 
         float animatedSag = SAGGINESS;
@@ -243,6 +242,12 @@ public class WireModelRenderer {
             float intensity = SAGGINESS * (float)(Math.sin((age * -0.00773f)) + 0.8f);        // sin ramped wiggle distance value
             animatedSag = SAGGINESS + (float)(Math.cos(speed)) * (intensity / subduedness);   // overall sag value as a cosine wave
         }
+
+
+        if(distance > 1.4) animatedSag *= (distance * 0.0814) - 0.08461;
+        else contextualLength = distance;
+
+        Mechano.logSlow("D: " + distance + "  S:" + animatedSag, 500);
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
             vertB2 = new Vector3f(), vertB1 = new Vector3f();

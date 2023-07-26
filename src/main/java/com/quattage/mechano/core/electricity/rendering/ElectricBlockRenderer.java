@@ -7,7 +7,7 @@ import com.mojang.math.Vector3f;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.registry.MechanoRenderTypes;
@@ -28,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
-    private final HashMap<Con>
+    //private final HashMap<Con>
 
     public ElectricBlockRenderer(BlockEntityRendererProvider.Context context) {
         super();
@@ -50,7 +50,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                 NodeConnection thisConnection = theseConnections[c];
 
                 if(!thisConnection.isValid()) continue;
-                if(thisConnection.isInverse()) continue;
+                //if(thisConnection.isInverse()) continue;
 
                 Vec3 from = thisConnection.getSourcePos();
                 Vec3 to = thisConnection.getDestPos();
@@ -73,20 +73,17 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
     }
 
     @Override
-    public boolean shouldRender(T blockEntity, Vec3 cameraPos) {
-        boolean standardChecks = super.shouldRender(blockEntity, cameraPos);
+    public boolean shouldRender(T ebe, Vec3 cameraPos) {
+        boolean standardChecks = super.shouldRender(ebe, cameraPos);
         boolean uniqueChecks = true;
-
-        if(blockEntity instanceof ElectricBlockEntity ebe) {
-            if(!ebe.nodes.shouldAlwaysRender())
-                uniqueChecks = false;
-        }
+        if(!ebe.nodes.shouldAlwaysRender())
+            uniqueChecks = false;
 
         return standardChecks || uniqueChecks;
     }
 
     @Override
-    public boolean shouldRenderOffScreen(T pBlockEntity) {
+    public boolean shouldRenderOffScreen(T ebe) {
         return true;
     }
 

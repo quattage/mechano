@@ -1,31 +1,32 @@
 package com.quattage.mechano.content.block.power.transfer.connector;
 
-import com.mrh0.createaddition.energy.BaseElectricTileEntity;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
+import com.quattage.mechano.core.electricity.observe.NodeDataPacket;
+import com.quattage.mechano.core.electricity.observe.NodeObservable;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class HeapConnectorBlockEntity extends BaseElectricTileEntity {
-
-    public static final int MAX_TRANSFER = 10240;
-    public static final int CAPACITY = MAX_TRANSFER * 2;
+public class HeapConnectorBlockEntity extends ElectricBlockEntity {
 
 
     public HeapConnectorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
-        super(tileEntityTypeIn, pos, state, CAPACITY, MAX_TRANSFER, MAX_TRANSFER);
+        super(tileEntityTypeIn, pos, state);
     }
 
 
     @Override
-    public boolean isEnergyInput(Direction arg0) {
-        return false;
-    }
-
-
-    @Override
-    public boolean isEnergyOutput(Direction arg0) {
-        return false;
+    public void addConnections(NodeBankBuilder builder) {
+        builder
+            .newNode()
+                .id("in1")
+                .at(8, 0, 8) 
+                .mode("I")
+                .connections(2)
+                .build()
+        ;
     }
 }

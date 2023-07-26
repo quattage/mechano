@@ -4,7 +4,7 @@ import org.antlr.v4.parse.ANTLRParser.parserRule_return;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.NodeRotation;
 
 import net.minecraft.core.BlockPos;
@@ -27,7 +27,7 @@ public abstract class NodeConnection {
     protected final boolean needsLerped = setNeedsLerped();
     protected final boolean canTransferPower = setTransferPower();
     protected boolean isInverse = false;
-    private int age = 0;
+    protected int age = 0;
 
     /***
      * The type of spool used to make the connection. Determines things like transfer rate.

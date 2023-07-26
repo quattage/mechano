@@ -7,8 +7,10 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.ElectricBlock;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.block.orientation.VerticalOrientation;
+import com.quattage.mechano.core.electricity.block.ElectricBlock;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
@@ -106,23 +108,55 @@ public class NodeBank {
      * Rotates this NodeBank to face the given Direction <p>
      * More specifically, it loops through every stored ElectricNode
      * and modifies its NodeLocation based on the given direction.
-     * @param dir Direction to face
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
      */
-    public NodeBank setOrient(Direction dir) {
+    public NodeBank rotateAllNodes(Direction dir) {
         for(ElectricNode node : NODES) 
-            node = node.setOrient(dir);
+            node = node.rotateNode(dir);
         return this;
     }
 
     /***
-     * Rotates this NodeBank to face the given CombinedOrientation <p>
+     * Rotates this NodeBank to face the given Direction <p>
      * More specifically, it loops through every stored ElectricNode
      * and modifies its NodeLocation based on the given direction.
-     * @param dir CombinedOrientation to face
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
      */
-    public NodeBank setOrient(CombinedOrientation dir) {
+    public NodeBank rotateAllNodes(CombinedOrientation dir) {
         for(ElectricNode node : NODES)
-            node = node.setOrient(dir);
+            node = node.rotateNode(dir);
+        return this;
+    }
+
+    /***
+     * Rotates this NodeBank to face the given Direction <p>
+     * More specifically, it loops through every stored ElectricNode
+     * and modifies its NodeLocation based on the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     */
+    public NodeBank rotateAllNodes(SimpleOrientation dir) {
+        for(ElectricNode node : NODES)
+            node = node.rotateNode(dir);
+        return this;
+    }
+
+    /***
+     * Rotates this NodeBank to face the given Direction <p>
+     * More specifically, it loops through every stored ElectricNode
+     * and modifies its NodeLocation based on the given direction.
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     */
+    public NodeBank rotateAllNodes(VerticalOrientation dir) {
+        for(ElectricNode node : NODES)
+            node = node.rotateNode(dir);
         return this;
     }
 
@@ -290,6 +324,11 @@ public class NodeBank {
         target.setChanged();
     }
 
+    public void refreshTargetOrient() {
+        if(target instanceof ElectricBlockEntity ebe)
+            ebe.refreshOrient();
+    }
+
     /***
      * Removes all connections that involve both the given NodeBank and this NodeBank
      * @param from NodeBank to use for comparison - All connections that exist to the
@@ -336,8 +375,6 @@ public class NodeBank {
      * attaching a wire to a player.
      */
     public Pair<NodeConnectResult, FakeNodeConnection> makeFakeConnection(WireSpool spoolType, String fromID, Entity targetEntity) {
-        
-        setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
 
         Vec3 sourcePos = get(fromID).getPosition();
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
@@ -367,9 +404,6 @@ public class NodeBank {
         Vec3 destPos = targetBank.get(targetID).getPosition();
         String fromID = fake.getSourceID();
         WireSpool spoolType = fake.getSpoolType();
-
-        setOrient(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
-        targetBank.setOrient(targetBank.target.getBlockState().getValue(ElectricBlock.ORIENTATION));
 
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);

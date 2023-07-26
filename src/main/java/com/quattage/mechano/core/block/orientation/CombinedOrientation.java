@@ -8,10 +8,17 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.Util;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
 
+/***
+ * A CombinedOrientation is an implementation of Minecraft's BlockState enums that
+ * combines two Direction objects, called localUp and localForward. LocalUp represents the 
+ * direction direction that the block's top is facing, where localForward represents the
+ * direction the block's front is facing. This accounts for all 24 possible directions of a
+ * block in Minecraft.
+ */
 public enum CombinedOrientation implements StringRepresentable {
-    // stores both the diretion the model is facing in its local Y, and the direction the model is "looking" in its local Z.
     DOWN_NORTH("down_north", Direction.DOWN, Direction.NORTH),      // 0
     DOWN_EAST("down_east", Direction.DOWN, Direction.EAST),
     DOWN_SOUTH("down_south", Direction.DOWN, Direction.SOUTH),
@@ -61,15 +68,25 @@ public enum CombinedOrientation implements StringRepresentable {
         return localUp.ordinal() << 3 | localForward.ordinal();
     }
 
+    /***
+     * Creates a CombinedOrientation derived from two Directions.
+     * @param localUp The local up direction
+     * @param localForward The local forward direction
+     * @throws NullPointerException if any given parameter is null
+     * @throws IllegalStateException if the given directions are incompatable - 
+     * For example, passing NORTH and NORTH would throw an error, as a NORTH NORTH 
+     * CombinedOrientation cannot exist.
+     * @return A CombinedOrientation with the given directions
+     */
     public static CombinedOrientation combine(Direction localUp, Direction localForward) {
         if(localUp == null) 
-            throw new IllegalArgumentException("StrictComplexDirection localUp was passed an illegal value of '" + localUp + "'");
+            throw new NullPointerException("CombinedOrientation localUp was passed an illegal value of '" + localUp + "'");
 
         if(localForward == null) 
-            throw new IllegalArgumentException("StrictComplexDirection orient was passed an invalid value of '" + localForward + "'");
+            throw new NullPointerException("CombinedOrientation orient was passed an invalid value of '" + localForward + "'");
 
         if(localUp.getAxis() == localForward.getAxis())
-            throw new IllegalArgumentException("A StrictComplexDirection facing '" + localUp.toString().toUpperCase() 
+            throw new IllegalStateException("A CombinedOrientation facing '" + localUp.toString().toUpperCase() 
                 + "' cannot possess a local '" + localForward.toString().toUpperCase() + "' direction!");
         int i = lookupKey(localUp, localForward);
         return COMBINED_LOOKUP.get(i);
@@ -83,6 +100,11 @@ public enum CombinedOrientation implements StringRepresentable {
         return this.localForward;
     }
 
+    /***
+     * Cycles only the local forward direction of the given CombinedOrientation.
+     * @param in
+     * @return A modified CombinedOrientation.
+     */
     public static CombinedOrientation cycleLocalForward(CombinedOrientation in) {
         int pos = in.ordinal();
         int newPos = pos + 1;
@@ -91,6 +113,12 @@ public enum CombinedOrientation implements StringRepresentable {
         return CombinedOrientation.values()[newPos];
     }
 
+    /***
+     * Cycles through all possible orientations starting at the given 
+     * CombinedOrientation.
+     * @param in
+     * @return A modified CombinedOrientation.
+     */
     public static CombinedOrientation cycle(CombinedOrientation in) {
         int pos = in.ordinal();
         if(getGroupIndex(in) < 3) { 
@@ -103,6 +131,47 @@ public enum CombinedOrientation implements StringRepresentable {
         if(pos > 23) pos -= 23;
         if(pos < 8) pos += 8;
         return CombinedOrientation.values()[pos];
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(Direction dir) {
+        return dir.getAxis() == Axis.Y ? combine(dir, Direction.NORTH) : combine(dir, Direction.UP);
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(SimpleOrientation dir) {
+        Axis orient = dir.getOrient();
+        Direction convertedOrient = Direction.UP;
+        switch(orient) {
+            case X:
+                convertedOrient = Direction.EAST;
+            case Z:
+                convertedOrient = Direction.SOUTH;
+            default:
+                break;
+        }
+
+        return combine(convertedOrient, dir.getCardinal());
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(VerticalOrientation dir) {
+        return combine(dir.getLocalVertical(), dir.getLocalFacing());
     }
 
     private static int getGroupIndex(CombinedOrientation in) {

@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
@@ -214,10 +214,22 @@ public abstract class WireSpool extends Item {
 
                 NodeConnectResult result = ebeFrom.nodes.connect(intermediary.getSecond(), target.nodes, toNode.getId());
 
-                if(!world.isClientSide() && !result.isSuccessful() && result.isFatal()) {
-                    revert(wireStack, false);
-                    target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
-                    Mechano.log("TARGET: " + target.getBlockPos() + "   " + target.toString());
+                Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
+
+                if(!world.isClientSide()) {
+                    if(!result.isSuccessful() && result.isFatal()) {
+
+                        revert(wireStack, false);
+                        if(wireStack.hasTag())
+                            target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                        Mechano.log("TARGET: " + target.getBlockPos() + "   " + target.toString());
+
+                    } else if(!result.isSuccessful() && !result.isFatal()) {
+
+                        
+                        if(wireStack.hasTag())
+                            target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                    }
                 }
                 sendInfo(world, clickedPos, result);
                 clearTag(result, wireStack);

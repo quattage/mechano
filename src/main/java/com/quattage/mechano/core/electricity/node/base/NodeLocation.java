@@ -1,13 +1,23 @@
 package com.quattage.mechano.core.electricity.node.base;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.core.block.CombinedOrientedBlock;
+import com.quattage.mechano.core.block.SimpleOrientedBlock;
+import com.quattage.mechano.core.block.VerticallyOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.electricity.ElectricBlock;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.block.orientation.VerticalOrientation;
+import com.quattage.mechano.core.electricity.block.ElectricBlock;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.DirectionalBlock;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -107,9 +117,37 @@ public class NodeLocation {
         this.root = target.getBlockPos();
         this.directionalOffset = northOffset;
 
-        rotate(target.getBlockState().getValue(ElectricBlock.ORIENTATION));
+        
+        doInitialRotate(target);
 
         updateHitbox();
+    }
+
+    public void doInitialRotate(BlockEntity target) {
+        BlockState state = target.getBlockState();
+        Block caller = state.getBlock();
+        if(state != null && caller != null) {
+            if(caller instanceof DirectionalBlock db) {
+                rotate(state.getValue(DirectionalBlock.FACING));
+                Mechano.log("Initial DirectionalBlock rotated");
+            }
+            else if(caller instanceof HorizontalDirectionalBlock hb) {
+                rotate(state.getValue(HorizontalDirectionalBlock.FACING));
+                Mechano.log("Initial HorizontalDirectionalBlock rotated");
+            }
+            else if(caller instanceof CombinedOrientedBlock cb) {
+                rotate(state.getValue(CombinedOrientedBlock.ORIENTATION));
+                Mechano.log("Initial CombinedOrientedBlock rotated");
+            }
+            else if (caller instanceof SimpleOrientedBlock sb) {
+                rotate(state.getValue(SimpleOrientedBlock.ORIENTATION));
+                Mechano.log("Initial SimpleOrientedBlock rotated");
+            }
+            else if (caller instanceof VerticallyOrientedBlock vb) {
+                rotate(state.getValue(VerticallyOrientedBlock.ORIENTATION));
+                Mechano.log("Initial VerticallyOrientedBlock rotated");
+            }
+        }
     }
 
     public CompoundTag writeTo(CompoundTag in) {
@@ -177,62 +215,62 @@ public class NodeLocation {
      * but rather a copy of the NodeLocation's root. This means that you can't
      * stack rotations. This is intentional, because rotating a NodeLocation multiple times 
      * would cause it to break. </strong>
-     * @param dir Direction to rotate
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
      * @return this NodeLocation after rotating
      */
     public NodeLocation rotate(Direction dir) {
+        directionalOffset = getRotated(northOffset, CombinedOrientation.convert(dir));
+        return this;
+    }
+
+    /***
+     * Rotate this NodeLocation to face a given direction.
+     * <strong>Node: This method never modifies the NodeLocation's root itself,
+     * but rather a copy of the NodeLocation's root. This means that you can't
+     * stack rotations. This is intentional, because rotating a NodeLocation multiple times 
+     * would cause it to break. </strong>
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     * @return this NodeLocation after rotating
+     */
+    public NodeLocation rotate(CombinedOrientation dir) {
         directionalOffset = getRotated(northOffset, dir);
         return this;
     }
 
     /***
-     * Rotate this NodeLocation to face a given StrictComplexDirection.
+     * Rotate this NodeLocation to face a given direction.
      * <strong>Node: This method never modifies the NodeLocation's root itself,
      * but rather a copy of the NodeLocation's root. This means that you can't
      * stack rotations. This is intentional, because rotating a NodeLocation multiple times 
      * would cause it to break. </strong>
-     * @param dir 
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
      * @return this NodeLocation after rotating
      */
-    public NodeLocation rotate(CombinedOrientation cDir) {
-        directionalOffset = getRotated(northOffset, cDir);
+    public NodeLocation rotate(SimpleOrientation dir) {
+        directionalOffset = getRotated(northOffset, CombinedOrientation.convert(dir));
         return this;
     }
 
-    private Vec3 getRotated(Vec3 vec, Direction dir) {
-        currentDirection = dir;
-        switch(dir) {
-            case NORTH:
-                return new Vec3(
-                    vec.x,
-                    vec.y,
-                    vec.z
-                );
-            case EAST:
-                return new Vec3(
-                    iv(vec.z),
-                    vec.y,
-                    vec.x
-                );
-            case SOUTH:
-                return new Vec3(
-                    iv(vec.x),
-                    vec.y,
-                    iv(vec.z)
-                );
-            case WEST:
-                return new Vec3(
-                    vec.z,
-                    vec.y,
-                    iv(vec.x)
-                );
-            default:
-                return new Vec3(
-                    vec.x,
-                    vec.y,
-                    vec.z
-                );
-        }
+    /***
+     * Rotate this NodeLocation to face a given direction.
+     * <strong>Node: This method never modifies the NodeLocation's root itself,
+     * but rather a copy of the NodeLocation's root. This means that you can't
+     * stack rotations. This is intentional, because rotating a NodeLocation multiple times 
+     * would cause it to break. </strong>
+     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
+     * SimpleOrientation, or VerticalOrientation to use as a basis for
+     * rotation.
+     * @return this NodeLocation after rotating
+     */
+    public NodeLocation rotate(VerticalOrientation dir) {
+        directionalOffset = getRotated(northOffset, CombinedOrientation.convert(dir));
+        return this;
     }
 
     /***

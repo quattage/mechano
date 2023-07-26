@@ -9,6 +9,7 @@ import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlockEntit
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlockEntity;
+import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorRenderer;
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockRenderer;
@@ -62,11 +63,12 @@ public class MechanoBlockEntities {
     public static final BlockEntityEntry<HeapConnectorBlockEntity> HEAP_CONNECTOR = Mechano.REGISTRATE
             .blockEntity("heap_connector", HeapConnectorBlockEntity::new)
             .validBlocks(MechanoBlocks.HEAP_CONNECTOR)
+            .renderer(() -> HeapConnectorRenderer::new)
             .register();
 
     public static final BlockEntityEntry<HeapConnectorStackedBlockEntity> HEAP_CONNECTOR_STACKED = Mechano.REGISTRATE
-            .blockEntity("heap_connector", HeapConnectorStackedBlockEntity::new)
-            .validBlocks(MechanoBlocks.HEAP_CONNECTOR)
+            .blockEntity("heap_connector_stacked", HeapConnectorStackedBlockEntity::new)
+            .validBlocks(MechanoBlocks.HEAP_CONNECTOR_STACKED)
             .register();
 
     public static final BlockEntityEntry<DiagonalGirderBlockEntity> DIAGONAL_GIRDER = Mechano.REGISTRATE

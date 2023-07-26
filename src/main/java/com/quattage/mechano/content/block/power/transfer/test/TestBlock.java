@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.block.power.transfer.test;
 
-import com.quattage.mechano.core.electricity.ElectricBlock;
+import com.quattage.mechano.core.electricity.block.ElectricBlock;
 import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.block.IBE;
 

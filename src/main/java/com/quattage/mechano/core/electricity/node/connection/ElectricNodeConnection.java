@@ -2,7 +2,7 @@ package com.quattage.mechano.core.electricity.node.connection;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 
@@ -29,7 +29,6 @@ public class ElectricNodeConnection extends NodeConnection {
         relativePos = fromBank.pos.subtract(toBank.pos);
         this.destinationID= destinationID;
         this.spoolType = spoolType;
-        this.isInverse = inverse;
     }
 
     public ElectricNodeConnection(WireSpool spoolType, NodeBank fromBank, Vec3 sourcePos, NodeBank toBank, String destinationID) {
@@ -38,7 +37,6 @@ public class ElectricNodeConnection extends NodeConnection {
         relativePos = fromBank.pos.subtract(toBank.pos);
         this.destinationID= destinationID;
         this.spoolType = spoolType;
-        this.isInverse = false;
     }
 
     /***
@@ -49,8 +47,6 @@ public class ElectricNodeConnection extends NodeConnection {
         this.destinationID = in.getString("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
-        this.isInverse = in.getBoolean("inv");
-        if(target.getLevel() == null) super.setAge(-1);
         this.relativePos = new Vec3i(
             in.getInt("rX"), 
             in.getInt("rY"), 
@@ -62,8 +58,12 @@ public class ElectricNodeConnection extends NodeConnection {
             NodeBank destBank = NodeBank.retrieveFrom(world, target, relativePos);
             if(destBank != null) destPos = destBank.get(destinationID).getPosition();
             else destPos = null;
+            this.age = in.getInt("age");
         }
-        else destPos = null;
+        else {
+            destPos = null; 
+            age = -1;
+        }
     }
     
     /***
@@ -75,8 +75,8 @@ public class ElectricNodeConnection extends NodeConnection {
 		in.putInt("rX", this.relativePos.getX());
 		in.putInt("rY", this.relativePos.getY());
 		in.putInt("rZ", this.relativePos.getZ());
+        in.putInt("age", this.age);
 		in.putString("to", this.destinationID);
-        in.putBoolean("inv", this.isInverse);
         if(spoolType == null) 
             in.putString("type", "none");
         else

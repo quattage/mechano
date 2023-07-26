@@ -1,5 +1,6 @@
 package com.quattage.mechano.core.electricity;
 
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.simibubi.create.CreateClient;

@@ -4,9 +4,9 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.GirderPartial;
 import com.quattage.mechano.core.events.ClientBehavior;
-import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;

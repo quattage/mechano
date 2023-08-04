@@ -2,9 +2,9 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 
 import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
 
-import com.mrh0.createaddition.shapes.CAShapes;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -25,7 +25,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class TransmissionNodeBlock extends SimpleOrientedBlock {
 
-    public static final VoxelShaper BASE_SHAPE = CAShapes.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
+    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
 
     public TransmissionNodeBlock(Properties pProperties) {
         super(pProperties);

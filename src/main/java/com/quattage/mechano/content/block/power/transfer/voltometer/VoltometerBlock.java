@@ -2,8 +2,8 @@ package com.quattage.mechano.content.block.power.transfer.voltometer;
 
 import java.util.Locale;
 
-import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.registry.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -31,21 +31,21 @@ public class VoltometerBlock extends HorizontalDirectionalBlock implements IBE<V
     
     public static final EnumProperty<VoltometerModelType> MODEL_TYPE = EnumProperty.create("model", VoltometerModelType.class);
 
-    public static final VoxelShaper BASE = CAShapes
+    public static final VoxelShaper BASE = ShapeBuilder
         .shape(1, 0, 1, 15, 2, 15)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)
         .add(-4, 5.5, 5.5, 20, 10.5, 10.5)
         .forHorizontal(Direction.NORTH);
 
-    public static final VoxelShaper SIDE = CAShapes
+    public static final VoxelShaper SIDE = ShapeBuilder
         .shape(1, 1, 0, 15, 15, 2)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)
         .add(-4, 5.5, 5.5, 20, 10.5, 10.5)
         .forHorizontal(Direction.NORTH);
 
-    public static final VoxelShaper INVERTED = CAShapes
+    public static final VoxelShaper INVERTED = ShapeBuilder
         .shape(1, 14, 1, 15, 16, 15)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)

@@ -129,23 +129,18 @@ public class NodeLocation {
         if(state != null && caller != null) {
             if(caller instanceof DirectionalBlock db) {
                 rotate(state.getValue(DirectionalBlock.FACING));
-                Mechano.log("Initial DirectionalBlock rotated");
             }
             else if(caller instanceof HorizontalDirectionalBlock hb) {
                 rotate(state.getValue(HorizontalDirectionalBlock.FACING));
-                Mechano.log("Initial HorizontalDirectionalBlock rotated");
             }
             else if(caller instanceof CombinedOrientedBlock cb) {
                 rotate(state.getValue(CombinedOrientedBlock.ORIENTATION));
-                Mechano.log("Initial CombinedOrientedBlock rotated");
             }
             else if (caller instanceof SimpleOrientedBlock sb) {
                 rotate(state.getValue(SimpleOrientedBlock.ORIENTATION));
-                Mechano.log("Initial SimpleOrientedBlock rotated");
             }
             else if (caller instanceof VerticallyOrientedBlock vb) {
                 rotate(state.getValue(VerticallyOrientedBlock.ORIENTATION));
-                Mechano.log("Initial VerticallyOrientedBlock rotated");
             }
         }
     }

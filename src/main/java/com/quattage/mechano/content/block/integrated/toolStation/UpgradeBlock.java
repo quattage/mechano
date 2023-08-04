@@ -1,7 +1,8 @@
 package com.quattage.mechano.content.block.integrated.toolStation;
 
 import java.util.Locale;
-import com.quattage.mechano.registry.MechanoBlocks;
+
+import com.quattage.mechano.MechanoBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

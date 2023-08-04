@@ -1,6 +1,6 @@
 package com.quattage.mechano.core.util;
 
-import com.mojang.math.Vector3f;
+import org.joml.Vector3f;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 public class VectorHelper {
 
     public static Vec3i round(Vec3 vec) {
-        return new Vec3i(vec.x, vec.y, vec.z);
+        return new Vec3i((int)vec.x, (int)vec.y, (int)vec.z);
     }
 
     public static Vec3 toVec(Vector3f vec) {
@@ -21,23 +21,54 @@ public class VectorHelper {
         return new Vec3(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public static double drip2(double a, double x, double d, double h) {
-        double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
-        double p2 = -a * Math.cosh((2D * p1 - d) / (2D * a));
-        return p2 + a * Math.cosh((((2D * x) + (2D * p1)) - d) / (2D * a));
+    public static void setDiff(Vector3f root, Vector3f p0, Vector3f p1) {
+        root.set(p0.x() - p1.x(), p0.y() - p1.y(), p0.z() - p1.z());
     }
 
-    private static double asinh(double x) {
-        return Math.log(x + Math.sqrt(x * x + 1.0));
+    public static void setDiff(Vector3f root, Vector3f p0, Vector3f p1, float m) {
+        root.set((p0.x() - p1.x()) + m, (p0.y() - p1.y()), (p0.z() - p1.z()) + m);
     }
 
-    
+    public static BlockPos toBlockPos(Vec3 vec) {
+        return new BlockPos(
+            (int)vec.x, 
+            (int)vec.y, 
+            (int)vec.z
+        );
+    }
+
+    public static BlockPos toBlockPos(Vector3f vec) {
+        return new BlockPos(
+            (int)vec.x, 
+            (int)vec.y, 
+            (int)vec.z
+        );
+    }
+
     /***
      * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
      */
     public static double drip2prime(double a, double x, double d, double h) {
-        double p1 = a * asinh((h / (2D * a)) * (1D / Math.sinh(d / (2D * a))));
+        double p1 = a * aSinh((h / (2d * a)) * (1d / Math.sinh(d / (2d * a))));
         return Math.sinh((2 * x + 2 * p1 - d) / (2 * a));
+    }
+
+    public static double drip2(double a, double x, double d, double h) {
+        double p1 = a * aSinh((h / (2d * a)) * (1d / Math.sinh(d / (2d * a))));
+        double p2 = -a * Math.cosh((2d * p1 - d) / (2d * a));
+        return p2 + a * Math.cosh((((2d * x) + (2d * p1)) - d) / (2d * a));
+    }
+
+    public static double drip2prime(double x, double d, double h) {
+        return drip2prime(1, x, d, h);
+    }
+
+    public static double drip2(double x, double d, double h) {
+        return drip2(1, x, d, h);
+    }
+
+    private static double aSinh(double r) {
+        return Math.log(r + Math.sqrt(r * r + 1.0));
     }
 
     public static Vec3 middleOf(Vec3 a, Vec3 b) {
@@ -71,7 +102,7 @@ public class VectorHelper {
     }
 
     public static Vector3f normalizeToLength(Vector3f vec, float length) {
-        float scalar = Mth.fastInvSqrt(Math.fma(vec.x(), vec.x(), Math.fma(vec.y(), vec.y(), vec.z() * vec.z()))) * length;
+        float scalar = (float)(Mth.fastInvSqrt(Math.fma(vec.x(), vec.x(), Math.fma(vec.y(), vec.y(), vec.z() * vec.z()))) * length);
         return new Vector3f(
             vec.x() * scalar,
             vec.y() * scalar,

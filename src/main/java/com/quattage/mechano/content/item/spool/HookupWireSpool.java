@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.item.spool;
 
-import com.quattage.mechano.registry.MechanoItems;
+import com.quattage.mechano.MechanoItems;
 
 import net.minecraft.world.item.Item;
 

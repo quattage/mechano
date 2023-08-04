@@ -3,6 +3,7 @@ package com.quattage.mechano.content.block.integrated.toolStation;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.gui.menu.AbstractSimiContainerScreen;
 
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -13,7 +14,7 @@ public class ToolStationScreen extends AbstractSimiContainerScreen<ToolStationMe
     }
 
     @Override
-    protected void renderBg(PoseStack pPoseStack, float pPartialTick, int pMouseX, int pMouseY) {
-        // nothing for now
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        
     }
 }

@@ -2,11 +2,11 @@ package com.quattage.mechano.content.block.power.transfer.connector;
 
 import java.util.Locale;
 
-import com.mrh0.createaddition.shapes.CAShapes;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -36,10 +36,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class HeapConnectorStackedBlock extends SimpleOrientedBlock implements IBE<HeapConnectorStackedBlockEntity> {
 
     public static final EnumProperty<StackedTier> TIER = EnumProperty.create("tier", StackedTier.class);
-    public static final VoxelShaper ONE_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 15, 10.5).forDirectional();
-    public static final VoxelShaper TWO_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 20, 10.5).forDirectional();
-    public static final VoxelShaper THREE_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 12, 10.5).forDirectional();
-    public static final VoxelShaper FOUR_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 19, 10.5).forDirectional();
+    public static final VoxelShaper ONE_SHAPE = ShapeBuilder.shape(5.5d, 0d, 5.5d, 10.5d, 15d, 10.5d).forDirectional();
+    public static final VoxelShaper TWO_SHAPE = ShapeBuilder.shape(5.5, 0, 5.5, 10.5, 20, 10.5).forDirectional();
+    public static final VoxelShaper THREE_SHAPE = ShapeBuilder.shape(5.5, 0, 5.5, 10.5, 12, 10.5).forDirectional();
+    public static final VoxelShaper FOUR_SHAPE = ShapeBuilder.shape(5.5, 0, 5.5, 10.5, 19, 10.5).forDirectional();
 
     public enum StackedTier implements StringRepresentable {
         ONE, TWO, THREE, FOUR;

@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.power.transfer.test;
 
+import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.core.electricity.block.ElectricBlock;
-import com.quattage.mechano.registry.MechanoBlockEntities;
 import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;

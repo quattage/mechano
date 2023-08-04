@@ -2,9 +2,9 @@ package com.quattage.mechano.content.block.power.alternator.collector;
 
 import java.util.Locale;
 
-import com.mrh0.createaddition.shapes.CAShapes;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -30,7 +30,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class CollectorBlock extends DirectionalKineticBlock implements IBE<CollectorBlockEntity> {
 
     public static final EnumProperty<CollectorBlockModelType> MODEL_TYPE = EnumProperty.create("model", CollectorBlockModelType.class);
-    public static final VoxelShaper SHAPE = CAShapes.shape(2, 5, 5, 9, 11, 11).add(9, 2, 2, 16, 14, 14).forDirectional();
+    public static final VoxelShaper SHAPE = ShapeBuilder.shape(2, 5, 5, 9, 11, 11).add(9, 2, 2, 16, 14, 14).forDirectional();
 
     public CollectorBlock(Properties properties) {
         super(properties);

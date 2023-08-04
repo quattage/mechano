@@ -1,9 +1,7 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock;
 import com.quattage.mechano.content.block.integrated.toolStation.UpgradeBlock;
-import com.quattage.mechano.content.block.machine.inductor.InductorBlock;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock;
@@ -15,25 +13,26 @@ import com.quattage.mechano.content.block.power.transfer.test.TestBlock;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlock;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
-import com.simibubi.create.foundation.data.CreateRegistrate;
-import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
 
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraftforge.eventbus.api.IEventBus;
+
+import static com.quattage.mechano.Mechano.REGISTRATE;
 import static com.simibubi.create.foundation.data.ModelGen.customItemModel;
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
-
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.material.Material;
-import net.minecraft.world.level.material.MaterialColor;
-import net.minecraftforge.eventbus.api.IEventBus;
 
 
 //This is where blocks go to get registered
 public class MechanoBlocks {
-    public static CreateRegistrate REGISTRATE = Mechano.REGISTRATE.creativeModeTab(() -> MechanoGroup.PRIMARY);
+    static {
+		REGISTRATE.useCreativeTab(MechanoGroups.MAIN_TAB);
+	}
 
     public static final BlockEntry<UpgradeBlock> FORGE_UPGRADE = REGISTRATE.block("tool_forge", UpgradeBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::hardMetal)
         .properties(props -> props
             .sound(SoundType.NETHERITE_BLOCK)
             .noOcclusion()
@@ -42,17 +41,8 @@ public class MechanoBlocks {
         .transform(customItemModel())
         .register();
 
-    public static final BlockEntry<InductorBlock> INDUCTOR = REGISTRATE.block("inductor", InductorBlock::new)
-        .initialProperties(Material.METAL)
-        .properties(props -> props
-            .sound(SoundType.NETHERITE_BLOCK)
-        )
-        .item()
-        .transform(customItemModel())
-        .register();
-
     public static final BlockEntry<ToolStationBlock> TOOL_STATION = REGISTRATE.block("tool_station", ToolStationBlock::new)
-        .initialProperties(Material.WOOD)
+        .initialProperties(CommonProperties::wood)
         .properties(props -> props
             .sound(SoundType.WOOD)
             .noOcclusion()
@@ -62,10 +52,9 @@ public class MechanoBlocks {
         .register();
 
     public static final BlockEntry<RotorBlock> ROTOR = REGISTRATE.block("rotor", RotorBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::copper)
         .properties(props -> props
             .sound(SoundType.NETHERITE_BLOCK)
-            .color(MaterialColor.COLOR_ORANGE)
             .noOcclusion()
         )
         .transform(BlockStressDefaults.setImpact(48.0))
@@ -74,10 +63,9 @@ public class MechanoBlocks {
         .register();
 
     public static final BlockEntry<CollectorBlock> COLLECTOR = REGISTRATE.block("collector", CollectorBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::softMetal)
         .properties(props -> props
             .sound(SoundType.NETHERITE_BLOCK)
-            .color(MaterialColor.COLOR_ORANGE)
             .noOcclusion()
         )
         .transform(BlockStressDefaults.setImpact(48.0))
@@ -86,10 +74,9 @@ public class MechanoBlocks {
         .register();
 
     public static final BlockEntry<StatorBlock> STATOR = REGISTRATE.block("stator", StatorBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::hardMetal)
         .properties(props -> props
             .sound(SoundType.NETHERITE_BLOCK)
-            .color(MaterialColor.COLOR_GRAY)
             .noOcclusion()
         )
         .item()
@@ -97,10 +84,9 @@ public class MechanoBlocks {
         .register();
 
     public static final BlockEntry<CouplingNodeBlock> COUPLING_NODE = REGISTRATE.block("coupling_node", CouplingNodeBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::softMetal)
         .properties(props -> props
         .sound(SoundType.NETHERITE_BLOCK)
-        .color(MaterialColor.COLOR_GRAY)
         .noOcclusion()
         )
         .item()
@@ -109,10 +95,9 @@ public class MechanoBlocks {
 
 
     public static final BlockEntry<TransmissionNodeBlock> TRANSMISSION_NODE = REGISTRATE.block("transmission_node", TransmissionNodeBlock::new)
-        .initialProperties(Material.METAL)
+        .initialProperties(CommonProperties::softMetal)
         .properties(props -> props
             .sound(SoundType.NETHERITE_BLOCK)
-            .color(MaterialColor.COLOR_GRAY)
             .noOcclusion()
         )
         .item()
@@ -120,21 +105,20 @@ public class MechanoBlocks {
         .register();
 
     public static final BlockEntry<HeapConnectorBlock> HEAP_CONNECTOR = REGISTRATE.block("heap_connector", HeapConnectorBlock::new)
-        .initialProperties(SharedProperties::softMetal)
+        .initialProperties(CommonProperties::softMetal)
         .transform(pickaxeOnly())
         .simpleItem()
         .register();
 
     public static final BlockEntry<HeapConnectorStackedBlock> HEAP_CONNECTOR_STACKED = REGISTRATE.block("heap_connector_stacked", HeapConnectorStackedBlock::new)
-        .initialProperties(SharedProperties::softMetal)
+        .initialProperties(CommonProperties::softMetal)
         .transform(pickaxeOnly())
         .simpleItem()
         .register();
 
 
     public static final BlockEntry<DiagonalGirderBlock> DIAGONAL_GIRDER = REGISTRATE.block("diagonal_girder", DiagonalGirderBlock::new)
-		.initialProperties(SharedProperties::softMetal)
-		.properties(p -> p.color(MaterialColor.COLOR_GRAY))
+		.initialProperties(CommonProperties::softMetal)
 		.properties(p -> p.sound(SoundType.NETHERITE_BLOCK))
 		.transform(pickaxeOnly())
 		.item()
@@ -144,8 +128,7 @@ public class MechanoBlocks {
 
 
     public static final BlockEntry<VoltometerBlock> VOLTOMETER = REGISTRATE.block("voltometer", VoltometerBlock::new)
-		.initialProperties(SharedProperties::softMetal)
-		.properties(p -> p.color(MaterialColor.COLOR_GRAY))
+		.initialProperties(CommonProperties::softMetal)
 		.properties(p -> p.sound(SoundType.NETHERITE_BLOCK))
 		.transform(pickaxeOnly())
 		.item()
@@ -154,10 +137,9 @@ public class MechanoBlocks {
     
 
     public static final BlockEntry<TestBlock> TEST_BLOCK = REGISTRATE.block("test_block", TestBlock::new)
-		.initialProperties(SharedProperties::softMetal)
+		.initialProperties(CommonProperties::softMetal)
 		.properties(p -> p
             .sound(SoundType.NETHERITE_BLOCK)
-            .color(MaterialColor.COLOR_GRAY)
             .noOcclusion()
         )
 		.transform(pickaxeOnly())
@@ -167,5 +149,24 @@ public class MechanoBlocks {
 
     public static void register(IEventBus event) {
         Mechano.logReg("blocks");
+    }
+
+    public static class CommonProperties{
+
+        public static Block hardMetal() {
+            return Blocks.NETHERITE_BLOCK;
+        }
+
+        public static Block softMetal() {
+            return Blocks.GOLD_BLOCK;
+        }
+
+        public static Block copper() {
+            return Blocks.COPPER_BLOCK;
+        }
+
+        public static Block wood() {
+            return Blocks.SPRUCE_WOOD;
+        }
     }
 }

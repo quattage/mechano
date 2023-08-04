@@ -1,5 +1,6 @@
 package com.quattage.mechano.content.block.power.transfer.test;
 
+import com.quattage.mechano.core.block.orientation.relative.Relative;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 
@@ -16,8 +17,11 @@ public class TestBlockEntity extends ElectricBlockEntity {
     }
 
     @Override
-    public void addConnections(NodeBankBuilder builder) {
-        builder
+    public void prepare(NodeBankBuilder nodeBank) {
+        nodeBank
+            .capacity(5000)
+            .maxIO(2500)
+            .interfaceSide(Relative.LEFT)
             .newNode()
                 .id("in1")
                 .at(16, 10, 6) 

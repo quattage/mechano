@@ -1,7 +1,6 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
 import com.jozufozu.flywheel.core.PartialModel;
-import com.quattage.mechano.Mechano;
 
 // This is where Partial Models get registered.
 // eg. The needle on Create's Stressometer.

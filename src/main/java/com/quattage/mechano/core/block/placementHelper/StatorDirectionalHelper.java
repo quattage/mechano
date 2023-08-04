@@ -6,13 +6,13 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock.StatorBlockModelType;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.util.BlockMath;
-import com.quattage.mechano.registry.MechanoBlocks;
 import com.simibubi.create.content.equipment.extendoGrip.ExtendoGripItem;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
 import com.simibubi.create.foundation.placement.PlacementOffset;
@@ -109,7 +109,7 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 			count++;
 			BlockState targetState = world.getBlockState(pos);
 			if(targetState.getBlock() == MechanoBlocks.STATOR.get()) continue;
-			if(!targetState.getMaterial().isReplaceable()) return PlacementOffset.fail();
+			if(!targetState.canBeReplaced()) return PlacementOffset.fail();
 			
 			if(count % 2 == 0) {  // every other placement is a corner
 				straightPos = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
@@ -138,7 +138,7 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 		for (Direction dir : directions) {
 			int range = AllConfigs.server().equipment.placementAssistRange.get();
 			if (player != null) {
-				AttributeInstance reach = player.getAttribute(ForgeMod.REACH_DISTANCE.get());
+				AttributeInstance reach = player.getAttribute(ForgeMod.BLOCK_REACH.get());
 				if (reach != null && reach.hasModifier(ExtendoGripItem.singleRangeAttributeModifier))
 					range += 4;
 			}
@@ -149,7 +149,7 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 			BlockPos newPos = pos.relative(dir, strictBlocks + 1);
 			BlockState newState = world.getBlockState(newPos);
 
-			if (newState.getMaterial().isReplaceable())
+			if (newState.canBeReplaced())
 				return PlacementOffset.success(newPos, bState -> bState.setValue(property, strictState.getValue(property)).setValue(StatorBlock.MODEL_TYPE, strictState.getValue(StatorBlock.MODEL_TYPE)));
 		}
 		return PlacementOffset.fail();
@@ -187,7 +187,7 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 				possy = new Vec3(x, y, start.getZ());
 			}
 			currentAngle += angleInc;
-			BlockPos out = new BlockPos(Math.round(possy.x), Math.round(possy.y), Math.round(possy.z));
+			BlockPos out = new BlockPos((int)Math.round(possy.x), (int)Math.round(possy.y), (int)Math.round(possy.z));
 			output.add(out);
 			count++;
 		}

@@ -1,34 +1,21 @@
 package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.registry.MechanoBlocks;
-import com.quattage.mechano.registry.MechanoMenus;
-import com.quattage.mechano.registry.MechanoGroup;
-import com.quattage.mechano.registry.MechanoItems;
-import com.quattage.mechano.registry.MechanoPartials;
-import com.quattage.mechano.registry.MechanoRecipes;
-import com.quattage.mechano.registry.MechanoSounds;
-import com.quattage.mechano.registry.MechanoBlockEntities;
+import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerLifecycleEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
-import net.minecraftforge.server.ServerLifecycleHooks;
 
 import org.slf4j.Logger;
 
@@ -37,14 +24,15 @@ import org.slf4j.Logger;
 public class Mechano {
     
     public static final String MOD_ID = "mechano";
-    private static final String NET_VERSION = "0.1";
-    private static int netCount = 0;
     public static final String ESC = "\u001b";
 
-    public static final Logger LOGGER = LogUtils.getLogger();
-    
 
+    private static final String NET_VERSION = "0.1";
+    private static int netCount = 0;
+
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.MOD_ID);
+
     public static final SimpleChannel network = NetworkRegistry.ChannelBuilder
         .named(Mechano.asResource("mechanoNetwork"))
         .clientAcceptedVersions(NET_VERSION::equals)
@@ -55,11 +43,6 @@ public class Mechano {
     private static int slowCount = 0;
 
     public Mechano() {
-        genericSetup();
-        new MechanoGroup("main");
-    }
-
-    public void genericSetup() {
         Mechano.log("loading mechano");
         IEventBus bussy = FMLJavaModLoadingContext.get().getModEventBus();
         REGISTRATE.registerEventListeners(bussy);
@@ -72,19 +55,15 @@ public class Mechano {
         MechanoSounds.register(bussy);
 
         bussy.addListener(this::clientSetup);
-        bussy.addListener(this::postSetup);
+        bussy.addListener(this::commonSetup);
     }
 
     public void clientSetup(final FMLClientSetupEvent event) {
         MechanoPartials.register();
     }
 
-    public void postSetup(FMLLoadCompleteEvent event) {
-        // network.registerMessage(netCount++, NodeDataPacket.class, 
-        //     NodeDataPacket::encode, 
-        //     NodeDataPacket::decode, 
-        //     NodeDataPacket::handle
-        // );
+    public void commonSetup(final FMLCommonSetupEvent event) {
+        MechanoPackets.register();
     }
 
     public static void log(String message) {      

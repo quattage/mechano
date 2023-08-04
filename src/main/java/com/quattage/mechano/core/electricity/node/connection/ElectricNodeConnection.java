@@ -6,6 +6,7 @@ import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
@@ -24,6 +25,7 @@ public class ElectricNodeConnection extends NodeConnection {
     private String destinationID;
 
     public ElectricNodeConnection(WireSpool spoolType, NodeBank fromBank, Vec3 sourcePos, NodeBank toBank, String destinationID, boolean inverse) {
+        super(toBank.target.getBlockPos());
         this.sourcePos = sourcePos;
         destPos = toBank.get(destinationID).getPosition();
         relativePos = fromBank.pos.subtract(toBank.pos);
@@ -32,6 +34,7 @@ public class ElectricNodeConnection extends NodeConnection {
     }
 
     public ElectricNodeConnection(WireSpool spoolType, NodeBank fromBank, Vec3 sourcePos, NodeBank toBank, String destinationID) {
+        super(toBank.target.getBlockPos());
         this.sourcePos = sourcePos;
         destPos = toBank.get(destinationID).getPosition();
         relativePos = fromBank.pos.subtract(toBank.pos);
@@ -44,6 +47,7 @@ public class ElectricNodeConnection extends NodeConnection {
      * @param in CompoundTag to pull values from
      */
     public ElectricNodeConnection(BlockEntity target, Vec3 sourcePos, CompoundTag in) {
+        super(null);
         this.destinationID = in.getString("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
@@ -56,7 +60,10 @@ public class ElectricNodeConnection extends NodeConnection {
         Level world = target.getLevel();
         if(world != null) {  // world can be null during world load.
             NodeBank destBank = NodeBank.retrieveFrom(world, target, relativePos);
-            if(destBank != null) destPos = destBank.get(destinationID).getPosition();
+            if(destBank != null) {
+                destPos = destBank.get(destinationID).getPosition();
+                parentPos = destBank.target.getBlockPos();
+            }
             else destPos = null;
             this.age = in.getInt("age");
         }
@@ -107,20 +114,6 @@ public class ElectricNodeConnection extends NodeConnection {
     @Override
     protected boolean setTransferPower() {
         return true;
-    }
-
-    /***
-     * Gets the target bank of this ElectricNodeConnection
-     * @param from
-     * @return NodeBank at the given target, or null if one cannot be found.
-     */
-    public NodeBank getTargetBank(NodeBank bank) {
-        Level world = bank.getWorld();
-        if(world == null) return null;
-        BlockEntity be = world.getBlockEntity(bank.pos.subtract(relativePos));
-        if(be instanceof ElectricBlockEntity ebe)
-            return ebe.nodes;
-        return null;
     }
 
     public String getDestinationID() {

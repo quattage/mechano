@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.jozufozu.flywheel.core.PartialModel;
+import com.quattage.mechano.MechanoPartials;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.DiagonalGirderModelType;
-import com.quattage.mechano.registry.MechanoPartials;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 

@@ -7,8 +7,8 @@ import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.registry.MechanoBlocks;
-import com.quattage.mechano.registry.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.item.ItemHelper;
 
@@ -143,11 +143,13 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements IBE<
         if(sourcePos.equals(left) || sourcePos.equals(right)) {
             BlockState leftBlockState = world.getBlockState(left);
             BlockState rightBlockState = world.getBlockState(right);
-            if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get()) && rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
+                                                                                        // TODO -> rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get()
+            if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get()) && rightBlockState.getBlock().equals(Blocks.DIRT)) {
                 setLevel(world, pos, state, WideBlockModelType.MAXIMIZED);
             } else if(leftBlockState.getBlock().equals(MechanoBlocks.FORGE_UPGRADE.get())) {
                 setLevel(world, pos, state, WideBlockModelType.FORGED);
-            } else if(rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get())) {
+                // TODO -> rightBlockState.getBlock().equals(MechanoBlocks.INDUCTOR.get()
+            } else if(rightBlockState.getBlock().equals(Blocks.DIRT)) {
                 setLevel(world, pos, state, WideBlockModelType.HEATED);
             } else {
                 setLevel(world, pos, state, WideBlockModelType.BASE);
@@ -206,7 +208,7 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements IBE<
     @Override
     public boolean canSurvive(BlockState state, LevelReader view, BlockPos pos) {
         BlockPos otherpos = pos.relative(state.getValue(FACING).getClockWise());
-        return view.getBlockState(otherpos).getMaterial().isReplaceable();
+        return view.getBlockState(otherpos).canBeReplaced();
     }
 
     @Override

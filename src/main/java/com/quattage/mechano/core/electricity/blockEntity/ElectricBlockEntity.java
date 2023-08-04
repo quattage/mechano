@@ -2,14 +2,13 @@ package com.quattage.mechano.core.electricity.blockEntity;
 
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.VerticallyOrientedBlock;
-import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.core.block.orientation.VerticalOrientation;
-import com.quattage.mechano.core.electricity.block.ElectricBlock;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -25,90 +24,52 @@ import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.util.LazyOptional;
 
 public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
-    public NodeBank nodes;
+    public final NodeBank nodes;
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
 
     public ElectricBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+        setLazyTickRate(20);
         NodeBankBuilder init = new NodeBankBuilder().at(this);
-        addConnections(init);
+        prepare(init);
         nodes = init.build();
     }
 
     /***
-     * Add connections to the NodeBankBuilder here. Example:<pre>
-     * builder
-     *  builder
-            .newNode()
-                .id("out1")
-                .at(0, 6, 11)
-                .mode("O")
-                .connections(2)
-                .build()
-            .newNode()
-                .id("in1")
-                .at(16, 10, 6) 
-                .mode("I")
-                .connections(2)
-                .build()
+     * Prepare this ElectricBlockEntity instance with all of its associated properties.
+     * <pre>
+        nodeBank
+        .capacity(7500)       // this bank can hold up to 7500 FE
+        .maxIO(70)            // this bank can input and output up to 70 FE/t
+        .newNode()            // build a new node
+            .id("out1")       // set the name of the node
+            .at(0, 6, 11)     // define the pixel offset of the node
+            .mode("O")        // this node is an output node
+            .connections(2)   // this node can connect to up to two other nodes
+            .build()          // finish building this node
+        .newNode()            // build a new node
+            .id("in1")        // set the name of the node
+            .at(16, 10, 6)    // define the pixel offset of the node
+            .mode("I")        // this node is an input node
+            .connections(2)   // this node can connect to up to two other nodes
+            .build()          // finish building this node
         ;
      * </pre>
-     * only 1 connection.
      * @param builder The NodeBuilder to add connections to
      */
-    public abstract void addConnections(NodeBankBuilder builder);
+    public abstract void prepare(NodeBankBuilder nodeBank);
 
-    /***
-     * Rotates this ElectricBlockEntity's NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public void rotateNodeBank(Direction dir) {
-        nodes = nodes.rotateAllNodes(dir);
-    }
-
-    /***
-     * Rotates this ElectricBlockEntity's NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public void rotateNodeBank(CombinedOrientation dir) {
-        nodes = nodes.rotateAllNodes(dir);
-    }
-
-    /***
-     * Rotates this ElectricBlockEntity's NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public void rotateNodeBank(SimpleOrientation dir) {
-        nodes = nodes.rotateAllNodes(dir);
-    }
-
-    /***
-     * Rotates this ElectricBlockEntity's NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public void rotateNodeBank(VerticalOrientation dir) {
-        nodes = nodes.rotateAllNodes(dir);
+    @Override
+    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
+        super.getCapability(cap, side);
+        return nodes.provideEnergyCapabilities(cap, side);
     }
 
     /***
@@ -120,29 +81,47 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         Block caller = state.getBlock();
         if(state != null && caller != null) {
             if(caller instanceof DirectionalBlock db) {
-                rotateNodeBank(state.getValue(DirectionalBlock.FACING));
+                nodes.rotate(state.getValue(DirectionalBlock.FACING));
             }
             else if(caller instanceof HorizontalDirectionalBlock hb) {
-                rotateNodeBank(state.getValue(HorizontalDirectionalBlock.FACING));
+                nodes.rotate(state.getValue(HorizontalDirectionalBlock.FACING));
             }
             else if(caller instanceof CombinedOrientedBlock cb) {
-                rotateNodeBank(state.getValue(CombinedOrientedBlock.ORIENTATION));
+                nodes.rotate(state.getValue(CombinedOrientedBlock.ORIENTATION));
             }
             else if (caller instanceof SimpleOrientedBlock sb) {
-                rotateNodeBank(state.getValue(SimpleOrientedBlock.ORIENTATION));
+                nodes.rotate(state.getValue(SimpleOrientedBlock.ORIENTATION));
             }
             else if (caller instanceof VerticallyOrientedBlock vb) {
-                rotateNodeBank(state.getValue(VerticallyOrientedBlock.ORIENTATION));
+                nodes.rotate(state.getValue(VerticallyOrientedBlock.ORIENTATION));
             }
         }
     }
 
     @Override
-    public void initialize() {        
-        super.initialize();
+    public void remove() {
+        if(!this.level.isClientSide)
+            nodes.destroy();
+    }
 
-        nodes.initConnections();
+    @Override
+    public void initialize() {
+        Mechano.log("INIT AT " + this.getBlockPos());
+        super.initialize();
+        nodes.init();
         refreshOrient();
+    }
+
+    @Override
+    public void onLoad() {
+        nodes.loadEnergy();
+        super.onLoad();
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        nodes.invalidateEnergy();
     }
     
     @Override
@@ -158,21 +137,14 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        return nodes.writeTo(new CompoundTag());
+    public void handleUpdateTag(CompoundTag tag) {
+        super.handleUpdateTag(tag);
+        nodes.readFrom(tag);
     }
 
     @Override
     public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet) {
         // TODO Auto-generated method stub
         super.onDataPacket(connection, packet);
-    }
-
-    
-
-    @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        super.handleUpdateTag(tag);
-        nodes.readFrom(tag);
     }
 }

@@ -1,6 +1,4 @@
-package com.quattage.mechano.registry;
-
-import com.quattage.mechano.Mechano;
+package com.quattage.mechano;
 
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraftforge.eventbus.api.IEventBus;

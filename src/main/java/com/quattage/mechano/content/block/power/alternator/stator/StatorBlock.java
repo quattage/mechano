@@ -4,12 +4,12 @@ import java.util.Locale;
 
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
-import com.mrh0.createaddition.shapes.CAShapes;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.block.placementHelper.StatorDirectionalHelper;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
@@ -42,8 +42,8 @@ public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockE
 
     public static final EnumProperty<StatorBlockModelType> MODEL_TYPE = EnumProperty.create("model", StatorBlockModelType.class);  // BASE or CORNER
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
-    public static final VoxelShaper BASE_SHAPE = CAShapes.shape(0, 0, 0, 16, 11, 16).forDirectional();
-    public static final VoxelShaper CORNER_SHAPE = CAShapes.shape(0, 0, 0, 16, 11, 7).add(0, 9, 5, 16, 16, 16).forDirectional();
+    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.shape(0, 0, 0, 16, 11, 16).forDirectional();
+    public static final VoxelShaper CORNER_SHAPE = ShapeBuilder.shape(0, 0, 0, 16, 11, 7).add(0, 9, 5, 16, 16, 16).forDirectional();
 
     public enum StatorBlockModelType implements StringRepresentable {
         BASE, CORNER;

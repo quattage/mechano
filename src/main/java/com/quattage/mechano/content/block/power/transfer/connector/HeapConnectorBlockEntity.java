@@ -2,8 +2,6 @@ package com.quattage.mechano.content.block.power.transfer.connector;
 
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
-import com.quattage.mechano.core.electricity.observe.NodeDataPacket;
-import com.quattage.mechano.core.electricity.observe.NodeObservable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,12 +17,12 @@ public class HeapConnectorBlockEntity extends ElectricBlockEntity {
 
 
     @Override
-    public void addConnections(NodeBankBuilder builder) {
-        builder
+    public void prepare(NodeBankBuilder nodeBank) {
+        nodeBank
             .newNode()
-                .id("in1")
+                .id("c1")
                 .at(8, 0, 8) 
-                .mode("I")
+                .mode("B")
                 .connections(2)
                 .build()
         ;

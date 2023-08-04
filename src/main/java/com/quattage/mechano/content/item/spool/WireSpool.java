@@ -6,13 +6,13 @@ import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
+import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
-import com.quattage.mechano.registry.MechanoItems;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.renderer.entity.MobRenderer;

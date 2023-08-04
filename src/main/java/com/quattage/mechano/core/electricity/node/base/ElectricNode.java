@@ -3,9 +3,9 @@ package com.quattage.mechano.core.electricity.node.base;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Set;
 
-import com.google.j2objc.annotations.ReflectionSupport.Level;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
@@ -20,6 +20,7 @@ import com.simibubi.create.foundation.utility.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -33,7 +34,7 @@ public class ElectricNode {
     private final int index;
 
     private final int maxConnections;
-    private final NodeConnection[] connections;
+    public final NodeConnection[] connections;
 
     private NodeLocation location;
     private NodeMode mode;
@@ -91,19 +92,21 @@ public class ElectricNode {
     }
 
     /***
-     * When an ElectricNode is initialized, its connections lack any destination position,
+     * When an ElectricNode is initialized, its connections lacks any destination position,
      * even if the player had previously established a connection. <p>
      * 
      * This is because the world, which is required to get the destination, does not exist 
-     * when the NBT is deserialized.
+     * during the initial world loading process.
      * 
      * The way around this was to previously calculate the destination position every tick, 
      * but obviously this has some major drawbacks. Instead, it's just initialized during
      * the parent BlockEntity's first in-world tick.
+     * 
+     * @param target The parent BlockEntity (this is stored in the NodeBank).
      */
     public void initConnections(BlockEntity target) {
-        if(target.getLevel() == null) 
-            throw new IllegalStateException("ElectricNode cannot initialize - World is null!");
+        if(target == null || target.getLevel() == null) 
+            throw new NullPointerException("ElectricNode cannot initialize - World is null!");
 
         for(int x = 0; x < connections.length; x++) {
             NodeConnection connection = connections[x];
@@ -253,15 +256,19 @@ public class ElectricNode {
     /***
      * Removes all connections from this ElectricNode that target the provided 
      * NodeBank.
-     * @param bank NodeBank target to remove.
+     * @param target Connections targeting this NodeBank will be removed
      * @return True if this ElectricNode's connections were altered in any way.
      */
-    public boolean removeConnectionsInvolving(NodeBank bank) {
+    public boolean removeConnectionsInvolving(NodeBank origin) {
         boolean changed = false;
         for(int x = 0; x < connections.length; x++) {
             if(connections[x] instanceof ElectricNodeConnection ec) {
-                NodeBank suspect = ec.getTargetBank(bank);
-                if(bank.equals(suspect)) {
+
+                Level world = origin.getWorld();
+                if(world == null) continue;
+                BlockPos parentPos = ec.getParentPos();
+
+                if(parentPos != null && origin.isAt(parentPos)) {
                     clearConnection(x, true, false);
                     changed = true;
                 }
@@ -274,12 +281,20 @@ public class ElectricNode {
     /***
      * Gets all of the NodeBanks referenced by the connections in
      * this ElectricNode.
+     * @param parent - The parent NodeBank to use as a basis
+     * for finding target NodeBanks.
      * @return A new ArrayList of NodeBanks.
      */
-    public Set<NodeBank> getAllTargets(Level world) {
-        //Set<NodeBank> out = new Set<NodeBank>();
-        //for()
-        return null;
+    public HashSet<NodeBank> getAllTargetBanks(NodeBank parent) {
+        HashSet<NodeBank> out = new HashSet<NodeBank>();
+        for(NodeConnection c : connections) {
+            if(c instanceof ElectricNodeConnection ec) {
+                NodeBank bank = NodeBank.retrieveFrom(parent.getWorld(), 
+                    parent.target, ec.getRelativePos());
+                if(bank != null) out.add(bank);
+            }
+        }
+        return out;
     }
 
     /***

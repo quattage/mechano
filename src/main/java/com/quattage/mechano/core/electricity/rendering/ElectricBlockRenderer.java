@@ -1,16 +1,18 @@
 package com.quattage.mechano.core.electricity.rendering;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Quaternion;
-import com.mojang.math.Vector3f;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
+import com.quattage.mechano.MechanoRenderTypes;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
-import com.quattage.mechano.registry.MechanoRenderTypes;
+import com.quattage.mechano.core.util.VectorHelper;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 import com.simibubi.create.foundation.utility.Color;
@@ -28,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
+    private static final boolean USE_CACHE = false;
     //private final HashMap<Con>
 
     public ElectricBlockRenderer(BlockEntityRendererProvider.Context context) {
@@ -54,8 +57,8 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
 
                 Vec3 from = thisConnection.getSourcePos();
                 Vec3 to = thisConnection.getDestPos();
-                boolean needsConstantUpdates = false;
 
+                boolean needsConstantUpdates = false;
                 if(thisConnection.needsLerped()) {
                     thisConnection.updatePosition(partialTicks);
                     needsConstantUpdates = true;
@@ -74,12 +77,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
 
     @Override
     public boolean shouldRender(T ebe, Vec3 cameraPos) {
-        boolean standardChecks = super.shouldRender(ebe, cameraPos);
-        boolean uniqueChecks = true;
-        if(!ebe.nodes.shouldAlwaysRender())
-            uniqueChecks = false;
-
-        return standardChecks || uniqueChecks;
+        return true;
     }
 
     @Override
@@ -108,7 +106,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         Vector3f wireOrigin = new Vector3f((float)(endPos.x - startPos.x), (float)(endPos.y - startPos.y), (float)(endPos.z - startPos.z));
 
         float angleY = -(float)Math.atan2(wireOrigin.z(), wireOrigin.x());
-        matrix.mulPose(Quaternion.fromXYZ(0, angleY, 0));
+        matrix.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
 
 
         if(age > -1)
@@ -116,16 +114,20 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         else if(needsConstantUpdates)
             wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
         else {
-            WireModelRenderer.BakedModelHashKey key = new  WireModelRenderer.BakedModelHashKey(fromPos, toPos);
-            wireRenderer.renderFromCache(buffer, matrix, key, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
+            if(USE_CACHE) {
+                WireModelRenderer.BakedModelHashKey key = new  WireModelRenderer.BakedModelHashKey(fromPos, toPos);
+                wireRenderer.renderFromCache(buffer, matrix, key, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
+            } else {
+                wireRenderer.renderFrequent(buffer, matrix, wireOrigin, lights[0], lights[1], lights[2], lights[3]);
+            }
         }
-        
+        wireRenderer.setFrom(fromPos);
 
         matrix.popPose();
     }
 
     public Vector3f getWireOffset(Vec3 start, Vec3 end) {
-        Vector3f offset = new Vector3f(end.subtract(start));
+        Vector3f offset = end.subtract(start).toVector3f();
         offset.set(offset.x(), 0, offset.z());
         offset.normalize();
         offset.mul(1 / 64f);
@@ -133,7 +135,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
     }
 
     private int[] lightmapGet(Level world, Vec3 from, Vec3 to) {
-        return lightmapGet(world, new BlockPos(from), new BlockPos(to));
+        return lightmapGet(world, VectorHelper.toBlockPos(from), VectorHelper.toBlockPos(to));
     }
 
     private int[] lightmapGet(Level world, BlockPos from, BlockPos to) {

@@ -1,8 +1,8 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
 import com.quattage.mechano.content.item.wire.ElectricNodeWireBehavior;
-import com.quattage.mechano.core.electricity.ElectricNodeWireDebugger;
+import com.quattage.mechano.core.electricity.rendering.ElectricNodeWireDebugger;
 import com.quattage.mechano.core.events.ClientBehavior;
 
 import net.minecraft.client.Minecraft;

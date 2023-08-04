@@ -30,7 +30,7 @@ public class BlockMath {
 
     public static BlockPos getNearestBlock(Vec3 root) {
         Vec3 pos = getCenter(root);
-        return new BlockPos(pos);
+        return VectorHelper.toBlockPos(pos);
     }
 
     @Nullable
@@ -42,21 +42,6 @@ public class BlockMath {
         }
         return null;
     }
-
-
-    public static Direction getWorldlyDirection(BlockPos workingPos, BlockPos originPos) {
-
-        // TODO NOT IMPLEMENTED
-        if(workingPos == originPos)
-            throw new IllegalArgumentException("cannot compare direction: workingPos and originPos are the same!");
-        Axis greatest = Axis.Y;
-        BlockPos difference = workingPos.subtract(originPos);
-        double avg = average(difference);
-        BlockPos average = difference.subtract(new BlockPos(avg, avg, avg));
-
-        return Direction.UP;
-    }
-
 
     public static double average(BlockPos pos) {
         return (pos.getX() + pos.getY() + pos.getZ()) / 3;

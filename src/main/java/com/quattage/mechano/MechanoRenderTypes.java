@@ -1,4 +1,4 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;

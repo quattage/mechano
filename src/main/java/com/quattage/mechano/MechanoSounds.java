@@ -1,6 +1,4 @@
-package com.quattage.mechano.registry;
-
-import com.quattage.mechano.Mechano;
+package com.quattage.mechano;
 
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
@@ -23,7 +21,7 @@ public class MechanoSounds {
 
     private static RegistryObject<SoundEvent> create(String name) {
         ResourceLocation id = Mechano.asResource(name);
-        return SOUNDS.register(name, () -> new SoundEvent(id));
+        return SOUNDS.register(name, () -> SoundEvent.createVariableRangeEvent(id));
     }
 
     public static void register(IEventBus event) {

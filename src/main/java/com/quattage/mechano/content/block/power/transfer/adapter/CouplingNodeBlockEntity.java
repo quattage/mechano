@@ -1,26 +1,23 @@
 package com.quattage.mechano.content.block.power.transfer.adapter;
 
-import com.mrh0.createaddition.energy.BaseElectricTileEntity;
+import com.quattage.mechano.core.electricity.block.ElectricBlock;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class CouplingNodeBlockEntity extends BaseElectricTileEntity {
-    public static final int MAX_IN = 2048, MAX_OUT = 2048, CAPACITY = 4096;
+public class CouplingNodeBlockEntity extends ElectricBlockEntity {
 
-    public CouplingNodeBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
-        super(tileEntityTypeIn, pos, state, CAPACITY, MAX_IN, MAX_OUT);
+    public CouplingNodeBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
     }
 
     @Override
-    public boolean isEnergyInput(Direction arg0) {
-        return false;
+    public void prepare(NodeBankBuilder nodeBank) {
+        // TODO populate
     }
-
-    @Override
-    public boolean isEnergyOutput(Direction arg0) {
-        return false;
-    }
+    
 }

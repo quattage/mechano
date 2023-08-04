@@ -1,4 +1,4 @@
-package com.quattage.mechano.core.electricity;
+package com.quattage.mechano.core.electricity.rendering;
 
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;

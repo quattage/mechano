@@ -1,7 +1,11 @@
 package com.quattage.mechano.content.item.wire;
 
+import java.util.Optional;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
+import com.quattage.mechano.core.block.orientation.relative.Relative;
+import com.quattage.mechano.core.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
@@ -12,6 +16,7 @@ import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -48,6 +53,8 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
             isOccupied = mainHand.getTag().contains("at") || mainHand.getTag().contains("from");
         }
     
+
+        drawCapDirs(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
         drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
     }
 
@@ -56,7 +63,7 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
      * This renders the boxes that represent ElectricNodes.
      */
     private void drawNodes(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
-    BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
+        BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
             Pair<ElectricNode, Double> target = blockEntity.nodes.getClosest(lookingPosition);
             if(target != null) {
@@ -84,9 +91,35 @@ public class ElectricNodeWireBehavior extends ClientBehavior {
         }
     }
 
+    private void drawCapDirs(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
+        BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
+        if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity ebe) {
+
+            Optional<RelativeDirection[]> dirsOptional = ebe.nodes.getRelDirs();
+            if(!dirsOptional.isPresent()) return;
+            RelativeDirection[] dirs = dirsOptional.get();
+            if(dirs.length == 0) dirs = RelativeDirection.populateAll();
+            
+            for(int x = 0; x < dirs.length; x++) {
+                BlockPos pos = lookingBlockPos.relative(dirs[x].get());
+
+                AABB cm = boxFromPos(pos, 0.2f);
+                CreateClient.OUTLINER.showAABB(pos.hashCode() + "_cm_" + x + "(" + dirs[x] + ")", cm)
+                    .disableLineNormals()
+                    .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+                    .lineWidth(0.01f)
+                    .colored(dirs[x].getColor());
+            }
+        }
+    }
+
     private AABB boxFromPos(Vec3 pos, float s) {
         Vec3 size = new Vec3(s, s, s);
         return new AABB(pos.subtract(size), pos.add(size));
+    }
+
+    private AABB boxFromPos(BlockPos pos, float s) {
+        return boxFromPos(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) , s);
     }
 
     private boolean isBound(BlockEntity be, ItemStack wireStack) {

@@ -94,7 +94,7 @@ public class GirderDirectionalHelper<T extends Comparable<T>> implements IPlacem
         for (Direction dir : directions) {
             int range = AllConfigs.server().equipment.placementAssistRange.get();
             if (player != null) {
-                AttributeInstance reach = player.getAttribute(ForgeMod.REACH_DISTANCE.get());
+                AttributeInstance reach = player.getAttribute(ForgeMod.BLOCK_REACH.get());
                 if (reach != null && reach.hasModifier(ExtendoGripItem.singleRangeAttributeModifier))
                     range += 4;
                 }
@@ -105,7 +105,7 @@ public class GirderDirectionalHelper<T extends Comparable<T>> implements IPlacem
             BlockPos newPos = stepForward(polePos, poleState, dir, attachedPoles + 1);
             BlockState newState = world.getBlockState(newPos);
 
-            if (newState.getMaterial().isReplaceable()) {
+            if (newState.canBeReplaced()) {
                 Block poleBlock = poleState.getBlock();
                 BlockState model;
                 if(poleBlock instanceof DiagonalGirderBlock)

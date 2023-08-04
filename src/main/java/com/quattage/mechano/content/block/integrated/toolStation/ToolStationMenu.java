@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.block.integrated.toolStation;
 
-import com.quattage.mechano.registry.MechanoMenus;
+import com.quattage.mechano.MechanoMenus;
 import com.simibubi.create.foundation.gui.menu.MenuBase;
 
 import net.minecraft.client.Minecraft;

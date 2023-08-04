@@ -1,9 +1,6 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlockEntity;
-import com.quattage.mechano.content.block.machine.inductor.InductorBlockEntity;
-import com.quattage.mechano.content.block.machine.inductor.InductorBlockRenderer;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEntity;
@@ -13,7 +10,6 @@ import com.quattage.mechano.content.block.power.transfer.connector.HeapConnector
 import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockRenderer;
-import com.quattage.mechano.content.block.power.transfer.voltometer.VolotmeterRenderer;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlockEntity;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlockEntity;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderRenderer;
@@ -25,15 +21,10 @@ import net.minecraftforge.eventbus.api.IEventBus;
 
 // This is where BlockEntities get regisrered.
 public class MechanoBlockEntities {
-    public static final BlockEntityEntry<InductorBlockEntity> INDUCTOR = Mechano.REGISTRATE
-            .blockEntity("inductor", InductorBlockEntity::new)
-            .validBlocks(MechanoBlocks.INDUCTOR)
-            .renderer(() -> InductorBlockRenderer::new)
-            .register();
 
     public static final BlockEntityEntry<ToolStationBlockEntity> TOOL_STATION = Mechano.REGISTRATE
             .blockEntity("tool_station", ToolStationBlockEntity::new)
-            .validBlocks(MechanoBlocks.INDUCTOR)
+            .validBlocks(MechanoBlocks.TOOL_STATION)
             .register();
 
     public static final BlockEntityEntry<RotorBlockEntity> ROTOR = Mechano.REGISTRATE
@@ -80,7 +71,6 @@ public class MechanoBlockEntities {
     public static final BlockEntityEntry<VoltometerBlockEntity> VOLTOMETER = Mechano.REGISTRATE
             .blockEntity("voltometer", VoltometerBlockEntity::new)
             .validBlocks(MechanoBlocks.VOLTOMETER)
-            .renderer(() -> VolotmeterRenderer::new)
             .register();
 
     public static final BlockEntityEntry<TestBlockEntity> TEST_BLOCK = Mechano.REGISTRATE

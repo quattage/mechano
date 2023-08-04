@@ -2,15 +2,16 @@
 
 package com.quattage.mechano.core.electricity.rendering;
 
+import org.joml.Vector3f;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Quaternion;
-import com.mojang.math.Vector3f;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.util.VectorHelper;
+import com.simibubi.create.CreateClient;
+import com.simibubi.create.foundation.utility.Color;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /***
@@ -21,28 +22,30 @@ public class WireModelRenderer {
     /***
      * Overall scale, or "thickness" of the wire
      */
-    private static final float SCALE = 0.9f;
+    private static final float SCALE = 1f;
 
     /***
      * The rotation (in degrees) of the wire's profile
      */
-    private static final int SKEW = 45;
+    private static final int SKEW = 90;
 
     /***
      * How much the wire hangs
      */
-    private static final float SAGGINESS = 25;
+    private static final float SAGGINESS = 3f;
 
     /***
      * The wire's Level of Detail
      */
-    private static final float LOD = 1.5f;
+    private static final float LOD = 3f;
 
     /***
      * The maximum amount of iterations for a single wire. Used
      * to prevent lag or stack overflows in extreme edge cases 
      */
     private static final int LOD_LIMIT = 512;
+
+    private Vec3 fromPos = new Vec3(0, 0, 0);
 
     /***
      * Represents a hash, used as an identifier for a WireModel's place in the cache.
@@ -141,6 +144,10 @@ public class WireModelRenderer {
         model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
     }
 
+    public void setFrom(Vec3 fromPos) {
+        this.fromPos = fromPos;
+    }
+
     /***
      * Adds vertices to a WireModel based on the given Origin vector
      * @param origin
@@ -163,12 +170,13 @@ public class WireModelRenderer {
         int capacity = (int)(2 * new Vec3(origin).lengthSqr());
         WireModel.WireBuilder builder = WireModel.builder(capacity);
 
-        if(Float.isNaN(origin.x()) && Float.isNaN(origin.z())) {
-            buildVertical(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);        //      | 
-            buildVertical(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);   //      —
+        float dXZ = (float)Math.sqrt(origin.x() * origin.x() + origin.z() * origin.z());
+        if(dXZ < 0.3) {
+            buildVertical(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);
+            buildVertical(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);
         } else {
-            buildNominal(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A, 1f);         //      |  
-            buildNominal(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B, 1f);    //      —
+            buildNominal(builder, origin, age, pTicks, SKEW, false, WireUV.SKEW_A, 1f, dXZ);
+            buildNominal(builder, origin, age, pTicks, SKEW + 90, false, WireUV.SKEW_B, 1f, dXZ);
         }
         return builder.build();
     }
@@ -185,87 +193,69 @@ public class WireModelRenderer {
     private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, int age, 
         float pTicks, float angle, WireUV uv) {
 
-        float contextualLength = 1f * LOD;
-        float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
+        float contextualLength = 1f / LOD;
+        float chainWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
 
-        Vector3f unit = new Vector3f((float) Math.cos(Math.toRadians(angle)), 0, (float) Math.sin(Math.toRadians(angle)));
-        unit.mul(fullWidth);
+        Vector3f normal = new Vector3f((float)Math.cos(Math.toRadians(angle)), 0, (float)Math.sin(Math.toRadians(angle)));
+        normal.mul(chainWidth);
 
-        Vector3f vertA1 = new Vector3f(-unit.x() / 2, 0, -unit.z() / 2), 
-            vertA2 = vertA1.copy();
-        vertA2.add(unit);
-
-        Vector3f vertB1 = new Vector3f(-unit.x() / 2, 0, -unit.z() / 2), 
-            vertB2 = vertB1.copy();
-        vertA2.add(unit);
+        Vector3f vert00 = new Vector3f(-normal.x()/2, 0, -normal.z()/2), vert01 = new Vector3f(vert00);
+        vert01.add(normal);
+        Vector3f vert10 = new Vector3f(-normal.x()/2, 0, -normal.z()/2), vert11 = new Vector3f(vert10);
+        vert11.add(normal);
 
         float uvv0 = 0, uvv1 = 0;
-        boolean lastIter = false;
+        boolean lastIter_ = false;
         for (int segment = 0; segment < LOD_LIMIT; segment++) {
-            if (vertA1.y() + contextualLength >= vec.y()) {
-                lastIter = true;
-                contextualLength = vec.y() - vertA1.y();
+            if(vert00.y() + contextualLength >= vec.y()) {
+                lastIter_ = true;
+                contextualLength = vec.y() - vert00.y();
             }
 
-            vertB1.add(0, contextualLength, 0);
-            vertB2.add(0, contextualLength, 0);
+            vert10.add(0, contextualLength, 0);
+            vert11.add(0, contextualLength, 0);
 
             uvv1 += contextualLength / SCALE;
 
-            builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
-            builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
-            builder.addVertex(vertB2).withUV(uv.x1() / 16f, uvv1).next();
-            builder.addVertex(vertB1).withUV(uv.x0() / 16f, uvv1).next();
+            builder.addVertex(vert00).withUV(uv.x0() / 16f, uvv0).next();
+            builder.addVertex(vert01).withUV(uv.x1() / 16f, uvv0).next();
+            builder.addVertex(vert11).withUV(uv.x1() / 16f, uvv1).next();
+            builder.addVertex(vert10).withUV(uv.x0() / 16f, uvv1).next();
 
-            if (lastIter) break;
+            if(lastIter_) break;
 
             uvv0 = uvv1;
 
-            vertA1.load(vertB1);
-            vertA2.load(vertB2);
+            vert00.set(vert10);
+            vert01.set(vert11);
         }
     }
 
     private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, int age, 
-        float pTicks, float angle, WireUV uv, float offset) {
+        float pTicks, float angle, boolean inv, WireUV uv, float offset, float distanceXZ) {
         
-        float contextualLength = 1f * LOD;
-        float distance = VectorHelper.getLength(vec) * 0.7f, distanceXZ = (float) Math.sqrt(vec.x() * vec.x() + vec.z() * vec.z());
-
-        float wrongDistanceFactor = distance / distanceXZ;
-
         float animatedSag = SAGGINESS;
-        
-        if(age > -1) {
-            float subduedness = 1.6263f + 0.1664f * distance;                                 // variable tamping factor to decrease the wiggle vigor
-            float speed = age * (0.576f - 0.003f * age) / (subduedness * 0.6f);               // ramped speed of the wiggleness
-            float intensity = SAGGINESS * (float)(Math.sin((age * -0.00773f)) + 0.8f);        // sin ramped wiggle distance value
-            animatedSag = SAGGINESS + (float)(Math.cos(speed)) * (intensity / subduedness);   // overall sag value as a cosine wave
-        }
-
-
-        if(distance > 1.4) animatedSag *= (distance * 0.0814) - 0.08461;
-        else contextualLength = distance;
-
-        Mechano.logSlow("D: " + distance + "  S:" + animatedSag, 500);
+        float distance = VectorHelper.getLength(vec);
+        float realLength, desiredLength = 1 / LOD;
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
             vertB2 = new Vector3f(), vertB1 = new Vector3f();
 
-        Vector3f normal = new Vector3f(), rotAxis = new Vector3f();
-        float fullWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
+        Vector3f normal = new Vector3f(), rotAxis = new Vector3f(), 
+            point0 = new Vector3f(), point1 = new Vector3f();
 
-        float uvv0, uvv1 = 0; 
-        float gradient;
-        float x, y;
-        Vector3f point0 = new Vector3f(), point1 = new Vector3f();
+        float width = (uv.x1() - uv.x0()) / 16 * SCALE;
+        float wrongDistanceFactor = distance / distanceXZ;
+        animatedSag *= distance;
 
-        point0.set(0, (float) VectorHelper.drip2(animatedSag, 0, distance, vec.y()), 0);
-        gradient = (float) VectorHelper.drip2prime(animatedSag, 0, distance, vec.y());
+        float uvv0, uvv1 = 0, gradient, x, y;
+
+        point0.set(0, (float) VectorHelper.drip2(0, distance, vec.y()), 0);
+        gradient = (float) VectorHelper.drip2prime(0, distance, vec.y());
         normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
         normal.normalize();
 
-        x = VectorHelper.estimateDeltaX(contextualLength, gradient);
+        x = VectorHelper.estimateDeltaX(desiredLength, gradient);
         gradient = (float) VectorHelper.drip2prime(animatedSag, x * wrongDistanceFactor, distance, vec.y());
         y = (float) VectorHelper.drip2(animatedSag, x * wrongDistanceFactor, distance, vec.y());
         point1.set(x, y, 0);
@@ -273,16 +263,13 @@ public class WireModelRenderer {
         rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
         rotAxis.normalize();
 
-        Quaternion rotator = rotAxis.rotationDegrees(angle);
-        normal.transform(rotator);
-        normal.mul(fullWidth);
+        normal.rotateAxis(angle, rotAxis.x, rotAxis.y, rotAxis.z);
+        normal.mul(width);
+        vertA1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
+        vertB1.set(vertA1);
+        vertB1.add(normal);
 
-        vertB1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
-
-        vertB2.load(vertB1);
-        vertB2.add(normal);
-
-        contextualLength = VectorHelper.distanceBetween(point0, point1);
+        realLength = VectorHelper.distanceBetween(point0, point1);
     
         // thanks to legoatoom's ConnectableChains for most of this code
         boolean lastIter = false;
@@ -290,35 +277,41 @@ public class WireModelRenderer {
 
             rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
             rotAxis.normalize();
-            rotator = rotAxis.rotationDegrees(angle);
 
             normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
             normal.normalize();
-            normal.transform(rotator);
-            normal.mul(fullWidth);
+            normal.rotateAxis(angle, rotAxis.x, rotAxis.y, rotAxis.z);
+            normal.mul(width);
 
-            vertA1.load(vertB1);
-            vertA2.load(vertB2);
-
-            
+            vertA1.set(vertB1);
+            vertA2.set(vertB2);
 
             vertB1.set(point1.x() - normal.x() / 2, point1.y() - normal.y() / 2, point1.z() - normal.z() / 2);
-            vertB2.load(vertB1);
+            vertB2.set(vertB1);
             vertB2.add(normal);
 
             uvv0 = uvv1;
-            uvv1 = uvv0 + contextualLength / SCALE;
+            uvv1 = uvv0 + realLength / SCALE;
 
+            //drawPoint(vertA1, new Color(255, 255, 255));
+            //drawPoint(vertB1, new Color(255, 0, 0));
+            //drawPoint(vertA2, new Color(0, 255, 0));
+            //drawPoint(vertB2, new Color(0, 0, 255));
+
+            //drawPoint(vertC1, new Color(0, 0, 0));
+
+            
             builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
             builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
+
             builder.addVertex(vertB2).withUV(uv.x1() / 16f, uvv1).next();
             builder.addVertex(vertB1).withUV(uv.x0() / 16f, uvv1).next();
 
-            if (lastIter) break;
+            if(lastIter) break;
 
-            point0.load(point1);
+            point0.set(point1);
 
-            x += VectorHelper.estimateDeltaX(contextualLength, gradient);
+            x += VectorHelper.estimateDeltaX(desiredLength, gradient);
             if (x >= distanceXZ) {
                 lastIter = true;
                 x = distanceXZ;
@@ -326,10 +319,27 @@ public class WireModelRenderer {
 
             gradient = (float) VectorHelper.drip2prime(animatedSag, x * wrongDistanceFactor, distance, vec.y());
             y = (float) VectorHelper.drip2(animatedSag, x * wrongDistanceFactor, distance, vec.y());
-            point1.set(x, y, 0);
 
-            contextualLength = VectorHelper.distanceBetween(point0, point1);
+            point1.set(x, y, 0);
+            realLength = VectorHelper.distanceBetween(point0, point1);
         }
+    }
+    
+    private void drawPoint(Vector3f point) {
+        drawPoint(point, new Color(255, 255, 255));
+    }
+
+    private void drawPoint(Vector3f point, Color c) {
+        Vec3 p = VectorHelper.toVec(point);
+        CreateClient.OUTLINER.showAABB(point, boxFromPos(fromPos.add(p), 0.01f))
+            .disableLineNormals()
+            .lineWidth(0.01f)
+            .colored(c);
+    }
+
+    private AABB boxFromPos(Vec3 pos, float s) {
+        Vec3 size = new Vec3(s, s, s);
+        return new AABB(pos.subtract(size), pos.add(size));
     }
 
     public static float getScale() {

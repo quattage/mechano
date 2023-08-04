@@ -1,6 +1,6 @@
 package com.quattage.mechano.core.electricity.node.connection;
 
-import com.quattage.mechano.registry.MechanoSounds;
+import com.quattage.mechano.MechanoSounds;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvent;

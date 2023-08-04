@@ -1,17 +1,19 @@
-package com.quattage.mechano.registry;
+package com.quattage.mechano;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.EmptySpool;
 import com.quattage.mechano.content.item.spool.HookupWireSpool;
 import com.quattage.mechano.content.item.wire.HookupWire;
-import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.util.entry.ItemEntry;
 
 import net.minecraftforge.eventbus.api.IEventBus;
+import static com.quattage.mechano.Mechano.REGISTRATE;
 
 // This is where Items go to get registered.
 public class MechanoItems {
-    public static CreateRegistrate REGISTRATE = Mechano.REGISTRATE.creativeModeTab(() -> MechanoGroup.PRIMARY);
+    
+    static {
+		REGISTRATE.useCreativeTab(MechanoGroups.MAIN_TAB);
+	}
 
     public static final ItemEntry<EmptySpool> EMPTY_SPOOL = REGISTRATE.item("empty_spool", EmptySpool::new)
         .register();

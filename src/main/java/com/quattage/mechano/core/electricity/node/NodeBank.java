@@ -1,21 +1,29 @@
 package com.quattage.mechano.core.electricity.node;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Optional;
 
 import javax.annotation.Nullable;
+
+import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.block.orientation.VerticalOrientation;
-import com.quattage.mechano.core.electricity.block.ElectricBlock;
+import com.quattage.mechano.core.block.orientation.relative.RelativeDirection;
+import com.quattage.mechano.core.electricity.DirectionalEnergyStorable;
+import com.quattage.mechano.core.electricity.LocalEnergyStorage;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.network.EnergySyncS2CPacket;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
+import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -26,6 +34,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.energy.IEnergyStorage;
 
 
 /***
@@ -33,7 +44,7 @@ import net.minecraft.world.phys.Vec3;
  * A NodeBank instance can be stored in any electrically-enabled BlockEntity to provide
  * all related functionality, such as making connections and transfering power.
  */
-public class NodeBank {
+public class NodeBank implements DirectionalEnergyStorable {
 
     /**
      * The Version String is serialized directly to NBT
@@ -41,40 +52,82 @@ public class NodeBank {
      * releases. It can be changed later to invalidate old 
      * blocks and avoid breaking worlds
      */
-    private final String VERSION = "0";
-    private final ElectricNode[] NODES;
+    private static final String VERSION = "0";
+    private final ElectricNode[] allNodes;
+    private final Optional<RelativeDirection[]> allInteractions;
 
     public final BlockEntity target;
     public final BlockPos pos;
 
+    private final LocalEnergyStorage<NodeBank> energyStorage;
+    private LazyOptional<IEnergyStorage> energyHandler = LazyOptional.empty();
+
     /***
      * Creates a new NodeBank from an ArrayList of nodes.
      * This NodeBank will have its ElectricNodes pre-populated.
-     * @param nodesToAdd ArrayList of ElectricNodes to populate
-     * this NodeBank with.
      */
-    public NodeBank(BlockEntity target, ArrayList<ElectricNode> nodesToAdd) {
+    public NodeBank(BlockEntity target, ArrayList<ElectricNode> nodesToAdd, HashSet<RelativeDirection> dirsToAdd, 
+        int capacity, int maxRecieve, int maxExtract, int energy) {
         this.target = target;
         this.pos = target.getBlockPos();
-        this.NODES = populate(nodesToAdd);
+        this.allNodes = populateNodes(nodesToAdd);
+        this.allInteractions = populateDirs(dirsToAdd);
+        this.energyStorage = new LocalEnergyStorage<NodeBank>
+            (this, capacity, maxRecieve, maxExtract, energy);
     }
 
-    /***
-     * Creates a new NodeBank populated with no ElectricNodes. (all nulls) <p>
-     * As you can probably imagine, a completely blank Nodebank is 
-     * entirely useless. I have no idea if this will ever be used, 
-     * but if anyone else happens to be reading this, just use the
-     * {@link #NodeBank(ArrayList) standard constructor} instead.
-     * @param size Size of this NodeBank
-     */
-    public NodeBank(int size) {
-        this.target = null;
-        this.pos = null;
-        this.NODES = new ElectricNode[size];
+    private ElectricNode[] populateNodes(ArrayList<ElectricNode> nodesToAdd) {
+        if(nodesToAdd == null) 
+            throw new NullPointerException("Cannot instantiate new NodeBank instance - nodesToAdd is null!");
+        if(nodesToAdd.isEmpty()) 
+            throw new IllegalArgumentException("Cannot instantiate new NodeBank instance - nodesToAdd is empty!");
+
+        ElectricNode[] out = new ElectricNode[nodesToAdd.size()];
+        for(int x = 0; x < out.length; x++) {
+            out[x] = nodesToAdd.get(x);
+        }
+        return out;
+    }
+
+    private Optional<RelativeDirection[]> populateDirs(HashSet<RelativeDirection> dirsToAdd) {
+        if(dirsToAdd == null) return Optional.empty();
+        if(dirsToAdd.isEmpty()) return Optional.of(new RelativeDirection[0]);
+
+        int x = 0;
+        RelativeDirection[] out = new RelativeDirection[dirsToAdd.size()];
+        for(RelativeDirection dir : dirsToAdd) {
+            out[x] = dir; 
+            x++;
+        }
+        return Optional.of(out);
     }
 
     public Level getWorld() {
         return target.getLevel();
+    }
+
+    /***
+     * Gets every direction that this NodeBank can interact with.
+     * Directions are relative to the world, and will change
+     * depending on the orientation of this NodeBank's parent block.
+     * @return A list of Directions; empty if this NodeBank
+     * has no interaction directions.
+     */
+    public Direction[] getInteractionDirections() {
+        if(!allInteractions.isPresent()) return new Direction[0];
+        if(allInteractions.get().length == 0) return Direction.values();
+        
+        RelativeDirection[] rels = allInteractions.get();
+        Direction[] out = new Direction[rels.length];
+
+        for(int x = 0; x < rels.length; x++) {
+            out[x] = rels[x].get();
+        }
+        return out;
+    }
+
+    public Optional<RelativeDirection[]> getRelDirs() {
+        return allInteractions;
     }
 
     /***
@@ -84,24 +137,25 @@ public class NodeBank {
      * @return True if both NodeBanks share the same target BlockPos.
      */
     public boolean equals(NodeBank other) {
-        return other.pos.equals(this.pos);
+        return other == null ? false : pos.equals(other.pos);
     }
 
+    /***
+     * Hashes this NodeBank based on its target BlockEntity's location.
+     */
     public int hashCode() {
         return target.getBlockPos().hashCode();
     }
 
     /***
-     * Fills this NodeBank with ElectricNodes from the provided ArrayList
-     * @param nodesToAdd
-     * @return
+     * Compares this NodeBank's location with a given BlockPos.
+     * @param otherPos Blockpos to check
+     * @return True if this NodeBank's target BlockEntity is located
+     * at the given BlockPos
      */
-    private ElectricNode[] populate(ArrayList<ElectricNode> nodesToAdd) {
-        ElectricNode[] out = new ElectricNode[nodesToAdd.size()];
-        for(int x = 0; x < out.length; x++) {
-            out[x] = nodesToAdd.get(x);
-        }
-        return out;
+    public boolean isAt(BlockPos pos) {
+        if(pos == null) return false;
+        return pos.equals(pos);
     }
 
     /***
@@ -112,9 +166,8 @@ public class NodeBank {
      * SimpleOrientation, or VerticalOrientation to use as a basis for
      * rotation.
      */
-    public NodeBank rotateAllNodes(Direction dir) {
-        for(ElectricNode node : NODES) 
-            node = node.rotateNode(dir);
+    public NodeBank rotate(Direction dir) {
+        rotate(CombinedOrientation.convert(dir));
         return this;
     }
 
@@ -126,9 +179,8 @@ public class NodeBank {
      * SimpleOrientation, or VerticalOrientation to use as a basis for
      * rotation.
      */
-    public NodeBank rotateAllNodes(CombinedOrientation dir) {
-        for(ElectricNode node : NODES)
-            node = node.rotateNode(dir);
+    public NodeBank rotate(SimpleOrientation dir) {
+        rotate(CombinedOrientation.convert(dir));
         return this;
     }
 
@@ -140,9 +192,8 @@ public class NodeBank {
      * SimpleOrientation, or VerticalOrientation to use as a basis for
      * rotation.
      */
-    public NodeBank rotateAllNodes(SimpleOrientation dir) {
-        for(ElectricNode node : NODES)
-            node = node.rotateNode(dir);
+    public NodeBank rotate(VerticalOrientation dir) {
+        rotate(CombinedOrientation.convert(dir));
         return this;
     }
 
@@ -154,9 +205,15 @@ public class NodeBank {
      * SimpleOrientation, or VerticalOrientation to use as a basis for
      * rotation.
      */
-    public NodeBank rotateAllNodes(VerticalOrientation dir) {
-        for(ElectricNode node : NODES)
+    public NodeBank rotate(CombinedOrientation dir) {
+        for(ElectricNode node : allNodes)
             node = node.rotateNode(dir);
+
+        if(!allInteractions.isPresent() ||
+            allInteractions.get().length == 0) return this;
+
+        for(RelativeDirection rel : allInteractions.get())
+            rel = rel.rotate(dir);
         return this;
     }
 
@@ -165,7 +222,7 @@ public class NodeBank {
      * @return The raw aray stored within this NodeBan
      */
     public ElectricNode[] values() {
-        return NODES;
+        return allNodes;
     }
 
     /*** 
@@ -173,7 +230,7 @@ public class NodeBank {
      * @return int representing how many ElectricNodes can be held in this NodeBank
      */
     public int length() {
-        return NODES.length;
+        return allNodes.length;
     }
 
     public Pair<ElectricNode, Double> getClosest(Vec3 hit) {
@@ -191,22 +248,24 @@ public class NodeBank {
      */
     @Nullable
     public Pair<ElectricNode, Double> getClosest(Vec3 hit, float tolerance) {
-        
+        if(length() == 1) 
+            return Pair.of(allNodes[0], 0.1);
+
         double lastDist = 100;
         Pair<ElectricNode, Double> out = Pair.of(null, null);
 
-        for(int x = 0; x < NODES.length; x++) {
-            Vec3 center = NODES[x].getPosition();
+        for(int x = 0; x < allNodes.length; x++) {
+            Vec3 center = allNodes[x].getPosition();
             double dist = Math.abs(hit.distanceTo(center));
 
             if(dist > tolerance) continue;
 
             if(dist < 0.0001) {
-                return Pair.of(NODES[x], Double.valueOf(dist));
+                return Pair.of(allNodes[x], Double.valueOf(dist));
             }
 
             if(dist < lastDist) {
-                out.setFirst(NODES[x]);
+                out.setFirst(allNodes[x]);
                 out.setSecond(Double.valueOf(dist));
             }
 
@@ -219,9 +278,9 @@ public class NodeBank {
     }
 
     public int forceFindIndex(ElectricNode node) {
-        if(node == null || NODES.length == 0 )  return -1;
-        for(int x = 0; x < NODES.length; x++)
-            if(NODES[x] == node) return x;
+        if(node == null || allNodes.length == 0 )  return -1;
+        for(int x = 0; x < allNodes.length; x++)
+            if(allNodes[x] == node) return x;
         return -1;
     }
 
@@ -232,11 +291,13 @@ public class NodeBank {
      */
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
-        for(int x = 0; x < NODES.length; x++) {
-            NODES[x].writeTo(out);
+        for(int x = 0; x < allNodes.length; x++) {
+            allNodes[x].writeTo(out);
         }
-        in.putString("BankVersion", VERSION);
-        in.put("NodeBank", out);
+        energyStorage.writeTo(in);
+        in.putString("ver", VERSION);
+        in.put("bank", out);
+        
         return in;
     }
 
@@ -246,8 +307,8 @@ public class NodeBank {
      * @return
      */
     public boolean shouldAlwaysRender() {
-        for(ElectricNode n : NODES) 
-            if(n.shouldAlwaysRender())return true;
+        for(ElectricNode n : allNodes) 
+            if(n.shouldAlwaysRender()) return true;
         return false;
     }
 
@@ -262,54 +323,55 @@ public class NodeBank {
      * </strong> Bank
      * @param in CompoundTag to use
      * @throws IllegalArgumentException if the given CompoundTag doesn't contain a "NodeBank" tag.
-     * @throws IllegalArgumentException if the given CompoundTag's NodeBank is incompatable with this NodeBank.
-     * @throws IllegalArgumentException if this NodeBank has any ElectricNodes that aren't referenced in the
+     * @throws IllegalStateException if the given CompoundTag's NodeBank is incompatable with this NodeBank.
+     * @throws IllegalStateException if this NodeBank has any ElectricNodes that aren't referenced in the
      * given CompoundTag.
      */
     public void readFrom(CompoundTag in) {
-        String v = in.getString("BankVersion");
+        energyStorage.readFrom(in);
+        String v = in.getString("ver");
         if(v == null || !v.equals(VERSION)) return;
 
-        if(!in.contains("NodeBank")) throw new IllegalArgumentException("CompoundTag [[" + in + "]] contains no relevent data!");
-        CompoundTag bank = in.getCompound("NodeBank");
+        if(!in.contains("bank")) throw new IllegalArgumentException("CompoundTag [[" + in + "]] contains no relevent data!");
+        CompoundTag bank = in.getCompound("bank");
 
-        if(bank.size() != NODES.length) throw new IllegalArgumentException("Provided CompoundTag's NodeBank contains " 
-            + bank.size() + " nodes, but this NodeBank must store " + NODES.length + " nodes!");
+        if(bank.size() != allNodes.length) throw new IllegalStateException("Provided CompoundTag's NodeBank contains " 
+            + bank.size() + " nodes, but this NodeBank must store " + allNodes.length + " nodes!");
 
-        for(int x = 0; x < NODES.length; x++) {
-            String thisID = NODES[x].getId();
+        for(int x = 0; x < allNodes.length; x++) {
+            String thisID = allNodes[x].getId();
 
             // TODO potentially excessive throw, may replace with continue
-            if(!bank.contains(thisID)) throw new IllegalArgumentException("This NodeBank instance contains an ElectricNode called '" 
+            if(!bank.contains(thisID)) throw new IllegalStateException("This NodeBank instance contains an ElectricNode called '" 
                 + thisID + "', but the provided NodeBank NBT data does not!");
 
-            NODES[x] = new ElectricNode(target, bank.getCompound(thisID));
+            allNodes[x] = new ElectricNode(target, bank.getCompound(thisID));
         }
     }
 
     public boolean contains(String id) {
-        for(int x = 0; x < NODES.length; x++) 
-            if(NODES[x].getId().equals(id)) return true;
+        for(int x = 0; x < allNodes.length; x++) 
+            if(allNodes[x].getId().equals(id)) return true;
         return false;
     }
 
     @Nullable
     public ElectricNode get(String id) {
-        for(int x = 0; x < NODES.length; x++) 
-            if(NODES[x].getId().equals(id)) return NODES[x];
+        for(int x = 0; x < allNodes.length; x++) 
+            if(allNodes[x].getId().equals(id)) return allNodes[x];
         return null;
     }
 
     public int indexOf(String id) {
-        for(int x = 0; x < NODES.length; x++) 
-            if(NODES[x].getId().equals(id)) return x;
+        for(int x = 0; x < allNodes.length; x++) 
+            if(allNodes[x].getId().equals(id)) return x;
         return -1;
     }
 
     public String toString() {
         String out = "NodeBank bound to " + target.getClass().getSimpleName() + " at " + target.getBlockPos() + ":\n";
-        for(int x = 0; x < NODES.length; x++) 
-            out += "Node " + x + ": " + NODES[x] + "\n";
+        for(int x = 0; x < allNodes.length; x++) 
+            out += "Node " + x + ": " + allNodes[x] + "\n";
         return out;
     }
 
@@ -335,13 +397,37 @@ public class NodeBank {
      * provided NodeBank will be removed from this NodeBank.
      * 
      */
-    public boolean removeAllConnectionsTo(NodeBank bank) {
+    public boolean removeSharedConnections(NodeBank origin) {
         boolean changed = false;
-        for(ElectricNode node : NODES) {
-            if(node.removeConnectionsInvolving(bank))
+        for(ElectricNode node : allNodes) {
+            if(node.removeConnectionsInvolving(origin))
                 changed = true;
         }
+        if(changed) markDirty();
         return changed;
+    }
+
+    /***
+     * Returns a HashSet containing every NodeBank targeted by connections
+     * stored within this NodeBank.
+     * @return
+     */
+    public HashSet<NodeBank> getAllTargetBanks() {
+        HashSet<NodeBank> out = new HashSet<NodeBank>();
+        for(ElectricNode node : allNodes) {
+            out.addAll(node.getAllTargetBanks(this));
+        }
+        return out;
+    }
+
+    /***
+     * Savely invalidates all connections made to this NodeBank. Usually called
+     * when this NodeBank's parent Block is destroyed.
+     */
+    public void destroy() {
+        for(NodeBank bank : getAllTargetBanks()) {
+            bank.removeSharedConnections(this);
+        }
     }
 
     /***
@@ -351,10 +437,25 @@ public class NodeBank {
      * obtained while the level is loading, beacuse the level doesn't yet exist in a callable
      * form.
      */
-    public void initConnections() {
-        for(int x = 0; x < NODES.length; x++) {
-            NODES[x].initConnections(target);
+    public void init() {
+        for(int x = 0; x < allNodes.length; x++) {
+            allNodes[x].initConnections(target);
         }
+    }
+
+    /***
+     * Initializes the energy capabilities of this NodeBank
+     */
+    public void loadEnergy() {
+        energyHandler = LazyOptional.of(() -> energyStorage);
+    }
+
+    public void invalidateEnergy() {
+        energyHandler.invalidate();
+    }
+
+    public <T> @NotNull LazyOptional<T> provideEnergyCapabilities(@NotNull Capability<T> cap, @Nullable Direction side) {
+        return provideEnergyCapabilities(cap, side, getInteractionDirections());
     }
 
     /***
@@ -380,7 +481,7 @@ public class NodeBank {
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
         Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
 
-        NodeConnectResult result = NODES[indexOf(fromID)].addConnection(fakeConnection);
+        NodeConnectResult result = allNodes[indexOf(fromID)].addConnection(fakeConnection);
 
         return Pair.of(result, fakeConnection);
     }
@@ -414,10 +515,10 @@ public class NodeBank {
             return NodeConnectResult.LINK_CONFLICT;
         }
 
-        NodeConnectResult r1 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
+        NodeConnectResult r1 = targetBank.allNodes[targetBank.indexOf(targetID)].addConnection(targetConnection);
         
         if(r1.isSuccessful()) {
-            NODES[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
+            allNodes[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
             return NodeConnectResult.WIRE_SUCCESS;
         }
@@ -446,8 +547,8 @@ public class NodeBank {
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
         Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
-        NodeConnectResult r1 = NODES[indexOf(fromID)].addConnection(fromConnection);
-        NodeConnectResult r2 = targetBank.NODES[targetBank.indexOf(targetID)].addConnection(targetConnection);
+        NodeConnectResult r1 = allNodes[indexOf(fromID)].addConnection(fromConnection);
+        NodeConnectResult r2 = targetBank.allNodes[targetBank.indexOf(targetID)].addConnection(targetConnection);
     
         if(r1.isSuccessful() && r2.isSuccessful()) {
             markDirty(); targetBank.markDirty();
@@ -482,5 +583,21 @@ public class NodeBank {
     @Nullable
     public static NodeBank retrieveFrom(Level world, BlockEntity root, Vec3i relativePos) {
         return retrieve(world, root.getBlockPos().subtract(relativePos));
+    }
+
+    @Override
+    public void onEnergyUpdated() {
+        target.setChanged();
+        MechanoPackets.sendToAllClients(new EnergySyncS2CPacket(energyStorage.getEnergyStored(), target.getBlockPos()));
+    }
+
+    @Override
+    public <T> @NotNull LazyOptional<T> getEnergyCapability() {
+        return energyHandler.cast();
+    }
+
+    @Override
+    public void setEnergyStored(int energy) {
+        energyStorage.setEnergyStored(energy);
     }
 }

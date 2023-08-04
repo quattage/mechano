@@ -3,6 +3,7 @@ package com.quattage.mechano.core.electricity.node.connection;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -27,13 +28,13 @@ public class FakeNodeConnection extends NodeConnection {
     private String sourceID;
 
     public FakeNodeConnection(WireSpool spoolType, String sourceID, Vec3 sourcePos, Entity placer) {
+        super(null);
         this.sourcePos = sourcePos;
         this.attachedEntity = placer;
         this.sourceID = sourceID;
         super.setAge(-1);
         destPos = placer.position().add(0.0D, (double)placer.getEyeHeight() * 0.7d, 0.0d);
         this.spoolType = spoolType;
-        this.isInverse = false;
     }
 
     /***

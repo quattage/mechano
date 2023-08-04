@@ -26,8 +26,12 @@ public abstract class NodeConnection {
      */
     protected final boolean needsLerped = setNeedsLerped();
     protected final boolean canTransferPower = setTransferPower();
-    protected boolean isInverse = false;
+    protected BlockPos parentPos;
     protected int age = 0;
+
+    public NodeConnection(BlockPos parentPos) {
+        this.parentPos = parentPos;
+    }
 
     /***
      * The type of spool used to make the connection. Determines things like transfer rate.
@@ -102,10 +106,6 @@ public abstract class NodeConnection {
     public boolean shouldIgnoreFrustrum() {
         return false;
     }
-
-    public boolean isInverse() {
-        return isInverse;
-    }
     
     /***
      * Updates the position of this NodeConnection.
@@ -146,6 +146,10 @@ public abstract class NodeConnection {
 
     public boolean needsLerped() {
         return needsLerped;
+    }
+
+    public BlockPos getParentPos() {
+        return parentPos;
     }
 
     /***
@@ -189,6 +193,6 @@ public abstract class NodeConnection {
      */
     public Vec3i getRelativeI() {
         Vec3 out = getRelative();
-        return new Vec3i(out.x, out.y, out.z);
+        return new Vec3i((int)out.x, (int)out.y, (int)out.z);
     }
 }

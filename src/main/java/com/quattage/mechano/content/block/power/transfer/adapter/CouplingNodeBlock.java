@@ -2,13 +2,13 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 
 import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
 
-import com.mrh0.createaddition.shapes.CAShapes;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
@@ -30,8 +30,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<CouplingNodeBlockEntity> {
 
-    public static final VoxelShaper NODE_SHAPE_CANTED = CAShapes.shape(1, 2, 1, 15, 16, 15).forDirectional();
-    public static final VoxelShaper NODE_SHAPE_BASE = CAShapes.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
+    public static final VoxelShaper NODE_SHAPE_CANTED = ShapeBuilder.shape(1, 2, 1, 15, 16, 15).forDirectional();
+    public static final VoxelShaper NODE_SHAPE_BASE = ShapeBuilder.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
 
     public CouplingNodeBlock(Properties pProperties) {
         super(pProperties);

@@ -5,8 +5,8 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 import com.google.common.base.Predicates;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
 import com.simibubi.create.content.kinetics.simpleRelays.ShaftBlock;
 import com.simibubi.create.foundation.block.IBE;

@@ -2,11 +2,11 @@ package com.quattage.mechano.content.block.power.transfer.connector;
 
 import java.util.Locale;
 
-import com.mrh0.createaddition.shapes.CAShapes;
+import com.quattage.mechano.MechanoBlockEntities;
+import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.transfer.adapter.TransmissionNodeBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.registry.MechanoBlockEntities;
-import com.quattage.mechano.registry.MechanoBlocks;
+import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -36,7 +36,7 @@ public class HeapConnectorBlock extends DirectionalBlock implements IBE<HeapConn
     
 
     public static final EnumProperty<HeapConnectorModelType> MODEL_TYPE = EnumProperty.create("model", HeapConnectorModelType.class);
-    public static final VoxelShaper BASE_SHAPE = CAShapes.shape(5.5, 0, 5.5, 10.5, 15, 10.5).forDirectional();
+    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.shape(5.5, 0, 5.5, 10.5, 15, 10.5).forDirectional();
 
     public enum HeapConnectorModelType implements StringRepresentable {
         BASE, GIRDERED, COUPLED;

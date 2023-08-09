@@ -1,6 +1,7 @@
 package com.quattage.mechano.content.block.power.transfer.adapter;
 
-import static com.quattage.mechano.content.block.power.transfer.adapter.NodeModelType.NODE_MODEL_TYPE;
+
+import java.util.Locale;
 
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
@@ -11,6 +12,7 @@ import com.simibubi.create.foundation.utility.VoxelShaper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -20,22 +22,48 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class TransmissionNodeBlock extends SimpleOrientedBlock {
 
-    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.shape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).forDirectional();
+    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.newShape(3, 0, 3, 13, 4, 13).add(1, 4, 1, 15, 16, 15).defaultUp();
+    public static final EnumProperty<TransmissionNodeModelType> MODEL_TYPE = EnumProperty.create("model", TransmissionNodeModelType.class);
 
     public TransmissionNodeBlock(Properties pProperties) {
         super(pProperties);
-        this.registerDefaultState(defaultBlockState().setValue(NODE_MODEL_TYPE, NodeModelType.BASE));
+        this.registerDefaultState(defaultBlockState().setValue(MODEL_TYPE, TransmissionNodeModelType.BASE));
+    }
+
+    public enum TransmissionNodeModelType implements StringRepresentable {
+        BASE, GROUNDED, GIRDERED;
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+    
+        @Override
+        public String toString() {
+            return getSerializedName();
+        }
+    
+        public static TransmissionNodeModelType cycleRotor(TransmissionNodeModelType type) {
+            int pos = type.ordinal();
+            if(pos == 4) {
+                pos -= 1;
+                return TransmissionNodeModelType.values()[pos];
+            }
+            pos += 1;
+            return TransmissionNodeModelType.values()[pos];
+        }
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
-        builder.add(NODE_MODEL_TYPE);
+        builder.add(MODEL_TYPE);
     }
 
     @Override
@@ -77,7 +105,7 @@ public class TransmissionNodeBlock extends SimpleOrientedBlock {
     private void doBlockCheck(Level world, BlockPos pos, BlockState state) {
         Direction ax = state.getValue(ORIENTATION).getCardinal().getOpposite();
         if(world.getBlockState(pos.relative(ax)).getBlock() == AllBlocks.METAL_GIRDER.get()) {
-            world.setBlock(pos, state.setValue(NODE_MODEL_TYPE, NodeModelType.GIRDERED), Block.UPDATE_ALL);
+            world.setBlock(pos, state.setValue(MODEL_TYPE, TransmissionNodeModelType.GIRDERED), Block.UPDATE_ALL);
             return;
         }
         Block facingBlock = world.getBlockState(pos.relative(ax)).getBlock();
@@ -88,11 +116,11 @@ public class TransmissionNodeBlock extends SimpleOrientedBlock {
         } catch(Exception e) {} // sorry
 
         if(faceFull) {
-            world.setBlock(pos, state.setValue(NODE_MODEL_TYPE, NodeModelType.GROUNDED), Block.UPDATE_ALL);
+            world.setBlock(pos, state.setValue(MODEL_TYPE, TransmissionNodeModelType.GROUNDED), Block.UPDATE_ALL);
             return;
         }
 
-        world.setBlock(pos, state.setValue(NODE_MODEL_TYPE, NodeModelType.BASE), Block.UPDATE_ALL);
+        world.setBlock(pos, state.setValue(MODEL_TYPE, TransmissionNodeModelType.BASE), Block.UPDATE_ALL);
     }
 
     @Override

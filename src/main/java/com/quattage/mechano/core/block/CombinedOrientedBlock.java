@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class CombinedOrientedBlock extends Block implements IWrenchable {
 
-    public static final EnumProperty<CombinedOrientation> ORIENTATION = EnumProperty.create("orientation", CombinedOrientation.class); //accomodates for up and down PER CARDINAL, ex. UP_NORTH, or DOWN_EAST
+    public static final EnumProperty<CombinedOrientation> ORIENTATION = EnumProperty.create("orientation", CombinedOrientation.class);
     
     public CombinedOrientedBlock(Properties pProperties) {
         super(pProperties);

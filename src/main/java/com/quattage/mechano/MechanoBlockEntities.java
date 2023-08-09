@@ -5,9 +5,18 @@ import com.quattage.mechano.content.block.power.alternator.collector.CollectorBl
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.adapter.CouplingNodeBlockEntity;
-import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorBlockEntity;
-import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorRenderer;
-import com.quattage.mechano.content.block.power.transfer.connector.HeapConnectorStackedBlockEntity;
+
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.TransmissionConnectorBlockEntity;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.TransmissionConnectorRenderer;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier0Renderer;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier1BlockEntity;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier1Renderer;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier2BlockEntity;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier2Renderer;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier3BlockEntity;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier3Renderer;
+import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier0BlockEntity;
+
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockEntity;
 import com.quattage.mechano.content.block.power.transfer.test.TestBlockRenderer;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlockEntity;
@@ -51,16 +60,36 @@ public class MechanoBlockEntities {
             .validBlocks(MechanoBlocks.COUPLING_NODE)
             .register();
 
-    public static final BlockEntityEntry<HeapConnectorBlockEntity> HEAP_CONNECTOR = Mechano.REGISTRATE
-            .blockEntity("heap_connector", HeapConnectorBlockEntity::new)
-            .validBlocks(MechanoBlocks.HEAP_CONNECTOR)
-            .renderer(() -> HeapConnectorRenderer::new)
+    public static final BlockEntityEntry<TransmissionConnectorBlockEntity> TRANSMISSION_CONNECTOR = Mechano.REGISTRATE
+            .blockEntity("transmission_connector", TransmissionConnectorBlockEntity::new)
+            .validBlocks(MechanoBlocks.CONNECTOR_TRANSMISSION)
+            .renderer(() -> TransmissionConnectorRenderer::new)
             .register();
 
-    public static final BlockEntityEntry<HeapConnectorStackedBlockEntity> HEAP_CONNECTOR_STACKED = Mechano.REGISTRATE
-            .blockEntity("heap_connector_stacked", HeapConnectorStackedBlockEntity::new)
-            .validBlocks(MechanoBlocks.HEAP_CONNECTOR_STACKED)
+    public static final BlockEntityEntry<ConnectorStackedTier0BlockEntity> STACKED_CONNECTOR_ZERO = Mechano.REGISTRATE
+            .blockEntity("stacked_connector_zero", ConnectorStackedTier0BlockEntity::new)
+            .validBlocks(MechanoBlocks.CONNECTOR_STACKED_ZERO)
+            .renderer(() -> ConnectorStackedTier0Renderer::new)
             .register();
+
+    public static final BlockEntityEntry<ConnectorStackedTier1BlockEntity> STACKED_CONNECTOR_ONE = Mechano.REGISTRATE
+            .blockEntity("stacked_connector_one", ConnectorStackedTier1BlockEntity::new)
+            .validBlocks(MechanoBlocks.CONNECTOR_STACKED_ONE)
+            .renderer(() -> ConnectorStackedTier1Renderer::new)
+            .register();
+
+    public static final BlockEntityEntry<ConnectorStackedTier2BlockEntity> STACKED_CONNECTOR_TWO = Mechano.REGISTRATE
+            .blockEntity("stacked_connector_two", ConnectorStackedTier2BlockEntity::new)
+            .validBlocks(MechanoBlocks.CONNECTOR_STACKED_TWO)
+            .renderer(() -> ConnectorStackedTier2Renderer::new)
+            .register();
+
+    public static final BlockEntityEntry<ConnectorStackedTier3BlockEntity> STACKED_CONNECTOR_THREE = Mechano.REGISTRATE
+        .blockEntity("stacked_connector_three", ConnectorStackedTier3BlockEntity::new)
+        .validBlocks(MechanoBlocks.CONNECTOR_STACKED_THREE)
+        .renderer(() -> ConnectorStackedTier3Renderer::new)
+        .register();
+
 
     public static final BlockEntityEntry<DiagonalGirderBlockEntity> DIAGONAL_GIRDER = Mechano.REGISTRATE
             .blockEntity("diagonal_girder", DiagonalGirderBlockEntity::new)

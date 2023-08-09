@@ -1,0 +1,79 @@
+{
+  "variants": {
+    "facing=east,model=base": {
+      "model": "mechano:block/tool_station/base",
+      "y": 270
+    },
+    "facing=east,model=dummy": {
+      "model": "mechano:block/tool_station/dummy",
+      "y": 270
+    },
+    "facing=east,model=forged": {
+      "model": "mechano:block/tool_station/forged",
+      "y": 270
+    },
+    "facing=east,model=heated": {
+      "model": "mechano:block/tool_station/heated",
+      "y": 270
+    },
+    "facing=east,model=maximized": {
+      "model": "mechano:block/tool_station/maximized",
+      "y": 270
+    },
+    "facing=north,model=base": {
+      "model": "mechano:block/tool_station/base",
+      "y": 180
+    },
+    "facing=north,model=dummy": {
+      "model": "mechano:block/tool_station/dummy",
+      "y": 180
+    },
+    "facing=north,model=forged": {
+      "model": "mechano:block/tool_station/forged",
+      "y": 180
+    },
+    "facing=north,model=heated": {
+      "model": "mechano:block/tool_station/heated",
+      "y": 180
+    },
+    "facing=north,model=maximized": {
+      "model": "mechano:block/tool_station/maximized",
+      "y": 180
+    },
+    "facing=south,model=base": {
+      "model": "mechano:block/tool_station/base"
+    },
+    "facing=south,model=dummy": {
+      "model": "mechano:block/tool_station/dummy"
+    },
+    "facing=south,model=forged": {
+      "model": "mechano:block/tool_station/forged"
+    },
+    "facing=south,model=heated": {
+      "model": "mechano:block/tool_station/heated"
+    },
+    "facing=south,model=maximized": {
+      "model": "mechano:block/tool_station/maximized"
+    },
+    "facing=west,model=base": {
+      "model": "mechano:block/tool_station/base",
+      "y": 90
+    },
+    "facing=west,model=dummy": {
+      "model": "mechano:block/tool_station/dummy",
+      "y": 90
+    },
+    "facing=west,model=forged": {
+      "model": "mechano:block/tool_station/forged",
+      "y": 90
+    },
+    "facing=west,model=heated": {
+      "model": "mechano:block/tool_station/heated",
+      "y": 90
+    },
+    "facing=west,model=maximized": {
+      "model": "mechano:block/tool_station/maximized",
+      "y": 90
+    }
+  }
+}

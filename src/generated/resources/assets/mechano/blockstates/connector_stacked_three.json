@@ -1,0 +1,92 @@
+{
+  "variants": {
+    "orientation=down_east": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 270
+    },
+    "orientation=down_north": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 180
+    },
+    "orientation=down_south": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=down_west": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 90
+    },
+    "orientation=east_down": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "x": 180
+    },
+    "orientation=east_north": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 180
+    },
+    "orientation=east_south": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=east_up": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=north_down": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "x": 180
+    },
+    "orientation=north_east": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 270
+    },
+    "orientation=north_up": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=north_west": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 90
+    },
+    "orientation=south_down": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "x": 180
+    },
+    "orientation=south_east": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 270
+    },
+    "orientation=south_up": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=south_west": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 90
+    },
+    "orientation=up_east": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 270
+    },
+    "orientation=up_north": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 180
+    },
+    "orientation=up_south": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=up_west": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 90
+    },
+    "orientation=west_down": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "x": 180
+    },
+    "orientation=west_north": {
+      "model": "mechano:block/connector_stacked/tier3",
+      "y": 180
+    },
+    "orientation=west_south": {
+      "model": "mechano:block/connector_stacked/tier3"
+    },
+    "orientation=west_up": {
+      "model": "mechano:block/connector_stacked/tier3"
+    }
+  }
+}

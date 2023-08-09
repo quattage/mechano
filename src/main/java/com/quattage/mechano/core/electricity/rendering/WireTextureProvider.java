@@ -36,7 +36,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
     }
 
     private static final Gson GSON = new GsonBuilder().setLenient().create();
-    private static final ResourceLocation MISSING = Mechano.asResource("textures/entity/wire/missing.png");
+    private static final ResourceLocation MISSING = Mechano.asResource("textures/block/wire/missing.png");
     private final Object2ObjectMap<ResourceLocation, ResourceLocation> textureCache = new Object2ObjectOpenHashMap<>(64);
 
     @Override
@@ -48,7 +48,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
 
         Map<ResourceLocation, JsonModel> out = new HashMap<>();
         for (WireSpool spoolType : WireSpool.getAllTypes().values()) {
-            Mechano.log("Searching for resource: " + modelFromSpool(spoolType));
+            Mechano.LOGGER.info("Searching for resource: " + modelFromSpool(spoolType));
             manager.getResource(modelFromSpool(spoolType)).ifPresentOrElse(resource -> {
                 Reader reader;
                 try {
@@ -57,11 +57,11 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
                     out.put(modelFromSpool(spoolType), model);
                     Mechano.log("Successfully loaded resource '" + spoolType.getId() + ".json'");
                 } catch (IOException e) {
-                    Mechano.LOGGER.error("Failure to load Wire Model resource '" + spoolType.getId() + "' - Check your JSON formatting!");
+                    Mechano.LOGGER.warn("Failed to load Wire Model resource '" + spoolType.getId() + "' - Check your JSON formatting!");
                     
                 }
             }, 
-                () -> Mechano.LOGGER.warn("Failure to load Wire Model resource: '" + spoolType.getId() + ".json' could not be found!"));
+                () -> Mechano.LOGGER.error("Failure to load Wire Model resource: '" + spoolType.getId() + ".json' could not be found!"));
         }
         return out;
     }
@@ -83,7 +83,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
 
 
     public static ResourceLocation modelFromSpool(WireSpool spool) {
-        return new ResourceLocation(Mechano.MOD_ID, "models/entity/wire/" + spool.getId() + ".json");
+        return new ResourceLocation(Mechano.MOD_ID, "models/block/wire/" + spool.getId() + ".json");
     }
 
     public ResourceLocation getChainTexture(ResourceLocation chainType) {

@@ -46,7 +46,7 @@ public class RotorBlock extends RotatedPillarKineticBlock implements IBE<RotorBl
     }
 
     public enum RotorModelType implements StringRepresentable {
-        SINGLE, MIDDLE, ENDA, ENDB;
+        SINGLE, MIDDLE, END_A, END_B;
 
         @Override
         public String getSerializedName() {
@@ -67,9 +67,9 @@ public class RotorBlock extends RotatedPillarKineticBlock implements IBE<RotorBl
         if(neighborStatus == "BOTH")
             setModel(world, pos, state, RotorModelType.MIDDLE);
         else if(neighborStatus == "FRONT")
-            setModel(world, pos, state, RotorModelType.ENDB);
+            setModel(world, pos, state, RotorModelType.END_B);
         else if(neighborStatus == "REAR")
-            setModel(world, pos, state, RotorModelType.ENDA);
+            setModel(world, pos, state, RotorModelType.END_A);
         else if(neighborStatus == "NONE")
             setModel(world, pos, state, RotorModelType.SINGLE);
     }

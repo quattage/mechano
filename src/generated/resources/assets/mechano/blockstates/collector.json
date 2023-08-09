@@ -1,0 +1,48 @@
+{
+  "variants": {
+    "facing=down,model=base": {
+      "model": "mechano:block/collector/base",
+      "x": 180
+    },
+    "facing=down,model=rotored": {
+      "model": "mechano:block/collector/rotored",
+      "x": 180
+    },
+    "facing=east,model=base": {
+      "model": "mechano:block/collector/base",
+      "y": 270
+    },
+    "facing=east,model=rotored": {
+      "model": "mechano:block/collector/rotored",
+      "y": 270
+    },
+    "facing=north,model=base": {
+      "model": "mechano:block/collector/base",
+      "y": 180
+    },
+    "facing=north,model=rotored": {
+      "model": "mechano:block/collector/rotored",
+      "y": 180
+    },
+    "facing=south,model=base": {
+      "model": "mechano:block/collector/base"
+    },
+    "facing=south,model=rotored": {
+      "model": "mechano:block/collector/rotored"
+    },
+    "facing=up,model=base": {
+      "model": "mechano:block/collector/base"
+    },
+    "facing=up,model=rotored": {
+      "model": "mechano:block/collector/rotored"
+    },
+    "facing=west,model=base": {
+      "model": "mechano:block/collector/base",
+      "y": 90
+    },
+    "facing=west,model=rotored": {
+      "model": "mechano:block/collector/rotored",
+      "y": 90
+    }
+  }
+}

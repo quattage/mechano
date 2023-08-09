@@ -1,0 +1,444 @@
+{
+  "variants": {
+    "model=base,orientation=down_east": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 270
+    },
+    "model=base,orientation=down_north": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 180
+    },
+    "model=base,orientation=down_south": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=down_west": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 90
+    },
+    "model=base,orientation=east_down": {
+      "model": "mechano:block/coupling_node/base",
+      "x": 180
+    },
+    "model=base,orientation=east_north": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 180
+    },
+    "model=base,orientation=east_south": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=east_up": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=north_down": {
+      "model": "mechano:block/coupling_node/base",
+      "x": 180
+    },
+    "model=base,orientation=north_east": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 270
+    },
+    "model=base,orientation=north_up": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=north_west": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 90
+    },
+    "model=base,orientation=south_down": {
+      "model": "mechano:block/coupling_node/base",
+      "x": 180
+    },
+    "model=base,orientation=south_east": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 270
+    },
+    "model=base,orientation=south_up": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=south_west": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 90
+    },
+    "model=base,orientation=up_east": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 270
+    },
+    "model=base,orientation=up_north": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 180
+    },
+    "model=base,orientation=up_south": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=up_west": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 90
+    },
+    "model=base,orientation=west_down": {
+      "model": "mechano:block/coupling_node/base",
+      "x": 180
+    },
+    "model=base,orientation=west_north": {
+      "model": "mechano:block/coupling_node/base",
+      "y": 180
+    },
+    "model=base,orientation=west_south": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=base,orientation=west_up": {
+      "model": "mechano:block/coupling_node/base"
+    },
+    "model=girdered,orientation=down_east": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 270
+    },
+    "model=girdered,orientation=down_north": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 180
+    },
+    "model=girdered,orientation=down_south": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=down_west": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 90
+    },
+    "model=girdered,orientation=east_down": {
+      "model": "mechano:block/coupling_node/girdered",
+      "x": 180
+    },
+    "model=girdered,orientation=east_north": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 180
+    },
+    "model=girdered,orientation=east_south": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=east_up": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=north_down": {
+      "model": "mechano:block/coupling_node/girdered",
+      "x": 180
+    },
+    "model=girdered,orientation=north_east": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 270
+    },
+    "model=girdered,orientation=north_up": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=north_west": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 90
+    },
+    "model=girdered,orientation=south_down": {
+      "model": "mechano:block/coupling_node/girdered",
+      "x": 180
+    },
+    "model=girdered,orientation=south_east": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 270
+    },
+    "model=girdered,orientation=south_up": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=south_west": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 90
+    },
+    "model=girdered,orientation=up_east": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 270
+    },
+    "model=girdered,orientation=up_north": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 180
+    },
+    "model=girdered,orientation=up_south": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=up_west": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 90
+    },
+    "model=girdered,orientation=west_down": {
+      "model": "mechano:block/coupling_node/girdered",
+      "x": 180
+    },
+    "model=girdered,orientation=west_north": {
+      "model": "mechano:block/coupling_node/girdered",
+      "y": 180
+    },
+    "model=girdered,orientation=west_south": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=girdered,orientation=west_up": {
+      "model": "mechano:block/coupling_node/girdered"
+    },
+    "model=grounded,orientation=down_east": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 270
+    },
+    "model=grounded,orientation=down_north": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 180
+    },
+    "model=grounded,orientation=down_south": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=down_west": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 90
+    },
+    "model=grounded,orientation=east_down": {
+      "model": "mechano:block/coupling_node/grounded",
+      "x": 180
+    },
+    "model=grounded,orientation=east_north": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 180
+    },
+    "model=grounded,orientation=east_south": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=east_up": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=north_down": {
+      "model": "mechano:block/coupling_node/grounded",
+      "x": 180
+    },
+    "model=grounded,orientation=north_east": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 270
+    },
+    "model=grounded,orientation=north_up": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=north_west": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 90
+    },
+    "model=grounded,orientation=south_down": {
+      "model": "mechano:block/coupling_node/grounded",
+      "x": 180
+    },
+    "model=grounded,orientation=south_east": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 270
+    },
+    "model=grounded,orientation=south_up": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=south_west": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 90
+    },
+    "model=grounded,orientation=up_east": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 270
+    },
+    "model=grounded,orientation=up_north": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 180
+    },
+    "model=grounded,orientation=up_south": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=up_west": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 90
+    },
+    "model=grounded,orientation=west_down": {
+      "model": "mechano:block/coupling_node/grounded",
+      "x": 180
+    },
+    "model=grounded,orientation=west_north": {
+      "model": "mechano:block/coupling_node/grounded",
+      "y": 180
+    },
+    "model=grounded,orientation=west_south": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=grounded,orientation=west_up": {
+      "model": "mechano:block/coupling_node/grounded"
+    },
+    "model=rotored,orientation=down_east": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 270
+    },
+    "model=rotored,orientation=down_north": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 180
+    },
+    "model=rotored,orientation=down_south": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=down_west": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 90
+    },
+    "model=rotored,orientation=east_down": {
+      "model": "mechano:block/coupling_node/rotored",
+      "x": 180
+    },
+    "model=rotored,orientation=east_north": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 180
+    },
+    "model=rotored,orientation=east_south": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=east_up": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=north_down": {
+      "model": "mechano:block/coupling_node/rotored",
+      "x": 180
+    },
+    "model=rotored,orientation=north_east": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 270
+    },
+    "model=rotored,orientation=north_up": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=north_west": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 90
+    },
+    "model=rotored,orientation=south_down": {
+      "model": "mechano:block/coupling_node/rotored",
+      "x": 180
+    },
+    "model=rotored,orientation=south_east": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 270
+    },
+    "model=rotored,orientation=south_up": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=south_west": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 90
+    },
+    "model=rotored,orientation=up_east": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 270
+    },
+    "model=rotored,orientation=up_north": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 180
+    },
+    "model=rotored,orientation=up_south": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=up_west": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 90
+    },
+    "model=rotored,orientation=west_down": {
+      "model": "mechano:block/coupling_node/rotored",
+      "x": 180
+    },
+    "model=rotored,orientation=west_north": {
+      "model": "mechano:block/coupling_node/rotored",
+      "y": 180
+    },
+    "model=rotored,orientation=west_south": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored,orientation=west_up": {
+      "model": "mechano:block/coupling_node/rotored"
+    },
+    "model=rotored_canted,orientation=down_east": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 270
+    },
+    "model=rotored_canted,orientation=down_north": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 180
+    },
+    "model=rotored_canted,orientation=down_south": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=down_west": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 90
+    },
+    "model=rotored_canted,orientation=east_down": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "x": 180
+    },
+    "model=rotored_canted,orientation=east_north": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 180
+    },
+    "model=rotored_canted,orientation=east_south": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=east_up": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=north_down": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "x": 180
+    },
+    "model=rotored_canted,orientation=north_east": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 270
+    },
+    "model=rotored_canted,orientation=north_up": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=north_west": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 90
+    },
+    "model=rotored_canted,orientation=south_down": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "x": 180
+    },
+    "model=rotored_canted,orientation=south_east": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 270
+    },
+    "model=rotored_canted,orientation=south_up": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=south_west": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 90
+    },
+    "model=rotored_canted,orientation=up_east": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 270
+    },
+    "model=rotored_canted,orientation=up_north": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 180
+    },
+    "model=rotored_canted,orientation=up_south": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=up_west": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 90
+    },
+    "model=rotored_canted,orientation=west_down": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "x": 180
+    },
+    "model=rotored_canted,orientation=west_north": {
+      "model": "mechano:block/coupling_node/rotored_canted",
+      "y": 180
+    },
+    "model=rotored_canted,orientation=west_south": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    },
+    "model=rotored_canted,orientation=west_up": {
+      "model": "mechano:block/coupling_node/rotored_canted"
+    }
+  }
+}

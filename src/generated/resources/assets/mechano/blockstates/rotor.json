@@ -1,0 +1,48 @@
+{
+  "variants": {
+    "axis=x,model=end_a": {
+      "model": "mechano:block/rotor/end_a",
+      "y": 270
+    },
+    "axis=x,model=end_b": {
+      "model": "mechano:block/rotor/end_b",
+      "y": 270
+    },
+    "axis=x,model=middle": {
+      "model": "mechano:block/rotor/middle",
+      "y": 270
+    },
+    "axis=x,model=single": {
+      "model": "mechano:block/rotor/single",
+      "y": 270
+    },
+    "axis=y,model=end_a": {
+      "model": "mechano:block/rotor/end_a"
+    },
+    "axis=y,model=end_b": {
+      "model": "mechano:block/rotor/end_b"
+    },
+    "axis=y,model=middle": {
+      "model": "mechano:block/rotor/middle"
+    },
+    "axis=y,model=single": {
+      "model": "mechano:block/rotor/single"
+    },
+    "axis=z,model=end_a": {
+      "model": "mechano:block/rotor/end_a",
+      "y": 180
+    },
+    "axis=z,model=end_b": {
+      "model": "mechano:block/rotor/end_b",
+      "y": 180
+    },
+    "axis=z,model=middle": {
+      "model": "mechano:block/rotor/middle",
+      "y": 180
+    },
+    "axis=z,model=single": {
+      "model": "mechano:block/rotor/single",
+      "y": 180
+    }
+  }
+}

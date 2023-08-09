@@ -25,7 +25,7 @@ public class ShapeBuilder {
 		return Block.box(x1, y1, z1, x2, y2, z2);
 	}
 
-    public static Builder shape(double x1, double y1, double z1, double x2, double y2, double z2) {
+    public static Builder newShape(double x1, double y1, double z1, double x2, double y2, double z2) {
 		return shape(cuboid(x1, y1, z1, x2, y2, z2));
 	}
 
@@ -63,25 +63,24 @@ public class ShapeBuilder {
 			return factory.apply(shape, axis);
 		}
 
-		public VoxelShaper forDirectional(Direction direction) {
-			return build(VoxelShaper::forDirectional, direction);
-		}
-
-		public VoxelShaper forAxis() {
+		public VoxelShaper defaultYAxis() {
 			return build(VoxelShaper::forAxis, Axis.Y);
 		}
 
-		public VoxelShaper forHorizontalAxis() {
+		public VoxelShaper defaultZAxis() {
 			return build(VoxelShaper::forHorizontalAxis, Axis.Z);
 		}
 
-		public VoxelShaper forHorizontal(Direction direction) {
+		public VoxelShaper defaultHorizontal(Direction direction) {
 			return build(VoxelShaper::forHorizontal, direction);
 		}
 
-		public VoxelShaper forDirectional() {
-			return forDirectional(Direction.UP);
+		public VoxelShaper defaultUp() {
+			return defaultDirection(Direction.UP);
 		}
 
+        public VoxelShaper defaultDirection(Direction direction) {
+			return build(VoxelShaper::forDirectional, direction);
+		}
 	}
 }

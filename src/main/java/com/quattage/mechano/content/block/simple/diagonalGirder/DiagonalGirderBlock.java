@@ -53,7 +53,7 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
     
     public static final VoxelShaper MIDDLE = ShapeBuilder
-        .shape(5, 0, 0, 11, 4, 4)
+        .newShape(5, 0, 0, 11, 4, 4)
         .add(5, 4, 4, 11, 8, 8)
         .add(5, 8, 8, 11, 12, 12)
         .add(5, 12, 12, 11, 16, 16)
@@ -63,19 +63,19 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
         .add(5, 4, 1.75, 11, 6.25, 4)
         .add(5, 8, 5.75, 11, 10.25, 8)
         .add(5, 12, 9.75, 11, 14.25, 12)
-    .forDirectional();
+    .defaultUp();
 
     public static final VoxelShaper SHORT = ShapeBuilder
-        .shape(5, 2, 2, 11, 6, 6)
+        .newShape(5, 2, 2, 11, 6, 6)
         .add(5, 4, 4, 11, 8, 8)
         .add(5, 8, 8, 11, 12, 12)
         .add(5, 10, 10, 11, 14, 14)
         .add(5, 5.75, 8, 11, 8, 10.25)
         .add(5, 8, 5.75, 11, 10.25, 8)
-    .forDirectional();
+    .defaultUp();
 
     public static final VoxelShaper LONG = ShapeBuilder
-        .shape(5, -2, -2, 11, 2, 2)
+        .newShape(5, -2, -2, 11, 2, 2)
         .add(5, 2, 2, 11, 6, 6)
         .add(5, 6, 6, 11, 10, 10)
         .add(5, 4, 4, 11, 8, 8)
@@ -88,17 +88,17 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
         .add(5, 15.75, 18, 11, 18, 20.25)
         .add(5, -2, -4.25, 11, 0.25, -2)
         .add(5, -4.25, -2, 11, -2, 0.25)
-    .forDirectional();
+    .defaultUp();
 
-    public static final VoxelShaper BOX_LONG_DOWN_FLAT = ShapeBuilder.shape(3, -4.5, -5.75, 13.1, 0, 5.25).forDirectional();
-    public static final VoxelShaper BOX_LONG_DOWN_VERT = ShapeBuilder.shape(3.1, -5.5, -4.85, 13.2, 5.5, -0.35).forDirectional();
-    public static final VoxelShaper BOX_LONG_UP_FLAT = ShapeBuilder.shape(3, 16, 10.75, 13.1, 20.5, 21.75).forDirectional();
-    public static final VoxelShaper BOX_LONG_UP_VERT = ShapeBuilder.shape(3.1, 10.5, 16.35, 13.2, 21.5, 20.85).forDirectional();
+    public static final VoxelShaper BOX_LONG_DOWN_FLAT = ShapeBuilder.newShape(3, -4.5, -5.75, 13.1, 0, 5.25).defaultUp();
+    public static final VoxelShaper BOX_LONG_DOWN_VERT = ShapeBuilder.newShape(3.1, -5.5, -4.85, 13.2, 5.5, -0.35).defaultUp();
+    public static final VoxelShaper BOX_LONG_UP_FLAT = ShapeBuilder.newShape(3, 16, 10.75, 13.1, 20.5, 21.75).defaultUp();
+    public static final VoxelShaper BOX_LONG_UP_VERT = ShapeBuilder.newShape(3.1, 10.5, 16.35, 13.2, 21.5, 20.85).defaultUp();
 
-    public static final VoxelShaper BOX_SHORT_DOWN_FLAT = ShapeBuilder.shape(3, 0, -1, 13.1, 4.5, 10).forDirectional();
-    public static final VoxelShaper BOX_SHORT_DOWN_VERT = ShapeBuilder.shape(3, -1, 0, 13.1, 10, 4.5).forDirectional();
-    public static final VoxelShaper BOX_SHORT_UP_FLAT = ShapeBuilder.shape(3, 11.5, 6, 13.1, 16, 17).forDirectional();
-    public static final VoxelShaper BOX_SHORT_UP_VERT = ShapeBuilder.shape(3, 6, 11.5, 13.1, 17, 16).forDirectional();
+    public static final VoxelShaper BOX_SHORT_DOWN_FLAT = ShapeBuilder.newShape(3, 0, -1, 13.1, 4.5, 10).defaultUp();
+    public static final VoxelShaper BOX_SHORT_DOWN_VERT = ShapeBuilder.newShape(3, -1, 0, 13.1, 10, 4.5).defaultUp();
+    public static final VoxelShaper BOX_SHORT_UP_FLAT = ShapeBuilder.newShape(3, 11.5, 6, 13.1, 16, 17).defaultUp();
+    public static final VoxelShaper BOX_SHORT_UP_VERT = ShapeBuilder.newShape(3, 6, 11.5, 13.1, 17, 16).defaultUp();
 
 
     // public static final VoxelShaper DOUBLE_DOWN = ShapeBuilder

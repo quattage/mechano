@@ -17,49 +17,64 @@ import net.minecraft.util.StringRepresentable;
  */
 public enum VerticalOrientation implements StringRepresentable {
     // stores t
-    NORTH_UP("north_up", Direction.NORTH, Direction.UP),            //0
-    NORTH_DOWN("north_down", Direction.NORTH, Direction.DOWN),      //1
+    NORTH_UP("north_up", Direction.NORTH, true),            //0
+    NORTH_DOWN("north_down", Direction.NORTH, false),      //1
 
-    EAST_UP("east_up", Direction.EAST, Direction.UP),               //2
-    EAST_DOWN("east_down", Direction.EAST, Direction.DOWN),         //3
+    EAST_UP("east_up", Direction.EAST, true),               //2
+    EAST_DOWN("east_down", Direction.EAST, false),         //3
 
-    SOUTH_UP("south_up", Direction.SOUTH, Direction.UP),            //4
-    SOUTH_DOWN("south_down", Direction.SOUTH, Direction.DOWN),      //5
+    SOUTH_UP("south_up", Direction.SOUTH, true),            //4
+    SOUTH_DOWN("south_down", Direction.SOUTH, false),      //5
 
-    WEST_UP("west_up", Direction.WEST, Direction.UP),               //6
-    WEST_DOWN("west_down", Direction.WEST, Direction.DOWN);         //7
+    WEST_UP("west_up", Direction.WEST, true),               //6
+    WEST_DOWN("west_down", Direction.WEST, false);         //7
 
     private final String name;
     private final Direction localFacing;
-    private final Direction localVertical;
+    private final boolean localVertical;
     private static final Int2ObjectMap<VerticalOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), (boysmell) -> {
         for(VerticalOrientation direction : values()) {
             boysmell.put(lookupKey(direction.localFacing, direction.localVertical), direction);
         }
     });
 
-    private VerticalOrientation(String name, Direction localFacing, Direction localVertical) {
+    private VerticalOrientation(String name, Direction localFacing, boolean localVertical) {
         this.name = name;
         this.localFacing = localFacing;
         this.localVertical = localVertical;
     }
 
-    private static int lookupKey(Direction localFacing, Direction localVertical) {
-        return localFacing.ordinal() << 3 | localVertical.ordinal();
+    private static int lookupKey(Direction localFacing, boolean localVertical) {
+        return localFacing.ordinal() << 3 | (localVertical ? 1 : 0);
+    }
+
+    public static VerticalOrientation combine(Direction localFacing, boolean localVertical) {
+        if(localFacing == null) 
+            throw new NullPointerException("VerticalOrientation localFacing can't be null!");
+        if(localFacing.getAxis() == Axis.Y)
+            throw new IllegalStateException("VerticalOrientation localFacing can't be on the Y Axis!");
+
+        int i = lookupKey(localFacing, localVertical);
+        return COMBINED_LOOKUP.get(i);
     }
 
     public static VerticalOrientation combine(Direction localFacing, Direction localVertical) {
         if(localFacing == null) 
             throw new NullPointerException("VerticalOrientation localFacing can't be null!");
-        if(localVertical == null) 
-            throw new NullPointerException("VerticalOrientation localVertical can't be null!");
         if(localFacing.getAxis() == Axis.Y)
             throw new IllegalStateException("VerticalOrientation localFacing can't be on the Y Axis!");
-        if(localVertical.getAxis() != Axis.Y)
+        if(localVertical == null) 
+            throw new NullPointerException("VerticalOrientation localVertical can't be null!");
+        if(localVertical.getAxis() == Axis.Y)
             throw new IllegalStateException("VerticalOrientation localVertical must be on the Y Axis!");
 
-        int i = lookupKey(localFacing, localVertical);
+        int i = lookupKey(localFacing, yToBool(localVertical));
         return COMBINED_LOOKUP.get(i);
+    }
+
+    public static boolean yToBool(Direction dir) {
+        if(dir.getAxis() == Axis.Y) return true;
+        return false;
     }
 
     public Direction getLocalFacing() {
@@ -67,7 +82,7 @@ public enum VerticalOrientation implements StringRepresentable {
     }
 
     public Direction getLocalVertical() {
-        return this.localVertical;
+        return localVertical ? Direction.UP : Direction.DOWN;
     }
 
     /***

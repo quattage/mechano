@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "facing=east,model=base": {
+      "model": "mechano:block/voltometer/base",
+      "y": 270
+    },
+    "facing=east,model=inverted": {
+      "model": "mechano:block/voltometer/inverted",
+      "y": 270
+    },
+    "facing=east,model=side": {
+      "model": "mechano:block/voltometer/side",
+      "y": 270
+    },
+    "facing=north,model=base": {
+      "model": "mechano:block/voltometer/base",
+      "y": 180
+    },
+    "facing=north,model=inverted": {
+      "model": "mechano:block/voltometer/inverted",
+      "y": 180
+    },
+    "facing=north,model=side": {
+      "model": "mechano:block/voltometer/side",
+      "y": 180
+    },
+    "facing=south,model=base": {
+      "model": "mechano:block/voltometer/base"
+    },
+    "facing=south,model=inverted": {
+      "model": "mechano:block/voltometer/inverted"
+    },
+    "facing=south,model=side": {
+      "model": "mechano:block/voltometer/side"
+    },
+    "facing=west,model=base": {
+      "model": "mechano:block/voltometer/base",
+      "y": 90
+    },
+    "facing=west,model=inverted": {
+      "model": "mechano:block/voltometer/inverted",
+      "y": 90
+    },
+    "facing=west,model=side": {
+      "model": "mechano:block/voltometer/side",
+      "y": 90
+    }
+  }
+}

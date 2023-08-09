@@ -30,7 +30,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class CollectorBlock extends DirectionalKineticBlock implements IBE<CollectorBlockEntity> {
 
     public static final EnumProperty<CollectorBlockModelType> MODEL_TYPE = EnumProperty.create("model", CollectorBlockModelType.class);
-    public static final VoxelShaper SHAPE = ShapeBuilder.shape(2, 5, 5, 9, 11, 11).add(9, 2, 2, 16, 14, 14).forDirectional();
+    public static final VoxelShaper SHAPE = ShapeBuilder.newShape(2, 5, 5, 9, 11, 11).add(9, 2, 2, 16, 14, 14).defaultUp();
 
     public CollectorBlock(Properties properties) {
         super(properties);

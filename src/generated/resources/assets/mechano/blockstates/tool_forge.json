@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,model=connected": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 270
+    },
+    "facing=east,model=standalone": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 270
+    },
+    "facing=north,model=connected": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 180
+    },
+    "facing=north,model=standalone": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 180
+    },
+    "facing=south,model=connected": {
+      "model": "mechano:block/tool_station/forge"
+    },
+    "facing=south,model=standalone": {
+      "model": "mechano:block/tool_station/forge"
+    },
+    "facing=west,model=connected": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 90
+    },
+    "facing=west,model=standalone": {
+      "model": "mechano:block/tool_station/forge",
+      "y": 90
+    }
+  }
+}

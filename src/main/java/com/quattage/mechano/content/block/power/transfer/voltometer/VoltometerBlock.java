@@ -32,25 +32,25 @@ public class VoltometerBlock extends HorizontalDirectionalBlock implements IBE<V
     public static final EnumProperty<VoltometerModelType> MODEL_TYPE = EnumProperty.create("model", VoltometerModelType.class);
 
     public static final VoxelShaper BASE = ShapeBuilder
-        .shape(1, 0, 1, 15, 2, 15)
+        .newShape(1, 0, 1, 15, 2, 15)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)
         .add(-4, 5.5, 5.5, 20, 10.5, 10.5)
-        .forHorizontal(Direction.NORTH);
+        .defaultHorizontal(Direction.NORTH);
 
     public static final VoxelShaper SIDE = ShapeBuilder
-        .shape(1, 1, 0, 15, 15, 2)
+        .newShape(1, 1, 0, 15, 15, 2)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)
         .add(-4, 5.5, 5.5, 20, 10.5, 10.5)
-        .forHorizontal(Direction.NORTH);
+        .defaultHorizontal(Direction.NORTH);
 
     public static final VoxelShaper INVERTED = ShapeBuilder
-        .shape(1, 14, 1, 15, 16, 15)
+        .newShape(1, 14, 1, 15, 16, 15)
         .add(2, 2, 2, 14, 14, 14)
         .add(-2.75, 4, 4, 18.75, 12, 12)
         .add(-4, 5.5, 5.5, 20, 10.5, 10.5)
-        .forHorizontal(Direction.NORTH);
+        .defaultHorizontal(Direction.NORTH);
 
     public enum VoltometerModelType implements StringRepresentable {
         BASE, SIDE, INVERTED;

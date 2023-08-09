@@ -3,11 +3,15 @@ package com.quattage.mechano;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.data.CreateRegistrate;
+import com.tterrag.registrate.providers.DataGenContext;
+import com.tterrag.registrate.providers.RegistrateBlockstateProvider;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
+import net.minecraftforge.client.model.generators.ModelFile;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -39,8 +43,6 @@ public class Mechano {
         .serverAcceptedVersions(NET_VERSION::equals)
         .networkProtocolVersion(() -> NET_VERSION)
         .simpleChannel();
-    
-    private static int slowCount = 0;
 
     public Mechano() {
         Mechano.log("loading mechano");
@@ -49,6 +51,7 @@ public class Mechano {
 
         MechanoBlocks.register(bussy);
         MechanoItems.register(bussy);
+        MechanoGroups.register(bussy);
         MechanoMenus.register(bussy);
         MechanoBlockEntities.register(bussy);
         MechanoRecipes.register(bussy);
@@ -69,11 +72,13 @@ public class Mechano {
     public static void log(String message) {      
         String side = ESC + "[1;34m" + Thread.currentThread().getName() + ESC + "[1;35m";
 
-        //if(Thread.currentThread().getName().equals("Server Thread")) side = ESC + "[1;34mS" + ESC + "[1;35m";
-
         String prefix = ESC + "[1;35m[quattage/" + MOD_ID + "] {" + side + "} >> " + ESC + "[1;36m";
         String suffix = ESC + "[1;35m -" + ESC;
         System.out.println(prefix + message + suffix);
+    }
+
+    public static void log(Object o) {
+        log("'" + o.getClass().getName() + "' -> [" + o + "]");
     }
 
     public static void logReg(String message) {      
@@ -84,17 +89,41 @@ public class Mechano {
         logSlow(text, 20);
     }
 
-    public static void logSlow(String message, int ticks) {
-        slowCount++;
+    private static long lastLog = 0;
 
-        if(slowCount > ticks) {
+    public static void logSlow(String message, int millis) {
+        if((System.currentTimeMillis() - lastLog) > millis) {
             log(message);
-            slowCount = 0;
+            lastLog = System.currentTimeMillis();
         }
     }
 
     public static ResourceLocation asResource(String filepath) {
         return new ResourceLocation(MOD_ID, filepath.toLowerCase());
+    }
+
+    public static ResourceLocation defer(DataGenContext<?, ?> ctx, String append) {
+        return defer(ctx, append, ctx.getId().getPath());
+    }
+
+    public static ResourceLocation defer(DataGenContext<?, ?> ctx, String append, String realName) {
+        String resource = ctx.getId().getNamespace() + ":block/" + append + "/" + realName;
+        Mechano.log("resource: " + resource);
+        return new ResourceLocation(resource);
+    }
+
+    public static ResourceLocation extend(DataGenContext<?, ?> ctx, String folder) {
+        return extend(ctx, "block", folder);
+    }
+
+    public static ResourceLocation extend(DataGenContext<?, ?> ctx, String root, String folder) {
+        String path = root + "/" + ctx.getId().getPath() + "/" + folder;
+        return new ResourceLocation(ctx.getId().getNamespace(), path);
+    }
+
+    public static ResourceLocation extend(DataGenContext<?, ?> ctx, String root, String sub, String folder) {
+        String path = root + "/" + sub + "/" + folder;
+        return new ResourceLocation(ctx.getId().getNamespace(), path);
     }
 
     public static MutableComponent asKey(String key) {

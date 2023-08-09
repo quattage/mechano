@@ -42,8 +42,8 @@ public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockE
 
     public static final EnumProperty<StatorBlockModelType> MODEL_TYPE = EnumProperty.create("model", StatorBlockModelType.class);  // BASE or CORNER
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
-    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.shape(0, 0, 0, 16, 11, 16).forDirectional();
-    public static final VoxelShaper CORNER_SHAPE = ShapeBuilder.shape(0, 0, 0, 16, 11, 7).add(0, 9, 5, 16, 16, 16).forDirectional();
+    public static final VoxelShaper BASE_SHAPE = ShapeBuilder.newShape(0, 0, 0, 16, 11, 16).defaultUp();
+    public static final VoxelShaper CORNER_SHAPE = ShapeBuilder.newShape(0, 0, 0, 16, 11, 7).add(0, 9, 5, 16, 16, 16).defaultUp();
 
     public enum StatorBlockModelType implements StringRepresentable {
         BASE, CORNER;

@@ -1,7 +1,10 @@
 {
   "values": [
-    "mechano:heap_connector",
-    "mechano:heap_connector_stacked",
+    "mechano:connector_transmission",
+    "mechano:connector_stacked_zero",
+    "mechano:connector_stacked_one",
+    "mechano:connector_stacked_two",
+    "mechano:connector_stacked_three",
     "mechano:diagonal_girder",
     "mechano:voltometer",
     "mechano:test_block"

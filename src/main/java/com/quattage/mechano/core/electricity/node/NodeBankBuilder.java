@@ -257,8 +257,8 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(int x, int y, int z, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, Direction.NORTH), id, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder add(int x, int y, int z, float size, String id, int maxConnections) {
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH), id, maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -269,13 +269,13 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(int x, int y, int z, Direction defaultDir, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, defaultDir), id, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder add(int x, int y, int z, float size, Direction defaultDir, String id, int maxConnections) {
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, defaultDir), id, maxConnections, nodesToAdd.size()));
     }
 
     private void doCompleteCheck() {
-        if(target == null) throw new IllegalStateException("NodeBank cannot be built with a null BlockEntity! use .at() during construction!");
-        if(nodesToAdd.isEmpty()) throw new IllegalStateException("NodeBank cannot be built with no ElectricNodes! use .add() to add nodes!");
+        if(target == null) throw new IllegalStateException("NodeBank cannot be built - BlockEntity target is null. (Use .at() during construction)");
+        if(nodesToAdd.isEmpty()) throw new IllegalStateException("NodeBank cannot be built - Must contain at least 1 ElectricNode (Use .newNode to add a node)");
     }
 
     /***

@@ -23,10 +23,13 @@ public class MechanoPackets {
             .simpleChannel();
         
         NETWORK = net;
-        buildPackets();
+
+        
+        
+        registerPackets();
     }
 
-    public static void buildPackets() {
+    public static void registerPackets() {  
         NETWORK.messageBuilder(EnergySyncS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
             .decoder(EnergySyncS2CPacket::new)
             .encoder(EnergySyncS2CPacket::toBytes)

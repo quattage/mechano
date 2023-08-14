@@ -1,88 +1,110 @@
 {
   "variants": {
     "model=base,orientation=down_x": {
-      "model": "mechano:block/stator/base_side"
+      "model": "mechano:block/stator/base",
+      "x": 180,
+      "y": 90
     },
     "model=base,orientation=down_z": {
-      "model": "mechano:block/stator/base_side"
+      "model": "mechano:block/stator/base",
+      "x": 180
     },
     "model=base,orientation=east_y": {
-      "model": "mechano:block/stator/base",
-      "y": 270
+      "model": "mechano:block/stator/base_side",
+      "x": 90
     },
     "model=base,orientation=east_z": {
       "model": "mechano:block/stator/base_side",
-      "y": 270
+      "x": 180
     },
     "model=base,orientation=north_x": {
       "model": "mechano:block/stator/base_side",
-      "y": 180
+      "y": 270
     },
     "model=base,orientation=north_y": {
+      "model": "mechano:block/stator/base_side",
+      "x": 90,
+      "y": 270
+    },
+    "model=base,orientation=south_x": {
+      "model": "mechano:block/stator/base_side",
+      "x": 180,
+      "y": 90
+    },
+    "model=base,orientation=south_y": {
+      "model": "mechano:block/stator/base_side",
+      "x": 90,
+      "y": 90
+    },
+    "model=base,orientation=up_x": {
+      "model": "mechano:block/stator/base",
+      "y": 270
+    },
+    "model=base,orientation=up_z": {
       "model": "mechano:block/stator/base",
       "y": 180
     },
-    "model=base,orientation=south_x": {
-      "model": "mechano:block/stator/base_side"
-    },
-    "model=base,orientation=south_y": {
-      "model": "mechano:block/stator/base"
-    },
-    "model=base,orientation=up_x": {
-      "model": "mechano:block/stator/base_side"
-    },
-    "model=base,orientation=up_z": {
-      "model": "mechano:block/stator/base_side"
-    },
     "model=base,orientation=west_y": {
-      "model": "mechano:block/stator/base",
-      "y": 90
+      "model": "mechano:block/stator/base_side",
+      "x": 90,
+      "y": 180
     },
     "model=base,orientation=west_z": {
       "model": "mechano:block/stator/base_side",
-      "y": 90
+      "y": 180
     },
     "model=corner,orientation=down_x": {
-      "model": "mechano:block/stator/corner_side"
+      "model": "mechano:block/stator/corner",
+      "x": 180,
+      "y": 90
     },
     "model=corner,orientation=down_z": {
-      "model": "mechano:block/stator/corner_side"
+      "model": "mechano:block/stator/corner",
+      "x": 180
     },
     "model=corner,orientation=east_y": {
-      "model": "mechano:block/stator/corner",
-      "y": 270
+      "model": "mechano:block/stator/corner_side",
+      "x": 90
     },
     "model=corner,orientation=east_z": {
       "model": "mechano:block/stator/corner_side",
-      "y": 270
+      "x": 180
     },
     "model=corner,orientation=north_x": {
       "model": "mechano:block/stator/corner_side",
-      "y": 180
+      "y": 270
     },
     "model=corner,orientation=north_y": {
+      "model": "mechano:block/stator/corner_side",
+      "x": 90,
+      "y": 270
+    },
+    "model=corner,orientation=south_x": {
+      "model": "mechano:block/stator/corner_side",
+      "x": 180,
+      "y": 90
+    },
+    "model=corner,orientation=south_y": {
+      "model": "mechano:block/stator/corner_side",
+      "x": 90,
+      "y": 90
+    },
+    "model=corner,orientation=up_x": {
+      "model": "mechano:block/stator/corner",
+      "y": 270
+    },
+    "model=corner,orientation=up_z": {
       "model": "mechano:block/stator/corner",
       "y": 180
     },
-    "model=corner,orientation=south_x": {
-      "model": "mechano:block/stator/corner_side"
-    },
-    "model=corner,orientation=south_y": {
-      "model": "mechano:block/stator/corner"
-    },
-    "model=corner,orientation=up_x": {
-      "model": "mechano:block/stator/corner_side"
-    },
-    "model=corner,orientation=up_z": {
-      "model": "mechano:block/stator/corner_side"
-    },
     "model=corner,orientation=west_y": {
-      "model": "mechano:block/stator/corner",
-      "y": 90
+      "model": "mechano:block/stator/corner_side",
+      "x": 90,
+      "y": 180
     },
     "model=corner,orientation=west_z": {
       "model": "mechano:block/stator/corner_side",
-      "y": 90
+      "y": 180
     }
   }
 }

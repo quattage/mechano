@@ -128,7 +128,7 @@ public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockE
 
     @MethodsReturnNonnullByDefault
 	private static class PlacementHelper extends StatorDirectionalHelper<SimpleOrientation> {
-		// co-opted from Create's shaft placement helper, but this uses StrictOrientation instead of simple Axis
+		// co-opted from Create's shaft placement helper, but this uses SimpelOrientation instead of DirectionalAxis
 
 		private PlacementHelper() {
 			super(state -> state.getBlock() instanceof StatorBlock, state -> state.getValue(ORIENTATION), ORIENTATION);

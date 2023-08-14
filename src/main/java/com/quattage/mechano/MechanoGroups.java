@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.quattage.mechano.core.CreativeTabExcludable;
 import com.tterrag.registrate.util.entry.RegistryEntry;
 
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
@@ -84,6 +85,7 @@ public class MechanoGroups {
             List<Item> out  = new ReferenceArrayList<>();
             for(RegistryEntry<Block> blockEntry : Mechano.REGISTRATE.getAll(Registries.BLOCK)) {
                 if(!Mechano.REGISTRATE.isInCreativeTab(blockEntry, tab)) continue;
+                if(blockEntry.get() instanceof CreativeTabExcludable) continue;
                 Item blockItem = blockEntry.get().asItem();
                 if(blockItem == Items.AIR) continue;
                 out.add(blockItem);
@@ -95,6 +97,7 @@ public class MechanoGroups {
             List<Item> out = new ReferenceArrayList<>();
             for(RegistryEntry<Item> itemEntry : Mechano.REGISTRATE.getAll(Registries.ITEM)) {
                 if(!Mechano.REGISTRATE.isInCreativeTab(itemEntry, tab)) continue;
+                if(itemEntry.get() instanceof CreativeTabExcludable) continue;
                 Item item = itemEntry.get();
                 if(item instanceof BlockItem) continue;
                 out.add(item);

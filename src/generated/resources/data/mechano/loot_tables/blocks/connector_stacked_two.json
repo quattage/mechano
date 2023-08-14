@@ -11,7 +11,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "mechano:connector_stacked_two"
+          "name": "minecraft:air"
         }
       ],
       "rolls": 1.0

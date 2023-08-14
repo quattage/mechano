@@ -17,13 +17,9 @@ import com.quattage.mechano.content.block.power.transfer.connector.transmission.
 import com.quattage.mechano.content.block.power.transfer.test.TestBlock;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlock;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock;
-import com.quattage.mechano.core.block.datagen.CombinedOrientedGenerator;
 import com.quattage.mechano.core.block.datagen.DynamicStateGenerator;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
-import com.simibubi.create.foundation.data.AssetLookup;
-import com.simibubi.create.foundation.data.BlockStateGen;
 import com.tterrag.registrate.util.entry.BlockEntry;
-
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
@@ -48,9 +44,8 @@ public class MechanoBlocks {
             .noOcclusion()
         )
         .blockstate((ctx, prov) -> prov.horizontalBlock(ctx.getEntry(), prov.models()
-            .getExistingFile(defer(ctx, "tool_station", "forge")), 0))
-        .item()
-        .transform(customItemModel("tool_station", "forge"))
+            .getExistingFile(defer(ctx, "tool_station", "forge")), 180))
+        .simpleItem()
         .register();
 
     public static final BlockEntry<ToolStationBlock> TOOL_STATION = REGISTRATE.block("tool_station", ToolStationBlock::new)
@@ -96,7 +91,7 @@ public class MechanoBlocks {
         )
         .blockstate(new DynamicStateGenerator(StatorBlock.MODEL_TYPE)::generate)
         .item()
-        .transform(customItemModel("collector", "base"))
+        .transform(customItemModel("stator", "base"))
         .register();
 
     public static final BlockEntry<CouplingNodeBlock> COUPLING_NODE = REGISTRATE.block("coupling_node", CouplingNodeBlock::new)
@@ -134,6 +129,7 @@ public class MechanoBlocks {
         .initialProperties(CommonProperties::malleable)
         .transform(pickaxeOnly())
         .blockstate(new StackedConnectorGenerator()::generate)
+        .loot((p, l) -> p.noDrop())
         .item()
         .transform(customItemModel("connector_stacked", "tier0"))
         .register();
@@ -142,6 +138,7 @@ public class MechanoBlocks {
         .initialProperties(CommonProperties::malleable)
         .transform(pickaxeOnly())
         .blockstate(new StackedConnectorGenerator()::generate)
+        .loot((p, l) -> p.noDrop())
         .item()
         .transform(customItemModel("connector_stacked", "tier1"))
         .register();
@@ -150,16 +147,18 @@ public class MechanoBlocks {
         .initialProperties(CommonProperties::malleable)
         .transform(pickaxeOnly())
         .blockstate(new StackedConnectorGenerator()::generate)
+        .loot((p, l) -> p.noDrop())
         .item()
-        .transform(customItemModel("connector_stacked", "tier1"))
+        .transform(customItemModel("connector_stacked", "tier2"))
         .register();
 
     public static final BlockEntry<ConnectorStackedTier3Block> CONNECTOR_STACKED_THREE = REGISTRATE.block("connector_stacked_three", ConnectorStackedTier3Block::new)
         .initialProperties(CommonProperties::malleable)
         .transform(pickaxeOnly())
         .blockstate(new StackedConnectorGenerator()::generate)
+        .loot((p, l) -> p.noDrop())
         .item()
-        .transform(customItemModel("connector_stacked", "tier2"))
+        .transform(customItemModel("connector_stacked", "tier3"))
         .register();
 
 
@@ -169,7 +168,7 @@ public class MechanoBlocks {
 		.transform(pickaxeOnly())
         .blockstate(new DynamicStateGenerator(DiagonalGirderBlock.MODEL_TYPE)::generate)
 		.item()
-        .transform(customItemModel("connector_stacked", "tier3"))
+        .transform(customItemModel("diagonal_girder", "item"))
 		.register();
 
 

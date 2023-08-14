@@ -1,0 +1,20 @@
+{
+  "block.mechano.collector": "ɹoʇɔǝןןoƆ",
+  "block.mechano.connector_stacked_one": "ǝuO pǝʞɔɐʇS ɹoʇɔǝuuoƆ",
+  "block.mechano.connector_stacked_three": "ǝǝɹɥ⟘ pǝʞɔɐʇS ɹoʇɔǝuuoƆ",
+  "block.mechano.connector_stacked_two": "oʍ⟘ pǝʞɔɐʇS ɹoʇɔǝuuoƆ",
+  "block.mechano.connector_stacked_zero": "oɹǝZ pǝʞɔɐʇS ɹoʇɔǝuuoƆ",
+  "block.mechano.connector_transmission": "uoıssıɯsuɐɹ⟘ ɹoʇɔǝuuoƆ",
+  "block.mechano.coupling_node": "ǝpoN buıןdnoƆ",
+  "block.mechano.diagonal_girder": "ɹǝpɹı⅁ ןɐuobɐıᗡ",
+  "block.mechano.rotor": "ɹoʇoᴚ",
+  "block.mechano.stator": "ɹoʇɐʇS",
+  "block.mechano.test_block": "ʞɔoןᗺ ʇsǝ⟘",
+  "block.mechano.tool_forge": "ǝbɹoℲ ןoo⟘",
+  "block.mechano.tool_station": "uoıʇɐʇS ןoo⟘",
+  "block.mechano.transmission_node": "ǝpoN uoıssıɯsuɐɹ⟘",
+  "block.mechano.voltometer": "ɹǝʇǝɯoʇןoΛ",
+  "item.mechano.empty_spool": "ןoodS ʎʇdɯƎ",
+  "item.mechano.hookup_spool": "ןoodS dnʞooH",
+  "item.mechano.hookup_wire": "ǝɹıM dnʞooH"
+}

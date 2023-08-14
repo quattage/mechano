@@ -56,6 +56,8 @@ public class NodeBank implements DirectionalEnergyStorable {
     private final ElectricNode[] allNodes;
     private final Optional<RelativeDirection[]> allInteractions;
 
+    public static final float HITFAC = 3f;
+
     public final BlockEntity target;
     public final BlockPos pos;
 
@@ -234,7 +236,7 @@ public class NodeBank implements DirectionalEnergyStorable {
     }
 
     public Pair<ElectricNode, Double> getClosest(Vec3 hit) {
-        return getClosest(hit, 0.6f);
+        return getClosest(hit, 0.0f);
     }
 
     /***
@@ -252,12 +254,15 @@ public class NodeBank implements DirectionalEnergyStorable {
             return Pair.of(allNodes[0], 0.1);
 
         double lastDist = 100;
+        boolean customTolerance = tolerance <= 0;
+
         Pair<ElectricNode, Double> out = Pair.of(null, null);
 
         for(int x = 0; x < allNodes.length; x++) {
             Vec3 center = allNodes[x].getPosition();
             double dist = Math.abs(hit.distanceTo(center));
-
+            
+            if(customTolerance) tolerance = allNodes[x].getHitSize() * 5f;
             if(dist > tolerance) continue;
 
             if(dist < 0.0001) {
@@ -421,7 +426,7 @@ public class NodeBank implements DirectionalEnergyStorable {
     }
 
     /***
-     * Savely invalidates all connections made to this NodeBank. Usually called
+     * Safely invalidates all connections made to this NodeBank. Usually called
      * when this NodeBank's parent Block is destroyed.
      */
     public void destroy() {

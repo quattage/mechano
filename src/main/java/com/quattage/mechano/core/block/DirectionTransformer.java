@@ -4,8 +4,11 @@ import javax.annotation.Nullable;
 
 import org.antlr.v4.parse.ANTLRParser.labeledAlt_return;
 
+import com.quattage.mechano.core.block.orientation.CombinedOrientation;
+import com.quattage.mechano.core.block.orientation.XY;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
+import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -31,7 +34,7 @@ public class DirectionTransformer {
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalForward();
 
         if(block instanceof SimpleOrientedBlock) 
-            return state.getValue(SimpleOrientedBlock.ORIENTATION).getCardinal();
+            return toDirection(state.getValue(SimpleOrientedBlock.ORIENTATION).getOrient());
 
         if(block instanceof VerticallyOrientedBlock)
             return state.getValue(VerticallyOrientedBlock.ORIENTATION).getLocalFacing();
@@ -51,6 +54,9 @@ public class DirectionTransformer {
         if(block instanceof RotatedPillarKineticBlock)
             return toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
 
+        if(block instanceof Block)
+            return Direction.NORTH;
+
         return null;
     }
 
@@ -68,10 +74,10 @@ public class DirectionTransformer {
         Block block = state.getBlock();
         
         if(block instanceof CombinedOrientedBlock)
-            return state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalForward();
+            return state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp();
 
         if(block instanceof SimpleOrientedBlock) 
-            return toDirection(state.getValue(SimpleOrientedBlock.ORIENTATION).getOrient());
+            return state.getValue(SimpleOrientedBlock.ORIENTATION).getCardinal();
 
         if(block instanceof VerticallyOrientedBlock)
             return state.getValue(VerticallyOrientedBlock.ORIENTATION).getLocalVertical();
@@ -91,18 +97,53 @@ public class DirectionTransformer {
         if(block instanceof RotatedPillarKineticBlock)
             return toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
 
+        if(block instanceof Block)
+            return Direction.UP;
+
         return null;
     }
 
-    /***
-     * Gets the rotation in degrees of the given Direction.
-     * Used for BlockState generation.
-     * @return
-     */
-    public static int getRotation(Direction dir) {
-        if(dir == Direction.UP) return 0;
-        if(dir == Direction.DOWN) return 180;
-        return (int) dir.toYRot();
+    public static XY getRotation(BlockState state) {
+        if(state.getBlock() instanceof CombinedOrientedBlock)
+            return state.getValue(CombinedOrientedBlock.ORIENTATION).getRotation();
+
+        Direction up = getUp(state);
+        Direction forward = getForward(state);
+
+        if(forward == up) {
+            XY out = new XY();
+
+            switch(up) {
+                case DOWN:
+                    out.setX(180);
+                    out.setY();
+                    return out;
+                case EAST:
+                    out.setX(90);
+                    out.setY(90);
+                    return out;
+                case NORTH:
+                    out.setX(90);
+                    out.setY();
+                    return out;
+                case SOUTH:
+                    out.setX(270);
+                    out.setY();
+                    return out;
+                case UP:
+                    out.setX();
+                    out.setY();
+                    return out;
+                case WEST:
+                    out.setX(270);
+                    out.setY(90);
+                    return out;
+                default:
+                    break;
+            }
+        }
+            
+        return CombinedOrientation.combine(up, forward).getRotation();
     }
 
     /***
@@ -121,8 +162,15 @@ public class DirectionTransformer {
      * @return
      */
     public static boolean isAmbiguous(BlockState state) {
-        return getUp(state) == getForward(state);
+        return getUp(state).equals(getForward(state));
     } 
+
+    public static BlockState rotate(BlockState state) {
+        BlockState rotated = state.setValue(CombinedOrientedBlock.ORIENTATION,
+            CombinedOrientation.cycleLocalForward(state.getValue(CombinedOrientedBlock.ORIENTATION))
+        );
+        return rotated;
+    }
 
     /***
      * HorizontalDirectionalBLocks are in a bit of an odd spot,
@@ -134,8 +182,8 @@ public class DirectionTransformer {
      * @return
      */
     public static boolean isDistinctionRequired(BlockState state) {
-        return state.getBlock() instanceof HorizontalDirectionalBlock 
-            ? false : isAmbiguous(state);
+        if(state.getBlock() instanceof HorizontalDirectionalBlock) return false;
+        return !isAmbiguous(state);
     }
 
     public static boolean isHorizontal(BlockState state) {
@@ -143,9 +191,11 @@ public class DirectionTransformer {
         return up.getAxis().isHorizontal();
     }
 
+    
+
     public static Direction toDirection(Axis ax) {
-        if(ax == Axis.Y) return Direction.UP;
-        if(ax == Axis.X) return Direction.EAST;
-        return Direction.NORTH;
+        if(ax == Axis.Y) return Direction.DOWN;
+        if(ax == Axis.X) return Direction.WEST;
+        return Direction.SOUTH;
     }
 }

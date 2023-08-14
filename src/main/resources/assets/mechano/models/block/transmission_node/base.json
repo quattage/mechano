@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "mechano:block/power/transfer/transmission_node/transmission_node",
-		"particle": "mechano:block/power/transfer/transmission_node/transmission_node"
+		"0": "mechano:block/transmission_node",
+		"particle": "mechano:block/transmission_node"
 	},
 	"elements": [
 		{

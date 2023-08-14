@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "mechano:block/power/transfer/coupling_node/coupling_node_rotored",
-		"particle": "mechano:block/power/transfer/coupling_node/coupling_node_rotored"
+		"0": "mechano:block/coupling_node/rotored",
+		"particle": "mechano:block/coupling_node/rotored"
 	},
 	"elements": [
 		{

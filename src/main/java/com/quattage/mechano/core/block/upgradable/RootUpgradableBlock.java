@@ -6,9 +6,12 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
+import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
@@ -18,6 +21,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -68,15 +72,41 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
 
     @Override
     public void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
-        if(!hasTiers()) {
-            ArrayList<RootUpgradableBlock> upgradesList = setUpgradeTiers(new ArrayList<RootUpgradableBlock>());
-            this.tiers = upgradesList.toArray(new RootUpgradableBlock[0]);
-            verifyTiers();
-        }
+        initTiers();
 
         if(upgradeItem == null) {
             upgradeItem = setUpgradeItem();
         }
+        super.onPlace(pState, pLevel, pPos, pOldState, pIsMoving);
+    }
+
+    public void initTiers(boolean force) {
+        if(force || !hasTiers()) {
+            ArrayList<RootUpgradableBlock> upgradesList = setUpgradeTiers(new ArrayList<RootUpgradableBlock>());
+            this.tiers = upgradesList.toArray(new RootUpgradableBlock[upgradesList.size()]);
+            verifyTiers();
+        }
+    }
+
+    public void initTiers() {
+        initTiers(false);
+    }
+
+    @Override
+    public InteractionResult onWrenched(BlockState state, UseOnContext context) {
+        Level world = context.getLevel();
+        BlockPos clickedPos = context.getClickedPos();
+        BlockState rotated = DirectionTransformer.rotate(state);
+
+        if(!rotated.canSurvive(world, context.getClickedPos()))
+			return InteractionResult.PASS;
+
+        KineticBlockEntity.switchToBlockState(world, clickedPos, rotated);
+
+        if(world.getBlockState(context.getClickedPos()) != state)
+			playRotateSound(world, context.getClickedPos());
+
+        return InteractionResult.SUCCESS;
     }
 
     protected boolean hasTiers() {
@@ -138,30 +168,22 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
             + "' - Upgrade Tiers must include this block!");
     }
 
-    /***
-     * Compares the arrays between UpgradableBlocks of the same type
-     * to make sure they're the same.     
-     */ 
     private void verifyTiers() {
         if(!hasTiers())
             throw new IllegalArgumentException("Error instantiating UpgradableBlock '" + getName() 
                 + "' - Must have at least 2 upgrade tiers, but only found " + tiers.length + "!");
-
-        for(RootUpgradableBlock uBlock : tiers) {
-            if(!Arrays.equals(uBlock.tiers, tiers));
-                throw new IllegalStateException("Error instantiating UpgradableBlock '" + getName() 
-                + "' - Upgrade tier arrays must be identical between UpgradableBlocks of the same lineage!");
-        }
     }
 
     @Override
     public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand,
             BlockHitResult hit) {
-        
+
+        if(world.isClientSide) return super.use(state, world, pos, player, hand, hit);
+
         ItemStack heldItem = player.getItemInHand(hand);
         if(heldItem.getItem() != upgradeItem) return super.use(state, world, pos, player, hand, hit);
 
-        boolean upgraded = upgrade(world, pos);
+        boolean upgraded = upgrade(world, pos, state);
 
         if(upgraded) {
             if(!player.isCreative()) subtractFromHand(player, hand, heldItem, 1);
@@ -185,16 +207,21 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * @return True if the BlockState at the given position
      * was successfully changed.
      */
-    protected boolean upgrade(Level world, BlockPos pos) {
+    protected boolean upgrade(Level world, BlockPos pos, BlockState baseState) {
 
         RootUpgradableBlock destination = getUpgrade();
         if(destination == null) return false;
+        destination.initTiers();
 
-        CombinedOrientation orient = this.defaultBlockState().getValue(CombinedOrientedBlock.ORIENTATION);
+        CombinedOrientation orient = baseState.getValue(CombinedOrientedBlock.ORIENTATION);
         BlockState destinationState = destination.defaultBlockState()
             .setValue(CombinedOrientedBlock.ORIENTATION, orient);
 
+        world.destroyBlock(pos, false);
         world.setBlock(pos, destinationState, 3);
+        world.setBlocksDirty(pos, baseState, destinationState);
+        
+
         playUpgradeSound(world, pos);
 
         return true;
@@ -208,16 +235,20 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * @return True if the BlockState at the given position
      * was successfully changed.
      */
-    protected boolean downgrade(Level world, BlockPos pos) {
+    protected boolean downgrade(Level world, BlockPos pos, BlockState baseState) {
 
         RootUpgradableBlock destination = getDowngrade();
         if(destination == null) return false;
+        destination.initTiers();
 
-        CombinedOrientation orient = this.defaultBlockState().getValue(CombinedOrientedBlock.ORIENTATION);
+        CombinedOrientation orient = baseState.getValue(CombinedOrientedBlock.ORIENTATION);
         BlockState destinationState = destination.defaultBlockState()
             .setValue(CombinedOrientedBlock.ORIENTATION, orient);
 
+        world.destroyBlock(pos, false);
         world.setBlock(pos, destinationState, 3);
+        world.setBlocksDirty(pos, baseState, destinationState);
+
         playUpgradeSound(world, pos);
 
         return true;
@@ -256,10 +287,8 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * @param pos BlockPos origin of the sound.
      */
     protected void playUpgradeSound(Level world, BlockPos pos) {
-        float pitch = 1.2f;
-        float pitchMod = ((iteration + 1) / tiers.length);
-
-        world.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 0.5f, pitch * pitchMod);
+        float pitchMod = (((float)iteration + 2f) / (float)tiers.length);        
+        world.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 0.5f, 1.2f * pitchMod);
         world.playSound(null, pos, SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.BLOCKS, 0.2f, 1);
     }
 

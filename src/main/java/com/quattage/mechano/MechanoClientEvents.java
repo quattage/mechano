@@ -1,7 +1,7 @@
 package com.quattage.mechano;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
-import com.quattage.mechano.content.item.wire.ElectricNodeWireBehavior;
+import com.quattage.mechano.content.item.spool.ElectricNodeSpoolBehavior;
 import com.quattage.mechano.core.electricity.rendering.ElectricNodeWireDebugger;
 import com.quattage.mechano.core.events.ClientBehavior;
 
@@ -15,7 +15,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
-    public static final ElectricNodeWireBehavior SPOOL_BEHAVIOR = new ElectricNodeWireBehavior("SpoolLookingAtElectricNode");
+    public static final ElectricNodeSpoolBehavior SPOOL_BEHAVIOR = new ElectricNodeSpoolBehavior("SpoolLookingAtElectricNode");
     public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
     public static final ElectricNodeWireDebugger WIRE_DEBUG_BEHAVIOR = new ElectricNodeWireDebugger("DebugMenuElectricNode");
 

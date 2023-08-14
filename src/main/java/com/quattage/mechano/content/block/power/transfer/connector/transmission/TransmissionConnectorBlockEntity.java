@@ -21,7 +21,7 @@ public class TransmissionConnectorBlockEntity extends ElectricBlockEntity {
         nodeBank
             .newNode()
                 .id("c1")
-                .at(8, 0, 8) 
+                .at(8, 16, 8) 
                 .mode("B")
                 .connections(2)
                 .build()

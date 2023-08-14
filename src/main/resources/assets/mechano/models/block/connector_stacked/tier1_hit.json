@@ -1,0 +1,45 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 32],
+	"textures": {
+		"particle": "mechano:block/connector/stacked"
+	},
+	"elements": [
+		{
+			"from": [2, 0, 3],
+			"to": [14, 6, 13],
+			"color": 6,
+			"faces": {
+				"north": {"uv": [0, 0, 6, 3], "texture": "#missing"},
+				"east": {"uv": [0, 0, 5, 3], "texture": "#missing"},
+				"south": {"uv": [0, 0, 6, 3], "texture": "#missing"},
+				"west": {"uv": [0, 0, 5, 3], "texture": "#missing"},
+				"up": {"uv": [0, 0, 6, 5], "texture": "#missing"},
+				"down": {"uv": [0, 0, 6, 5], "texture": "#missing"}
+			}
+		},
+		{
+			"from": [5, 6, 5],
+			"to": [11, 21, 11],
+			"color": 4,
+			"faces": {
+				"north": {"uv": [0, 0, 3, 7.5], "texture": "#missing"},
+				"east": {"uv": [0, 0, 3, 7.5], "texture": "#missing"},
+				"south": {"uv": [0, 0, 3, 7.5], "texture": "#missing"},
+				"west": {"uv": [0, 0, 3, 7.5], "texture": "#missing"},
+				"up": {"uv": [0, 0, 3, 3], "texture": "#missing"},
+				"down": {"uv": [0, 0, 3, 3], "texture": "#missing"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"translation": [0, 3, 1],
+			"scale": [0.55, 0.55, 0.55]
+		},
+		"head": {
+			"rotation": [0, 90, 0],
+			"translation": [0, 0.25, 0]
+		}
+	}
+}

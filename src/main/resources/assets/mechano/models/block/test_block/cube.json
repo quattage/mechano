@@ -1,8 +1,8 @@
 {
 	"credit": "Made with Blockbench",
 	"textures": {
-		"0": "mechano:block/test/debug_red",
-		"particle": "mechano:block/test/debug_red"
+		"0": "mechano:block/debug_red",
+		"particle": "mechano:block/debug_red"
 	},
 	"elements": [
 		{

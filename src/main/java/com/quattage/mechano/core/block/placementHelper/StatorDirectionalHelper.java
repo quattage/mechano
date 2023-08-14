@@ -102,7 +102,7 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 		Direction initialDir = statorState.getValue(SimpleOrientedBlock.ORIENTATION).getCardinal();
 		Axis initialAxis = statorState.getValue(SimpleOrientedBlock.ORIENTATION).getOrient();
 		List<BlockPos> circleMembers = getCircle(statorPos, rotorPos, initialDir, revolvingAxis); 
-		if(initialDir.getAxis() == Axis.X) reverseList(circleMembers);
+		//if(initialDir.getAxis() == Axis.X) reverseList(circleMembers);
 		if(initialDir.getAxis() == Axis.Y && initialAxis == Axis.Z) reverseList(circleMembers);    // i have no idea why this works but it does
 		int count = 0;
 		for(BlockPos pos : circleMembers) {

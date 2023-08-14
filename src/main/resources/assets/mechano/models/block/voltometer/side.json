@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "mechano:block/power/transfer/voltometer/voltometer",
-		"particle": "mechano:block/power/transfer/voltometer/voltometer"
+		"0": "mechano:block/voltometer",
+		"particle": "mechano:block/voltometer"
 	},
     "render_type": "cutout",
 	"elements": [

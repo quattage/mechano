@@ -15,6 +15,7 @@ import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -58,9 +59,21 @@ public class CollectorBlock extends DirectionalKineticBlock implements IBE<Colle
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-        Direction facing = state.getValue(FACING);
+        Direction facing = state.getValue(FACING).getOpposite();
         if(facing.getAxis() == Axis.Y) return SHAPE.get(facing);
         return SHAPE.get(facing.getCounterClockWise());
+    }
+
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        Direction preferred = getPreferredFacing(context);
+		if (preferred == null || (context.getPlayer() != null && context.getPlayer()
+			.isShiftKeyDown())) {
+			Direction nearestLookingDirection = context.getNearestLookingDirection();
+			return defaultBlockState().setValue(FACING, context.getPlayer() != null && context.getPlayer()
+				.isShiftKeyDown() ? nearestLookingDirection.getOpposite() : nearestLookingDirection);
+		}
+		return defaultBlockState().setValue(FACING, preferred);
     }
 
     @Override
@@ -83,16 +96,14 @@ public class CollectorBlock extends DirectionalKineticBlock implements IBE<Colle
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block pBlock, BlockPos pFromPos, boolean pIsMoving) {
         super.neighborChanged(state, world, pos, pBlock, pFromPos, pIsMoving);
         if(state.getValue(MODEL_TYPE) == CollectorBlockModelType.ROTORED) {
-            Direction ax = state.getValue(FACING).getOpposite();
+            Direction ax = state.getValue(FACING);
             if(world.getBlockState(pos.relative(ax)).getBlock() != MechanoBlocks.ROTOR.get())
                 world.destroyBlock(pos, true);
-        } else {
-            doRotorCheck(world, pos, state);
         }
     }
 
     private boolean doRotorCheck(Level world, BlockPos pos, BlockState state) {
-        Direction ax = state.getValue(FACING).getOpposite();
+        Direction ax = state.getValue(FACING);
         if(state.getValue(MODEL_TYPE) == CollectorBlockModelType.ROTORED)
             return true;
         if(world.getBlockState(pos.relative(ax)).getBlock() == MechanoBlocks.ROTOR.get()) {

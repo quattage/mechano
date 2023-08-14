@@ -1,5 +1,6 @@
 package com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked;
 
+import com.quattage.mechano.core.block.orientation.relative.Relative;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
 
@@ -15,7 +16,23 @@ public class ConnectorStackedTier2BlockEntity extends ElectricBlockEntity {
 
     @Override
     public void prepare(NodeBankBuilder nodeBank) {
-        // TODO populate
+        nodeBank
+            .capacity(5000)
+                .maxIO(2500)
+                .interfaceSide(Relative.BOTTOM)
+            .newNode()
+                .id("conn1")
+                .at(13, 20, 8) 
+                .mode("B")
+                .connections(2)
+                .build()
+            .newNode()
+                .id("conn2")
+                .at(3, 20, 8) 
+                .mode("B")
+                .connections(2)
+                .build()
+        ;
     }
     
     

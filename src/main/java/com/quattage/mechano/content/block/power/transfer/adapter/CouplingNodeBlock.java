@@ -89,13 +89,13 @@ public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<Coup
                 localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
 
             if(context.getPlayer().isCrouching()) localForward = localForward.getOpposite();
-            return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward));
+            return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward.getOpposite()));
         }
 
         localForward = behindState.getValue(CollectorBlock.FACING);
         if(localForward.getAxis() == localUp.getAxis())
             localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
-        return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward));
+        return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward.getOpposite()));
     }
 
     @Override
@@ -119,7 +119,7 @@ public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<Coup
         Block facingBlock = world.getBlockState(pos.relative(ax)).getBlock();
         BlockState behindState = world.getBlockState(pos.relative(ax));
         if(behindState.getBlock() == MechanoBlocks.COLLECTOR.get()) {
-            if(state.getValue(ORIENTATION).getLocalForward() == behindState.getValue(CollectorBlock.FACING)) {
+            if(state.getValue(ORIENTATION).getLocalForward() == behindState.getValue(CollectorBlock.FACING).getOpposite()) {
                 CouplingNodeModelType modelType = CouplingNodeModelType.cycleRotor(state.getValue(MODEL_TYPE));
                 if(modelType == CouplingNodeModelType.ROTORED || modelType == CouplingNodeModelType.ROTORED_CANTED) return;
                 world.setBlock(pos, state.setValue(MODEL_TYPE, CouplingNodeModelType.ROTORED), Block.UPDATE_ALL);

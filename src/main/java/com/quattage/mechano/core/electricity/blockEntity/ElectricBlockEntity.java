@@ -102,11 +102,11 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     public void remove() {
         if(!this.level.isClientSide)
             nodes.destroy();
+        super.remove();
     }
 
     @Override
     public void initialize() {
-        Mechano.log("INIT AT " + this.getBlockPos());
         super.initialize();
         nodes.init();
         refreshOrient();
@@ -114,8 +114,9 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
     @Override
     public void onLoad() {
-        nodes.loadEnergy();
         super.onLoad();
+        nodes.loadEnergy();
+        nodes.markDirty();
     }
 
     @Override
@@ -140,11 +141,5 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     public void handleUpdateTag(CompoundTag tag) {
         super.handleUpdateTag(tag);
         nodes.readFrom(tag);
-    }
-
-    @Override
-    public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet) {
-        // TODO Auto-generated method stub
-        super.onDataPacket(connection, packet);
     }
 }

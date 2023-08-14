@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [80, 80],
 	"textures": {
-		"0": "mechano:block/integrated/tool_station/tool_station_maximized",
-		"particle": "mechano:block/integrated/tool_station/tool_station_maximized"
+		"0": "mechano:block/tool_station/maximized",
+		"particle": "mechano:block/tool_station/maximized"
 	},
 	"elements": [
 		{

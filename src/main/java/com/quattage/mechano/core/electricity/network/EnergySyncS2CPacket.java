@@ -24,11 +24,13 @@ public class EnergySyncS2CPacket implements Packetable {
         this.target = buf.readBlockPos();
     }
 
+    @Override
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeInt(energy);
         buf.writeBlockPos(target);
     }
 
+    @Override
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {

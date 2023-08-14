@@ -17,6 +17,7 @@ public class ElectricNodeBuilder {
     private NodeLocation location;
     private String id = null;
     private int maxConnections = 1;
+    private float size = 0.2f;
 
     public ElectricNodeBuilder(NodeBankBuilder activeBuilder, BlockEntity target) {
         this.activeBuilder = activeBuilder;
@@ -80,7 +81,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(int x, int y, int z) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, Direction.NORTH);
+        location = new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH);
         return this;
     }
 
@@ -101,7 +102,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(double x, double y, double z) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, Direction.NORTH);
+        location = new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH);
         return this;
     }
 
@@ -122,7 +123,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(int x, int y, int z, Direction defaultFacing) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, defaultFacing);
+        location = new NodeLocation(target.getBlockPos(), x, y, z, size, defaultFacing);
         return this;
     }
 
@@ -143,18 +144,18 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(double x, double y, double z, Direction defaultFacing) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, defaultFacing);
+        location = new NodeLocation(target.getBlockPos(), x, y, z, size, defaultFacing);
         return this;
     }
 
     /***
-     * Non-formatted, non-strict, colloquial name for this ElectricNode.
+     * Non-formatted, non-strict, case-insensitive name for this ElectricNode.
      * This ID will be serialized to and from NBT, so it's probably best to keep it brief, but it's up to you.
      * @param id ID to set this Builder to
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder id(String id) {
-        this.id = id;
+        this.id = id.toUpperCase();
         return this;
     }
     
@@ -165,6 +166,11 @@ public class ElectricNodeBuilder {
      */
     public ElectricNodeBuilder connections(int maxConnections) {
         this.maxConnections = maxConnections;
+        return this;
+    }
+
+    public ElectricNodeBuilder size(float size) {
+        location = new NodeLocation(location, size);
         return this;
     }
 

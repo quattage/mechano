@@ -176,7 +176,7 @@ public class ElectricNode {
         return location.getHitbox();
     }
 
-    public double getHitSize() {
+    public float getHitSize() {
         return location.getHitSize();
     }
 
@@ -443,7 +443,7 @@ public class ElectricNode {
     }
 
     public Color getColor() {
-        return mode.getColor();
+        return mode.getSelected();
     }
 
     public Color getColor(float percent) {

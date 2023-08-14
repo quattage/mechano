@@ -42,12 +42,12 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
             strictCD = CombinedOrientation.cycle(state.getValue(ORIENTATION));
         BlockState rotated = state.setValue(ORIENTATION, strictCD);
 
-        if (!rotated.canSurvive(world, context.getClickedPos()))
+        if(!rotated.canSurvive(world, context.getClickedPos()))
 			return InteractionResult.PASS;
         
         KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
 
-        if (world.getBlockState(context.getClickedPos()) != state)
+        if(world.getBlockState(context.getClickedPos()) != state)
 			playRotateSound(world, context.getClickedPos());
 
 		return InteractionResult.SUCCESS;

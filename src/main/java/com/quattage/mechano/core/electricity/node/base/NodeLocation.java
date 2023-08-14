@@ -1,14 +1,11 @@
 package com.quattage.mechano.core.electricity.node.base;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.SimpleOrientedBlock;
 import com.quattage.mechano.core.block.VerticallyOrientedBlock;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.block.orientation.VerticalOrientation;
-import com.quattage.mechano.core.electricity.block.ElectricBlock;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -50,7 +47,7 @@ public class NodeLocation {
     /***
      * The size of the highlighted hitbox when a player looks near this NodeLocation.
      */
-    private float SIZE = 0.1f;
+    private final float size;
 
     /***
      * The default direction that this hitbox faces when it is initialzied. 
@@ -74,13 +71,14 @@ public class NodeLocation {
      * @param defaultFacing Whatever direction that you're using to get the numbers should go here. Usually
      * I'd reccomend using the parent block's defaultBlockState, but this may not always be what you want.
      */
-    public NodeLocation(BlockPos root, int x, int y, int z, Direction defaultFacing) {
+    public NodeLocation(BlockPos root, int x, int y, int z, float size, Direction defaultFacing) {
         Vec3 offset = new Vec3(pixToVec(x), pixToVec(y), pixToVec(z));
         this.root = root;
         this.defaultFacing = defaultFacing;
         this.northOffset = calibrateToNorth(offset, defaultFacing);
         this.directionalOffset = northOffset;
         this.currentDirection = Direction.NORTH;
+        this.size = size;
         updateHitbox();
     }
 
@@ -93,13 +91,14 @@ public class NodeLocation {
      * @param defaultFacing Whatever direction your model is facing in Blockbench should go here. Usually this
      * matches up with the parent block's defaultBlockState, but this may not always be what you want.
      */
-    public NodeLocation(BlockPos root, double x, double y, double z, Direction defaultFacing) {
+    public NodeLocation(BlockPos root, double x, double y, double z, float size, Direction defaultFacing) {
         Vec3 offset = new Vec3(pixToVec(x), pixToVec(y), pixToVec(z));
         this.root = root;
         this.defaultFacing = defaultFacing;
         this.northOffset = calibrateToNorth(offset, defaultFacing);
         this.directionalOffset = northOffset;
         this.currentDirection = Direction.NORTH;
+        this.size = size;
         updateHitbox();
     }
 
@@ -113,6 +112,7 @@ public class NodeLocation {
             tag.getDouble("oY"), 
             tag.getDouble("oZ")
         );
+        this.size = tag.getFloat("s");
         this.defaultFacing = Direction.NORTH;
         this.root = target.getBlockPos();
         this.directionalOffset = northOffset;
@@ -121,6 +121,15 @@ public class NodeLocation {
         doInitialRotate(target);
 
         updateHitbox();
+    }
+
+    public NodeLocation(NodeLocation other, float size) {
+        this.root = other.root;
+        this.defaultFacing = other.defaultFacing;
+        this.northOffset = other.northOffset;
+        this.directionalOffset = other.directionalOffset;
+        this.currentDirection = other.currentDirection;
+        this.size = size;
     }
 
     public void doInitialRotate(BlockEntity target) {
@@ -149,6 +158,7 @@ public class NodeLocation {
         in.putDouble("oX", northOffset.x);
         in.putDouble("oY", northOffset.y);
         in.putDouble("oZ", northOffset.z);
+        in.putFloat("s", size);
         return in;
     }
 
@@ -159,8 +169,8 @@ public class NodeLocation {
     public AABB boxFromOffset() {
         Vec3 raw = get();
         return new AABB (
-            raw.x - SIZE, raw.y - SIZE, raw.z - SIZE, 
-            SIZE + raw.x, SIZE + raw.y, SIZE + raw.z
+            raw.x - size, raw.y - size, raw.z - size, 
+            size + raw.x, size + raw.y, size + raw.z
         );
     }
 
@@ -448,7 +458,7 @@ public class NodeLocation {
     }
 
     public float getHitSize() {
-        return SIZE;
+        return size;
     }
 
     /***

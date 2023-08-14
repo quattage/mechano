@@ -11,22 +11,22 @@ import net.minecraft.util.StringRepresentable;
  * Stores the insertion/extraction capabilities of a specific ElectricNode in a separate object for convenience.
  * Also stores the colors tied to these modes to be accessed by client-side rendering.
  */
-public enum NodeMode implements StringRepresentable{
-    NONE(false, false, new Color(98, 98, 98), new Color(229, 229, 229)),
-    INSERT(true, false, new Color(65, 180, 235), new Color(9, 89, 127)),
-    EXTRACT(false, true, new Color(235, 65, 180), new Color(127, 9, 89)),
-    BOTH(true, true, new Color(180, 235, 65), new Color(89, 127, 9));
+public enum NodeMode implements StringRepresentable {
+    NONE(false, false, new Color(110, 110, 110), new Color(196, 196, 196)),
+    INSERT(true, false, new Color(250, 255, 96), new Color(189, 255, 44)),
+    EXTRACT(false, true, new Color(255, 96, 250), new Color(255, 44, 189)),
+    BOTH(true, true, new Color(96, 250, 255), new Color(44, 189, 255));
 
     private final boolean isInput;
     private final boolean isOutput;
-    private final Color color;
-    private final Color darkColor;
+    private final Color greyedOut;
+    private final Color selected;
 
-    private NodeMode(boolean isInput, boolean isOutput, Color color, Color darkColor) {
+    private NodeMode(boolean isInput, boolean isOutput, Color greyedOut, Color selected) {
         this.isInput = isInput;
         this.isOutput = isOutput;
-        this.color = color;
-        this.darkColor = darkColor;
+        this.selected = selected;
+        this.greyedOut = greyedOut;
     }
 
     public String toString() {
@@ -105,8 +105,8 @@ public enum NodeMode implements StringRepresentable{
      * Gets the highlight color of this node.
      * @return
      */
-    public Color getColor() {
-        return color.copy();
+    public Color getSelected() {
+        return selected.copy();
     }
 
     /***
@@ -115,6 +115,6 @@ public enum NodeMode implements StringRepresentable{
      * @return
      */
     public Color getColor(float percent) {
-        return darkColor.copy().mixWith(color, percent);
+        return greyedOut.copy().mixWith(selected, percent);
     }
 }

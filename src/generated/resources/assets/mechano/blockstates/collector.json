@@ -10,25 +10,29 @@
     },
     "facing=east,model=base": {
       "model": "mechano:block/collector/base",
-      "y": 270
+      "x": 90,
+      "y": 90
     },
     "facing=east,model=rotored": {
       "model": "mechano:block/collector/rotored",
-      "y": 270
+      "x": 90,
+      "y": 90
     },
     "facing=north,model=base": {
       "model": "mechano:block/collector/base",
-      "y": 180
+      "x": 90
     },
     "facing=north,model=rotored": {
       "model": "mechano:block/collector/rotored",
-      "y": 180
+      "x": 90
     },
     "facing=south,model=base": {
-      "model": "mechano:block/collector/base"
+      "model": "mechano:block/collector/base",
+      "x": 270
     },
     "facing=south,model=rotored": {
-      "model": "mechano:block/collector/rotored"
+      "model": "mechano:block/collector/rotored",
+      "x": 270
     },
     "facing=up,model=base": {
       "model": "mechano:block/collector/base"
@@ -38,10 +42,12 @@
     },
     "facing=west,model=base": {
       "model": "mechano:block/collector/base",
+      "x": 270,
       "y": 90
     },
     "facing=west,model=rotored": {
       "model": "mechano:block/collector/rotored",
+      "x": 270,
       "y": 90
     }
   }

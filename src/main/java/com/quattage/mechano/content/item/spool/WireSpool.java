@@ -12,10 +12,8 @@ import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
-import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -174,7 +172,7 @@ public abstract class WireSpool extends Item {
         double distance = clicked.getSecond().doubleValue();
         ElectricNode node = clicked.getFirst();
 
-        if(distance > node.getHitSize() * 1.45) return InteractionResult.PASS;
+        if(distance > node.getHitSize() * NodeBank.HITFAC - 0.008) return InteractionResult.PASS;
 
         intermediary = target.nodes.makeFakeConnection(this, node.getId(), placer);
 
@@ -201,7 +199,7 @@ public abstract class WireSpool extends Item {
         double distance = clicked.getSecond().doubleValue();
         ElectricNode toNode = clicked.getFirst();
 
-        if(distance > toNode.getHitSize() * 1.47) return InteractionResult.PASS;
+        if(distance > toNode.getHitSize() * NodeBank.HITFAC - 0.01) return InteractionResult.PASS;
 
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();

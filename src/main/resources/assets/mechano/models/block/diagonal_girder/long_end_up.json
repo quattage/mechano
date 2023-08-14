@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 16],
 	"textures": {
-		"0": "mechano:block/simple/diagonal_girder/diagonal_girder",
-		"particle": "mechano:block/simple/diagonal_girder/diagonal_girder"
+		"0": "mechano:block/diagonal_girder",
+		"particle": "mechano:block/diagonal_girder"
 	},
 	"elements": [
 		{

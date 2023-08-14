@@ -2,14 +2,14 @@ package com.quattage.mechano.core.block.orientation;
 
 import java.util.Locale;
 
-import com.quattage.mechano.Mechano;
-
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.Util;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.phys.Vec2;
+import com.quattage.mechano.core.block.DirectionTransformer;
 
 /***
  * A CombinedOrientation is an implementation of Minecraft's BlockState enums that
@@ -150,18 +150,8 @@ public enum CombinedOrientation implements StringRepresentable {
      * @return A new CombinedOrientation cooresponding to the given direction.
      */
     public static CombinedOrientation convert(SimpleOrientation dir) {
-        Axis orient = dir.getOrient();
-        Direction convertedOrient = Direction.UP;
-        switch(orient) {
-            case X:
-                convertedOrient = Direction.EAST;
-            case Z:
-                convertedOrient = Direction.SOUTH;
-            default:
-                break;
-        }
-
-        return combine(convertedOrient, dir.getCardinal());
+        Direction cDir = DirectionTransformer.toDirection(dir.getOrient()); 
+        return combine(dir.getCardinal(), cDir);
     }
 
     /***
@@ -190,6 +180,135 @@ public enum CombinedOrientation implements StringRepresentable {
 
     private static int getGroupMaxRange(int in) {
         return getGroupIndex(in) * 4;
+    }
+
+    public XY getRotation() {
+        XY out = new XY();
+
+        switch(this) {
+            case DOWN_EAST:
+                out.setX(180);
+                out.setY(270);
+                return out;
+
+            case DOWN_NORTH:
+                out.setX(180);
+                out.setY(180);
+                return out;
+
+            case DOWN_SOUTH:
+                out.setX(180);
+                out.setY();
+                return out;
+
+            case DOWN_WEST:
+                out.setX(180);
+                out.setY(90);
+                return out;
+            ////
+            case EAST_DOWN:
+                out.setX(90);
+                out.setY();
+                return out;
+
+            case EAST_NORTH:
+                out.setX();
+                out.setY();
+                return out;
+
+            case EAST_SOUTH:
+                out.setX(180);
+                out.setY();
+                return out;
+
+            case EAST_UP:
+                out.setX(270);
+                out.setY();
+                return out;
+            ////
+            case NORTH_DOWN:
+                out.setX(90);
+                out.setY(270);
+                return out;
+
+            case NORTH_EAST:
+                out.setX(180);
+                out.setY(270);
+                return out;
+
+            case NORTH_UP:
+                out.setX(270);
+                out.setY(270);
+                return out;
+
+            case NORTH_WEST:
+                out.setX();
+                out.setY(270);
+                return out;
+            ////
+            case SOUTH_DOWN:
+                out.setX(90);
+                out.setY(90);
+                return out;
+
+            case SOUTH_EAST:
+                out.setX();
+                out.setY(90);
+                return out;
+
+            case SOUTH_UP:
+                out.setX(270);
+                out.setY(90);
+                return out;
+
+            case SOUTH_WEST:
+                out.setX(180);
+                out.setY(90);
+                return out;
+            ////
+            case UP_EAST:
+                out.setX();
+                out.setY(90);
+                return out;
+
+            case UP_NORTH:
+                out.setX();
+                out.setY();
+                return out;
+
+            case UP_SOUTH:
+                out.setX();
+                out.setY(180);
+                return out;
+
+            case UP_WEST:
+                out.setX();
+                out.setY(270);
+                return out;
+            ////
+            case WEST_DOWN:
+                out.setX(90);
+                out.setY(180);
+                return out;
+
+            case WEST_NORTH:
+                out.setX(180);
+                out.setY(180);
+                return out;
+
+            case WEST_SOUTH:
+                out.setX();
+                out.setY(180);
+                return out;
+
+            case WEST_UP:
+                out.setX(270);
+                out.setY(180);
+                return out;
+
+            default:
+                throw new IllegalArgumentException("CombinedOrientation named '" + name() + "' is invalid!");
+        }
     }
 
     @Override

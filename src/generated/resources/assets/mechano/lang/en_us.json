@@ -1,0 +1,20 @@
+{
+  "block.mechano.collector": "Collector",
+  "block.mechano.connector_stacked_one": "Connector Stacked One",
+  "block.mechano.connector_stacked_three": "Connector Stacked Three",
+  "block.mechano.connector_stacked_two": "Connector Stacked Two",
+  "block.mechano.connector_stacked_zero": "Connector Stacked Zero",
+  "block.mechano.connector_transmission": "Connector Transmission",
+  "block.mechano.coupling_node": "Coupling Node",
+  "block.mechano.diagonal_girder": "Diagonal Girder",
+  "block.mechano.rotor": "Rotor",
+  "block.mechano.stator": "Stator",
+  "block.mechano.test_block": "Test Block",
+  "block.mechano.tool_forge": "Tool Forge",
+  "block.mechano.tool_station": "Tool Station",
+  "block.mechano.transmission_node": "Transmission Node",
+  "block.mechano.voltometer": "Voltometer",
+  "item.mechano.empty_spool": "Empty Spool",
+  "item.mechano.hookup_spool": "Hookup Spool",
+  "item.mechano.hookup_wire": "Hookup Wire"
+}

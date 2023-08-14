@@ -25,7 +25,7 @@ public class StackedConnectorGenerator extends DynamicStateGenerator {
             BlockState state) {
         
         String orientSuffix = 
-            (!DirectionTransformer.isDistinctionRequired(state) &&
+            (DirectionTransformer.isDistinctionRequired(state) &&
             DirectionTransformer.isHorizontal(state))
             ? "_side" : "";
 

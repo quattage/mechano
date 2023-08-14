@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
-		"0": "mechano:block/power/transfer/coupling_node/coupling_node",
-		"particle": "mechano:block/power/transfer/coupling_node/coupling_node"
+		"0": "mechano:block/coupling_node/base",
+		"particle": "mechano:block/coupling_node/base"
 	},
 	"elements": [
 		{

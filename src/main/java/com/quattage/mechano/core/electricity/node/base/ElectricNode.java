@@ -92,17 +92,12 @@ public class ElectricNode {
     }
 
     /***
-     * When an ElectricNode is initialized, its connections lacks any destination position,
-     * even if the player had previously established a connection. <p>
-     * 
-     * This is because the world, which is required to get the destination, does not exist 
-     * during the initial world loading process.
-     * 
-     * The way around this was to previously calculate the destination position every tick, 
-     * but obviously this has some major drawbacks. Instead, it's just initialized during
-     * the parent BlockEntity's first in-world tick.
-     * 
+     * Initializes critical data for the NodeConnections stored within this ElectricNode.
+     * This is done during the first tick of the parent BlockEntity, since we need the world
+     * in this context in order to retrieve the relevent data. 
      * @param target The parent BlockEntity (this is stored in the NodeBank).
+     * @throws NullPointerException If the target is null or the target's world is null. Make sure
+     * you call this in the correct context (after world load is complete) or you'll encouter this.
      */
     public void initConnections(BlockEntity target) {
         if(target == null || target.getLevel() == null) 
@@ -113,7 +108,7 @@ public class ElectricNode {
             if(connection instanceof ElectricNodeConnection ec && ec.needsUpdate()) {
                 NodeBank bank = NodeBank.retrieveFrom(target.getLevel(), target, ec.getRelativePos());
                 if(bank != null)
-                    ec.initDestPos(bank.get(ec.getDestinationID()).getPosition());
+                    ec.setTo(target.getBlockPos(), bank.get(ec.getDestinationID()).getPosition());
             }
         }
     }
@@ -121,7 +116,7 @@ public class ElectricNode {
     /***
      * Populate the given CompoundTag with data from this ElectricNode
      * @param in CompoundTag to modify
-     * @return Modified compoundTag
+     * @return Modified CompoundTag
      */
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
@@ -156,8 +151,8 @@ public class ElectricNode {
     }
 
     public String toString() {
-        return "'" + id + "' -> {" + location + ", " + mode + ", " 
-            + "Connections: " + getConnectionsAsString() + "}";
+        return "'" + id + "' \n\t" + location + ", \n\t" + mode + ", \n\t" 
+            + getConnectionsAsString();
     }
 
     public String getId() {
@@ -262,12 +257,8 @@ public class ElectricNode {
     public boolean removeConnectionsInvolving(NodeBank origin) {
         boolean changed = false;
         for(int x = 0; x < connections.length; x++) {
-            if(connections[x] instanceof ElectricNodeConnection ec) {
-
-                Level world = origin.getWorld();
-                if(world == null) continue;
-                BlockPos parentPos = ec.getParentPos();
-
+            if(connections[x] instanceof NodeConnection c) {
+                BlockPos parentPos = c.getParentPos();
                 if(parentPos != null && origin.isAt(parentPos)) {
                     clearConnection(x, true, false);
                     changed = true;
@@ -291,7 +282,9 @@ public class ElectricNode {
             if(c instanceof ElectricNodeConnection ec) {
                 NodeBank bank = NodeBank.retrieveFrom(parent.getWorld(), 
                     parent.target, ec.getRelativePos());
-                if(bank != null) out.add(bank);
+                if(bank != null) {
+                    out.add(bank);
+                }
             }
         }
         return out;
@@ -328,7 +321,7 @@ public class ElectricNode {
     public String getConnectionsAsString() {
         String out = "";
         for(int x = 0; x < connections.length; x++) {
-            out += "" + x + ": " + connections[x] + "\n";
+            out += "Connection " + x + ": " + (connections[x] == null ? "Empty" : connections[x]) + "\n\t";
         }
         return out;
     }
@@ -454,12 +447,29 @@ public class ElectricNode {
         return mode;
     }
 
+    /***
+     * Removes the connection at the given index. 
+     * @param index Numerical index of the Connection to remove.
+     * @param shouldDropWire (Optional, true) If true, wire items will spawn in the world
+     * when this connection is broken.
+     * @param shouldSort (Optional, true) If true, the connections array will be sorted
+     * after removal. Sorting is required for subsequent removals.
+     */
     public void clearConnection(int index) {
         clearConnection(index, true, true);
     }
 
+    /***
+     * Removes the connection at the given index. 
+     * @param index Numerical index of the Connection to remove.
+     * @param shouldDropWire (Optional, true) If true, wire items will spawn in the world
+     * when this connection is broken.
+     * @param shouldSort (Optional, true) If true, the connections array will be sorted
+     * after removal. Sorting is required for subsequent removals.
+     */
     public void clearConnection(int index, boolean shouldDropWire, boolean shouldSort) {
         connections[index] = null;
         if(shouldSort) sortConnections();
+        // TODO drop wires
     }
 }

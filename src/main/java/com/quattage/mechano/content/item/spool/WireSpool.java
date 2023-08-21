@@ -214,19 +214,15 @@ public abstract class WireSpool extends Item {
 
                 Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
 
-                if(!world.isClientSide()) {
-                    if(!result.isSuccessful() && result.isFatal()) {
-
+                if(!world.isClientSide() && !result.isSuccessful()) {
+                    if(result.isFatal()) {
                         revert(wireStack, false);
                         if(wireStack.hasTag())
                             target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
-                        Mechano.log("TARGET: " + target.getBlockPos() + "   " + target.toString());
-
-                    } else if(!result.isSuccessful() && !result.isFatal()) {
-
-                        
-                        if(wireStack.hasTag())
+                    } else {
+                        if(wireStack.hasTag()) {
                             target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                        }
                     }
                 }
                 sendInfo(world, clickedPos, result);

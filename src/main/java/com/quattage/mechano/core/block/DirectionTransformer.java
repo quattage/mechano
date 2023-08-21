@@ -146,6 +146,10 @@ public class DirectionTransformer {
         return CombinedOrientation.combine(up, forward).getRotation();
     }
 
+    public static boolean sharesLocalUp(BlockState first, BlockState second) {
+        return getUp(first) == getUp(second);
+    }
+
     /***
      * Returns true if this BlockState's directional format is ambiguous.
      * A BlockState's directional format is ambiguous when its local
@@ -173,6 +177,10 @@ public class DirectionTransformer {
     }
 
     /***
+     * In this case, "Distinction" refers to the semantics that arise when dealing with
+     * BlockStates. A Block's directional format requires distinction when it is capable
+     * individually distinguishing local facing directions on more than one axis. <p>
+     * 
      * HorizontalDirectionalBLocks are in a bit of an odd spot,
      * where they do have a known independent local up, but
      * this distinction is not necessary to make. <p> See 

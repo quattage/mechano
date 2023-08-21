@@ -28,9 +28,9 @@ public class ConnectorStackedTier3Block extends RootUpgradableBlock implements I
     public static final VoxelShaper SHAPE = ShapeBuilder
         .newShape(2, 0, 2, 14, 4, 14)
         .add(0, 5, 5, 16, 12, 11)
-        .add(4, 4, 6, 12, 5, 11)
+        .add(4, 4, 5, 12, 5, 11)
         .add(-4, 12, 5, 20, 18, 11)
-        .add(-5, 18, 5, 11, 21, 11)
+        .add(-5, 18, 5, 1, 21, 11)
         .add(15, 18, 5, 21, 21, 11)
         .defaultUp();
 

@@ -155,9 +155,9 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @return True if this NodeBank's target BlockEntity is located
      * at the given BlockPos
      */
-    public boolean isAt(BlockPos pos) {
-        if(pos == null) return false;
-        return pos.equals(pos);
+    public boolean isAt(BlockPos otherPos) {
+        if(otherPos == null) return false;
+        return this.pos.equals(otherPos);
     }
 
     /***
@@ -374,10 +374,10 @@ public class NodeBank implements DirectionalEnergyStorable {
     }
 
     public String toString() {
-        String out = "NodeBank bound to " + target.getClass().getSimpleName() + " at " + target.getBlockPos() + ":\n";
+        String out = "\nNodeBank { \n\tTarget: " + target.getClass().getSimpleName() + " \n\tLocation: " + target.getBlockPos() + ":\n";
         for(int x = 0; x < allNodes.length; x++) 
-            out += "Node " + x + ": " + allNodes[x] + "\n";
-        return out;
+            out += x + ": " + allNodes[x] + "\n";
+        return out + "}\n\n";
     }
 
     /***
@@ -443,9 +443,9 @@ public class NodeBank implements DirectionalEnergyStorable {
      * form.
      */
     public void init() {
-        for(int x = 0; x < allNodes.length; x++) {
-            allNodes[x].initConnections(target);
-        }
+        for(ElectricNode node : allNodes)
+            node.initConnections(target);
+        markDirty();
     }
 
     /***
@@ -513,12 +513,10 @@ public class NodeBank implements DirectionalEnergyStorable {
 
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
-        Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
+        //Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
-        if(targetBank.equals(this)) { 
-            get(fake.getSourceID()).nullifyLastConnection();
+        if(targetBank.equals(this))
             return NodeConnectResult.LINK_CONFLICT;
-        }
 
         NodeConnectResult r1 = targetBank.allNodes[targetBank.indexOf(targetID)].addConnection(targetConnection);
         

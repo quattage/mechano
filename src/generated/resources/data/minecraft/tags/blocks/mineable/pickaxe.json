@@ -1,5 +1,12 @@
 {
   "values": [
+    "mechano:tool_forge",
+    "mechano:tool_station",
+    "mechano:rotor",
+    "mechano:collector",
+    "mechano:stator",
+    "mechano:coupling_node",
+    "mechano:transmission_node",
     "mechano:connector_transmission",
     "mechano:connector_stacked_zero",
     "mechano:connector_stacked_one",

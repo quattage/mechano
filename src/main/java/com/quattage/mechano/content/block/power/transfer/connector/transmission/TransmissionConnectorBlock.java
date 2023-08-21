@@ -6,6 +6,8 @@ import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.transfer.adapter.TransmissionNodeBlock;
 import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier0Block;
+import com.quattage.mechano.core.block.CombinedOrientedBlock;
+import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
@@ -75,18 +77,20 @@ public class TransmissionConnectorBlock extends DirectionalBlock implements IBE<
     @Override
     public void onPlace(BlockState state, Level world, BlockPos pos, BlockState oldState, boolean isMoving) {
         super.onPlace(state, world, pos, oldState, isMoving);
-        Direction dir = state.getValue(FACING).getOpposite();
-        BlockState under = world.getBlockState(pos.relative(dir));
+        Direction dir = state.getValue(FACING);
+        BlockState under = world.getBlockState(pos.relative(dir.getOpposite()));
         if(under.getBlock() == MechanoBlocks.COUPLING_NODE.get()) {
             world.setBlock(pos, state.setValue(MODEL_TYPE, HeapConnectorModelType.COUPLED), 3);
             return;
         }
 
         if(under.getBlock() == MechanoBlocks.TRANSMISSION_NODE.get()) {
-            CombinedOrientation facing = CombinedOrientation.convert(under.getValue(TransmissionNodeBlock.ORIENTATION));
-            BlockState newLargeConnector = MechanoBlocks.CONNECTOR_STACKED_ZERO.get().defaultBlockState();
-            world.setBlock(pos, newLargeConnector.setValue(ConnectorStackedTier0Block.ORIENTATION, facing), 3);
-            return;
+            if(DirectionTransformer.sharesLocalUp(state, under)) {
+                CombinedOrientation facing = CombinedOrientation.convert(under.getValue(TransmissionNodeBlock.ORIENTATION));
+                BlockState newLargeConnector = MechanoBlocks.CONNECTOR_STACKED_ZERO.get().defaultBlockState();
+                world.setBlock(pos, newLargeConnector.setValue(ConnectorStackedTier0Block.ORIENTATION, facing), 3);
+                return;
+            }
         }
     }
     

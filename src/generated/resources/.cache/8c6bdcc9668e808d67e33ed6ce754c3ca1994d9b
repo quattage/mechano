@@ -1,4 +1,4 @@
-// 1.20.1	2023-08-14T18:49:45.2615337	Registrate Provider for mechano [Recipes, Advancements, Loot Tables, Tags (blocks), Tags (items), Tags (fluids), Tags (entity_types), Blockstates, Item models, Lang (en_us/en_ud)]
+// 1.20.1	2023-08-16T10:52:16.2603814	Registrate Provider for mechano [Recipes, Advancements, Loot Tables, Tags (blocks), Tags (items), Tags (fluids), Tags (entity_types), Blockstates, Item models, Lang (en_us/en_ud)]
 8fccef6a9b41bf3d1bcc2cba7a8d823f1124b6a6 assets/mechano/blockstates/collector.json
 659f7f02e528d2ba288965e200d208be92779d54 assets/mechano/blockstates/connector_stacked_one.json
 80167d83206c9249e94d33d4cbe53ed7fab23cd2 assets/mechano/blockstates/connector_stacked_three.json
@@ -49,4 +49,4 @@ dcf87d5b8d89c5856f79e70f852a86a332bf6928 data/mechano/loot_tables/blocks/tool_fo
 eb885d3d663137881113c6192c2779580f93bc68 data/mechano/loot_tables/blocks/tool_station.json
 b8e52a02175a6f90b6d99b2899846c2b65f040e9 data/mechano/loot_tables/blocks/transmission_node.json
 a85a0fae427d75342ef9c7339a5cae0b8f7eb2e0 data/mechano/loot_tables/blocks/voltometer.json
-0ac744f4a014682a10029303b2d0511b9874628a data/minecraft/tags/blocks/mineable/pickaxe.json
+8134456e24793b75299fbe77cc42c07c0566b05f data/minecraft/tags/blocks/mineable/pickaxe.json

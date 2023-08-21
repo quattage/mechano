@@ -1,23 +1,20 @@
 package com.quattage.mechano.core.block.upgradable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
 import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import com.quattage.mechano.core.util.BlockMath;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -26,10 +23,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition.Builder;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.client.event.ScreenEvent.Init;
-import net.minecraftforge.client.extensions.common.IClientBlockExtensions;
 
 /***
  * Upgradable Blocks are blocks that hold an array of Upgradable block variants.
@@ -73,10 +67,6 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
     @Override
     public void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
         initTiers();
-
-        if(upgradeItem == null) {
-            upgradeItem = setUpgradeItem();
-        }
         super.onPlace(pState, pLevel, pPos, pOldState, pIsMoving);
     }
 
@@ -85,6 +75,12 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
             ArrayList<RootUpgradableBlock> upgradesList = setUpgradeTiers(new ArrayList<RootUpgradableBlock>());
             this.tiers = upgradesList.toArray(new RootUpgradableBlock[upgradesList.size()]);
             verifyTiers();
+
+            if(upgradeItem == null) 
+                upgradeItem = setUpgradeItem();
+
+            for(RootUpgradableBlock tier : tiers)
+                tier.initTiers();
         }
     }
 
@@ -101,11 +97,27 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
         if(!rotated.canSurvive(world, context.getClickedPos()))
 			return InteractionResult.PASS;
 
-        KineticBlockEntity.switchToBlockState(world, clickedPos, rotated);
+        world.setBlock(clickedPos, rotated, 3);
 
         if(world.getBlockState(context.getClickedPos()) != state)
 			playRotateSound(world, context.getClickedPos());
 
+        return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public InteractionResult onSneakWrenched(BlockState state, UseOnContext context) {
+
+        Level world = context.getLevel();
+        BlockPos clickedPos = context.getClickedPos();
+        Player player = context.getPlayer();
+
+        if(!downgrade(world, clickedPos, state)) 
+            world.destroyBlock(clickedPos, false);
+
+        if(!player.isCreative()) 
+            player.getInventory().placeItemBackInInventory(new ItemStack(upgradeItem));
+        playUpgradeSound(world, clickedPos);
         return InteractionResult.SUCCESS;
     }
 
@@ -177,11 +189,12 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
     @Override
     public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand,
             BlockHitResult hit) {
+        initTiers();
 
-        if(world.isClientSide) return super.use(state, world, pos, player, hand, hit);
+        if(world.isClientSide) return InteractionResult.PASS;
 
         ItemStack heldItem = player.getItemInHand(hand);
-        if(heldItem.getItem() != upgradeItem) return super.use(state, world, pos, player, hand, hit);
+        if(heldItem.getItem() != upgradeItem) return InteractionResult.PASS;
 
         boolean upgraded = upgrade(world, pos, state);
 
@@ -190,13 +203,32 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
             playUpgradeSound(world, pos);
             return InteractionResult.SUCCESS;
         }
-    
-        return super.use(state, world, pos, player, hand, hit);
+
+        return InteractionResult.PASS;
     }
 
     @Override
     public ItemStack getCloneItemStack(BlockGetter pLevel, BlockPos pPos, BlockState pState) {
-        return new ItemStack(getBaseBlock().asItem());
+        initTiers();
+        return new ItemStack(upgradeItem);
+    }
+
+    @Override
+    public void playerWillDestroy(Level world, BlockPos pos, BlockState state, Player player) {
+        initTiers();
+
+        if(shouldDropItems && !player.isCreative()) {
+            for(int x = 0; x < iteration + 1; x++)
+                spawnItem(world, pos, new ItemStack(tiers[x].upgradeItem));
+        }
+        super.playerWillDestroy(world, pos, state, player);
+    }
+
+
+    public void spawnItem(Level world, BlockPos pos, ItemStack stack) {
+        ItemEntity drop = new ItemEntity(world, pos.getX(), pos.getY(), pos.getZ(), stack);
+        drop.setDeltaMovement(BlockMath.getSymRand(0.3f), BlockMath.getSymRand(0.3f), BlockMath.getSymRand(0.3f));
+        world.addFreshEntity(drop);
     }
 
     /***
@@ -208,6 +240,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * was successfully changed.
      */
     protected boolean upgrade(Level world, BlockPos pos, BlockState baseState) {
+        initTiers();
 
         RootUpgradableBlock destination = getUpgrade();
         if(destination == null) return false;
@@ -236,6 +269,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * was successfully changed.
      */
     protected boolean downgrade(Level world, BlockPos pos, BlockState baseState) {
+        initTiers();
 
         RootUpgradableBlock destination = getDowngrade();
         if(destination == null) return false;

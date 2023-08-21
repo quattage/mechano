@@ -47,7 +47,7 @@ public class ElectricNodeConnection extends NodeConnection {
      * @param in CompoundTag to pull values from
      */
     public ElectricNodeConnection(BlockEntity target, Vec3 sourcePos, CompoundTag in) {
-        super(null);
+        super(target.getBlockPos());
         this.destinationID = in.getString("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
@@ -95,10 +95,12 @@ public class ElectricNodeConnection extends NodeConnection {
      * Destination positions will be null during world load, so initializing
      * them on the first BlockEntity tick is required when initially populating
      * from NBT.
-     * @param vec
+     * @param parent BlockPos of the host of this NodeConnection
+     * @param destination Vec3 destination of this NodeConnection
      */
-    public void initDestPos(Vec3 vec) {
-        destPos = vec;
+    public void setTo(BlockPos parent, Vec3 destination) {
+        parentPos = parent;
+        destPos = destination;
     }
 
     @Override

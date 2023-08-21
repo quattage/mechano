@@ -1,18 +1,10 @@
 package com.quattage.mechano.core.electricity.node.connection;
 
-import org.antlr.v4.parse.ANTLRParser.parserRule_return;
-
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.node.base.NodeRotation;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
 /***
@@ -25,7 +17,14 @@ public abstract class NodeConnection {
      * If the connection is static, (e.g. between two blocks) it won't need to be lerped.
      */
     protected final boolean needsLerped = setNeedsLerped();
+    /***
+     * Whether or not this NodeConnection represents a connection between two blocks with
+     * energy capabilites. If it doesn't, this wire would just be aesthetic.
+     */
     protected final boolean canTransferPower = setTransferPower();
+    /***
+     * The BlockPos of the NodeBank that hosts this connection.
+     */
     protected BlockPos parentPos;
     protected int age = 0;
 

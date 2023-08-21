@@ -5,9 +5,6 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoClient;
-import com.quattage.mechano.MechanoRenderTypes;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
@@ -15,7 +12,6 @@ import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.core.util.VectorHelper;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
-import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -30,8 +26,7 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
-    private static final boolean USE_CACHE = false;
-    //private final HashMap<Con>
+    private static final boolean USE_CACHE = true;
 
     public ElectricBlockRenderer(BlockEntityRendererProvider.Context context) {
         super();
@@ -53,7 +48,6 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
                 NodeConnection thisConnection = theseConnections[c];
 
                 if(!thisConnection.isValid()) continue;
-                //if(thisConnection.isInverse()) continue;
 
                 Vec3 from = thisConnection.getSourcePos();
                 Vec3 to = thisConnection.getDestPos();
@@ -87,8 +81,6 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
 
     private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, WireSpool spoolType, int age,
         float pTicks, PoseStack matrix, MultiBufferSource buffers, boolean needsConstantUpdates) {
-
-        //Mechano.logSlow("Wire from: " + fromPos + "   Wire To: " + toPos, 500);
 
         matrix.pushPose();
 

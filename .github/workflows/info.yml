@@ -1,6 +1,6 @@
 # Builds and deposits artifacts automatically. Based on Fabric's configs
 
-name: test-build
+name: Write Info
 on:
   push:
     branches:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: build artifact
+    name: grab commit information
     permissions: write-all
     strategy:
       matrix:

@@ -252,12 +252,10 @@ public class ElectricNode {
     public boolean removeConnectionsInvolving(NodeBank origin) {
         boolean changed = false;
         for(int x = 0; x < connections.length; x++) {
-            if(connections[x] instanceof NodeConnection c) {
-                BlockPos parentPos = c.getParentPos();
-                if(parentPos != null && origin.isAt(parentPos)) {
-                    clearConnection(x, true, false);
-                    changed = true;
-                }
+            BlockPos parentPos = connections[x].getParentPos();
+            if(parentPos != null && origin.isAt(parentPos)) {
+                clearConnection(x, true, false);
+                changed = true;
             }
         }
         if(changed) sortConnections();

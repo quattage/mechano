@@ -1,6 +1,6 @@
 # Builds and deposits artifacts automatically. Based on Fabric's configs
 
-name: test-build
+name: Publish Test
 on:
   push:
     branches:
@@ -13,10 +13,10 @@ jobs:
   build:
     name: build artifact
     permissions: write-all
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         java: [ 17 ]
-    runs-on: ubuntu-latest
 
     steps:
       - name: checkout repository

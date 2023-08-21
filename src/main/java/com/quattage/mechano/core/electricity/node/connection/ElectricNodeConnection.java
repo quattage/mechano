@@ -1,10 +1,7 @@
 package com.quattage.mechano.core.electricity.node.connection;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
-import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;

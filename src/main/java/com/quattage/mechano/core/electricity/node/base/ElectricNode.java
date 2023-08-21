@@ -1,16 +1,12 @@
 package com.quattage.mechano.core.electricity.node.base;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Set;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.block.orientation.VerticalOrientation;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
@@ -20,7 +16,6 @@ import com.simibubi.create.foundation.utility.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;

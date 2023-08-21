@@ -14,6 +14,7 @@ jobs:
     name: build artifact
     permissions: write-all
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     strategy:
       matrix:
         java: [ 17 ]
@@ -31,14 +32,6 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: gradle
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/loom-cache
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle
 
       - name: build
         run: ./gradlew build

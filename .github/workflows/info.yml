@@ -1,4 +1,4 @@
-# Builds and deposits artifacts automatically. Based on Fabric's configs
+# Displays commit information in a discord webhook
 
 name: Write Info
 on:

@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.block.orientation.SimpleOrientation;
 import com.quattage.mechano.core.block.orientation.VerticalOrientation;
@@ -103,7 +104,7 @@ public class ElectricNode {
             if(connection instanceof ElectricNodeConnection ec && ec.needsUpdate()) {
                 NodeBank bank = NodeBank.retrieveFrom(target.getLevel(), target, ec.getRelativePos());
                 if(bank != null)
-                    ec.setTo(target.getBlockPos(), bank.get(ec.getDestinationID()).getPosition());
+                    ec.setTo(bank.pos, bank.get(ec.getDestinationID()).getPosition());
             }
         }
     }
@@ -252,7 +253,9 @@ public class ElectricNode {
     public boolean removeConnectionsInvolving(NodeBank origin) {
         boolean changed = false;
         for(int x = 0; x < connections.length; x++) {
+            if(connections[x] == null) continue;
             BlockPos parentPos = connections[x].getParentPos();
+            Mechano.log("SEARCHING FROM: " + origin.pos + "   TO: " + parentPos);
             if(parentPos != null && origin.isAt(parentPos)) {
                 clearConnection(x, true, false);
                 changed = true;

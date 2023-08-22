@@ -109,8 +109,8 @@ processResources {
 // repos to look for mod dependencies in 
 repositories {
     maven {
-		name = "Progwml6 maven"                            // JEI
-		url = "https://dvs1.progwml6.com/files/maven/"
+		name = "Jared's maven"                            // new JEI place
+		url = "https://maven.blamejared.com/"
 	}
 	maven {
 		name = "ModMaven"                                 // JEI Mirror, Mekanism

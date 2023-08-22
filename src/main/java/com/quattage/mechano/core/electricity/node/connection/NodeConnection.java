@@ -167,8 +167,9 @@ public abstract class NodeConnection {
      */
     public boolean equals(Object other) {
         if(other instanceof NodeConnection c) {
-            return (this.sourcePos.equals(c.getSourcePos()))
-                && (this.destPos.equals(c.getDestPos()));
+            Vec3 s = c.getSourcePos();
+            Vec3 d = c.getDestPos();
+            return s == null ? false : d == null ? false : s.equals(d);
         }
         return false;
     }

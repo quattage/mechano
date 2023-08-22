@@ -34,7 +34,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: build
-        run: ./gradlew build --log
+        run: ./gradlew build --info
 
       - name: capture build artifacts
         id: capture_artifact

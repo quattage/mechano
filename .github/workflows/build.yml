@@ -1,92 +1,31 @@
-# Builds and deposits artifacts automatically. Based on Fabric's configs
-
 name: Publish Test
 on:
-  push:
-    branches:
-      - '**-main'
-  pull_request:
-    branches:
-      - '**-main'
+    pull_request:
+    push:
 
 jobs:
   build:
-    name: build artifact
-    permissions: write-all
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java: [ 17 ]
-
     steps:
+
       - name: checkout repository
         uses: actions/checkout@v3
-
-      - name: setup jdk ${{ matrix.java }}
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: ${{ matrix.java }}
-          cache: gradle
 
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
       - name: build
-        run: ./gradlew build
+        run: ./gradlew buildOrPublish
 
       - name: capture build artifacts
-        id: capture_artifact
         uses: actions/upload-artifact@v3
         with:
-          name: artifact
+          name: Artifacts
           path: build/libs/
-
-      - name: get date/time
-        id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
-
-      - name: create new release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.run_id }}-${{ github.run_attempt }}
-          release_name: |
-            Build ${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}
-          draft: false
-          prerelease: false
-          body: |
-                ### From commit: ${{ github.event.head_commit.message }}
-                <sub><sup>Release description automatically generated. Minimal changelogs (if any, really) will be provided for live releases.</sup></sub>
-
-      - name: download artifact
-        id: download-artifact
-        uses: actions/download-artifact@v3
-
-      - name: push release assets
-        id: upload-release-asset 
-        uses: csexton/release-asset-action@v2
-        with:
-          pattern: "build/libs/*"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-url: ${{ steps.create_release.outputs.upload_url }}
-
-      - name: notify annoying people
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          DISCORD_USERNAME: beep boop robot man
-        uses: Ilshidur/action-discord@master
-        with:
-          args: |
-            <@&1117137065956606083>
-            ───────────────────────
-            ## New live release available: ``${{ steps.date.outputs.date }}:${{ github.run_id }}:${{ github.run_attempt }}``
-            ### Commit details:
-            ```
-              ${{ github.event.head_commit.message }}
-            ```
-            **Get it here: https://github.com/quattage/mechano/releases/latest**
-            ───────────────────────
-

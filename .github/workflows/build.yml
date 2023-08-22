@@ -14,7 +14,6 @@ jobs:
     name: build artifact
     permissions: write-all
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     strategy:
       matrix:
         java: [ 17 ]
@@ -34,7 +33,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: build
-        run: ./gradlew build --info
+        run: ./gradlew build
 
       - name: capture build artifacts
         id: capture_artifact

@@ -7,7 +7,7 @@ import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.CreativeTabExcludable;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.upgradable.RootUpgradableBlock;
+import com.quattage.mechano.core.block.RootUpgradableBlock;
 import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;

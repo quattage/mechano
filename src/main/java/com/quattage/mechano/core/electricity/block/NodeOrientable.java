@@ -17,7 +17,7 @@ public interface NodeOrientable {
         if(!state.hasBlockEntity()) return;
         BlockEntity be = world.getBlockEntity(pos);
         if(be instanceof ElectricBlockEntity ebe) {
-            ebe.nodes.rotate(dir);
+            ebe.nodeBank.rotate(dir);
         }
     }
 }

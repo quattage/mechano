@@ -1,14 +1,19 @@
 package com.quattage.mechano.content.item.spool;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
+import com.quattage.mechano.core.util.VectorHelper;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
+import com.simibubi.create.content.equipment.wrench.WrenchItem;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -20,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import oshi.util.tuples.Triplet;
 
 public class ElectricNodeSpoolBehavior extends ClientBehavior {
 
@@ -35,13 +41,14 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
     public boolean shouldTick(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand,
             Vec3 lookingPosition, BlockPos lookingBlockPos) {
 
-        return mainHand.getItem() instanceof WireSpool
+        return (mainHand.getItem() instanceof WireSpool
+            || mainHand.getItem() instanceof WrenchItem)
             && !instance.options.renderDebug;
     }
 
     @Override
-    public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
-            BlockPos lookingBlockPos, double pTicks) {
+    public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, 
+        Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks) {
 
         boolean isOccupied = false;
 
@@ -50,48 +57,80 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
         }
     
 
-        drawCapDirs(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
+        drawCapabilityMarkers(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
         drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
     }
 
     /***
-     * Renders the on-screen information relevent to the player when they're holding a WireSpool.
-     * This renders the boxes that represent ElectricNodes.
+     * Renders boxes and particle effects to convey information regarding ElectricNodes to the player. <p>
+     * Searches in a cone where the player is facing for relevent ElectricBlockEntities places small
+     * indicators in the world to tell the player where ElectricNodes are.
      */
-    private void drawNodes(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
-        BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
-        if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
-            Pair<ElectricNode, Double> target = blockEntity.nodes.getClosest(lookingPosition);
-            if(target != null) {
-                
-                ElectricNode node = target.getFirst();
+    private void drawNodes(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, 
+        Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
 
-                double distance = target.getSecond().doubleValue();
-                AABB nodeBox = node.getHitbox();                
+        Triplet<ArrayList<ElectricNode>, Integer, NodeBank> releventNodes = null;
 
-                if(distance < (node.getHitSize() * NodeBank.HITFAC) + (growProgress * 0.3))
-                    newGrow = incrementGrow() * 0.03;
-                else
-                    newGrow = decrementGrow() * 0.03;
+        // if we're looking directly at an ElectricBlockEntity we don't have to find one
+        if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity ebe) {
+            Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(lookingPosition);
+            releventNodes = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank> (
+                    new ArrayList<ElectricNode>(Arrays.asList(direct.getFirst())), 
+                    direct.getSecond(), ebe.nodeBank
+                );
+        }
+        else {
+            releventNodes = NodeBank.findClosestNodeAlongRay(
+                world, 
+                instance.cameraEntity.getEyePosition(), 
+                lookingPosition, 0
+            );
+        }
 
+        if(releventNodes.getB() == -1) {
+            decrementGrow();
+        }
+
+        int index = 0;
+        for(ElectricNode node : releventNodes.getA()) {
+
+            AABB nodeBox = node.getHitbox();
+            if(releventNodes.getB() == index) {
+
+                newGrow = incrementGrow() * 0.03;
                 nodeBox = nodeBox.inflate(Mth.lerp(pTicks, oldGrow, newGrow));
+                
+
                 CreateClient.OUTLINER.showAABB(node.getId() + name, nodeBox)
                     .disableLineNormals()
                     .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
-                    .lineWidth((float)Mth.clamp(newGrow, 0.006, 0.8))
+                    .lineWidth(0.03f)
                     .colored(node.getColor((float)growProgress));
+
                 oldGrow = newGrow;
-            }
-        } else {
-            oldGrow = 0; newGrow = 0; growProgress = 0.0;
+            } else {
+                CreateClient.OUTLINER.showAABB(node.getId() + name, nodeBox)
+                    .disableLineNormals()
+                    .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+                    .lineWidth(0.03f)
+                    .colored(node.getColor());
+            } 
+            
+            index++;
         }
+
     }
 
-    private void drawCapDirs(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
+    /***
+     * Only for debug and will not be used, either removed later or tied to a config option.
+     * Represents ForgeEnergy capability directions as small boxes to indicate all valid
+     * push/pull sides for the targeted ElectricBlockEntity
+     */
+    private void drawCapabilityMarkers(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
         BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity ebe) {
 
-            Optional<RelativeDirection[]> dirsOptional = ebe.nodes.getRelDirs();
+            Optional<RelativeDirection[]> dirsOptional = ebe.nodeBank.getRelativeDirs();
             if(!dirsOptional.isPresent()) return;
             RelativeDirection[] dirs = dirsOptional.get();
             if(dirs.length == 0) dirs = RelativeDirection.populateAll();
@@ -99,7 +138,7 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
             for(int x = 0; x < dirs.length; x++) {
                 BlockPos pos = lookingBlockPos.relative(dirs[x].get());
 
-                AABB cm = boxFromPos(pos, 0.2f);
+                AABB cm = VectorHelper.toAABB(pos, 0.2f);
                 CreateClient.OUTLINER.showAABB(pos.hashCode() + "_cm_" + x + "(" + dirs[x] + ")", cm)
                     .disableLineNormals()
                     .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
@@ -107,15 +146,6 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
                     .colored(dirs[x].getColor());
             }
         }
-    }
-
-    private AABB boxFromPos(Vec3 pos, float s) {
-        Vec3 size = new Vec3(s, s, s);
-        return new AABB(pos.subtract(size), pos.add(size));
-    }
-
-    private AABB boxFromPos(BlockPos pos, float s) {
-        return boxFromPos(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) , s);
     }
 
     private boolean isBound(BlockEntity be, ItemStack wireStack) {

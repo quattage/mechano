@@ -17,7 +17,7 @@ public class ElectricNodeBuilder {
     private NodeLocation location;
     private String id = null;
     private int maxConnections = 1;
-    private float size = 0.2f;
+    private float size = 4/16f;
 
     public ElectricNodeBuilder(NodeBankBuilder activeBuilder, BlockEntity target) {
         this.activeBuilder = activeBuilder;

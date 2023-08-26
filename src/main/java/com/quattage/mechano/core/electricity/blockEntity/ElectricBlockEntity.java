@@ -26,7 +26,7 @@ import net.minecraftforge.common.util.LazyOptional;
 
 public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
-    public final NodeBank nodes;
+    public final NodeBank nodeBank;
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
@@ -36,7 +36,7 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         setLazyTickRate(20);
         NodeBankBuilder init = new NodeBankBuilder().at(this);
         prepare(init);
-        nodes = init.build();
+        nodeBank = init.build();
     }
 
     /***
@@ -66,7 +66,7 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
         super.getCapability(cap, side);
-        return nodes.provideEnergyCapabilities(cap, side);
+        return nodeBank.provideEnergyCapabilities(cap, side);
     }
 
     /***
@@ -78,19 +78,19 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         Block caller = state.getBlock();
         if(state != null && caller != null) {
             if(caller instanceof DirectionalBlock db) {
-                nodes.rotate(state.getValue(DirectionalBlock.FACING));
+                nodeBank.rotate(state.getValue(DirectionalBlock.FACING));
             }
             else if(caller instanceof HorizontalDirectionalBlock hb) {
-                nodes.rotate(state.getValue(HorizontalDirectionalBlock.FACING));
+                nodeBank.rotate(state.getValue(HorizontalDirectionalBlock.FACING));
             }
             else if(caller instanceof CombinedOrientedBlock cb) {
-                nodes.rotate(state.getValue(CombinedOrientedBlock.ORIENTATION));
+                nodeBank.rotate(state.getValue(CombinedOrientedBlock.ORIENTATION));
             }
             else if (caller instanceof SimpleOrientedBlock sb) {
-                nodes.rotate(state.getValue(SimpleOrientedBlock.ORIENTATION));
+                nodeBank.rotate(state.getValue(SimpleOrientedBlock.ORIENTATION));
             }
             else if (caller instanceof VerticallyOrientedBlock vb) {
-                nodes.rotate(state.getValue(VerticallyOrientedBlock.ORIENTATION));
+                nodeBank.rotate(state.getValue(VerticallyOrientedBlock.ORIENTATION));
             }
         }
     }
@@ -98,14 +98,14 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     @Override
     public void remove() {
         if(!this.level.isClientSide)
-            nodes.destroy();
+            nodeBank.destroy();
         super.remove();
     }
 
     @Override
     public void initialize() {
         super.initialize();
-        nodes.init();
+        nodeBank.init();
         refreshOrient();
         this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
     }
@@ -113,30 +113,30 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
-        nodes.loadEnergy();
+        nodeBank.loadEnergy();
     }
 
     @Override
     public void invalidateCaps() {
         super.invalidateCaps();
-        nodes.invalidateEnergy();
+        nodeBank.invalidateEnergy();
     }
     
     @Override
     protected void write(CompoundTag tag, boolean clientPacket) {
         super.write(tag, clientPacket);
-        nodes.writeTo(tag);
+        nodeBank.writeTo(tag);
     }
 
     @Override
     protected void read(CompoundTag tag, boolean clientPacket) {
-        nodes.readFrom(tag);
+        nodeBank.readFrom(tag);
         super.read(tag, clientPacket);
     }
 
     @Override
     public void handleUpdateTag(CompoundTag tag) {
         super.handleUpdateTag(tag);
-        nodes.readFrom(tag);
+        nodeBank.readFrom(tag);
     }
 }

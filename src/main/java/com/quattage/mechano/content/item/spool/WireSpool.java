@@ -1,5 +1,7 @@
 package com.quattage.mechano.content.item.spool;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.annotation.Nullable;
@@ -12,20 +14,22 @@ import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
+import com.quattage.mechano.core.util.VectorHelper;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import oshi.util.tuples.Triplet;
 
 /***
  * A WireSpool object is both a Minecraft Item as well as a logical representation
@@ -40,6 +44,7 @@ public abstract class WireSpool extends Item {
     protected final ItemStack rawDrop;
     public static final HashMap<String, WireSpool> spoolTypes = new HashMap<String, WireSpool>();
 
+    private int useCooldown = 0;
     private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
     private Player player; 
     private ElectricBlockEntity target;
@@ -142,64 +147,99 @@ public abstract class WireSpool extends Item {
     }
 
     @Override
-    public InteractionResult useOn(UseOnContext context) {
-        Level world = context.getLevel();
-        BlockPos clickedPos = context.getClickedPos();
-        Vec3 clickedLoc = context.getClickLocation();
-        BlockEntity be = world.getBlockEntity(clickedPos);
-        player = context.getPlayer();
+    public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
 
-        ItemStack handStack = context.getItemInHand();
+        ItemStack handStack = player.getItemInHand(hand);
+
+        Vec3 clickedLocation = VectorHelper.getLookingPos(player).getLocation();
+        Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary = null;
+
+        // ignore physical search if the player interacts directly with an EBE
+        if(world.getBlockEntity(VectorHelper.toBlockPos(clickedLocation)) instanceof ElectricBlockEntity ebe) {
+            Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(clickedLocation);
+            clickSummary = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank> (
+                    new ArrayList<ElectricNode>(Arrays.asList(direct.getFirst())), 
+                    direct.getSecond(), ebe.nodeBank
+                );
+        } else {
+            clickSummary = NodeBank.findClosestNodeAlongRay(world, player.getEyePosition(), clickedLocation, 0);
+        }
+
+        // this sanity check prevents a crash, don't remove it
+        if(clickSummary.getC() == null)
+            return new InteractionResultHolder<ItemStack>(
+                InteractionResult.PASS,
+                handStack
+            );
+
+        this.target = (ElectricBlockEntity)clickSummary.getC().target;
+        this.player = player;
         
-        if(be != null && be instanceof ElectricBlockEntity ebe) {
-            target = ebe;
-            if(handStack.hasTag()) {
-                if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
-                    return handleTo(world, handStack, clickedPos, clickedLoc);
-            }
-            return handleFrom(world, handStack, clickedPos, clickedLoc, context.getPlayer());
-        } 
-            
-        return InteractionResult.PASS;
+        if(clickSummary.getB() == -1) 
+            return new InteractionResultHolder<ItemStack>(
+                InteractionResult.PASS,
+                handStack
+            );
+
+        
+        if(handStack.hasTag()) {
+            if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
+                return new InteractionResultHolder<ItemStack>(
+                    handleTo(world, handStack, clickSummary, clickedLocation),
+                    handStack
+                );
+        }
+
+        return new InteractionResultHolder<ItemStack>(
+            handleFrom(world, handStack, clickSummary, clickedLocation),
+            handStack
+        ); 
     }
 
-    private InteractionResult handleFrom(Level world, ItemStack wireStack,
-        BlockPos clickedPos, Vec3 clickedLoc, Entity placer) {
+    // @Override
+    // public InteractionResult useOn(UseOnContext context) {
+    //     Level world = context.getLevel();
+    //     Vec3 clickedLoc = VectorHelper.getLookingPos(context.getPlayer()).getLocation();
+    //     ItemStack handStack = context.getItemInHand();
+        
+    //     if(handStack.hasTag()) {
+    //         if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
+    //             return handleTo(world, handStack, clickedLoc, context.getPlayer());
+    //     }
+    //     return handleFrom(world, handStack, clickedLoc, context.getPlayer()); 
+    // }
 
-        Pair<ElectricNode, Double> clicked = target.nodes.getClosest(clickedLoc);
-        if(clicked == null) return InteractionResult.PASS;
+    /***
+     * Implementation of NodeBank and ElectricNode tomfoolery that occurs when the player
+     * first initiates the connection. Creates a FakeNodeConnection attached to the player.
+     * @return InteractionResult indicating the success or failure of this interaction
+     */
+    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary, Vec3 clickedLoc) {
 
-        double distance = clicked.getSecond().doubleValue();
-        ElectricNode node = clicked.getFirst();
-
-        if(distance > node.getHitSize() * NodeBank.HITFAC - 0.008) return InteractionResult.PASS;
-
-        intermediary = target.nodes.makeFakeConnection(this, node.getId(), placer);
+        ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
+        this.intermediary = clickSummary.getC().makeFakeConnection(this, targetedNode.getId(), player);
 
         if(intermediary.getFirst().isSuccessful()) {
             CompoundTag nbt = wireStack.getOrCreateTag();   
-            nbt.put("at", writePos(clickedPos));
-            nbt.putString("from", node.getId());
+            nbt.put("at", writePos(clickSummary.getC().pos));
+            nbt.putString("from", targetedNode.getId());
         }
 
         if(!intermediary.getFirst().isSuccessful())
             revert(wireStack, false);
 
-        sendInfo(world, clickedPos, intermediary.getFirst());
-
+        sendInfo(world, clickSummary.getC().pos, intermediary.getFirst());
         return InteractionResult.FAIL;
     }
 
-    private InteractionResult handleTo(Level world, ItemStack wireStack,
-        BlockPos clickedPos, Vec3 clickedLoc) {
+    /***
+     * Follow-through from handleFrom, called when the connection is made real. 
+     * Turns the previously established FakeNodeConnection into an ElectricNodeConnection.
+     * @return InteractionResult indicating the success or failure of this interaction
+     */
+    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary, Vec3 clickedLoc) {
 
-        Pair<ElectricNode, Double> clicked = target.nodes.getClosest(clickedLoc);
-        if(clicked == null) return InteractionResult.PASS;
-    
-        double distance = clicked.getSecond().doubleValue();
-        ElectricNode toNode = clicked.getFirst();
-
-        if(distance > toNode.getHitSize() * NodeBank.HITFAC - 0.01) return InteractionResult.PASS;
+        ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
 
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
@@ -207,11 +247,10 @@ public abstract class WireSpool extends Item {
 
                 if(intermediary == null && wireStack.hasTag()) { // on world load this item may have NBT but no valid intermediary
                     clearTag(wireStack);
-                    return InteractionResult.PASS;
+                    return InteractionResult.PASS; // the connection is just ignored in this case, you'll have to click it again.
                 }
 
-                NodeConnectResult result = ebeFrom.nodes.connect(intermediary.getSecond(), target.nodes, toNode.getId());
-
+                NodeConnectResult result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), targetedNode.getId());
                 Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
 
                 if(!world.isClientSide() && !result.isSuccessful()) {
@@ -225,7 +264,7 @@ public abstract class WireSpool extends Item {
                         }
                     }
                 }
-                sendInfo(world, clickedPos, result);
+                sendInfo(world, clickSummary.getC().pos, result);
                 clearTag(result, wireStack);
                 return InteractionResult.PASS;
             }
@@ -241,11 +280,16 @@ public abstract class WireSpool extends Item {
         return out;
     }
 
+    /***
+     * Grabs the bound position of the WireSpool from the provided
+     * CompoundTag.
+     * @param in CompoundTag to pull from
+     * @return A composed BlockPos indicating the connection target.
+     */
     @Nullable
     public BlockPos getPos(CompoundTag in) {
 
         if(!in.contains("at")) return null;
-
         CompoundTag at = in.getCompound("at");
         BlockPos out = new BlockPos(
             at.getInt("x"),
@@ -256,6 +300,9 @@ public abstract class WireSpool extends Item {
         return out;
     }
 
+    /***
+     * Cancels the connection if the player isn't holding the wire or punches with it
+     */
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
         super.inventoryTick(stack, world, entity, slot, isSelected);
@@ -268,24 +315,16 @@ public abstract class WireSpool extends Item {
                 }
             }
         }
+
+        if(useCooldown > 0) useCooldown--;
     }
 
-    /***
-     * Clears tags and cancels the connection.
-     * @param stack
-     * @param clear
-     */
     private void revert(ItemStack stack, boolean clear) {
         Mechano.log("REVERT");
         clearTag(stack);
         if(clear && intermediary != null) cancelConnection(target, intermediary.getSecond().getSourceID());
     }
 
-    /***
-     * Clears tags and cancels the connection.
-     * @param stack
-     * @param clear
-     */
     private void revert(ElectricBlockEntity ebe, ItemStack stack, boolean clear) {
         Mechano.log("REVERT");
         clearTag(stack);
@@ -296,15 +335,15 @@ public abstract class WireSpool extends Item {
      * Reverts connection to reflect the state of the NodeBank before the connection was attempted.
      */
     private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
-        if(ebe != null) ebe.nodes.cancelConnection(sourceID);
+        if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
         sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }
 
     /***
      * Provides player tactility in the form of sound and an informational message
-     * @param world World to play sound in
-     * @param pos Position to play sound
-     * @param result NodeConnectResult to get the sound and info message from
+     * @param world World to play sound in.
+     * @param pos Position to play sound,
+     * @param result NodeConnectResult to get the sound and info message from.
      */
     private void sendInfo(Level world, BlockPos pos, NodeConnectResult result) {
         player.displayClientMessage(result.getMessage(), true);
@@ -312,8 +351,9 @@ public abstract class WireSpool extends Item {
     }
 
     /***
-     * Clears the relevent tags from this WireSpool
-     * @param stack
+     * Clears all connection-associated data from this WireSpool.
+     * @param result (Optional) Result of the associated connection to clear; won't clear if it's not necessary
+     * @param stack ItemStack to clear tags from.
      */
     private void clearTag(ItemStack stack) {
         //if(!stack.hasTag()) return;
@@ -321,6 +361,11 @@ public abstract class WireSpool extends Item {
         stack.removeTagKey("from");
     }
 
+    /***
+     * Clears all connection-associated data from this WireSpool.
+     * @param result Result of the associated connection to clear; won't clear if it's not necessary
+     * @param stack ItemStack to clear tags from.
+     */
     private void clearTag(NodeConnectResult result, ItemStack stack) {
         if(!result.isSuccessful() && !result.isFatal()) return;
         stack.removeTagKey("at");

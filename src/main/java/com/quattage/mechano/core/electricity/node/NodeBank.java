@@ -1,6 +1,7 @@
 package com.quattage.mechano.core.electricity.node;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
 
@@ -23,6 +24,7 @@ import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnect
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
+import com.quattage.mechano.core.util.VectorHelper;
 import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -31,12 +33,14 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
+import oshi.util.tuples.Triplet;
 
 
 /***
@@ -56,7 +60,7 @@ public class NodeBank implements DirectionalEnergyStorable {
     private final ElectricNode[] allNodes;
     private final Optional<RelativeDirection[]> allInteractions;
 
-    public static final float HITFAC = 3f;
+    public static final float HITFAC = 4f;
 
     public final BlockEntity target;
     public final BlockPos pos;
@@ -128,7 +132,13 @@ public class NodeBank implements DirectionalEnergyStorable {
         return out;
     }
 
-    public Optional<RelativeDirection[]> getRelDirs() {
+    /***
+     * The "raw" version of {@link #getInteractionDirections()} Directly returns
+     * RelativeDirections as an Optional. Pretty much exclusively used for debugging.
+     * @return Optional list of RelativeDirections. Empty optional indicates all directions,
+     * empty list indicates no directions.
+     */
+    public Optional<RelativeDirection[]> getRelativeDirs() {
         return allInteractions;
     }
 
@@ -219,14 +229,6 @@ public class NodeBank implements DirectionalEnergyStorable {
         return this;
     }
 
-    /***
-     * Retrieves this NodeBank as an array
-     * @return The raw aray stored within this NodeBan
-     */
-    public ElectricNode[] values() {
-        return allNodes;
-    }
-
     /*** 
      * The length of this NodeBank
      * @return int representing how many ElectricNodes can be held in this NodeBank
@@ -235,51 +237,191 @@ public class NodeBank implements DirectionalEnergyStorable {
         return allNodes.length;
     }
 
-    public Pair<ElectricNode, Double> getClosest(Vec3 hit) {
-        return getClosest(hit, 0.0f);
+    public Pair<ElectricNode[], Integer> getAllNodes(Vec3 hit) {
+        return getAllNodes(hit, 0.0f);
     }
 
     /***
-     * Gets the closest ElectricNode to the provided Vec3. <p>
-     * Useful for determining the ELectricNode closest to where the player is looking
-     * @param tolerance Any distance higher than this number will be disregarded as "too far away",
+     * Returns a Pair representing a list of all ElectricNodes in this bank. <p>
+     * The first member of the Pair is a list of all ElectricNodes, and the second member of the
+     * Pair is an Integer index of the closest ElectricNode in the list to the given Vec3 position.
+     * @param tolerance Any distance higher than this number will be disregarded as too far away,
      * and will return null.
      * @param hit Vec3 position. Usually this would just be <code>BlockHitResult.getLocation()</code>
-     * @return A Pair, where the first member is the ElectricNode itself, and the second member is the
-     * distance from this ElectricNode, or null if no node could be found within a reasonable distance.
+     * @return A Pair containing a list of all ElectricNodes.
      */
-    @Nullable
-    public Pair<ElectricNode, Double> getClosest(Vec3 hit, float tolerance) {
-        if(length() == 1) 
-            return Pair.of(allNodes[0], 0.1);
+    public Pair<ElectricNode[], Integer> getAllNodes(Vec3 hit, float tolerance) {
 
-        double lastDist = 100;
-        boolean customTolerance = tolerance <= 0;
+        Pair<ElectricNode[], Integer> out = Pair.of(values(), -1);
+        if(length() == 1) return Pair.of(values(), 0);
 
-        Pair<ElectricNode, Double> out = Pair.of(null, null);
+        double lastDist = 256;
 
         for(int x = 0; x < allNodes.length; x++) {
             Vec3 center = allNodes[x].getPosition();
             double dist = Math.abs(hit.distanceTo(center));
             
-            if(customTolerance) tolerance = allNodes[x].getHitSize() * 5f;
+            if(tolerance == 0) tolerance = allNodes[x].getHitSize() * 5f;
             if(dist > tolerance) continue;
 
-            if(dist < 0.0001) {
-                return Pair.of(allNodes[x], Double.valueOf(dist));
-            }
-
             if(dist < lastDist) {
-                out.setFirst(allNodes[x]);
-                out.setSecond(Double.valueOf(dist));
+                out.setSecond(x);
             }
 
             lastDist = dist;
         }
 
-        if(out.getFirst() == null || out.getSecond() == null) return null;
-
         return out;
+    }
+
+    /***
+     * Continually searches in the area surrounding the player's look direction for 
+     * NodeBanks to pull nodes from. This is a key step required to provide the functionality 
+     * related to targeting ElectricNodes to make connections without having to be looking at 
+     * the block's VoxelShape directly. This is Intended to be used internally, but may have 
+     * some utility elsewhere.<p>
+     * 
+     * It searches in a straight line outward from the player's camera, so it's pretty
+     * computationally expensive. Use with caution.
+     * 
+     * @param world World to operate within
+     * @param start Vec3 starting position of the search (camera posiiton)
+     * @param end Vec3 ending position of the search (BlockHitResult)
+     * @param scope (Optional, default 5) Width (in blocks) of the "cone" that is searched.
+     * Must be an odd number >= 3.
+     * @return An ArrayList of pairs, where the first member is the NodeBank itself, and the
+     * second member is the point along the ray that is closest to the NodeBank.
+     */
+    public static ArrayList<Pair<NodeBank, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end) {
+        return findBanksAlongRay(world, start, end, 5);
+    }
+
+    /***
+     * Continually searches in the area surrounding the player's look direction for 
+     * NodeBanks to pull nodes from. This is a key step required to provide the functionality 
+     * related to targeting ElectricNodes to make connections without having to be looking at 
+     * the block's VoxelShape directly. This is Intended to be used internally, but may have 
+     * some utility elsewhere.<p>
+     * 
+     * It searches in a straight line outward from the player's camera, so it's pretty
+     * computationally expensive. Use with caution.
+     * 
+     * @param world World to operate within
+     * @param start Vec3 starting position of the search (camera posiiton)
+     * @param end Vec3 ending position of the search (BlockHitResult)
+     * @return An ArrayList of pairs, where the first member is the NodeBank itself, and the
+     * second member is the point along the ray that is closest to the NodeBank.
+
+     */
+    public static ArrayList<Pair<NodeBank, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end, int scope) {
+        ArrayList<Pair<NodeBank, Vec3>> out =  new ArrayList<Pair<NodeBank, Vec3>>();
+        int maxIterations =  (int)((NodeBank.HITFAC * 0.43) * start.distanceTo(end));
+
+        if(scope % 2 == 0) scope += 1;
+        if(scope < 3) scope = 3;
+
+        // steps through in a straight line out away from the start to the end.
+        for(int iteration = 0; iteration < maxIterations; iteration++) {
+            float percent = iteration / (float) maxIterations;
+            Vec3 lookStep = start.lerp(end, percent);
+
+            BlockPos origin = VectorHelper.toBlockPos(lookStep);
+
+            // nested loops here step through the surrounding area in a cube
+            for(int y = 0; y < scope; y++) {
+                for(int x = 0; x < scope; x++) {
+                    for(int z = 0; z < scope; z++) {
+                        Vec3i boxOffset = new Vec3i(
+                            (int)(x - (scope / 2)), 
+                            (int)(y - (scope / 2)), 
+                            (int)(z - (scope / 2))
+                        );
+
+                        if(world.getBlockEntity(origin.offset(boxOffset)) instanceof ElectricBlockEntity ebe) {
+
+                            if(ebe.nodeBank == null) continue;
+                            if(out.size() == 0) {
+                                out.add(Pair.of(ebe.nodeBank, lookStep));
+                                continue;
+                            }
+
+                            boolean alreadyExists = false;
+                            for(int search = 0; search < out.size(); search++) {
+                                Pair<NodeBank, Vec3> lookup = out.get(search);
+                                if(lookup.getFirst().equals(ebe.nodeBank)) { // if the arraylist already contains this NodeBank
+                                    Vec3 bankCenter = ebe.getBlockPos().getCenter();
+                                    double oldDistance = lookup.getSecond().distanceTo(bankCenter);
+                                    if(oldDistance < 0.002) break;
+                                    if(lookStep.distanceTo(bankCenter) > oldDistance) {
+                                        out.set(search, Pair.of(ebe.nodeBank, lookStep));
+                                        alreadyExists = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(!alreadyExists)
+                                out.add(Pair.of(ebe.nodeBank, lookStep));
+                        }
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    /***
+     * See {@link #findBanksAlongRay(Level world, Vec3 start, Vec3 end) findBanksAlongRay()} 
+     * for additional context.
+     * @param world World to operate within
+     * @param start Vec3 starting position of the search
+     * @param end Vec3 ending position of the search
+     * @return A Triplet -  
+     * 1: List of all ElectricNodes that were deemed "close enough",
+     * 2: Integer index of the closest ElectricNode in the aforementioned list,
+     * and 3: the NodeBank that the closest node belongs to.
+     */
+    public static Triplet<ArrayList<ElectricNode>, Integer, NodeBank> findClosestNodeAlongRay(Level world, Vec3 start, Vec3 end, float tolerance) {
+
+        int closestIndex = -1;
+        NodeBank closestBank = null;
+        double lastDist = 256;
+        ArrayList<ElectricNode> allNearbyNodes = new ArrayList<ElectricNode>();
+
+        for(Pair<NodeBank, Vec3> potential : findBanksAlongRay(world, start, end)) {
+            for(ElectricNode node : potential.getFirst().allNodes) {
+                allNearbyNodes.add(node);
+                Vec3 center = node.getPosition();
+                double dist = Math.abs(potential.getSecond().distanceTo(center));
+
+                if(tolerance == 0) tolerance = node.getHitSize() * 5f;
+                if(dist > tolerance) continue;
+
+                if(dist < lastDist) {
+                    closestIndex = allNearbyNodes.size() - 1;
+                    closestBank = potential.getFirst();
+                }
+
+            lastDist = dist;
+            }
+        }
+
+        return new Triplet<ArrayList<ElectricNode>, Integer, NodeBank>(allNearbyNodes, closestIndex, closestBank);
+    }
+
+    @Nullable
+    public Pair<ElectricNode, Double> getClosestNode(Vec3 hit) {
+        Pair<ElectricNode[], Integer> out = getAllNodes(hit);
+        if(out.getSecond() == -1) return null;
+        ElectricNode closest = out.getFirst()[out.getSecond()];
+        return Pair.of(closest, closest.getPosition().distanceTo(hit));
+    }
+
+    /***
+     * Retrieves this NodeBank as an array
+     * @return The raw aray stored within this NodeBan
+     */
+    public ElectricNode[] values() {
+        return allNodes;
     }
 
     public int forceFindIndex(ElectricNode node) {
@@ -469,14 +611,15 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @param sourceID ElectricNode to remove the last connection from.
      */
     public void cancelConnection(String sourceID) {
-        get(sourceID).nullifyLastConnection();
+        ElectricNode node = get(sourceID);
+        if(node != null) node.nullifyLastConnection();
         markDirty();
     }
 
     /***
      * Adds a FakeNodeConnection at the given fromID in this NodeBank.
      * Fake Connections hold a connection between a source BlockEntity and a
-     * destination Entity, rather than to BlockEntity positions. 
+     * destination Entity, rather than two BlockEntity positions. 
      * This means that they can be updated in real-time, for things like 
      * attaching a wire to a player.
      */
@@ -513,7 +656,6 @@ public class NodeBank implements DirectionalEnergyStorable {
 
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
-        //Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
         if(targetBank.equals(this))
             return NodeConnectResult.LINK_CONFLICT;
@@ -524,8 +666,7 @@ public class NodeBank implements DirectionalEnergyStorable {
             allNodes[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
             return NodeConnectResult.WIRE_SUCCESS;
-        }
-        
+        }        
         return r1;
     }
 
@@ -571,7 +712,7 @@ public class NodeBank implements DirectionalEnergyStorable {
         BlockEntity be = world.getBlockEntity(pos);
         if(be == null) return null;
         if(be instanceof ElectricBlockEntity ebe)
-            return ebe.nodes;
+            return ebe.nodeBank;
         return null;
     }
 

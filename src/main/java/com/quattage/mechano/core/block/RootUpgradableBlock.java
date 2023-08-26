@@ -1,11 +1,9 @@
-package com.quattage.mechano.core.block.upgradable;
+package com.quattage.mechano.core.block;
 
 import java.util.ArrayList;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.util.BlockMath;
 

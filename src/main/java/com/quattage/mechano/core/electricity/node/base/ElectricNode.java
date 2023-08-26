@@ -171,10 +171,39 @@ public class ElectricNode {
         return location.getHitSize();
     }
 
+    /***
+     * 
+     * @param checkConnection Connection to check against
+     * @return Returns true if this connection already exists.
+     */
     public boolean connectionExists(NodeConnection checkConnection) {
         for(NodeConnection thisConnection : connections)
-            if(checkConnection.equals(thisConnection)) return true; 
+            if(checkConnection.equals(thisConnection)) {
+                Mechano.log("EXISTS? TRUE");
+                return true; 
+            }
+        Mechano.log("EXISTS? FALSE");
         return false;
+    }
+
+    /***
+     * Compares ElectricNodes for equivalence. <p>
+     * Note that "equivalence" in this case does not
+     *  consider some of the more specific data stored
+     * in an ElectricNode, we've opted to only
+     * compare the absolute posiitons of both nodes
+     * for simplicity.
+     * @param other ElectricNode to compare to
+     * @return True if these ElectricNodes are equivalent
+     */
+    public boolean equals(Object other) {
+        if(other != null && other instanceof ElectricNode otherNode)
+            return getPosition().equals(otherNode.getPosition());
+        return false;
+    }
+
+    public int hashCode() {
+        return getPosition().hashCode();
     }
     
     /***
@@ -187,10 +216,15 @@ public class ElectricNode {
      * fails, LINK_ADDED if this connection succeeds.
      */
     public NodeConnectResult addConnection(NodeConnection connection) {
+
+        if(connection == null) throw new NullPointerException("Failure attempting to add NodeConnection - Connection is null!");
+        if(connection.goesNowhere()) throw new IllegalStateException("Failure attempting to add NodeConnection - Connection goes nowhere: -> " + connection);
+
         int firstNullIndex = getFirstNullIndex();
 
-        if(firstNullIndex == -1) return NodeConnectResult.NODE_FULL;
+        if(connection.getSourcePos() == connection.getDestPos()) 
         if(connectionExists(connection)) return NodeConnectResult.LINK_EXISTS;
+        if(firstNullIndex == -1) return NodeConnectResult.NODE_FULL;
 
         connections[firstNullIndex] = connection;
         return NodeConnectResult.LINK_ADDED;
@@ -432,11 +466,15 @@ public class ElectricNode {
     }
 
     public Color getColor() {
-        return mode.getSelected();
+        return getColor(0f);
     }
 
     public Color getColor(float percent) {
         return mode.getColor(percent);
+    }
+
+    public Color getColor(int percent) {
+        return getColor((float) percent);
     }
 
     public NodeMode getMode() {

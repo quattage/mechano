@@ -82,7 +82,7 @@ public class Mechano {
     }
 
     public static void logSlow(String text) {
-        logSlow(text, 20);
+        logSlow(text, 500);
     }
 
     private static long lastLog = 0;

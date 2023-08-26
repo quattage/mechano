@@ -13,20 +13,20 @@ import net.minecraft.util.StringRepresentable;
  */
 public enum NodeMode implements StringRepresentable {
     NONE(false, false, new Color(110, 110, 110), new Color(196, 196, 196)),
-    INSERT(true, false, new Color(250, 255, 96), new Color(189, 255, 44)),
-    EXTRACT(false, true, new Color(255, 96, 250), new Color(255, 44, 189)),
-    BOTH(true, true, new Color(96, 250, 255), new Color(44, 189, 255));
+    INSERT(true, false, new Color(241, 0, 149), new Color(255, 101, 196)),
+    EXTRACT(false, true, new Color(149, 241, 0), new Color(196, 255, 101)),
+    BOTH(true, true, new Color(0, 149, 241), new Color(101, 196, 255));
 
     private final boolean isInput;
     private final boolean isOutput;
-    private final Color greyedOut;
-    private final Color selected;
+    private final Color baseColor;
+    private final Color highlightColor;
 
     private NodeMode(boolean isInput, boolean isOutput, Color greyedOut, Color selected) {
         this.isInput = isInput;
         this.isOutput = isOutput;
-        this.selected = selected;
-        this.greyedOut = greyedOut;
+        this.highlightColor = selected;
+        this.baseColor = greyedOut;
     }
 
     public String toString() {
@@ -105,8 +105,16 @@ public enum NodeMode implements StringRepresentable {
      * Gets the highlight color of this node.
      * @return
      */
-    public Color getSelected() {
-        return selected.copy();
+    public Color getHighlightColor() {
+        return highlightColor.copy();
+    }
+
+    /***
+     * Gets the "greyed-out" color of this node.
+     * @return
+     */
+    public Color getBaseColor() {
+        return baseColor.copy();
     }
 
     /***
@@ -115,6 +123,8 @@ public enum NodeMode implements StringRepresentable {
      * @return
      */
     public Color getColor(float percent) {
-        return greyedOut.copy().mixWith(selected, percent);
+        if(percent >= 1) return highlightColor;
+        if(percent <= 0) return baseColor;
+        return baseColor.copy().mixWith(highlightColor, percent);
     }
 }

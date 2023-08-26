@@ -36,7 +36,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
     protected void renderSafe(ElectricBlockEntity ebe, float partialTicks, PoseStack local, 
         MultiBufferSource bufferSource, int light, int overlay) {
     
-        ElectricNode[] nodes = ebe.nodes.values();
+        ElectricNode[] nodes = ebe.nodeBank.values();
 
         for(int n = 0; n < nodes.length; n++) {
             ElectricNode thisNode = nodes[n];

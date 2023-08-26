@@ -52,11 +52,19 @@ public abstract class ClientBehavior {
     @OnlyIn(Dist.CLIENT)
 	public void tick() {
         updateValues();
-		if (player == null || world == null || !(instance.hitResult instanceof BlockHitResult hit))
+		if (player == null || world == null || !(instance.hitResult instanceof BlockHitResult raycast))
 			return;
 
-        this.hit = hit.getLocation();
-        BlockPos hitBlockPos = hit.getBlockPos();
+        this.hit = raycast.getLocation();
+
+        /** DEBUG SHIT */
+
+        //NodeBank.findAlongRay(instance.cameraEntity.getEyePosition(), raycast.getLocation());
+
+        /** END OF DEBUG SHIT */
+
+
+        BlockPos hitBlockPos = raycast.getBlockPos();
 
         if(!shouldTick(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos)) return;
         

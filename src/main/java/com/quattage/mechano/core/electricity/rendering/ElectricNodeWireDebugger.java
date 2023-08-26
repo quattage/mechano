@@ -30,13 +30,13 @@ public class ElectricNodeWireDebugger extends ClientBehavior {
             BlockPos lookingBlockPos, double pTicks) {
         
         if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
-            for(ElectricNode node : blockEntity.nodes.values()) {
+            for(ElectricNode node : blockEntity.nodeBank.values()) {
                 CreateClient.OUTLINER.showAABB(node.getId() + "Highlight", node.getHitbox()
                     .inflate((Math.sin(((pTicks * 0.201) - 10.2) / 6.36) * 0.01)))
                     .disableCull()
                     .lineWidth(1 / 32f)
                     .colored(new Color(255, 255, 255)
-                        .mixWith(node.getColor(), Mth.clamp((float)Math.sin((pTicks - 0.50) * 3.2) * 0.4f + 1, 0, 1)));
+                        .mixWith(node.getColor(1f), Mth.clamp((float)Math.sin((pTicks - 0.50) * 3.2) * 0.4f + 1, 0, 1)));
             }
         }
     }

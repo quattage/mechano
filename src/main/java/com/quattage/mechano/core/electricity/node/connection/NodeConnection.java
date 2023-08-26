@@ -166,10 +166,17 @@ public abstract class NodeConnection {
      * @return True if both the source and destination positions the same.
      */
     public boolean equals(Object other) {
-        if(other instanceof NodeConnection c) {
-            Vec3 s = c.getSourcePos();
-            Vec3 d = c.getDestPos();
-            return s == null ? false : d == null ? false : s.equals(d);
+        if(other instanceof NodeConnection otherConnection) {
+            Vec3[] positions = new Vec3[4];
+            positions[0] = this.getSourcePos();
+            positions[1] = this.getDestPos();
+            positions[2] = otherConnection.getSourcePos();
+            positions[3] = otherConnection.getDestPos(); 
+
+            for(Vec3 pos : positions)
+                if(pos == null) return false;
+
+            return positions[0].equals(positions[2]) && positions[1].equals(positions[3]);
         }
         return false;
     }
@@ -185,6 +192,17 @@ public abstract class NodeConnection {
         double distance2 = other.getSourcePos().distanceTo(other.getDestPos());
         
         return Double.compare(distance1, distance2);
+    }
+
+
+    /***
+     * This connection "goes nowhere" if its source and destination positions are the same, or if either
+     * position is null.
+     * @return True if this connection's source and destination positions are equivalent or if either is null.
+     */
+    public boolean goesNowhere() {
+        if(sourcePos == null || destPos == null) return true;
+        return sourcePos.equals(destPos);
     }
 
     /***

@@ -22,7 +22,7 @@ public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
         super(type, pos, state);
         setLazyTickRate(20);
         NodeBankBuilder<WireNodeBlockEntity> init = new NodeBankBuilder<WireNodeBlockEntity>().at(this);
-        populateNodeSettings(init);
+        createWireNodeDefinition(init);
         nodeBank = init.build();
     }
 
@@ -48,7 +48,7 @@ public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
      * </pre>
      * @param builder The NodeBuilder to add connections to
      */
-    public abstract void populateNodeSettings(NodeBankBuilder<WireNodeBlockEntity> builder);
+    public abstract void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder);
 
     @Override
     public void reOrient() {

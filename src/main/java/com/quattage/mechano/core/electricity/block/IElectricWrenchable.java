@@ -20,6 +20,7 @@ public interface IElectricWrenchable extends IWrenchable {
     default void confirmWrench(BlockState oldState, UseOnContext context) {
 
         BlockEntity be = context.getLevel().getBlockEntity(context.getClickedPos());
+
         if(be == null) return;
         if(be.getBlockState() == oldState) return;
 

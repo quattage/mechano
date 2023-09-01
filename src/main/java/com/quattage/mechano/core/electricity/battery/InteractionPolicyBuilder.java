@@ -47,6 +47,12 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
         return this;
     }
 
+    public InteractionPolicyBuilder<T> sendsAndReceivesEnergy() {
+        isInput = true;
+        isOutput = true;
+        return this;
+    }
+
     /***
      * Blocks that are defined within the returned fluent substructure will be whitelisted
      * to the resulting InteractionPolicy.
@@ -67,7 +73,9 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
         return new BlockListBuilder<T>(this);
     }
 
-    public BatteryBankBuilder<T> confirm() {
+    
+
+    public BatteryBankBuilder<T> buildInteraction() {
         base.addInteraction(new InteractionPolicy(new RelativeDirection(relative), isInput, isOutput, blocksList, denyOrAllow));
         return base;
     }

@@ -1,5 +1,6 @@
 package com.quattage.mechano.core.block;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.quattage.mechano.core.electricity.block.IElectricWrenchable;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -34,6 +35,8 @@ public class CombinedOrientedBlock extends Block implements IElectricWrenchable 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
+
+        Mechano.log("WRENCHED");
 
         Axis intendedRotation = context.getClickedFace().getAxis();
         CombinedOrientation strictCD;

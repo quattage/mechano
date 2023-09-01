@@ -27,11 +27,11 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         super(type, pos, state);
 
         BatteryBankBuilder<ElectricBlockEntity> init = new BatteryBankBuilder<ElectricBlockEntity>().at(this);
-        populateBatterySettings(init);
+        createBatteryBankDefinition(init);
         batteryBank = init.build();
     }
 
-    public abstract void populateBatterySettings(BatteryBankBuilder<ElectricBlockEntity> builder);
+    public abstract void createBatteryBankDefinition(BatteryBankBuilder<ElectricBlockEntity> builder);
 
     /***
      * Refreshes this ElectricBlockEntity's interactions to reflect a BlockState change.<p>

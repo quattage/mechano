@@ -96,9 +96,7 @@ public abstract class UpgradableBlock extends CombinedOrientedBlock {
 			return InteractionResult.PASS;
 
         world.setBlock(clickedPos, rotated, 3);
-
-        if(world.getBlockState(context.getClickedPos()) != state)
-			playRotateSound(world, context.getClickedPos());
+        confirmWrench(state, context);
 
         return InteractionResult.SUCCESS;
     }

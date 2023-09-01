@@ -114,7 +114,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
     public NodeBank<T> reflectStateChange(BlockState state) {
         if(state == null) return this;
         CombinedOrientation target = DirectionTransformer.extract(state);
-        Mechano.log("New orientation:" + target);
+        //Mechano.log("New orientation:" + target);
         for(ElectricNode node : allNodes)
             node = node.rotateToFace(target);
         return this;

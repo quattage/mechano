@@ -17,7 +17,7 @@ public class ConnectorStackedTier3BlockEntity extends WireNodeBlockEntity {
     }
 
 	@Override
-	public void populateNodeSettings(NodeBankBuilder<WireNodeBlockEntity> builder) {
+	public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
 		builder.newNode()
             .id("conn1")
             .at(20, 21, 8)
@@ -33,12 +33,13 @@ public class ConnectorStackedTier3BlockEntity extends WireNodeBlockEntity {
 	}
 
     @Override
-    public void populateBatterySettings(BatteryBankBuilder<ElectricBlockEntity> builder) {
+    public void createBatteryBankDefinition(BatteryBankBuilder<ElectricBlockEntity> builder) {
         builder
             .capacity(5000)
             .maxIO(2500)
             .newInteraction(Relative.BOTTOM)
-            .confirm()
-        .build();
+                .sendsAndReceivesEnergy()
+                .buildInteraction()
+            .build();
     }
 }

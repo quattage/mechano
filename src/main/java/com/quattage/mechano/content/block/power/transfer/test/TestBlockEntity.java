@@ -19,7 +19,7 @@ public class TestBlockEntity extends WireNodeBlockEntity {
     }
 
 	@Override
-	public void populateNodeSettings(NodeBankBuilder<WireNodeBlockEntity> builder) {
+	public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
 		builder.newNode()
             .id("in1")
             .at(16, 10, 6) 
@@ -41,12 +41,12 @@ public class TestBlockEntity extends WireNodeBlockEntity {
 	}
 
 	@Override
-    public void populateBatterySettings(BatteryBankBuilder<ElectricBlockEntity> builder) {
+    public void createBatteryBankDefinition(BatteryBankBuilder<ElectricBlockEntity> builder) {
         builder
             .capacity(5000)
             .maxIO(2500)
             .newInteraction(Relative.BOTTOM)
-            .confirm()
+            .buildInteraction()
         .build();
     }
 }

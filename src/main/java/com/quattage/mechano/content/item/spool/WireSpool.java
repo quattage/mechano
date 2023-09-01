@@ -173,6 +173,7 @@ public abstract class WireSpool extends Item {
             );
 
         this.target = (WireNodeBlockEntity)clickSummary.getC().target;
+        target.reOrient();
         this.player = player;
         
         if(clickSummary.getB() == -1) 
@@ -181,7 +182,6 @@ public abstract class WireSpool extends Item {
                 handStack
             );
 
-        
         if(handStack.hasTag()) {
             if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
                 return new InteractionResultHolder<ItemStack>(
@@ -223,6 +223,8 @@ public abstract class WireSpool extends Item {
             CompoundTag nbt = wireStack.getOrCreateTag();   
             nbt.put("at", writePos(clickSummary.getC().pos));
             nbt.putString("from", targetedNode.getId());
+            sendInfo(world, clickSummary.getC().pos, intermediary.getFirst());
+            return InteractionResult.PASS;
         }
 
         if(!intermediary.getFirst().isSuccessful())

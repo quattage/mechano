@@ -68,10 +68,16 @@ public class TransmissionConnectorBlock extends DirectionalBlock implements IBE<
     @Override
     public boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
 		Direction dir = state.getValue(FACING);
+
+        BlockState check = world.getBlockState(pos.relative(dir.getOpposite()));
+        BlockState checkF = world.getBlockState(pos.relative(dir));
         
-		return hasSupport(world, pos, state) || world.getBlockState(pos.relative(dir.getOpposite())).isFaceSturdy(world, pos, dir, SupportType.CENTER) ||
-			!Shapes.joinIsNotEmpty(world.getBlockState(pos.relative(dir)).getBlockSupportShape(world,pos.relative(dir)).getFaceShape(dir), checkBoxX, BooleanOp.ONLY_SECOND) ||
-			!Shapes.joinIsNotEmpty(world.getBlockState(pos.relative(dir)).getBlockSupportShape(world,pos.relative(dir)).getFaceShape(dir), checkBoxZ, BooleanOp.ONLY_SECOND);
+		return  check.getBlock() != MechanoBlocks.CONNECTOR_STACKED_ZERO.get() && 
+                check.getBlock() != MechanoBlocks.CONNECTOR_STACKED_ONE.get() &&
+                check.getBlock() != MechanoBlocks.CONNECTOR_STACKED_TWO.get() &&
+            (hasSupport(world, pos, state) || check.isFaceSturdy(world, pos, dir, SupportType.CENTER) ||
+			!Shapes.joinIsNotEmpty(checkF.getBlockSupportShape(world, pos.relative(dir)).getFaceShape(dir), checkBoxX, BooleanOp.ONLY_SECOND) ||
+			!Shapes.joinIsNotEmpty(checkF.getBlockSupportShape(world, pos.relative(dir)).getFaceShape(dir), checkBoxZ, BooleanOp.ONLY_SECOND));
 	}
 
     @Override

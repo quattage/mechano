@@ -7,7 +7,7 @@ import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.CreativeTabExcludable;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.RootUpgradableBlock;
+import com.quattage.mechano.core.block.UpgradableBlock;
 import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class ConnectorStackedTier3Block extends RootUpgradableBlock implements IBE<ConnectorStackedTier3BlockEntity>, CreativeTabExcludable {
+public class ConnectorStackedTier3Block extends UpgradableBlock implements IBE<ConnectorStackedTier3BlockEntity>, CreativeTabExcludable {
 
     public static final VoxelShaper SHAPE = ShapeBuilder
         .newShape(2, 0, 2, 14, 4, 14)
@@ -54,7 +54,7 @@ public class ConnectorStackedTier3Block extends RootUpgradableBlock implements I
     }
 
     @Override
-    protected ArrayList<RootUpgradableBlock> setUpgradeTiers(ArrayList<RootUpgradableBlock> upgrades) {
+    protected ArrayList<UpgradableBlock> setUpgradeTiers(ArrayList<UpgradableBlock> upgrades) {
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_ZERO.get());
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_ONE.get());
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_TWO.get());

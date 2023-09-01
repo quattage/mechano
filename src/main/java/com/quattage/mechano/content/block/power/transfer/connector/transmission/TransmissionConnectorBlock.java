@@ -86,7 +86,7 @@ public class TransmissionConnectorBlock extends DirectionalBlock implements IBE<
 
         if(under.getBlock() == MechanoBlocks.TRANSMISSION_NODE.get()) {
             if(DirectionTransformer.sharesLocalUp(state, under)) {
-                CombinedOrientation facing = CombinedOrientation.convert(under.getValue(TransmissionNodeBlock.ORIENTATION));
+                CombinedOrientation facing = DirectionTransformer.extract(state);
                 BlockState newLargeConnector = MechanoBlocks.CONNECTOR_STACKED_ZERO.get().defaultBlockState();
                 world.setBlock(pos, newLargeConnector.setValue(ConnectorStackedTier0Block.ORIENTATION, facing), 3);
                 return;

@@ -1,11 +1,10 @@
 package com.quattage.mechano.core.electricity.block;
 
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 /***
@@ -14,10 +13,9 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public interface NodeOrientable {
     default void orientNodes(Level world, BlockPos pos, BlockState state, CombinedOrientation dir) {
+        if(state == null) return;
         if(!state.hasBlockEntity()) return;
-        BlockEntity be = world.getBlockEntity(pos);
-        if(be instanceof ElectricBlockEntity ebe) {
-            ebe.nodeBank.rotate(dir);
-        }
+        if(world.getBlockEntity(pos) instanceof WireNodeBlockEntity nbe)
+        nbe.nodeBank.reflectStateChange(state);
     }
 }

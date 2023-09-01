@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.util.BlockMath;
+import com.quattage.mechano.core.util.VectorHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
@@ -28,23 +28,23 @@ import net.minecraft.world.phys.BlockHitResult;
  * This list of upgraded/downgraded variants can be addressed to swap this block
  * in-place with its upgraded version. 
  */
-public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
+public abstract class UpgradableBlock extends CombinedOrientedBlock {
 
-    protected RootUpgradableBlock[] tiers;
+    protected UpgradableBlock[] tiers;
     private Item upgradeItem;
 
     private final int iteration;
     private final boolean shouldDropItems;
 
-    public RootUpgradableBlock(Properties properties) {
+    public UpgradableBlock(Properties properties) {
         super(properties);
         this.iteration = 0;
-        this.tiers = new RootUpgradableBlock[0];
+        this.tiers = new UpgradableBlock[0];
         this.upgradeItem = null;
         this.shouldDropItems = setShouldDropItems();
     }
 
-    public RootUpgradableBlock(Properties properties, RootUpgradableBlock parent) {
+    public UpgradableBlock(Properties properties, UpgradableBlock parent) {
         super(properties);
         
         this.tiers = parent.tiers;
@@ -53,7 +53,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
         this.shouldDropItems = parent.shouldDropItems;
     }
 
-    public RootUpgradableBlock(Properties properties, RootUpgradableBlock parent, int iteration) {
+    public UpgradableBlock(Properties properties, UpgradableBlock parent, int iteration) {
         super(properties);
         
         this.tiers = parent.tiers;
@@ -70,14 +70,14 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
 
     public void initTiers(boolean force) {
         if(force || !hasTiers()) {
-            ArrayList<RootUpgradableBlock> upgradesList = setUpgradeTiers(new ArrayList<RootUpgradableBlock>());
-            this.tiers = upgradesList.toArray(new RootUpgradableBlock[upgradesList.size()]);
+            ArrayList<UpgradableBlock> upgradesList = setUpgradeTiers(new ArrayList<UpgradableBlock>());
+            this.tiers = upgradesList.toArray(new UpgradableBlock[upgradesList.size()]);
             verifyTiers();
 
             if(upgradeItem == null) 
                 upgradeItem = setUpgradeItem();
 
-            for(RootUpgradableBlock tier : tiers)
+            for(UpgradableBlock tier : tiers)
                 tier.initTiers();
         }
     }
@@ -169,7 +169,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * {@link #UpgradableBlock(Properties) UpgradableBlock's constructor}.
      * @return An ArrayList, usually just the one provided, but with UpgradableBlocks added to it.
      */
-    protected abstract ArrayList<RootUpgradableBlock> setUpgradeTiers(ArrayList<RootUpgradableBlock> upgrades);
+    protected abstract ArrayList<UpgradableBlock> setUpgradeTiers(ArrayList<UpgradableBlock> upgrades);
     
     protected final int getIteration() {
         for(int x = 0; x < tiers.length; x++) 
@@ -225,7 +225,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
 
     public void spawnItem(Level world, BlockPos pos, ItemStack stack) {
         ItemEntity drop = new ItemEntity(world, pos.getX(), pos.getY(), pos.getZ(), stack);
-        drop.setDeltaMovement(BlockMath.getSymRand(0.3f), BlockMath.getSymRand(0.3f), BlockMath.getSymRand(0.3f));
+        drop.setDeltaMovement(VectorHelper.getRandomVector(0.3));
         world.addFreshEntity(drop);
     }
 
@@ -240,7 +240,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
     protected boolean upgrade(Level world, BlockPos pos, BlockState baseState) {
         initTiers();
 
-        RootUpgradableBlock destination = getUpgrade();
+        UpgradableBlock destination = getUpgrade();
         if(destination == null) return false;
         destination.initTiers();
 
@@ -269,7 +269,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
     protected boolean downgrade(Level world, BlockPos pos, BlockState baseState) {
         initTiers();
 
-        RootUpgradableBlock destination = getDowngrade();
+        UpgradableBlock destination = getDowngrade();
         if(destination == null) return false;
         destination.initTiers();
 
@@ -291,7 +291,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * @return UpgradableBlock in the next index, or null if one does not exist.
      */
     @Nullable
-    protected RootUpgradableBlock getUpgrade() {
+    protected UpgradableBlock getUpgrade() {
         if(iteration >= tiers.length - 1) return null;
         return tiers[iteration + 1];
     }
@@ -301,7 +301,7 @@ public abstract class RootUpgradableBlock extends CombinedOrientedBlock {
      * @return UpgradableBlock in the previous index, or null if one does not exist.
      */
     @Nullable
-    protected RootUpgradableBlock getDowngrade() {
+    protected UpgradableBlock getDowngrade() {
         if(iteration <= 0) return null;
         return tiers[iteration - 1];
     }

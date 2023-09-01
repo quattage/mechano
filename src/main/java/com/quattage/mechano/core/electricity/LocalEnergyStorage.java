@@ -116,15 +116,17 @@ public class LocalEnergyStorage<T extends DirectionalEnergyStorable> extends Ene
      * @param max Maximum fe/t to extract.
      */
     public void outputTo(Level world, BlockPos pos, Direction side, int maxExtract) {
-        BlockEntity te = world.getBlockEntity(pos.relative(side));
-		if(te == null)
-			return;
-		LazyOptional<IEnergyStorage> opt = te.getCapability(ForgeCapabilities.ENERGY, side.getOpposite());
-		IEnergyStorage ies = opt.orElse(null);
+        BlockEntity sendParent = world.getBlockEntity(pos.relative(side));
+		if(sendParent == null) return;
+		LazyOptional<IEnergyStorage> optStorage = 
+            sendParent.getCapability(ForgeCapabilities.ENERGY, side.getOpposite());
+
+		IEnergyStorage ies = optStorage.orElse(null);
 		if(ies == null)
 			return;
-		int ext = this.extractEnergy(maxExtract, false);
-		this.receiveEnergy(ext - ies.receiveEnergy(ext, false), false);
+
+		int extracted = this.extractEnergy(maxExtract, false);
+		this.receiveEnergy(extracted - ies.receiveEnergy(extracted, false), false);
     }
     
     @Override

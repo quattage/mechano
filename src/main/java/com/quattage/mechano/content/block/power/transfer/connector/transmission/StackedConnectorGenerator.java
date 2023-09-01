@@ -3,7 +3,7 @@ package com.quattage.mechano.content.block.power.transfer.connector.transmission
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier0Block;
 import com.quattage.mechano.core.block.DirectionTransformer;
-import com.quattage.mechano.core.block.RootUpgradableBlock;
+import com.quattage.mechano.core.block.UpgradableBlock;
 import com.quattage.mechano.core.block.datagen.DynamicStateGenerator;
 import com.simibubi.create.foundation.data.SpecialBlockStateGen;
 import com.tterrag.registrate.providers.DataGenContext;
@@ -30,7 +30,7 @@ public class StackedConnectorGenerator extends DynamicStateGenerator {
             ? "_side" : "";
 
         String variantName = "";
-        if(state.getBlock() instanceof RootUpgradableBlock block)
+        if(state.getBlock() instanceof UpgradableBlock block)
             variantName = block.getTierId();
 
         return provider.models().getExistingFile(new ResourceLocation(Mechano.MOD_ID, 

@@ -6,7 +6,7 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.content.item.spool.WireSpool;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.core.util.VectorHelper;
@@ -23,7 +23,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBlockEntityRenderer<T> {
+public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBlockEntityRenderer<T> {
 
     private final WireModelRenderer wireRenderer = new WireModelRenderer();
     private static final boolean USE_CACHE = true;
@@ -33,7 +33,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
     }   
 
     @Override
-    protected void renderSafe(ElectricBlockEntity ebe, float partialTicks, PoseStack local, 
+    protected void renderSafe(WireNodeBlockEntity ebe, float partialTicks, PoseStack local, 
         MultiBufferSource bufferSource, int light, int overlay) {
     
         ElectricNode[] nodes = ebe.nodeBank.values();
@@ -79,7 +79,7 @@ public class ElectricBlockRenderer<T extends ElectricBlockEntity> extends SafeBl
         return true;
     }
 
-    private void renderWire(ElectricBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, WireSpool spoolType, int age,
+    private void renderWire(WireNodeBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, WireSpool spoolType, int age,
         float pTicks, PoseStack matrix, MultiBufferSource buffers, boolean needsConstantUpdates) {
 
         matrix.pushPose();

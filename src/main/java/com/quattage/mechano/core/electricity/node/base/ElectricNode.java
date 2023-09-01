@@ -306,11 +306,11 @@ public class ElectricNode {
      * for finding target NodeBanks.
      * @return A new ArrayList of NodeBanks.
      */
-    public HashSet<NodeBank> getAllTargetBanks(NodeBank parent) {
-        HashSet<NodeBank> out = new HashSet<NodeBank>();
+    public HashSet<NodeBank<?>> getAllTargetBanks(NodeBank<?> parent) {
+        HashSet<NodeBank<?>> out = new HashSet<NodeBank<?>>();
         for(NodeConnection c : connections) {
             if(c instanceof ElectricNodeConnection ec) {
-                NodeBank bank = NodeBank.retrieveFrom(parent.getWorld(), 
+                NodeBank<?> bank = NodeBank.retrieveFrom(parent.getWorld(), 
                     parent.target, ec.getRelativePos());
                 if(bank != null) {
                     out.add(bank);
@@ -393,48 +393,10 @@ public class ElectricNode {
 
     /***
      * Rotates this ElectricNode to face the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
+     * @param dir CombinedOrientation to use as a basis for rotation.
      * @return This ElectricNode, but rotated.
      */
-    public ElectricNode rotateNode(Direction dir) {
-        location = location.rotate(dir);
-        return this;
-    }
-
-    /***
-     * Rotates this ElectricNode to face the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     * @return This ElectricNode, but rotated.
-     */
-    public ElectricNode rotateNode(CombinedOrientation dir) {
-        location = location.rotate(dir);
-        return this;
-    }
-
-    /***
-     * Rotates this ElectricNode to face the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     * @return This ElectricNode, but rotated.
-     */
-    public ElectricNode rotateNode(SimpleOrientation dir) {
-        location = location.rotate(dir);
-        return this;
-    }
-
-    /***
-     * Rotates this ElectricNode to face the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     * @return This ElectricNode, but rotated.
-     */
-    public ElectricNode rotateNode(VerticalOrientation dir) {
+    public ElectricNode rotateToFace(CombinedOrientation dir) {
         location = location.rotate(dir);
         return this;
     }

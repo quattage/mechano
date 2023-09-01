@@ -10,6 +10,7 @@ import com.simibubi.create.foundation.utility.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -17,6 +18,8 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class VectorHelper {
+
+    public static final RandomSource rand = RandomSource.create();
 
     /***
      * Converts a Vec3 to a Vec3i
@@ -30,6 +33,41 @@ public class VectorHelper {
      */
     public static Vec3 toVec(Vector3f vec) {
         return new Vec3(vec);
+    }
+
+    public static Vec3 getRandomVector(double dispersion) {
+        return addRandomness(new Vec3(0, 0, 0), dispersion);
+    }
+
+    public static Vec3 addRandomness(Vec3 vec, double dispersion) {
+        double randX = getRandom(dispersion);
+        double randY = getRandom(dispersion);
+        double randZ = getRandom(dispersion);
+        return new Vec3(vec.x + randX, vec.y + randY, vec.z + randZ);
+    }
+
+    /***
+     * Gets a random value whose range is centered on zero. 
+     * @param dispersion width of the random range
+     * @return a double between -dispersion and + dispersion
+     */
+    public static double getRandom(double dispersion) {
+        return (rand.nextFloat() * dispersion) - (dispersion / 2);
+    }
+
+    /***
+     * 
+     * @param root
+     * @return
+     */
+    public static Vec3 getCenter(Vec3 vec) {
+        BlockPos converted = toBlockPos(vec);
+        Vec3 out = new Vec3(
+            converted.getX(), 
+            converted.getY(), 
+            converted.getZ()
+        );
+        return out;
     }
 
     /***
@@ -208,13 +246,20 @@ public class VectorHelper {
         return new Vec3(x, y, z);
     }
 
-    public static float getMagnitude(Vec3 vec) {
-        return (float) Math.sqrt(Math.pow(vec.x, 2) + Math.pow(vec.y, 2) + Math.pow(vec.z, 2));
+    public static double getMagnitude(Vec3 vec) {
+
+        double x = vec.x == 0 ? 0.001: vec.x;
+        double y = vec.y == 0 ? 0.001: vec.y;
+        double z = vec.z == 0 ? 0.001 : vec.z;
+
+        Mechano.log("Input: " + vec);
+        
+        return Math.sqrt(Math.pow(x, 2.0) + Math.pow(y, 2.0) + Math.pow(z, 2.0));
     }
 
-    public static float getGreaterMagnitude(Vec3 vec1, Vec3 vec2) {
-        float fT = getMagnitude(vec1);
-        float tF = getMagnitude(vec2);
+    public static double getGreaterMagnitude(Vec3 vec1, Vec3 vec2) {
+        double fT = getMagnitude(vec1);
+        double tF = getMagnitude(vec2);
 
         return fT > tF ? fT : tF;
     }

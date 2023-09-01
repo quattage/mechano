@@ -35,7 +35,7 @@ public class EnergySyncS2CPacket implements Packetable {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             if(Minecraft.getInstance().level.getBlockEntity(target) instanceof ElectricBlockEntity ebe) {
-                ebe.nodeBank.setEnergyStored(energy);
+                ebe.batteryBank.setEnergyStored(energy);
             }
         });
         return true;

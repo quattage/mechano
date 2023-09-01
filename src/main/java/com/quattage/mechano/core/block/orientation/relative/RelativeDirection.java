@@ -4,6 +4,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
 import com.simibubi.create.foundation.utility.Color;
 
@@ -21,7 +22,7 @@ public class RelativeDirection {
     }
 
     /***
-     * Rotates a given RelativeDirection to follow the given direction.
+     * Rotates this RelativeDirection to follow the given direction.
      * @param dir Direction the block is facing
      */
     public RelativeDirection rotate(CombinedOrientation dir) {
@@ -51,14 +52,14 @@ public class RelativeDirection {
         // TODO this works but fucking christ it sucks
         if(dir.getLocalUp().getAxis() != Axis.Y) {
             if(rel == Relative.RIGHT) {
-                if(isPositive(dir.getLocalForward())) {
+                if(DirectionTransformer.isPositive(dir.getLocalForward())) {
                     facingDir = Direction.UP;
                     return this;
                 } 
                 facingDir = Direction.DOWN;
                 return this;
             }
-            if(isPositive(dir.getLocalForward())) {
+            if(DirectionTransformer.isPositive(dir.getLocalForward())) {
                 facingDir = Direction.DOWN;
                 return this;
             } 
@@ -71,19 +72,16 @@ public class RelativeDirection {
         return this;
     }
 
-    public boolean isPositive(Direction dir) {
-        if(dir == Direction.UP) return true;
-        if(dir == Direction.SOUTH) return true;
-        if(dir == Direction.EAST) return true;
-        return false;
-    }
-
     public Matrix4f toMatrix(Quaternionf in) {
         return new Matrix4f().set(in);
     }
 
     public Direction get() {
         return facingDir;
+    }
+
+    public Relative getRaw() {
+        return rel;
     }
 
     public String toString() {

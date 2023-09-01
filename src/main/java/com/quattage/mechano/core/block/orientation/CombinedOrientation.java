@@ -133,37 +133,6 @@ public enum CombinedOrientation implements StringRepresentable {
         return CombinedOrientation.values()[pos];
     }
 
-    /***
-     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
-     * CombinedDirection.
-     * @param dir Direction to use as a basis for conversion
-     * @return A new CombinedOrientation cooresponding to the given direction.
-     */
-    public static CombinedOrientation convert(Direction dir) {
-        return dir.getAxis() == Axis.Y ? combine(dir, Direction.NORTH) : combine(dir, Direction.UP);
-    }
-
-    /***
-     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
-     * CombinedDirection.
-     * @param dir Direction to use as a basis for conversion
-     * @return A new CombinedOrientation cooresponding to the given direction.
-     */
-    public static CombinedOrientation convert(SimpleOrientation dir) {
-        Direction cDir = DirectionTransformer.toDirection(dir.getOrient()); 
-        return combine(dir.getCardinal(), cDir);
-    }
-
-    /***
-     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
-     * CombinedDirection.
-     * @param dir Direction to use as a basis for conversion
-     * @return A new CombinedOrientation cooresponding to the given direction.
-     */
-    public static CombinedOrientation convert(VerticalOrientation dir) {
-        return combine(dir.getLocalVertical(), dir.getLocalFacing());
-    }
-
     private static int getGroupIndex(CombinedOrientation in) {
         int pos = in.ordinal();
         return getGroupIndex(pos);

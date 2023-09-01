@@ -5,6 +5,8 @@ import javax.annotation.Nullable;
 import org.antlr.v4.parse.ANTLRParser.labeledAlt_return;
 
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
+import com.quattage.mechano.core.block.orientation.SimpleOrientation;
+import com.quattage.mechano.core.block.orientation.VerticalOrientation;
 import com.quattage.mechano.core.block.orientation.XY;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
@@ -18,6 +20,13 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
+/***
+ * This class is designed to deal with all of the conflicting ways that blocks
+ * express their orientations in Minecraft. I wrote CombinedOrientation for my needs,
+ * but it doesn't play very well with other directional formats. This class
+ * provides helper methods for extracting directions from BlockStates in a more
+ * universally applicable way.
+ */
 public class DirectionTransformer {
     
     /***
@@ -101,6 +110,75 @@ public class DirectionTransformer {
             return Direction.UP;
 
         return null;
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(Direction dir) {
+        return dir.getAxis() == Axis.Y ? CombinedOrientation.combine(dir, Direction.NORTH) : CombinedOrientation.combine(dir, Direction.UP);
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(SimpleOrientation dir) {
+        Direction cDir = DirectionTransformer.toDirection(dir.getOrient()); 
+        return CombinedOrientation.combine(dir.getCardinal(), cDir);
+    }
+
+    /***
+     * Converts a Direction, SimpleOrientation, or VerticalOrientation into a
+     * CombinedDirection.
+     * @param dir Direction to use as a basis for conversion
+     * @return A new CombinedOrientation cooresponding to the given direction.
+     */
+    public static CombinedOrientation convert(VerticalOrientation dir) {
+        return CombinedOrientation.combine(dir.getLocalVertical(), dir.getLocalFacing());
+    }
+
+    /***
+     * Extracts a CombinedOrientation from a given BlockState, 
+     * no matter how that state expresses its Orientation.
+     * @param state BlockState to read from
+     * @return A composed CombinedOrientation
+     */
+    public static CombinedOrientation extract(BlockState state) {
+
+        Block block = state.getBlock();
+        if(block == null) return CombinedOrientation.NORTH_UP;
+
+        if(block instanceof CombinedOrientedBlock)
+            return state.getValue(CombinedOrientedBlock.ORIENTATION);
+
+        if(block instanceof SimpleOrientedBlock) 
+            return convert(state.getValue(SimpleOrientedBlock.ORIENTATION));
+
+        if(block instanceof VerticallyOrientedBlock)
+            return convert(state.getValue(VerticallyOrientedBlock.ORIENTATION));
+
+        if(block instanceof HorizontalDirectionalBlock)
+            return convert(state.getValue(HorizontalDirectionalBlock.FACING));
+
+        if(block instanceof DirectionalBlock)
+            return convert(state.getValue(DirectionalBlock.FACING));
+
+        if(block instanceof DirectionalKineticBlock)
+            return convert(state.getValue(DirectionalKineticBlock.FACING));
+
+        if(block instanceof RotatedPillarBlock)
+            return convert(toDirection(state.getValue(RotatedPillarBlock.AXIS)));
+        
+        if(block instanceof RotatedPillarKineticBlock)
+            return convert(toDirection(state.getValue(RotatedPillarKineticBlock.AXIS)));
+
+        return CombinedOrientation.NORTH_UP;
     }
 
     public static XY getRotation(BlockState state) {
@@ -205,5 +283,12 @@ public class DirectionTransformer {
         if(ax == Axis.Y) return Direction.DOWN;
         if(ax == Axis.X) return Direction.WEST;
         return Direction.SOUTH;
+    }
+
+    public static boolean isPositive(Direction dir) {
+        if(dir == Direction.UP) return true;
+        if(dir == Direction.SOUTH) return true;
+        if(dir == Direction.EAST) return true;
+        return false;
     }
 }

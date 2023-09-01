@@ -41,7 +41,7 @@ public interface DirectionalEnergyStorable {
      * @param <T>
      * @return Infered generic LazyOptional container for the Capability. 
      */
-    public abstract <T> @NotNull LazyOptional<T> getEnergyCapability();
+    public abstract <T> @NotNull LazyOptional<T> getEnergyHandler();
 
     /***
      * Provides energy capabilities for the given side of the parent block. <p>
@@ -56,15 +56,15 @@ public interface DirectionalEnergyStorable {
      * BlockEntity side of things.
      * @return Infered generic LazyOptional container for the Capability.
      */
-    default <T> @NotNull LazyOptional<T> provideEnergyCapabilities(@NotNull Capability<T> cap, 
+    default <T> @NotNull LazyOptional<T> getCapabilityForSide(@NotNull Capability<T> cap, 
         @Nullable Direction side, Direction[] energyDirs) {
 
         if(side == null || cap != ForgeCapabilities.ENERGY) return LazyOptional.empty();
-        if(energyDirs.length >= 6) return getEnergyCapability();
+        if(energyDirs.length >= 6) return getEnergyHandler();
 
         for(int x = 0; x < energyDirs.length; x++) {
             Mechano.log("Supposed: '" + side + "' -> Actual: '" + energyDirs[x] + "'");
-            if(side.ordinal() == energyDirs[x].ordinal()) return getEnergyCapability();
+            if(side.ordinal() == energyDirs[x].ordinal()) return getEnergyHandler();
         }
 
         return LazyOptional.empty();

@@ -1,45 +1,37 @@
 package com.quattage.mechano.core.electricity.node;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Optional;
 
 import javax.annotation.Nullable;
 
-import org.jetbrains.annotations.NotNull;
-
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
+import com.quattage.mechano.core.block.DirectionTransformer;
 import com.quattage.mechano.core.block.orientation.CombinedOrientation;
-import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.core.block.orientation.VerticalOrientation;
 import com.quattage.mechano.core.block.orientation.relative.RelativeDirection;
-import com.quattage.mechano.core.electricity.DirectionalEnergyStorable;
-import com.quattage.mechano.core.electricity.LocalEnergyStorage;
+import com.quattage.mechano.core.effects.ParticleBuilder;
+import com.quattage.mechano.core.effects.ParticleSpawner;
+import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
 import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.network.EnergySyncS2CPacket;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.ElectricNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
 import com.quattage.mechano.core.electricity.node.connection.NodeConnection;
 import com.quattage.mechano.core.util.VectorHelper;
-import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.IEnergyStorage;
 import oshi.util.tuples.Triplet;
 
 
@@ -48,7 +40,7 @@ import oshi.util.tuples.Triplet;
  * A NodeBank instance can be stored in any electrically-enabled BlockEntity to provide
  * all related functionality, such as making connections and transfering power.
  */
-public class NodeBank implements DirectionalEnergyStorable {
+public class NodeBank<T extends ElectricBlockEntity> {
 
     /**
      * The Version String is serialized directly to NBT
@@ -56,30 +48,22 @@ public class NodeBank implements DirectionalEnergyStorable {
      * releases. It can be changed later to invalidate old 
      * blocks and avoid breaking worlds
      */
-    private static final String VERSION = "0";
-    private final ElectricNode[] allNodes;
-    private final Optional<RelativeDirection[]> allInteractions;
-
     public static final float HITFAC = 4f;
+    private static final String VERSION = "0";
 
-    public final BlockEntity target;
+    private final ElectricNode[] allNodes;
+    public final T target;
     public final BlockPos pos;
-
-    private final LocalEnergyStorage<NodeBank> energyStorage;
-    private LazyOptional<IEnergyStorage> energyHandler = LazyOptional.empty();
 
     /***
      * Creates a new NodeBank from an ArrayList of nodes.
      * This NodeBank will have its ElectricNodes pre-populated.
      */
-    public NodeBank(BlockEntity target, ArrayList<ElectricNode> nodesToAdd, HashSet<RelativeDirection> dirsToAdd, 
+    public NodeBank(T target, ArrayList<ElectricNode> nodesToAdd, HashSet<RelativeDirection> dirsToAdd, 
         int capacity, int maxRecieve, int maxExtract, int energy) {
         this.target = target;
         this.pos = target.getBlockPos();
         this.allNodes = populateNodes(nodesToAdd);
-        this.allInteractions = populateDirs(dirsToAdd);
-        this.energyStorage = new LocalEnergyStorage<NodeBank>
-            (this, capacity, maxRecieve, maxExtract, energy);
     }
 
     private ElectricNode[] populateNodes(ArrayList<ElectricNode> nodesToAdd) {
@@ -95,51 +79,8 @@ public class NodeBank implements DirectionalEnergyStorable {
         return out;
     }
 
-    private Optional<RelativeDirection[]> populateDirs(HashSet<RelativeDirection> dirsToAdd) {
-        if(dirsToAdd == null) return Optional.empty();
-        if(dirsToAdd.isEmpty()) return Optional.of(new RelativeDirection[0]);
-
-        int x = 0;
-        RelativeDirection[] out = new RelativeDirection[dirsToAdd.size()];
-        for(RelativeDirection dir : dirsToAdd) {
-            out[x] = dir; 
-            x++;
-        }
-        return Optional.of(out);
-    }
-
     public Level getWorld() {
         return target.getLevel();
-    }
-
-    /***
-     * Gets every direction that this NodeBank can interact with.
-     * Directions are relative to the world, and will change
-     * depending on the orientation of this NodeBank's parent block.
-     * @return A list of Directions; empty if this NodeBank
-     * has no interaction directions.
-     */
-    public Direction[] getInteractionDirections() {
-        if(!allInteractions.isPresent()) return new Direction[0];
-        if(allInteractions.get().length == 0) return Direction.values();
-        
-        RelativeDirection[] rels = allInteractions.get();
-        Direction[] out = new Direction[rels.length];
-
-        for(int x = 0; x < rels.length; x++) {
-            out[x] = rels[x].get();
-        }
-        return out;
-    }
-
-    /***
-     * The "raw" version of {@link #getInteractionDirections()} Directly returns
-     * RelativeDirections as an Optional. Pretty much exclusively used for debugging.
-     * @return Optional list of RelativeDirections. Empty optional indicates all directions,
-     * empty list indicates no directions.
-     */
-    public Optional<RelativeDirection[]> getRelativeDirs() {
-        return allInteractions;
     }
 
     /***
@@ -148,7 +89,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @param other NodeBank to compare. 
      * @return True if both NodeBanks share the same target BlockPos.
      */
-    public boolean equals(NodeBank other) {
+    public boolean equals(NodeBank<?> other) {
         return other == null ? false : pos.equals(other.pos);
     }
 
@@ -161,71 +102,21 @@ public class NodeBank implements DirectionalEnergyStorable {
 
     /***
      * Compares this NodeBank's location with a given BlockPos.
-     * @param otherPos Blockpos to check
+     * @param posToCheck Blockpos to check
      * @return True if this NodeBank's target BlockEntity is located
      * at the given BlockPos
      */
-    public boolean isAt(BlockPos otherPos) {
-        if(otherPos == null) return false;
-        return this.pos.equals(otherPos);
+    public boolean isAt(BlockPos posToCheck) {
+        if(posToCheck == null) return false;
+        return this.pos.equals(posToCheck);
     }
 
-    /***
-     * Rotates this NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public NodeBank rotate(Direction dir) {
-        rotate(CombinedOrientation.convert(dir));
-        return this;
-    }
-
-    /***
-     * Rotates this NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public NodeBank rotate(SimpleOrientation dir) {
-        rotate(CombinedOrientation.convert(dir));
-        return this;
-    }
-
-    /***
-     * Rotates this NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public NodeBank rotate(VerticalOrientation dir) {
-        rotate(CombinedOrientation.convert(dir));
-        return this;
-    }
-
-    /***
-     * Rotates this NodeBank to face the given Direction <p>
-     * More specifically, it loops through every stored ElectricNode
-     * and modifies its NodeLocation based on the given direction.
-     * @param dir Acceptable overloads: Direction, CombinedOrientation, 
-     * SimpleOrientation, or VerticalOrientation to use as a basis for
-     * rotation.
-     */
-    public NodeBank rotate(CombinedOrientation dir) {
+    public NodeBank<T> reflectStateChange(BlockState state) {
+        if(state == null) return this;
+        CombinedOrientation target = DirectionTransformer.extract(state);
+        Mechano.log("New orientation:" + target);
         for(ElectricNode node : allNodes)
-            node = node.rotateNode(dir);
-
-        if(!allInteractions.isPresent() ||
-            allInteractions.get().length == 0) return this;
-
-        for(RelativeDirection rel : allInteractions.get())
-            rel = rel.rotate(dir);
+            node = node.rotateToFace(target);
         return this;
     }
 
@@ -281,8 +172,9 @@ public class NodeBank implements DirectionalEnergyStorable {
      * the block's VoxelShape directly. This is Intended to be used internally, but may have 
      * some utility elsewhere.<p>
      * 
-     * It searches in a straight line outward from the player's camera, so it's pretty
-     * computationally expensive. Use with caution.
+     * It searches in a straight line outward from the given start to the given end position,
+     * and also indexes through the surrounding blocks in that line in a sort of "cone" shape. 
+     * It's pretty computationally expensive. Use with caution.
      * 
      * @param world World to operate within
      * @param start Vec3 starting position of the search (camera posiiton)
@@ -292,7 +184,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @return An ArrayList of pairs, where the first member is the NodeBank itself, and the
      * second member is the point along the ray that is closest to the NodeBank.
      */
-    public static ArrayList<Pair<NodeBank, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end) {
+    public static ArrayList<Pair<NodeBank<?>, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end) {
         return findBanksAlongRay(world, start, end, 5);
     }
 
@@ -303,8 +195,9 @@ public class NodeBank implements DirectionalEnergyStorable {
      * the block's VoxelShape directly. This is Intended to be used internally, but may have 
      * some utility elsewhere.<p>
      * 
-     * It searches in a straight line outward from the player's camera, so it's pretty
-     * computationally expensive. Use with caution.
+     * It searches in a straight line outward from the given start to the given end position,
+     * and also indexes through the surrounding blocks in that line in a sort of "cone" shape. 
+     * It's pretty computationally expensive. Use with caution.
      * 
      * @param world World to operate within
      * @param start Vec3 starting position of the search (camera posiiton)
@@ -313,8 +206,8 @@ public class NodeBank implements DirectionalEnergyStorable {
      * second member is the point along the ray that is closest to the NodeBank.
 
      */
-    public static ArrayList<Pair<NodeBank, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end, int scope) {
-        ArrayList<Pair<NodeBank, Vec3>> out =  new ArrayList<Pair<NodeBank, Vec3>>();
+    public static ArrayList<Pair<NodeBank<?>, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end, int scope) {
+        ArrayList<Pair<NodeBank<?>, Vec3>> out =  new ArrayList<Pair<NodeBank<?>, Vec3>>();
         int maxIterations =  (int)((NodeBank.HITFAC * 0.43) * start.distanceTo(end));
 
         if(scope % 2 == 0) scope += 1;
@@ -337,7 +230,7 @@ public class NodeBank implements DirectionalEnergyStorable {
                             (int)(z - (scope / 2))
                         );
 
-                        if(world.getBlockEntity(origin.offset(boxOffset)) instanceof ElectricBlockEntity ebe) {
+                        if(world.getBlockEntity(origin.offset(boxOffset)) instanceof WireNodeBlockEntity ebe) {
 
                             if(ebe.nodeBank == null) continue;
                             if(out.size() == 0) {
@@ -347,7 +240,7 @@ public class NodeBank implements DirectionalEnergyStorable {
 
                             boolean alreadyExists = false;
                             for(int search = 0; search < out.size(); search++) {
-                                Pair<NodeBank, Vec3> lookup = out.get(search);
+                                Pair<NodeBank<?>, Vec3> lookup = out.get(search);
                                 if(lookup.getFirst().equals(ebe.nodeBank)) { // if the arraylist already contains this NodeBank
                                     Vec3 bankCenter = ebe.getBlockPos().getCenter();
                                     double oldDistance = lookup.getSecond().distanceTo(bankCenter);
@@ -380,14 +273,14 @@ public class NodeBank implements DirectionalEnergyStorable {
      * 2: Integer index of the closest ElectricNode in the aforementioned list,
      * and 3: the NodeBank that the closest node belongs to.
      */
-    public static Triplet<ArrayList<ElectricNode>, Integer, NodeBank> findClosestNodeAlongRay(Level world, Vec3 start, Vec3 end, float tolerance) {
+    public static Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> findClosestNodeAlongRay(Level world, Vec3 start, Vec3 end, float tolerance) {
 
         int closestIndex = -1;
-        NodeBank closestBank = null;
+        NodeBank<?> closestBank = null;
         double lastDist = 256;
         ArrayList<ElectricNode> allNearbyNodes = new ArrayList<ElectricNode>();
 
-        for(Pair<NodeBank, Vec3> potential : findBanksAlongRay(world, start, end)) {
+        for(Pair<NodeBank<?>, Vec3> potential : findBanksAlongRay(world, start, end)) {
             for(ElectricNode node : potential.getFirst().allNodes) {
                 allNearbyNodes.add(node);
                 Vec3 center = node.getPosition();
@@ -405,7 +298,7 @@ public class NodeBank implements DirectionalEnergyStorable {
             }
         }
 
-        return new Triplet<ArrayList<ElectricNode>, Integer, NodeBank>(allNearbyNodes, closestIndex, closestBank);
+        return new Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>>(allNearbyNodes, closestIndex, closestBank);
     }
 
     @Nullable
@@ -441,7 +334,6 @@ public class NodeBank implements DirectionalEnergyStorable {
         for(int x = 0; x < allNodes.length; x++) {
             allNodes[x].writeTo(out);
         }
-        energyStorage.writeTo(in);
         in.putString("ver", VERSION);
         in.put("bank", out);
         
@@ -475,7 +367,6 @@ public class NodeBank implements DirectionalEnergyStorable {
      * given CompoundTag.
      */
     public void readFrom(CompoundTag in) {
-        energyStorage.readFrom(in);
         String v = in.getString("ver");
         if(v == null || !v.equals(VERSION)) return;
 
@@ -488,7 +379,6 @@ public class NodeBank implements DirectionalEnergyStorable {
         for(int x = 0; x < allNodes.length; x++) {
             String thisID = allNodes[x].getId();
 
-            // TODO potentially excessive throw, may replace with continue
             if(!bank.contains(thisID)) throw new IllegalStateException("This NodeBank instance contains an ElectricNode called '" 
                 + thisID + "', but the provided NodeBank NBT data does not!");
 
@@ -534,8 +424,7 @@ public class NodeBank implements DirectionalEnergyStorable {
     }
 
     public void refreshTargetOrient() {
-        if(target instanceof ElectricBlockEntity ebe)
-            ebe.refreshOrient();
+            target.reOrient();
     }
 
     /***
@@ -544,7 +433,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * provided NodeBank will be removed from this NodeBank.
      * 
      */
-    public boolean removeSharedConnections(NodeBank origin) {
+    public boolean removeSharedConnections(NodeBank<?> origin) {
         boolean changed = false;
         for(ElectricNode node : allNodes) {
             if(node.removeConnectionsInvolving(origin))
@@ -559,8 +448,8 @@ public class NodeBank implements DirectionalEnergyStorable {
      * stored within this NodeBank.
      * @return
      */
-    public HashSet<NodeBank> getAllTargetBanks() {
-        HashSet<NodeBank> out = new HashSet<NodeBank>();
+    public HashSet<NodeBank<?>> getAllTargetBanks() {
+        HashSet<NodeBank<?>> out = new HashSet<NodeBank<?>>();
         for(ElectricNode node : allNodes) {
             out.addAll(node.getAllTargetBanks(this));
         }
@@ -572,7 +461,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * when this NodeBank's parent Block is destroyed.
      */
     public void destroy() {
-        for(NodeBank bank : getAllTargetBanks()) {
+        for(NodeBank<?> bank : getAllTargetBanks()) {
             bank.removeSharedConnections(this);
         }
     }
@@ -588,21 +477,6 @@ public class NodeBank implements DirectionalEnergyStorable {
         for(ElectricNode node : allNodes)
             node.initConnections(target);
         markDirty();
-    }
-
-    /***
-     * Initializes the energy capabilities of this NodeBank
-     */
-    public void loadEnergy() {
-        energyHandler = LazyOptional.of(() -> energyStorage);
-    }
-
-    public void invalidateEnergy() {
-        energyHandler.invalidate();
-    }
-
-    public <T> @NotNull LazyOptional<T> provideEnergyCapabilities(@NotNull Capability<T> cap, @Nullable Direction side) {
-        return provideEnergyCapabilities(cap, side, getInteractionDirections());
     }
 
     /***
@@ -627,7 +501,7 @@ public class NodeBank implements DirectionalEnergyStorable {
 
         Vec3 sourcePos = get(fromID).getPosition();
         FakeNodeConnection fakeConnection = new FakeNodeConnection(spoolType, fromID, sourcePos, targetEntity);
-        Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
+        // Mechano.log("Fake connection established: " + fakeConnection + ", to Entity " + targetEntity);
 
         NodeConnectResult result = allNodes[indexOf(fromID)].addConnection(fakeConnection);
 
@@ -648,7 +522,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @param targetBank The other NodeBank, where the destination ElectricNode is.
      * @param targetID The name of the destinationElectricNode in the targetBank.
      */
-    public NodeConnectResult connect(FakeNodeConnection fake, NodeBank targetBank, String targetID) {
+    public NodeConnectResult connect(FakeNodeConnection fake, NodeBank<?> targetBank, String targetID) {
         Vec3 sourcePos = fake.getSourcePos();
         Vec3 destPos = targetBank.get(targetID).getPosition();
         String fromID = fake.getSourceID();
@@ -663,6 +537,20 @@ public class NodeBank implements DirectionalEnergyStorable {
         NodeConnectResult r1 = targetBank.allNodes[targetBank.indexOf(targetID)].addConnection(targetConnection);
         
         if(r1.isSuccessful()) {
+
+            if(target.getLevel() instanceof ServerLevel sWorld) {
+
+                ParticleSpawner particle = ParticleBuilder.ofType(ParticleTypes.END_ROD)
+                    .at(fromConnection.getSourcePos())
+                    .randomness(0.1f)
+                    .density(3)
+                    .build();
+
+                particle.spawnAsServer(sWorld);
+                particle.setPos(fromConnection.getDestPos());
+                particle.spawnAsServer(sWorld);
+            }
+
             allNodes[indexOf(fake.getSourceID())].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
             return NodeConnectResult.WIRE_SUCCESS;
@@ -683,13 +571,13 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @param targetBank The other NodeBank, where the destination ElectricNode is.
      * @param targetID The name of the destinationElectricNode in the targetBank.
      */
-    public NodeConnectResult connect(WireSpool spoolType, String fromID, NodeBank targetBank, String targetID) {
+    public NodeConnectResult connect(WireSpool spoolType, String fromID, NodeBank<?> targetBank, String targetID) {
         Vec3 sourcePos = get(fromID).getPosition();
         Vec3 destPos = targetBank.get(targetID).getPosition();
 
         NodeConnection fromConnection = new ElectricNodeConnection(spoolType, this, sourcePos, targetBank, targetID);
         NodeConnection targetConnection = new ElectricNodeConnection(spoolType, targetBank, destPos, this, fromID, true);
-        Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
+        // Mechano.log("Connection established from: " + fromConnection + "  to: \n" + targetConnection);
 
         NodeConnectResult r1 = allNodes[indexOf(fromID)].addConnection(fromConnection);
         NodeConnectResult r2 = targetBank.allNodes[targetBank.indexOf(targetID)].addConnection(targetConnection);
@@ -708,10 +596,10 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @return The NodeBank at the given BlockPos, or null if none exists.
      */
     @Nullable
-    public static NodeBank retrieve(Level world, BlockPos pos) {
+    public static <T> NodeBank<?> retrieve(Level world, BlockPos pos) {
         BlockEntity be = world.getBlockEntity(pos);
         if(be == null) return null;
-        if(be instanceof ElectricBlockEntity ebe)
+        if(be instanceof WireNodeBlockEntity ebe)
             return ebe.nodeBank;
         return null;
     }
@@ -725,23 +613,7 @@ public class NodeBank implements DirectionalEnergyStorable {
      * @return The NodeBank at the surmised BlockPos, or null if one does not exist.
      */
     @Nullable
-    public static NodeBank retrieveFrom(Level world, BlockEntity root, Vec3i relativePos) {
+    public static <T> NodeBank<?> retrieveFrom(Level world, BlockEntity root, Vec3i relativePos) {
         return retrieve(world, root.getBlockPos().subtract(relativePos));
-    }
-
-    @Override
-    public void onEnergyUpdated() {
-        target.setChanged();
-        MechanoPackets.sendToAllClients(new EnergySyncS2CPacket(energyStorage.getEnergyStored(), target.getBlockPos()));
-    }
-
-    @Override
-    public <T> @NotNull LazyOptional<T> getEnergyCapability() {
-        return energyHandler.cast();
-    }
-
-    @Override
-    public void setEnergyStored(int energy) {
-        energyStorage.setEnergyStored(energy);
     }
 }

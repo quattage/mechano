@@ -6,7 +6,7 @@ import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.core.CreativeTabExcludable;
 import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.RootUpgradableBlock;
+import com.quattage.mechano.core.block.UpgradableBlock;
 import com.quattage.mechano.core.util.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -14,6 +14,7 @@ import com.simibubi.create.foundation.utility.VoxelShaper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -22,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class ConnectorStackedTier1Block extends RootUpgradableBlock implements IBE<ConnectorStackedTier1BlockEntity>, CreativeTabExcludable {
+public class ConnectorStackedTier1Block extends UpgradableBlock implements IBE<ConnectorStackedTier1BlockEntity>, CreativeTabExcludable {
 
     public static final VoxelShaper SHAPE = ShapeBuilder
             .newShape(2, 0, 3, 14, 6, 13)
@@ -49,7 +50,7 @@ public class ConnectorStackedTier1Block extends RootUpgradableBlock implements I
     }
 
     @Override
-    protected ArrayList<RootUpgradableBlock> setUpgradeTiers(ArrayList<RootUpgradableBlock> upgrades) {
+    protected ArrayList<UpgradableBlock> setUpgradeTiers(ArrayList<UpgradableBlock> upgrades) {
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_ZERO.get());
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_ONE.get());
         upgrades.add(MechanoBlocks.CONNECTOR_STACKED_TWO.get());
@@ -60,6 +61,12 @@ public class ConnectorStackedTier1Block extends RootUpgradableBlock implements I
     @Override
     protected Item setUpgradeItem() {
         return MechanoBlocks.CONNECTOR_TRANSMISSION.asItem();
+    }
+
+    @Override
+    public BlockState updateAfterWrenched(BlockState newState, UseOnContext context) {
+        // TODO Auto-generated method stub
+        return super.updateAfterWrenched(newState, context);
     }
 
     @Override

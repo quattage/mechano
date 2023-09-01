@@ -1,6 +1,6 @@
 package com.quattage.mechano.core.electricity.rendering;
 
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.events.ClientBehavior;
 import com.simibubi.create.CreateClient;
@@ -29,7 +29,7 @@ public class ElectricNodeWireDebugger extends ClientBehavior {
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos, double pTicks) {
         
-        if(world.getBlockEntity(lookingBlockPos) instanceof ElectricBlockEntity blockEntity) {
+        if(world.getBlockEntity(lookingBlockPos) instanceof WireNodeBlockEntity blockEntity) {
             for(ElectricNode node : blockEntity.nodeBank.values()) {
                 CreateClient.OUTLINER.showAABB(node.getId() + "Highlight", node.getHitbox()
                     .inflate((Math.sin(((pTicks * 0.201) - 10.2) / 6.36) * 0.01)))

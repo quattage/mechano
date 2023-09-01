@@ -9,7 +9,7 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
 import com.quattage.mechano.core.electricity.node.NodeBank;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
@@ -47,7 +47,7 @@ public abstract class WireSpool extends Item {
     private int useCooldown = 0;
     private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
     private Player player; 
-    private ElectricBlockEntity target;
+    private WireNodeBlockEntity target;
 
     /***
      * Create a new WireSpool object
@@ -152,12 +152,12 @@ public abstract class WireSpool extends Item {
         ItemStack handStack = player.getItemInHand(hand);
 
         Vec3 clickedLocation = VectorHelper.getLookingPos(player).getLocation();
-        Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary = null;
+        Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary = null;
 
         // ignore physical search if the player interacts directly with an EBE
-        if(world.getBlockEntity(VectorHelper.toBlockPos(clickedLocation)) instanceof ElectricBlockEntity ebe) {
+        if(world.getBlockEntity(VectorHelper.toBlockPos(clickedLocation)) instanceof WireNodeBlockEntity ebe) {
             Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(clickedLocation);
-            clickSummary = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank> (
+            clickSummary = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> (
                     new ArrayList<ElectricNode>(Arrays.asList(direct.getFirst())), 
                     direct.getSecond(), ebe.nodeBank
                 );
@@ -172,7 +172,7 @@ public abstract class WireSpool extends Item {
                 handStack
             );
 
-        this.target = (ElectricBlockEntity)clickSummary.getC().target;
+        this.target = (WireNodeBlockEntity)clickSummary.getC().target;
         this.player = player;
         
         if(clickSummary.getB() == -1) 
@@ -214,7 +214,7 @@ public abstract class WireSpool extends Item {
      * first initiates the connection. Creates a FakeNodeConnection attached to the player.
      * @return InteractionResult indicating the success or failure of this interaction
      */
-    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary, Vec3 clickedLoc) {
+    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
 
         ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
         this.intermediary = clickSummary.getC().makeFakeConnection(this, targetedNode.getId(), player);
@@ -237,13 +237,13 @@ public abstract class WireSpool extends Item {
      * Turns the previously established FakeNodeConnection into an ElectricNodeConnection.
      * @return InteractionResult indicating the success or failure of this interaction
      */
-    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank> clickSummary, Vec3 clickedLoc) {
+    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
 
         ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
 
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
-            if(world.getBlockEntity(getPos(nbt)) instanceof ElectricBlockEntity ebeFrom) {
+            if(world.getBlockEntity(getPos(nbt)) instanceof WireNodeBlockEntity ebeFrom) {
 
                 if(intermediary == null && wireStack.hasTag()) { // on world load this item may have NBT but no valid intermediary
                     clearTag(wireStack);
@@ -251,16 +251,16 @@ public abstract class WireSpool extends Item {
                 }
 
                 NodeConnectResult result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), targetedNode.getId());
-                Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
+                // Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
 
                 if(!world.isClientSide() && !result.isSuccessful()) {
                     if(result.isFatal()) {
                         revert(wireStack, false);
                         if(wireStack.hasTag())
-                            target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                            target = (WireNodeBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
                     } else {
                         if(wireStack.hasTag()) {
-                            target = (ElectricBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
+                            target = (WireNodeBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
                         }
                     }
                 }
@@ -320,13 +320,11 @@ public abstract class WireSpool extends Item {
     }
 
     private void revert(ItemStack stack, boolean clear) {
-        Mechano.log("REVERT");
         clearTag(stack);
         if(clear && intermediary != null) cancelConnection(target, intermediary.getSecond().getSourceID());
     }
 
-    private void revert(ElectricBlockEntity ebe, ItemStack stack, boolean clear) {
-        Mechano.log("REVERT");
+    private void revert(WireNodeBlockEntity ebe, ItemStack stack, boolean clear) {
         clearTag(stack);
         if(clear && intermediary != null) cancelConnection(ebe, intermediary.getSecond().getSourceID());
     }
@@ -334,7 +332,7 @@ public abstract class WireSpool extends Item {
     /***
      * Reverts connection to reflect the state of the NodeBank before the connection was attempted.
      */
-    private void cancelConnection(ElectricBlockEntity ebe, String sourceID) {
+    private void cancelConnection(WireNodeBlockEntity ebe, String sourceID) {
         if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
         sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }

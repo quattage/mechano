@@ -1,7 +1,5 @@
 package com.quattage.mechano.core.block.orientation;
 
-import net.minecraft.core.Vec3i;
-
 public class XY {
 
     public int x;

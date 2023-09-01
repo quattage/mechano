@@ -4,7 +4,8 @@ import java.util.List;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock.WideBlockModelType;
-import com.quattage.mechano.core.effects.BoundParticleSpawner;
+import com.quattage.mechano.core.effects.ParticleBuilder;
+import com.quattage.mechano.core.effects.ParticleSpawner;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
@@ -12,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.MenuProvider;
@@ -29,7 +31,7 @@ public class ToolStationBlockEntity extends SmartBlockEntity implements MenuProv
 
     // storage data
     public final ToolStationInventory INVENTORY;
-    private BoundParticleSpawner particle;
+    private ParticleSpawner particle;
     private String maxUpgrade = "";
 
     // progress data
@@ -46,11 +48,11 @@ public class ToolStationBlockEntity extends SmartBlockEntity implements MenuProv
     @Override
     public void setLevel(Level pLevel) {
         super.setLevel(pLevel);
-        particle = new BoundParticleSpawner((BlockEntity)this)
-            .withRandom(0.3f)
-            .withDensity(6)
-            .toNearestCenter()
-            .toOffset(0, 0.33, 0);
+        particle = ParticleBuilder.ofType(this)
+            .at(getBlockPos())
+            .density(2)
+            .randomness(0.01f)
+            .build();
     }
 
     public void sendToMenu(FriendlyByteBuf buffer) {
@@ -102,57 +104,32 @@ public class ToolStationBlockEntity extends SmartBlockEntity implements MenuProv
     }
 
     public void spawnOpposingBreakParticles(BlockPos pos) {
-        BoundParticleSpawner breakSpawner = new BoundParticleSpawner(this);
-        breakSpawner.toAbsolute(pos)
-            .withDensity(5)
-            .withSpeed(0.8f)
-            .toNearestCenter()
-            .spawn();
+        ParticleBuilder.ofType(this)
+            .at(getBlockPos())
+            .density(5)
+            .randomness(0.8f)
+        .build().spawnAsServer((ServerLevel)level);
     }
 
     public void doUpgradeEffects(BlockState state, WideBlockModelType blockType) {
         switch (blockType) {
             case BASE:
-                particle.spawn();
-                particle.toDirectionalOffset(state.getValue(ToolStationBlock.FACING)
-                    .getClockWise())
-                    .spawn();
+                particle.spawnAsServer((ServerLevel)level);
                 level.playSound(null, worldPosition, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 0.5f, 0.6f);
                 level.playSound(null, worldPosition, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 2f, 0.6f);
                 break;
             case FORGED:
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toOffset(0, 0, 0)
-                    .spawn();
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
-                    .spawn();
+                particle.spawnAsServer((ServerLevel)level);
                 level.playSound(null, worldPosition, SoundEvents.ITEM_FRAME_BREAK, SoundSource.BLOCKS, 0.7f, 0.9f);
                 level.playSound(null, worldPosition, SoundEvents.POLISHED_DEEPSLATE_PLACE, SoundSource.BLOCKS, 3f, 0.3f);
                 break;
             case HEATED:
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toOffset(0, 0, 0)
-                    .spawn();
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
-                    .spawn();
+                particle.spawnAsServer((ServerLevel)level);
                 level.playSound(null, worldPosition, SoundEvents.ITEM_FRAME_BREAK, SoundSource.BLOCKS, 0.7f, 0.9f);
                 level.playSound(null, worldPosition, SoundEvents.POLISHED_DEEPSLATE_PLACE, SoundSource.BLOCKS, 3f, 0.3f);
                 break;
             case MAXIMIZED:
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toOffset(0, 0, 0)
-                    .spawn();
-                particle
-                    .withCustom(Blocks.NETHERITE_BLOCK)
-                    .toDirectionalOffset(state.getValue(ToolStationBlock.FACING).getClockWise())
-                    .spawn();
+                particle.spawnAsServer((ServerLevel)level);
                 level.playSound(null, worldPosition, SoundEvents.ITEM_FRAME_BREAK, SoundSource.BLOCKS, 0.5f, 0.5f);
                 level.playSound(null, worldPosition, SoundEvents.BLAZE_SHOOT, SoundSource.BLOCKS, 0.2f, 0.3f);
                 break;

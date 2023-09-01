@@ -5,6 +5,7 @@ import java.util.HashSet;
 
 import com.quattage.mechano.core.block.orientation.relative.Relative;
 import com.quattage.mechano.core.block.orientation.relative.RelativeDirection;
+import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
 import com.quattage.mechano.core.electricity.node.base.ElectricNode;
 import com.quattage.mechano.core.electricity.node.base.ElectricNodeBuilder;
 import com.quattage.mechano.core.electricity.node.base.NodeLocation;
@@ -13,14 +14,14 @@ import com.quattage.mechano.core.electricity.node.base.NodeMode;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-public class NodeBankBuilder {
+public class NodeBankBuilder<T extends ElectricBlockEntity> {
     
     private int capacity = 10000;
     private int maxInput = 5000;
     private int maxOutput = 5000;
     private int startEnergy = 0;
 
-    private BlockEntity target = null;
+    private T target = null;
     
     private final ArrayList<ElectricNode> nodesToAdd = new ArrayList<ElectricNode>();
     private HashSet<RelativeDirection> dirsToAdd = null;
@@ -32,7 +33,7 @@ public class NodeBankBuilder {
      * @param target BlockEntity to bind this NodeBank to
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder at(BlockEntity target) {
+    public NodeBankBuilder<T> at(T target) {
         this.target = target;
         return this;
     }
@@ -43,7 +44,7 @@ public class NodeBankBuilder {
      * @param capacity
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder capacity(int capacity) {
+    public NodeBankBuilder<T> capacity(int capacity) {
         this.capacity = capacity;
         return this;
     }
@@ -54,7 +55,7 @@ public class NodeBankBuilder {
      * @param io FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder maxIO(int io) {
+    public NodeBankBuilder<T> maxIO(int io) {
         this.maxInput = io;
         this.maxOutput = io;
         return this;
@@ -66,7 +67,7 @@ public class NodeBankBuilder {
      * @param maxInput FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder maxInput(int maxInput) {
+    public NodeBankBuilder<T> maxInput(int maxInput) {
         this.maxInput = maxInput;
         return this;
     }
@@ -77,7 +78,7 @@ public class NodeBankBuilder {
      * @param maxInput FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder maxOutput(int maxOutput) {
+    public NodeBankBuilder<T> maxOutput(int maxOutput) {
         this.maxOutput = maxOutput;
         return this;
     }
@@ -103,7 +104,7 @@ public class NodeBankBuilder {
      * @return This NodeBankBuilder, modified to reflect this change.
      * * Leave empty to completely disable energy interactions.
      */
-    public NodeBankBuilder interfaceSide(Relative dir) {
+    public NodeBankBuilder<T> interfaceSide(Relative dir) {
         newDirsIfNull();
         dirsToAdd.add(new RelativeDirection(dir));
         clearDirsIfFull();
@@ -132,7 +133,7 @@ public class NodeBankBuilder {
      * @param dir RelativeDirection to add
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder interfaceSide(String s) {
+    public NodeBankBuilder<T> interfaceSide(String s) {
         newDirsIfNull();
         if(s.toUpperCase().equals("ALL") || s.toUpperCase().equals("A")) {
             dirsToAdd.clear();
@@ -187,7 +188,7 @@ public class NodeBankBuilder {
      * This behavior is default.</strong>
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder noEnergySides() {
+    public NodeBankBuilder<T> noEnergySides() {
         dirsToAdd = null;
         return this;
     }
@@ -199,7 +200,7 @@ public class NodeBankBuilder {
      * @param startEnergy FE to start with
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder withStartingEnergy(int startEnergy) {
+    public NodeBankBuilder<T> withStartingEnergy(int startEnergy) {
         if(startEnergy > capacity) startEnergy = capacity;
         this.startEnergy = startEnergy;
         return this;
@@ -220,7 +221,7 @@ public class NodeBankBuilder {
      * @param node ElectricNode to add
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder add(ElectricNode node) {
+    public NodeBankBuilder<T> add(ElectricNode node) {
         nodesToAdd.add(node);
         return this;
     }
@@ -233,7 +234,7 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(NodeLocation location, String id, int maxConnections) {
+    public NodeBankBuilder<T> add(NodeLocation location, String id, int maxConnections) {
         return add(new ElectricNode(location, id, maxConnections, nodesToAdd.size()));
     }
 
@@ -245,7 +246,7 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(NodeLocation location, String id, NodeMode mode, int maxConnections) {
+    public NodeBankBuilder<T> add(NodeLocation location, String id, NodeMode mode, int maxConnections) {
         return add(new ElectricNode(location, id, mode, maxConnections, nodesToAdd.size()));
     }
 
@@ -257,7 +258,7 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(int x, int y, int z, float size, String id, int maxConnections) {
+    public NodeBankBuilder<T> add(int x, int y, int z, float size, String id, int maxConnections) {
         return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH), id, maxConnections, nodesToAdd.size()));
     }
 
@@ -269,7 +270,7 @@ public class NodeBankBuilder {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder add(int x, int y, int z, float size, Direction defaultDir, String id, int maxConnections) {
+    public NodeBankBuilder<T> add(int x, int y, int z, float size, Direction defaultDir, String id, int maxConnections) {
         return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, defaultDir), id, maxConnections, nodesToAdd.size()));
     }
 
@@ -285,8 +286,8 @@ public class NodeBankBuilder {
      * (see {@link #at(BlockEntity) at()})
      * @return a NodeBank instance.
      */
-    public NodeBank build() {
+    public NodeBank<T> build() {
         doCompleteCheck();
-        return new NodeBank(target, nodesToAdd, dirsToAdd, capacity, maxInput, maxOutput, startEnergy);
+        return new NodeBank<T>(target, nodesToAdd, dirsToAdd, capacity, maxInput, maxOutput, startEnergy);
     }
 }

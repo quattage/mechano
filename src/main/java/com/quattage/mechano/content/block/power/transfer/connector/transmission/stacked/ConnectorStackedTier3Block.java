@@ -5,10 +5,10 @@ import java.util.ArrayList;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.core.CreativeTabExcludable;
-import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.UpgradableBlock;
-import com.quattage.mechano.core.util.ShapeBuilder;
+import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
+import com.quattage.mechano.foundation.block.UpgradableBlock;
+import com.quattage.mechano.foundation.helper.CreativeTabExcludable;
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
 

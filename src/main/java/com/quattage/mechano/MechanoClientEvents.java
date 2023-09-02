@@ -1,9 +1,9 @@
 package com.quattage.mechano;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
-import com.quattage.mechano.content.item.spool.ElectricNodeSpoolBehavior;
-import com.quattage.mechano.core.electricity.rendering.ElectricNodeWireDebugger;
-import com.quattage.mechano.core.events.ClientBehavior;
+import com.quattage.mechano.foundation.behavior.ClientBehavior;
+import com.quattage.mechano.foundation.behavior.ElectricNodeSpoolBehavior;
+import com.quattage.mechano.foundation.behavior.ElectricNodeWireDebugger;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;

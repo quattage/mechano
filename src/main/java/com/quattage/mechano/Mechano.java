@@ -1,7 +1,6 @@
 package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.network.MechanoPackets;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 

@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.quattage.mechano.core.CreativeTabExcludable;
+import com.quattage.mechano.foundation.helper.CreativeTabExcludable;
 import com.tterrag.registrate.util.entry.RegistryEntry;
 
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;

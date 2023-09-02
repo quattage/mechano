@@ -1,11 +1,11 @@
 package com.quattage.mechano.content.block.power.transfer.connector.transmission;
 
-import com.quattage.mechano.core.block.orientation.relative.Relative;
-import com.quattage.mechano.core.electricity.battery.BatteryBankBuilder;
-import com.quattage.mechano.core.electricity.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
-import com.quattage.mechano.core.electricity.node.NodeBankBuilder;
-import com.quattage.mechano.core.electricity.node.base.NodeMode;
+import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
+import com.quattage.mechano.foundation.block.orientation.relative.Relative;
+import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.builder.NodeBankBuilder;
+import com.quattage.mechano.foundation.electricity.core.node.NodeMode;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;

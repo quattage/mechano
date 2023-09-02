@@ -4,8 +4,8 @@ import java.util.List;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock.WideBlockModelType;
-import com.quattage.mechano.core.effects.ParticleBuilder;
-import com.quattage.mechano.core.effects.ParticleSpawner;
+import com.quattage.mechano.foundation.effect.ParticleBuilder;
+import com.quattage.mechano.foundation.effect.ParticleSpawner;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 

@@ -3,7 +3,7 @@ package com.quattage.mechano.content.block.power.transfer.voltometer;
 import java.util.Locale;
 
 import com.quattage.mechano.MechanoBlockEntities;
-import com.quattage.mechano.core.util.ShapeBuilder;
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;

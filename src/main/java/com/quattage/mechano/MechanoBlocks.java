@@ -17,7 +17,7 @@ import com.quattage.mechano.content.block.power.transfer.connector.transmission.
 import com.quattage.mechano.content.block.power.transfer.test.TestBlock;
 import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlock;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock;
-import com.quattage.mechano.core.block.datagen.DynamicStateGenerator;
+import com.quattage.mechano.foundation.block.orientation.DynamicStateGenerator;
 import com.simibubi.create.content.kinetics.BlockStressDefaults;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.world.level.block.Block;

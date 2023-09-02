@@ -3,9 +3,10 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 
 import java.util.Locale;
 
-import com.quattage.mechano.core.block.SimpleOrientedBlock;
-import com.quattage.mechano.core.block.orientation.SimpleOrientation;
-import com.quattage.mechano.core.util.ShapeBuilder;
+import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
+import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
+import com.quattage.mechano.foundation.helper.BlockMath;
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.VoxelShaper;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour.Properties;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
@@ -77,7 +79,7 @@ public class TransmissionNodeBlock extends SimpleOrientedBlock {
         Direction localForward = context.getHorizontalDirection().getOpposite();
 
         if(localUp.getAxis() == localForward.getAxis())
-            localForward = SimpleOrientedBlock.getTriQuadrant(context, localUp, false);
+            localForward = BlockMath.getClickedQuadrant(context, localUp, false);
 
         return this.defaultBlockState().setValue(ORIENTATION, SimpleOrientation.combine(localUp, localForward.getAxis()));
     }

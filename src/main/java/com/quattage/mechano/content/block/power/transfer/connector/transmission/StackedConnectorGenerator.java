@@ -2,9 +2,9 @@ package com.quattage.mechano.content.block.power.transfer.connector.transmission
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier0Block;
-import com.quattage.mechano.core.block.DirectionTransformer;
-import com.quattage.mechano.core.block.UpgradableBlock;
-import com.quattage.mechano.core.block.datagen.DynamicStateGenerator;
+import com.quattage.mechano.foundation.block.UpgradableBlock;
+import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.block.orientation.DynamicStateGenerator;
 import com.simibubi.create.foundation.data.SpecialBlockStateGen;
 import com.tterrag.registrate.providers.DataGenContext;
 import com.tterrag.registrate.providers.RegistrateBlockstateProvider;

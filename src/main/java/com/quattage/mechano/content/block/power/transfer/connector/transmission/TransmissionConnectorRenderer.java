@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.block.power.transfer.connector.transmission;
 
 import com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked.ConnectorStackedTier1BlockEntity;
-import com.quattage.mechano.core.electricity.rendering.ElectricBlockRenderer;
+import com.quattage.mechano.foundation.electricity.rendering.ElectricBlockRenderer;
 
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 

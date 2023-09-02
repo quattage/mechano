@@ -4,7 +4,7 @@ import java.util.Locale;
 
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.core.util.ShapeBuilder;
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;

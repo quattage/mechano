@@ -2,7 +2,7 @@ package com.quattage.mechano.content.block.power.transfer.test;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.core.electricity.rendering.ElectricBlockRenderer;
+import com.quattage.mechano.foundation.electricity.rendering.ElectricBlockRenderer;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
 
 import net.minecraft.client.renderer.MultiBufferSource;

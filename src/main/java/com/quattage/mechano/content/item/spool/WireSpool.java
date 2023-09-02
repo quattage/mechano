@@ -9,12 +9,12 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.core.electricity.blockEntity.WireNodeBlockEntity;
-import com.quattage.mechano.core.electricity.node.NodeBank;
-import com.quattage.mechano.core.electricity.node.base.ElectricNode;
-import com.quattage.mechano.core.electricity.node.connection.FakeNodeConnection;
-import com.quattage.mechano.core.electricity.node.connection.NodeConnectResult;
-import com.quattage.mechano.core.util.VectorHelper;
+import com.quattage.mechano.foundation.electricity.NodeBank;
+import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConnection;
+import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
+import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;

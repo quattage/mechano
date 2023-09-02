@@ -4,10 +4,10 @@ import java.util.ArrayList;
 
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.core.CreativeTabExcludable;
-import com.quattage.mechano.core.block.CombinedOrientedBlock;
-import com.quattage.mechano.core.block.UpgradableBlock;
-import com.quattage.mechano.core.util.ShapeBuilder;
+import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
+import com.quattage.mechano.foundation.block.UpgradableBlock;
+import com.quattage.mechano.foundation.helper.CreativeTabExcludable;
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
 
@@ -61,12 +61,6 @@ public class ConnectorStackedTier1Block extends UpgradableBlock implements IBE<C
     @Override
     protected Item setUpgradeItem() {
         return MechanoBlocks.CONNECTOR_TRANSMISSION.asItem();
-    }
-
-    @Override
-    public BlockState updateAfterWrenched(BlockState newState, UseOnContext context) {
-        // TODO Auto-generated method stub
-        return super.updateAfterWrenched(newState, context);
     }
 
     @Override

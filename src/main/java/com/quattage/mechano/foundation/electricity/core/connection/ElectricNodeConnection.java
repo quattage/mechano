@@ -56,7 +56,7 @@ public class ElectricNodeConnection extends NodeConnection {
 
         Level world = target.getLevel();
         if(world != null) {  // world can be null during world load.
-            NodeBank destBank = NodeBank.retrieveFrom(world, target, relativePos);
+            NodeBank<?> destBank = NodeBank.retrieveFrom(world, target, relativePos);
             if(destBank != null) {
                 destPos = destBank.get(destinationID).getPosition();
                 parentPos = destBank.target.getBlockPos();

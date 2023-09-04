@@ -281,7 +281,7 @@ public class ElectricNode {
      * @param target Connections targeting this NodeBank will be removed
      * @return True if this ElectricNode's connections were altered in any way.
      */
-    public boolean removeConnectionsInvolving(NodeBank origin) {
+    public boolean removeConnectionsInvolving(NodeBank<?> origin) {
         boolean changed = false;
         for(int x = 0; x < connections.length; x++) {
             if(connections[x] == null) continue;

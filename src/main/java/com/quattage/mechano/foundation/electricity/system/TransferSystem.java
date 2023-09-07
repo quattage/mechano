@@ -1,7 +1,8 @@
 package com.quattage.mechano.foundation.electricity.system;
 
-import java.util.LinkedList;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import net.minecraft.core.BlockPos;
 
 /***
@@ -18,158 +19,223 @@ public class TransferSystem {
     
     /***
      * Stores the X axis of the adjacency matrix
-     */ //TODO maybe don't use a linkedlist for this if it turns out not to be necessary
-    private LinkedList<SystemNode> networkMatrix = new LinkedList<SystemNode>();
+     */
+    private HashMap<BlockPos, SystemNode> systemMatrix = new HashMap<BlockPos, SystemNode>();
+
+    /***
+     * Instantiates a blank TransferSystem
+     */
+    public TransferSystem() {}
+
+    /***
+     * Populates this TransferSystem with members of a list
+     * @param cluster ArrayList of SystemNodes to add to this TransferSystem upon creation
+     */
+    public TransferSystem(ArrayList<SystemNode> cluster) {
+        for(SystemNode node : cluster)
+            systemMatrix.put(node.pos, node);
+    }
 
     public boolean addNode(SystemNode node) {
         if(node == null) 
             throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
-        if(networkMatrix.contains(node))
+        if(systemMatrix.containsKey(node.pos))
             return false;
-        return networkMatrix.add(node);
-    }
-
-    public SystemNode popNode(int nodeIndex) {
-        return networkMatrix.remove(nodeIndex);
-    }
-
-    public boolean removeNode(int nodeIndex) {
-        SystemNode removed = networkMatrix.remove(nodeIndex);
-        return removed == null;
-    }
-
-    public boolean removeNode(SystemNode node) {
-        return networkMatrix.remove(node);
+        systemMatrix.put(node.pos, node);
+        return true;
     }
 
     /***
-     * Checks whether a link exists between given SystemNodes. 
+     * Removes a node from this network and returns it
+     * @param at BlockPos key to remove
+     * @return The SystemNode that was removed, if any
+     */
+    public SystemNode popNode(BlockPos at) {
+        return systemMatrix.remove(at);
+    }
+
+    /***
+     * Removes a node from this network
+     * @param at BlockPos key to remove
+     * @return True if this TransferSystem was modified as a result of this removal
+     */
+    public boolean removeNode(BlockPos at) {
+        SystemNode removed = systemMatrix.remove(at);
+        return removed != null;
+    }
+
+    /***
+     * Checks whether a link exists between given SystemNodes. The matrix within 
+     * all TransferSystems is undirected, meaning that both parameters are interchangable
+     * with each other.
      * @param first
      * @param second
      * @return True if a connection exists between the two nodes.
      */
-    public boolean doesLinkExistBetween(SystemNode first, SystemNode second) {
-        if(networkMatrix.contains(first) && networkMatrix.contains(second))
-            if(first.isLinkedTo(this, second)) return true;
-        return false;
-    }
-
-    /***
-     * Checks whether a link exists between the given indexes. The matrix within 
-     * this TransferSystem undirected, so indexFrom and indexTo are interchangable.
-     * @param indexFrom 
-     * @param indexTo
-     * @return True if the SystemNodes at the given indexes are connected.
-     */
-    public boolean doesLinkExistBetween(int indexFrom, int indexTo) {
-        if(isNodeInBounds(indexFrom)) {
-            SystemNode nF = networkMatrix.get(indexFrom);
-            return nF.isLinkWithinBounds(indexTo);
-        }
-        if(isNodeInBounds(indexTo)) {
-            SystemNode nT = networkMatrix.get(indexTo);
-            return nT.isLinkWithinBounds(indexFrom);
-        }
-        return false;
+    public boolean doesLinkExistBetween(BlockPos first, BlockPos second) {
+        requireValidPos("Failed to get link status", first, second);
+        return systemMatrix.get(first).isLinkedTo(systemMatrix.get(second));
     }
 
     /***
      * Create a link (edge) between the SystemNodes located at the 
      * given indexes. This link is non-directed. It is added 
      * symmetrically to both nodes at both provided indexes.
-     * 
-     * @throws ArrayIndexOutOfBoundsException If either provided index doesn't 
-     * exist within this TransferSystem
+     * @throws NullPointerException If either provided BlockPos 
+     * isn't in this TransferSystem.
      * @param indexFrom Index of one SystemNode to link
      * @param indexTo Index of the other SystemNode to link
      * @return True if the SystemNodes were modified
      */
-    public boolean link(int indexFrom, int indexTo) {
-        if(!isNodeInBounds(indexFrom)) 
-            throw new ArrayIndexOutOfBoundsException("Failed to add a link to this TransferSystem - Index " + 
-                indexFrom + " is out of bounds for a TransferSystem of size " + networkMatrix.size());
-        if(!isNodeInBounds(indexTo)) 
-            throw new ArrayIndexOutOfBoundsException("Failed to add a link to this TransferSystem - Index " + 
-                indexTo + " is out of bounds for a TransferSystem of size " + networkMatrix.size());
-
-        SystemNode nodeF = networkMatrix.get(indexFrom);
-        SystemNode nodeT = networkMatrix.get(indexTo);
-
-        return nodeF.addLink(indexTo) && nodeT.addLink(indexFrom);
+    public boolean link(BlockPos from, BlockPos to) {
+        requireValidPos("Failed to link SystemNodes", from, to);
+        SystemNode nodeF = systemMatrix.get(from);
+        SystemNode nodeT = systemMatrix.get(to);
+        return nodeF.linkTo(nodeT) && nodeT.linkTo(nodeF);
     }
 
     /***
-     * Create a link (edge) between the two given SystemNodes
-     * This link is non-directed. It is added symmetrically to 
-     * both provided nodes.
-     * 
+     * Create a link (edge) between the SystemNodes located at the 
+     * given indexes. This link is non-directed. It is added 
+     * symmetrically to both nodes at both provided indexes.
      * @throws NullPointerException If either provided SystemNode
-     * doesn't exist within this TransferSystem
-     * @param from SystemNode to link
-     * @param to SystemNode to link
+     * does not exist within this TransferSystem.
+     * @param first SystemNode to link
+     * @param second SystemNode to link
      * @return True if the SystemNodes were modified
      */
-    public boolean link(SystemNode from, SystemNode to) {
-        int indexFrom = getIndexOf(from);
-        int indexTo = getIndexOf(to);
-        if(indexFrom == -1)
-            throw new NullPointerException("Failed to add a link to this TransferSystem - SystemNode " + 
-                from + " does not exist in this TransferSystem!");
-        if(indexTo == -1)
-            throw new NullPointerException("Failed to add a link to this TransferSystem - SystemNode " + 
-                to + " does not exist in this TransferSystem!");
+    public boolean link(SystemNode first, SystemNode second) {
+        requireValidNode("Failed to link SystemNodes", first, second);
 
-        return from.addLink(indexTo) && to.addLink(indexFrom);
-    }
-
-    public boolean isNodeInBounds(int index) {
-        return -1 < index && index < networkMatrix.size();
+        return first.linkTo(second) && second.linkTo(first);
     }
 
     /***
-     * Gets the numerical index of the provided SystemNode 
-     * @param node Node to look for
-     * @return Index of the node, or -1 if none is found.
+     * Performs a DFS to determine all of the different "clusters"
+     * that form this TransferSystem. Individual vertices that are found to 
+     * possess no connections are discarded, and are not included in the 
+     * resulting clusters. <strong>Does not modify this system in-place.</strong>
+     * 
+     * @return ArrayList of TransferSystems formed from the individual clusters 
+     * within this TransferSystem.
      */
-    public int getIndexOf(SystemNode node) {
-        return networkMatrix.indexOf(node);
+    public ArrayList<TransferSystem> trySplit() {
+
+        HashSet<BlockPos> visited = new HashSet<>();
+        ArrayList<TransferSystem> clusters = new ArrayList<TransferSystem>();
+
+        for(BlockPos vertex : systemMatrix.keySet()) {
+            if(visited.contains(vertex)) continue;
+            ArrayList<SystemNode> clusterContents = new ArrayList<>();
+            depthFirstPopulate(vertex, visited, clusterContents);
+            if(clusterContents.size() > 1)
+                clusters.add(new TransferSystem(clusterContents));
+        }
+        return clusters;
     }
 
     /***
-     * Get a node in this network at the given index
-     * @throws IndexOutOfBoundsException only when searching by index
-     * @param index 
-     * @return SystemNode at the given index
+     * Populates the given cluster ArrayList with all SystemNodes directly and 
+     * indirectly connected to the node at the given BlockPos. The TransferSystem 
+     * is traversed recursively, so calls must instantiate their own HashSet and 
+     * ArrayList for storage.
+     * @param vertex Vertex to begin the saerch outwards from
+     * @param visted HashSet (usually just instantiated directly and empty when called) to store visited vertices
+     * @param cluster ArrayList which will be populated with all nodes that can be found connected to the given vertex.
      */
-    public SystemNode getNode(int index) {
-        return networkMatrix.get(index);
+    public void depthFirstPopulate(BlockPos vertex, HashSet<BlockPos> visited, ArrayList<SystemNode> cluster) {
+        SystemNode thisIteration = getNode(vertex);
+        cluster.add(thisIteration);
+        visited.add(vertex);
+
+        for(BlockPos connectedPos : thisIteration.links) {
+            if(!visited.contains(connectedPos));
+                depthFirstPopulate(connectedPos, visited, cluster);
+        }
     }
 
     /***
-     * Get a node in this network at the given index
-     * @throws IndexOutOfBoundsException only when searching by index
-     * @param index 
-     * @return SystemNode at the given index, or null if one couldn't be found
+     * Appends all elements from the supplied TransferSystem to this
+     * TransferSystem, modifying it in-place.
+     * @return This TransferSystem (for chaining)
      */
-    public SystemNode getNode(SystemNode member) {
-        for(SystemNode compare : networkMatrix)
-            if(compare.equals(member)) return compare;
-        return null;
+    public TransferSystem mergeWith(TransferSystem other) {
+        systemMatrix.putAll(other.systemMatrix);
+        return this;
     }
 
     /***
-     * Get a node in this network at the given index
-     * @throws IndexOutOfBoundsException only when searching by index
-     * @param index 
-     * @return SystemNode at the given index, or null if one couldn't be found
+     * Retrieves a node in this network based on BlockPos.
+     * @param BlockPos
+     * @return SystemNode at the given BlockPos
      */
     public SystemNode getNode(BlockPos pos) {
-        for(SystemNode compare : networkMatrix)
-            if(compare.pos.equals(pos)) return compare;
-        return null;
+        return systemMatrix.get(pos);
     }
 
-    public LinkedList<SystemNode> getNetworkMatrix() {
-        return networkMatrix;
+    /***
+     * @return True if this TransferSystem contains the given SystemNode
+     */
+    public boolean containsNode(SystemNode node) {
+        return systemMatrix.containsValue(node);
+    }
+
+    /***
+     * Gets this TransferSystem as a raw HashMap. <p>
+     * <strong>Modifying this map is not reccomended.</strong>
+     * @return HashMap containing all SystemNodes in this TransferSystem
+     */
+    public HashMap<BlockPos, SystemNode> getSystemMatrix() {
+        return systemMatrix;
+    }
+
+    /***
+     * @return True if this TransferSystem doesn't contain any SystemNodes.
+     */
+    public boolean isEmpty() {
+        return systemMatrix.isEmpty();
+    }
+
+    /***
+     * @return False if ALL of the SystemNodes in this TranferSystem are empty
+     * (This network has no edges)
+     */
+    public boolean hasLinks() {
+        for(SystemNode node : systemMatrix.values())
+            if(!node.isEmpty()) return true;
+        return false;
+    }
+
+    public int size() {
+        return systemMatrix.size();
+    }
+
+    public String toString() {
+        String output = "";
+        int x = 1;
+        for(SystemNode node : systemMatrix.values()) {
+            output += "\tNode " + x + ": " + node + "\n";
+            x++;
+        }
+        return output;
+    }
+
+    public void requireValidPos(String failMessage, BlockPos... posSet) {
+        for(BlockPos pos : posSet) {
+            if(pos == null) 
+                throw new NullPointerException(failMessage + " - The provided BlockPos is null!");
+            if(!systemMatrix.containsKey(pos))
+                throw new NullPointerException(failMessage + " - No valid SystemNode at BlockPos [" 
+                + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "] could be found!");
+        }
+    }
+
+    public void requireValidNode(String failMessage, SystemNode... nodeSet) {
+        for(SystemNode node : nodeSet) {
+            if(node == null)
+                throw new NullPointerException(failMessage + " - The provided SystemNode is null!");
+            if(!systemMatrix.containsValue(node))
+                throw new NullPointerException(failMessage + " - The provided SystemNode does not exist in this TransferSystem!");
+        }       
     }
 }

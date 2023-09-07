@@ -32,20 +32,12 @@ public class SystemNode {
      * When in the right context, this BlockPos can be used to pull a NodeBank instance from the world.
      */
     protected BlockPos pos;
-
+    
     /***
-     * Represents the indexes of the other nodes that this SystemNode is connected to
-     * within the parent TransferSystem.
+     * Storing links is required to build the matrix. They're only stored by BlockPos, because this data is lightweight
+     * and any additional information is easy enough to retrieve.
      */
-    protected LinkedList<Integer> links = new LinkedList<Integer>();
-
-    // allows links to be sorted based on numeric value
-    private static final Comparator<Integer> linkComparator = 
-        new Comparator<Integer>() {
-        public int compare(Integer n1, Integer n2) {
-            return n1.compareTo(n2);
-        }
-    };
+    protected LinkedList<BlockPos> links = new LinkedList<BlockPos>();
 
     public SystemNode(BlockPos pos) {
         this.pos = pos;
@@ -63,70 +55,123 @@ public class SystemNode {
     }
 
     /***
-     * Adds a link to this SystemNode. This link is just an arbitrary integer and isn't checked.
-     * @param connectionIndex index in the TransferSystem to add to this SystemNode
+     * Adds a link from the given SystemNode to this SystemNode.
+     * @param other Other SystemNode within the given TransferSystem to add to this SystemNode
      * @return True if the list of connections within this SystemNode was changed.
      */
-    protected boolean addLink(int connectionIndex) {
-        if(links.contains(connectionIndex)) return false;
-        links.addLast(connectionIndex); return true;
+    protected boolean linkTo(SystemNode other) {
+        if(links.contains(other.pos)) return false;
+        return links.add(other.pos);
     }
 
     /***
      * Adds a link from the given SystemNode to this SystemNode.
-     * @param matrix TransferSystem to search within
+     * Does not perform any sanity checks to ensure that there is a valid
+     * SystemNode at the givem BlockPos.
      * @param other Other SystemNode within the given TransferSystem to add to this SystemNode
      * @return True if the list of connections within this SystemNode was changed.
      */
-    protected boolean addLink(TransferSystem matrix, SystemNode other) {
-        int x = matrix.getIndexOf(other);
-        if(x == -1) throw new NullPointerException("Failed to add link - SystemNode '" + other + "' not found in the provided matrix!");
-        return addLink(x);
+    protected boolean linkTo(BlockPos otherPos) {
+        if(links.contains(otherPos)) return false;
+        return links.add(otherPos);
     }
 
     /***
-     * Sorts the connections made to this SystemNode.
+     * Removes the link from this SystemNode to the given SystemNode.
+     * @param other
      */
-    public void sortLinks() {
-        Collections.sort(links, linkComparator);
+    public void unlinkFrom(SystemNode other) {
+        links.remove(other.getPos());
     }
 
-    public void removeLink(int connection) {
-        if(isLinkWithinBounds(connection))
-            links.remove(connection);
+    /***
+     * Removes the link from this SystemNode to the given SystemNode.
+     * Does not perform any sanity checks to ensure that there is a valid
+     * SystemNode at the givem BlockPos.
+     * @param other
+     */
+    public void unlinkFrom(BlockPos otherPos) {
+        links.remove(otherPos);
     }
 
     /***
      * Checks whether this SystemNode is linked to the given SystemNode.
+     * @param other SystemNode to check for 
+     * @return True if this SystemNode contains a link to the given SystemNode
+     */
+    public boolean isLinkedTo(SystemNode other) {
+        return this.links.contains(other.getPos());
+    }
+
+    /***
+     * Checks whether this SystemNode is linked to the given BlockPos.
+     * Does not perform any sanity checks to ensure that there is a valid
+     * SystemNode at the givem BlockPos.
      * @param matrix TransferSystem to check
      * @param other SystemNode to get from the links within this SystemNode
      * @return True if this SystemNode contains a link to the given SystemNode
      */
-    public boolean isLinkedTo(TransferSystem matrix, SystemNode other) {
-        return this.links.contains(matrix.getIndexOf(other));
+    public boolean isLinkedTo(BlockPos otherPos) {
+        return this.links.contains(otherPos);
+    }
+
+    /// This stuff was here because SystemNodes used to be stored in the TransferSystem by index.
+    /// this caused problems. They're hashed based on BlockPos now.
+    /// I'm not sure if this code was ever committed so it'll stay commented out in case it is needed later.
+    // /***
+    //  * Modifies all linked indicies by the given integer.
+    //  * Used for combining and splitting TransferSystems.
+    //  * @param amount Amount to shift by
+    //  */
+    // protected void shift(int amount) {
+    //     for(int x = 0; x < links.size(); x++) {
+    //         int shifted = links.get(x) + amount;
+    //         links.set(x, shifted);
+    //     }
+    // }
+
+    // /***
+    //  * Unlinks all SystemNodes after the given index.
+    //  * @param index Index to start removing at
+    //  * @param inclusive True if the operation includes the node at the index
+    //  */
+    // protected void unlinkGreater(int index, boolean inclusive) {
+    //     if(!isLinkWithinBounds(index)) 
+    //         throw new ArrayIndexOutOfBoundsException("Failed to unlink - Index '" 
+    //             + index + "' is out of bounds for this SystemNode!");
+    //     for(int x = inclusive ? index : index + 1; x < links.size(); x++)
+    //         removeLink(x);
+    // }
+
+    // // TODO ENSURE INSERTION ORDER IS ENFORCED IN ASCENDING ORDER OR THESE WONT WORK
+
+    // /***
+    //  * Unlinks all SystemNodes before the given index.
+    //  * @param index Index to stop removing at
+    //  * @param inclusive True if the operation includes the node at the index
+    //  */
+    // protected void unlinkLesser(int index, boolean inclusive) {
+    //     if(!isLinkWithinBounds(index)) 
+    //         throw new ArrayIndexOutOfBoundsException("Failed to unlink - Index '" 
+    //             + index + "' is out of bounds for this SystemNode!");
+    //     for(int x = 0; inclusive ? x <= index : x < index; x++)
+    //         removeLink(x);
+    // }
+
+    protected void unlinkAll() {
+        links.clear();
     }
 
     /***
-     * Checks whether this SystemNode contains a link to the given index
-     * @param matrix TransferSystem to check
-     * @param index Index of the other SystemNode in the given TransferSystem
-     * @return True if the SystemNode found at the provided index is connected to this SystemNode
+     * Checks whether this SystemNode has any links attached to it
+     * @return True if this SystemNode doesn't contain any links
      */
-    public boolean isLinkedTo(TransferSystem matrix, int other) {
-        return this.links.contains(other);
-    }
-
-    /***
-     * Checks whether this SystemNode has a link at the given index
-     * @param index Index within this SystemNode's connections list (the Y axis) to check.
-     * @return True if this SystemNode has a link at the given index 
-     */
-    public boolean isLinkWithinBounds(int index) {
-        return (index > -1) && index < (links.size() - 1);
+    public boolean isEmpty() {
+        return links.isEmpty();
     }
 
     public String toString() {
-        String sig = isMember ? "M" : "A" + ", [" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]";
+        String sig = isMember ? "M" : "A" + ", [";
         String content = "";
         for(int x = 0; x < links.size(); x++) {
             content += links.get(x);
@@ -144,5 +189,9 @@ public class SystemNode {
 
     public int hashCode() {
         return this.pos.hashCode();
+    }
+
+    public BlockPos getPos() {
+        return pos;
     }
 }

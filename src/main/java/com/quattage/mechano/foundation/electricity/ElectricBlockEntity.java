@@ -57,11 +57,12 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
         return batteryBank.provideEnergyCapabilities(cap, side);
     }
 
-    @Override
+    @Override // runs on first tick
     public void initialize() {
         super.initialize();
         reOrient();
         this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
+        
     }
 
     @Override

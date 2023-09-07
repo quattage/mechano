@@ -8,8 +8,13 @@ import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirect
 import com.quattage.mechano.foundation.electricity.core.node.NodeMode;
 import com.simibubi.create.foundation.utility.Color;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.energy.IEnergyStorage;
 
 public class InteractionPolicy {
     
@@ -105,6 +110,26 @@ public class InteractionPolicy {
             if(b.equals(block)) hasBlock = true;
         
         return denyOrAllow ? hasBlock : !hasBlock;
+    }
+
+    /***
+     * Determines whether or not this InteractionPolicy
+     * is interacting with any ForgeEnergy capabilities 
+     * in the world.
+     * @param parent BlockEntity to use as a reference for getting real-world positions
+     * @return True if this InteractionPolicy is facing towards
+     * a block which provides ForgeEnergy capabilities in the opposing direction
+     */
+    public boolean canSendOrReceive(BlockEntity parent) {
+        Level world = parent.getLevel();
+        if((!isInput && !isOutput) || world == null) 
+            return false;
+
+        BlockPos offset = parent.getBlockPos().relative(getDirection());
+        IEnergyStorage batteryAtPos = world.getBlockEntity(offset)
+            .getCapability(ForgeCapabilities.ENERGY, getDirection().getOpposite())
+            .orElse(null);
+        return batteryAtPos != null;
     }
 
     public Color getColor() {

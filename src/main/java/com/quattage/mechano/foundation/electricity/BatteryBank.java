@@ -15,6 +15,7 @@ import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
 import com.quattage.mechano.foundation.electricity.core.LocalEnergyStorage;
 import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
@@ -175,6 +176,17 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
         }
             
         return out;
+    }
+
+    /***
+     * Checks whether this BatteryBank is directly connected to any BlockEntities that have ForgeEnergy
+     * capabilites.
+     * @return True if this BatteryBank is interacting with a ForgeEnergy BlockEntity
+     */
+    public boolean isConnectedExternally() {
+        for(InteractionPolicy pol : interactions) 
+            if(pol.canSendOrReceive(target)) return true;
+        return false;
     }
 
     /***

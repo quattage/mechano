@@ -19,9 +19,9 @@ import net.minecraft.world.phys.Vec3;
 public class ElectricNodeConnection extends NodeConnection {
 
     private Vec3i relativePos;
-    private String destinationID;
+    private int destinationID;
 
-    public ElectricNodeConnection(WireSpool spoolType, NodeBank<?> fromBank, Vec3 sourcePos, NodeBank<?> toBank, String destinationID, boolean inverse) {
+    public ElectricNodeConnection(WireSpool spoolType, NodeBank<?> fromBank, Vec3 sourcePos, NodeBank<?> toBank, int destinationID, boolean inverse) {
         super(toBank.target.getBlockPos());
         this.sourcePos = sourcePos;
         destPos = toBank.get(destinationID).getPosition();
@@ -30,7 +30,7 @@ public class ElectricNodeConnection extends NodeConnection {
         this.spoolType = spoolType;
     }
 
-    public ElectricNodeConnection(WireSpool spoolType, NodeBank<?> fromBank, Vec3 sourcePos, NodeBank<?> toBank, String destinationID) {
+    public ElectricNodeConnection(WireSpool spoolType, NodeBank<?> fromBank, Vec3 sourcePos, NodeBank<?> toBank, int destinationID) {
         super(toBank.target.getBlockPos());
         this.sourcePos = sourcePos;
         destPos = toBank.get(destinationID).getPosition();
@@ -45,7 +45,7 @@ public class ElectricNodeConnection extends NodeConnection {
      */
     public ElectricNodeConnection(BlockEntity target, Vec3 sourcePos, CompoundTag in) {
         super(target.getBlockPos());
-        this.destinationID = in.getString("to");
+        this.destinationID = in.getInt("to");
         this.spoolType = WireSpool.get(in.getString("type"));
         this.sourcePos = sourcePos;
         this.relativePos = new Vec3i(
@@ -56,7 +56,7 @@ public class ElectricNodeConnection extends NodeConnection {
 
         Level world = target.getLevel();
         if(world != null) {  // world can be null during world load.
-            NodeBank<?> destBank = NodeBank.retrieveFrom(world, target, relativePos);
+            NodeBank<?> destBank = NodeBank.retrieveAtRelative(world, target, relativePos);
             if(destBank != null) {
                 destPos = destBank.get(destinationID).getPosition();
                 parentPos = destBank.target.getBlockPos();
@@ -80,7 +80,7 @@ public class ElectricNodeConnection extends NodeConnection {
 		in.putInt("rY", this.relativePos.getY());
 		in.putInt("rZ", this.relativePos.getZ());
         in.putInt("age", this.age);
-		in.putString("to", this.destinationID);
+		in.putInt("to", this.destinationID);
         if(spoolType == null) 
             in.putString("type", "none");
         else
@@ -115,7 +115,7 @@ public class ElectricNodeConnection extends NodeConnection {
         return true;
     }
 
-    public String getDestinationID() {
+    public int getDestinationID() {
         return destinationID;
     }
 

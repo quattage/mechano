@@ -247,13 +247,9 @@ public class VectorHelper {
     }
 
     public static double getMagnitude(Vec3 vec) {
-
         double x = vec.x == 0 ? 0.001: vec.x;
         double y = vec.y == 0 ? 0.001: vec.y;
-        double z = vec.z == 0 ? 0.001 : vec.z;
-
-        Mechano.log("Input: " + vec);
-        
+        double z = vec.z == 0 ? 0.001 : vec.z;        
         return Math.sqrt(Math.pow(x, 2.0) + Math.pow(y, 2.0) + Math.pow(z, 2.0));
     }
 

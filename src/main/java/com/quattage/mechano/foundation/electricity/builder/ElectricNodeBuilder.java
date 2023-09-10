@@ -16,7 +16,6 @@ public class ElectricNodeBuilder {
     private final BlockEntity target;
     private NodeMode mode = NodeMode.BOTH;
     private NodeLocation location;
-    private String id = null;
     private int maxConnections = 1;
     private float size = 4/16f;
 
@@ -148,17 +147,6 @@ public class ElectricNodeBuilder {
         location = new NodeLocation(target.getBlockPos(), x, y, z, size, defaultFacing);
         return this;
     }
-
-    /***
-     * Non-formatted, non-strict, case-insensitive name for this ElectricNode.
-     * This ID will be serialized to and from NBT, so it's probably best to keep it brief, but it's up to you.
-     * @param id ID to set this Builder to
-     * @return this ElectircNodeBuilder with the modified value.
-     */
-    public ElectricNodeBuilder id(String id) {
-        this.id = id.toUpperCase();
-        return this;
-    }
     
     /***
      * The maximum amount of allowed connections to this ElectricNode.
@@ -176,7 +164,6 @@ public class ElectricNodeBuilder {
     }
 
     public NodeBankBuilder build() {
-        if(id == null) throw new IllegalArgumentException("ElectricNode cannot be built - 'id' is null!");
-        return activeBuilder.add(location, id, mode, maxConnections);
+        return activeBuilder.add(location, mode, maxConnections);
     };
 }

@@ -19,7 +19,6 @@ public class ConnectorStackedTier0BlockEntity extends WireNodeBlockEntity {
 	@Override
 	public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
 		builder.newNode()
-            .id("conn1")
             .at(8, 16, 8) 
             .mode("B")
             .connections(2)

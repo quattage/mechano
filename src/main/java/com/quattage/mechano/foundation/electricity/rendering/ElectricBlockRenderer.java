@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.electricity.rendering;
 
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -9,11 +10,19 @@ import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.system.SystemNode;
+import com.quattage.mechano.foundation.electricity.system.TransferSystem;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
+import com.simibubi.create.foundation.utility.Pair;
+
+import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
+
+import java.util.ArrayList;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.Font.DisplayMode;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -33,9 +42,14 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
     }   
 
     @Override
-    protected void renderSafe(WireNodeBlockEntity ebe, float partialTicks, PoseStack local, 
-        MultiBufferSource bufferSource, int light, int overlay) {
+    protected void renderSafe(WireNodeBlockEntity ebe, float partialTicks, PoseStack matrix, 
+        MultiBufferSource buffers, int light, int overlay) {
     
+        // debug tomfoolery
+        Minecraft mc = Minecraft.getInstance();
+        if(mc.options.renderDebug == true) 
+            drawDebug(ebe, mc, matrix, buffers, light);
+
         ElectricNode[] nodes = ebe.nodeBank.values();
 
         for(int n = 0; n < nodes.length; n++) {
@@ -59,12 +73,7 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
                 }
 
                 renderWire(ebe, thisNode.getLocalPosition(), from, to, thisConnection.getSpoolType(), 
-                    thisConnection.getAge(), partialTicks, local, bufferSource, needsConstantUpdates);
-
-                // debug tomfoolery
-                if(Minecraft.getInstance().options.renderDebug == true) 
-                    drawDebug(c, from, to);
-                // TODO check singleton statically
+                    thisConnection.getAge(), partialTicks, matrix, buffers, light, needsConstantUpdates);
             }
         }
     }
@@ -80,7 +89,7 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
     }
 
     private void renderWire(WireNodeBlockEntity ebe, Vec3 fromOffset, Vec3 fromPos, Vec3 toPos, WireSpool spoolType, int age,
-        float pTicks, PoseStack matrix, MultiBufferSource buffers, boolean needsConstantUpdates) {
+        float pTicks, PoseStack matrix, MultiBufferSource buffers, int light,boolean needsConstantUpdates) {
 
         matrix.pushPose();
 
@@ -141,13 +150,50 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
         return out;
     }
 
-    private void drawDebug(int iteration, Vec3 fromPos, Vec3 toPos) {
-        if(fromPos != null && toPos != null) {
-            CreateClient.OUTLINER.showAABB("wireVF" + iteration + fromPos + toPos, boxFromPos(fromPos))
-                .lineWidth(1/32f);
-            CreateClient.OUTLINER.showAABB("wireVT" + iteration + fromPos + toPos, boxFromPos(toPos))
-                .lineWidth(1/32f);
+    private void drawDebug(WireNodeBlockEntity ebe, Minecraft mc, PoseStack matrix, MultiBufferSource buffer, int light) {
+        Font fontRenderer = mc.font;
+		Quaternionf cameraRotation = mc.getEntityRenderDispatcher().cameraOrientation();
+
+        Pair<TransferSystem, SystemNode> approx = NETWORK.getSystemAndNode(ebe.nodeBank.approximate());
+        String lineA = "[NO NET]";
+        ArrayList<String> connLines = new ArrayList<>();
+        connLines.add("[ NONE ]");
+
+        if(approx != null) {
+            int id = NETWORK.getSubsystemID(approx.getFirst());
+            lineA = "NET: [" + (id + 1) + " / " + NETWORK.getSubsystemCount() + "]";
+            connLines.set(0, "");
+
+            int x = 1;
+            for(SystemNode node : approx.getFirst().all()) {
+                if(node == null || node.getPos() == null)
+                    connLines.add(x  + ": [NULL]");
+                else
+                    if(node.getPos() == ebe.getBlockPos())
+                        connLines.add("● " + x + ": [" + node.getPos().getX() + ", " + node.getPos().getY() + ", " + node.getPos().getZ() + "]"); 
+                    else
+                        connLines.add("  " + x + ": [" + node.getPos().getX() + ", " + node.getPos().getY() + ", " + node.getPos().getZ() + "]"); 
+                x++;
+            }
         }
+
+		matrix.pushPose(); 
+		
+		Matrix4f matrix4f = matrix.last().pose();
+		float textOffset = -fontRenderer.width(lineA) / 2;
+	
+        matrix.translate(0.5F, 2F, 0.5F);
+		matrix.mulPose(cameraRotation);
+		matrix.scale(-0.025F, -0.025F, 0.025F);
+		fontRenderer.drawInBatch(lineA, textOffset, 0f, -1, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
+
+        for(String connLine : connLines) {
+            matrix.translate(0f, -8f, 0f);
+            fontRenderer.drawInBatch(connLine, textOffset, 0f, -1, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
+        }
+        
+		
+		matrix.popPose();
     }
 
     private AABB boxFromPos(Vec3 pos) {

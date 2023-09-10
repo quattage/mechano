@@ -21,7 +21,6 @@ public class TransmissionConnectorBlockEntity extends WireNodeBlockEntity {
     @Override
     public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
         builder.newNode()
-            .id("c1")
             .at(8, 16, 8)
             .mode(NodeMode.BOTH)
             .connections(2)

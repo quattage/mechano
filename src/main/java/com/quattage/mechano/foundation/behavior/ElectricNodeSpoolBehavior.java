@@ -82,9 +82,6 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
 
         Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> releventNodes = null;
 
-        ElectricNode indicated = getIndicatedNode(world, mainHand);
-        if(indicated != null) drawFizzles(world, indicated);
-
         // if we're looking directly at an ElectricBlockEntity we don't have to find one
         if(world.getBlockEntity(lookingBlockPos) instanceof WireNodeBlockEntity ebe) {
             Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(lookingPosition);
@@ -101,13 +98,19 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
             );
         }
 
+        ElectricNode indicated = getIndicatedNode(world, mainHand);
+        if(indicated != null) drawFizzles(world, indicated);
+
         if(releventNodes.getB() == -1) {
             decrementGrow();
         }
 
+        NodeBank<?> indicatedBank = releventNodes.getC();
         int index = 0;
         for(ElectricNode node : releventNodes.getA()) {
 
+            // i have no idea how the bank is ever null but this check prevents a crash
+            if(indicatedBank == null) continue;
             if(node.equals(indicated)) continue;
 
             AABB nodeBox = node.getHitbox();
@@ -116,7 +119,7 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
                 newGrow = incrementGrow() * 0.03;
                 nodeBox = nodeBox.inflate(Mth.lerp(pTicks, oldGrow, newGrow));
 
-                CreateClient.OUTLINER.showAABB(node.getId() + name, nodeBox)
+                CreateClient.OUTLINER.showAABB(indicatedBank.indexOf(node) + name, nodeBox)
                     .disableLineNormals()
                     .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
                     .lineWidth(0.03f)
@@ -124,7 +127,7 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
 
                 oldGrow = newGrow;
             } else {
-                CreateClient.OUTLINER.showAABB(node.getId() + name, nodeBox)
+                CreateClient.OUTLINER.showAABB(indicatedBank.indexOf(node) + name, nodeBox)
                     .disableLineNormals()
                     .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
                     .lineWidth(0.03f)
@@ -133,7 +136,6 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
             
             index++;
         }
-
     }
 
     /***
@@ -177,8 +179,8 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
     private ElectricNode getIndicatedNode(ClientLevel world, ItemStack stack) {
         WireNodeBlockEntity target = getBoundTarget(world, stack);
         if(target == null) return null;
-        String id = stack.getTag().getString("from");
-        if(id == null) return null;
+        int id = stack.getTag().getInt("from");
+        if(id == -1) return null;
         return target.nodeBank.get(id);
     }
 

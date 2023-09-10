@@ -25,10 +25,10 @@ public class FakeNodeConnection extends NodeConnection {
      * The ID of this FakeNodeConnection's source ElectricNode.
      * This is used when realizing this connection.
      */
-    private String sourceID;
+    private int sourceID;
 
-    public FakeNodeConnection(WireSpool spoolType, String sourceID, Vec3 sourcePos, Entity placer) {
-        super(null);
+    public FakeNodeConnection(WireSpool spoolType, int sourceID, Vec3 sourcePos, Entity placer, BlockPos parentPos) {
+        super(parentPos);
         this.sourcePos = sourcePos;
         this.attachedEntity = placer;
         this.sourceID = sourceID;
@@ -45,19 +45,11 @@ public class FakeNodeConnection extends NodeConnection {
         destPos = attachedEntity.getRopeHoldPosition(pTicks);
     }
 
-    /***
-     * Builds a new ElectricNodeConnection from the data in this LiveConnection
-     * @return
-     */
-    public ElectricNodeConnection realize(NodeBank<?> fromBank, NodeBank<?> destinationBank, String destinationId) {
-        return new ElectricNodeConnection(spoolType, fromBank, sourcePos, destinationBank, destinationId, false);
-    }
-
     public Entity getAttachedEntity() {
         return attachedEntity;
     }
     
-    public String getSourceID() {
+    public int getSourceID() {
         return sourceID;
     }
 

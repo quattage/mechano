@@ -109,30 +109,31 @@ processResources {
 // repos to look for mod dependencies in 
 repositories {
     maven {
-		name = "Jared's maven"                            // new JEI place
+		name = "blamejared"                            // new JEI place, vazkii's
 		url = "https://maven.blamejared.com/"
 	}
 	maven {
-		name = "ModMaven"                                 // JEI Mirror, Mekanism
+		name = "modmaven"                                 // JEI Mirror, Mekanism
 		url = "https://modmaven.dev"
 	}
     maven {
-        name 'blamejared'                                 // vazkii's
-        url 'https://maven.blamejared.com'
+        name = "tterrag"                           // Registrate/Flywheel/Create
+        url  = "https://maven.tterrag.com"
     }
     maven {
-        name 'tterrag maven'                              // Registrate/Flywheel/Create
-        url 'https://maven.tterrag.com'
-    }
-    maven {
-        url 'https://www.cursemaven.com'                  // Misc
+        name = "cursemaven"
+        url  = "https://www.cursemaven.com"                  // Misc
         content {
             includeGroup "curse.maven"
         }
     }
+    maven {                                               // cloth config api
+        name = "shedaniel"
+        url = "https://maven.shedaniel.me/"
+    }
     maven { 
-        name 'geckolib'                                  //Geckolib
-        url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' 
+        name = "geckolib"                                 //Geckolib
+        url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
     }
 }
 
@@ -147,12 +148,18 @@ dependencies {
     implementation fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
 
     // JEI local runtime and API to compile against
-    runtimeOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}"))
-    compileOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"))
-	compileOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"))
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+	compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+
+    // cloth config
+    implementation fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
 
     // Geckolib
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${geckolib_version}")
+
+    // BetterF3
+    runtimeOnly fg.deobf("curse.maven:betterf3-401648:${project.betterf3_version}")
 }
 
 jar {

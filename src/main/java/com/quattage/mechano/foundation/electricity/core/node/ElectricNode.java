@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.electricity.NodeBank;
 import com.quattage.mechano.foundation.electricity.core.connection.ElectricNodeConnection;
@@ -23,7 +22,6 @@ import net.minecraft.world.phys.Vec3;
  */
 public class ElectricNode {
 
-    private final String id;
     private final int index;
 
     private final int maxConnections;
@@ -38,11 +36,10 @@ public class ElectricNode {
      * @param id User-friendly name (converted to lowercase automatically)
      * @param maxConnections Maximum amount of allowed connections for this ElectricNode
      */
-    public ElectricNode(NodeLocation location, String id, int maxConnections, int index) {
+    public ElectricNode(NodeLocation location, int maxConnections, int index) {
         this.index = index;
         this.maxConnections = maxConnections;
         this.location = location;
-        this.id = id.toLowerCase();
         this.mode = NodeMode.from(true, true);
         connections = new NodeConnection[maxConnections];
     }
@@ -54,11 +51,10 @@ public class ElectricNode {
      * @param NodeMode Default mode for this ElectricNode
      * @param maxConnections Maximum amount of allowed connections for this ElectricNode
      */
-    public ElectricNode(NodeLocation location, String id, NodeMode mode, int maxConnections, int index) {
+    public ElectricNode(NodeLocation location, NodeMode mode, int maxConnections, int index) {
         this.index = index;
         this.maxConnections = maxConnections;
         this.location = location;
-        this.id = id.toLowerCase();
         this.mode = mode;
         connections = new NodeConnection[maxConnections];
     }
@@ -74,7 +70,6 @@ public class ElectricNode {
      * @param tag Tag containing the relevent data
      */
     public ElectricNode(BlockEntity target, CompoundTag tag) {
-        this.id = tag.getString("id");
         this.index = tag.getInt("num");
 
         this.location = new NodeLocation(target, tag.getCompound("loc"));
@@ -99,7 +94,7 @@ public class ElectricNode {
         for(int x = 0; x < connections.length; x++) {
             NodeConnection connection = connections[x];
             if(connection instanceof ElectricNodeConnection ec && ec.needsUpdate()) {
-                NodeBank bank = NodeBank.retrieveFrom(target.getLevel(), target, ec.getRelativePos());
+                NodeBank<?> bank = NodeBank.retrieveAtRelative(target.getLevel(), target, ec.getRelativePos());
                 if(bank != null)
                     ec.setTo(bank.pos, bank.get(ec.getDestinationID()).getPosition());
             }
@@ -113,12 +108,11 @@ public class ElectricNode {
      */
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
-        out.putString("id", id);
         out.putInt("num", index);
         out.put("loc", location.writeTo(new CompoundTag()));
         mode.writeTo(out);
         out.put("nodes", writeAllConnections(new CompoundTag()));
-        in.put(id, out);
+        in.put(index + "", out);
         return in;
     }
 
@@ -144,12 +138,8 @@ public class ElectricNode {
     }
 
     public String toString() {
-        return "'" + id + "' \n\t" + location + ", \n\t" + mode + ", \n\t" 
+        return index + ": \n\t" + location + ", \n\t" + mode + ", \n\t" 
             + getConnectionsAsString();
-    }
-
-    public String getId() {
-        return id;
     }
 
     public int getIndex() {
@@ -175,11 +165,8 @@ public class ElectricNode {
      */
     public boolean connectionExists(NodeConnection checkConnection) {
         for(NodeConnection thisConnection : connections)
-            if(checkConnection.equals(thisConnection)) {
-                Mechano.log("EXISTS? TRUE");
+            if(checkConnection.equals(thisConnection)) 
                 return true; 
-            }
-        Mechano.log("EXISTS? FALSE");
         return false;
     }
 
@@ -286,7 +273,6 @@ public class ElectricNode {
         for(int x = 0; x < connections.length; x++) {
             if(connections[x] == null) continue;
             BlockPos parentPos = connections[x].getParentPos();
-            Mechano.log("SEARCHING FROM: " + origin.pos + "   TO: " + parentPos);
             if(parentPos != null && origin.isAt(parentPos)) {
                 clearConnection(x, true, false);
                 changed = true;
@@ -307,7 +293,7 @@ public class ElectricNode {
         HashSet<NodeBank<?>> out = new HashSet<NodeBank<?>>();
         for(NodeConnection c : connections) {
             if(c instanceof ElectricNodeConnection ec) {
-                NodeBank<?> bank = NodeBank.retrieveFrom(parent.getWorld(), 
+                NodeBank<?> bank = NodeBank.retrieveAtRelative(parent.getWorld(), 
                     parent.target, ec.getRelativePos());
                 if(bank != null) {
                     out.add(bank);

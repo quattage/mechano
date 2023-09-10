@@ -217,12 +217,13 @@ public abstract class WireSpool extends Item {
     private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
 
         ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
-        this.intermediary = clickSummary.getC().makeFakeConnection(this, targetedNode.getId(), player);
+        int index = clickSummary.getC().indexOf(targetedNode);
+        this.intermediary = clickSummary.getC().makeFakeConnection(this, index, player);
 
         if(intermediary.getFirst().isSuccessful()) {
             CompoundTag nbt = wireStack.getOrCreateTag();   
             nbt.put("at", writePos(clickSummary.getC().pos));
-            nbt.putString("from", targetedNode.getId());
+            nbt.putInt("from", index);
             sendInfo(world, clickSummary.getC().pos, intermediary.getFirst());
             return InteractionResult.PASS;
         }
@@ -242,7 +243,7 @@ public abstract class WireSpool extends Item {
     private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
 
         ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
-
+        int index = clickSummary.getC().indexOf(targetedNode);
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
             if(world.getBlockEntity(getPos(nbt)) instanceof WireNodeBlockEntity ebeFrom) {
@@ -252,7 +253,7 @@ public abstract class WireSpool extends Item {
                     return InteractionResult.PASS; // the connection is just ignored in this case, you'll have to click it again.
                 }
 
-                NodeConnectResult result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), targetedNode.getId());
+                NodeConnectResult result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), index);
                 // Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
 
                 if(!world.isClientSide() && !result.isSuccessful()) {
@@ -334,7 +335,7 @@ public abstract class WireSpool extends Item {
     /***
      * Reverts connection to reflect the state of the NodeBank before the connection was attempted.
      */
-    private void cancelConnection(WireNodeBlockEntity ebe, String sourceID) {
+    private void cancelConnection(WireNodeBlockEntity ebe, int sourceID) {
         if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
         sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }

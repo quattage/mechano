@@ -234,8 +234,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(NodeLocation location, String id, int maxConnections) {
-        return add(new ElectricNode(location, id, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(NodeLocation location, int maxConnections) {
+        return add(new ElectricNode(location, maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -246,8 +246,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(NodeLocation location, String id, NodeMode mode, int maxConnections) {
-        return add(new ElectricNode(location, id, mode, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(NodeLocation location, NodeMode mode, int maxConnections) {
+        return add(new ElectricNode(location, mode, maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -258,8 +258,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(int x, int y, int z, float size, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH), id, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(int x, int y, int z, float size, int maxConnections) {
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH), maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -270,8 +270,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(int x, int y, int z, float size, Direction defaultDir, String id, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, defaultDir), id, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(int x, int y, int z, float size, Direction defaultDir, int maxConnections) {
+        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, defaultDir), maxConnections, nodesToAdd.size()));
     }
 
     private void doCompleteCheck() {

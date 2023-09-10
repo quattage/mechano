@@ -201,7 +201,6 @@ public class ParticleSpawner {
             }
             double speed = VectorHelper.getMagnitude(randVelo);
             randVelo = randVelo.normalize();
-            Mechano.log("speed: " + speed);
 
             world.sendParticles(particle, randPos.x, randPos.y, randPos.z, density, randVelo.x, randVelo.y, randVelo.z, speed);
             return;

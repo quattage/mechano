@@ -5,17 +5,63 @@ import java.util.ArrayList;
 import com.quattage.mechano.Mechano;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 
+/***
+ * The GlobalTransferNetwork is an elevated level controller for TransferSystems.
+ * It offers functionality to intelligently manage a list of networks, where
+ * individual networks are stored as subsystems which can be added to, removed from,
+ * split, merged, repaired, etc.
+ */
 public class GlobalTransferNetwork {
     
-    
-    
     private ArrayList<TransferSystem> subsystems = new ArrayList<TransferSystem>();
+    private boolean loaded = false;
 
-    // TODO lazy? serializable?
     public static final GlobalTransferNetwork NETWORK = new GlobalTransferNetwork();
+
     public GlobalTransferNetwork() {}
+
+    public void readFrom(CompoundTag in) {
+        CompoundTag net = in.getCompound(NetworkSavedData.MECHANO_NETWORK_KEY);
+
+        if(NetworkSavedData.SAVE_VERSION != net.getInt("ver")) {
+            Mechano.LOGGER.warn("Unable to serialize GlobalTransferNetwork from disk - saved copy was marked as depricated!");
+            return;
+        }
+
+        ListTag subs = net.getList("all", Tag.TAG_COMPOUND);
+        Mechano.log("Reading " + subs.size() + " TransferNetworks");
+        for(int x = 0; x < subs.size(); x++) {
+            Mechano.log("ADDING NETWORK " + subs.getCompound(x));
+            subsystems.add(new TransferSystem(subs.getCompound(x)));
+        }
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        CompoundTag out = new CompoundTag();
+        out.putInt("ver", NetworkSavedData.SAVE_VERSION);
+        out.put("all", writeAllSubsystems());
+        in.put(NetworkSavedData.MECHANO_NETWORK_KEY, out);
+        return in;
+    }
+
+    public boolean needsLoaded() {
+        if(!loaded) {
+            loaded = true;
+            return true;
+        }
+        return false;
+    }
+
+    public ListTag writeAllSubsystems() {
+        ListTag out = new ListTag();
+        for(TransferSystem sys : subsystems)
+            out.add(sys.writeTo(new CompoundTag()));
+        return out;
+    }
 
     public int getSubsystemCount() {
         return subsystems.size();
@@ -63,7 +109,7 @@ public class GlobalTransferNetwork {
                 subsystems.remove(fromSystem.getSecond());
             }
         }
-
+        onSystemModified();
         debug("LINK OPERATION");
     }
 
@@ -71,8 +117,8 @@ public class GlobalTransferNetwork {
      * Links two SystemNodes without question. If these nodes don't belong to a subsystem,
      * a new subsystem is made form them. If both nodes are in independent subsystems, these
      * subsystems are merged.
-     * @param nodeOne
-     * @param nodeTwo
+     * @param linkOne
+     * @param linkTwo
      */
     public void link(SystemVertex linkOne, SystemVertex linkTwo) {
         SystemNode nodeOne = getOrCreateNodeAt(linkOne);
@@ -80,7 +126,6 @@ public class GlobalTransferNetwork {
         Pair<Integer, TransferSystem> fromSystem = getSystemContaining(nodeOne);
         Pair<Integer, TransferSystem> toSystem = getSystemContaining(nodeTwo);
 
-        // neither node is in a subsystem, so make the subsystem and link them
         if(fromSystem == null && toSystem == null) {
             TransferSystem newSystem = new TransferSystem();
             newSystem.addNode(nodeOne);
@@ -108,8 +153,12 @@ public class GlobalTransferNetwork {
                 subsystems.remove(fromSystem.getSecond());
             }
         }
-
+        onSystemModified();
         debug("LINK OPERATION");
+    }
+
+    public void onSystemModified() {
+        NetworkSavedData.markInstanceDirty();
     }
 
     /***
@@ -146,6 +195,7 @@ public class GlobalTransferNetwork {
         debug("UNLINK OPERATION");
         if(clean)
             declusterize();
+        onSystemModified();
     }
 
     /***
@@ -172,6 +222,7 @@ public class GlobalTransferNetwork {
         debug("UNLINK OPERATION");
         if(clean)
             declusterize();
+        onSystemModified();
     }
 
     /***

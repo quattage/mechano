@@ -3,6 +3,9 @@ package com.quattage.mechano.foundation.electricity.system;
 import java.util.LinkedList;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 
 /***
  * A SystemNode is an approximation of a NodeBank. 
@@ -46,9 +49,29 @@ public class SystemNode {
         this.isMember = isMember;
     }
 
-    public SystemNode(SystemVertex parent, boolean isMember, int[] connections) {
-        this.parent = parent;
-        this.isMember = isMember;
+    public SystemNode(CompoundTag in) {
+        this.parent = new SystemVertex(in.getCompound("pos"));
+        this.isMember = in.getBoolean("part");
+        readLinks(in.getList("link", Tag.TAG_COMPOUND));
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.put("pos", parent.writeTo(new CompoundTag()));
+        in.putBoolean("part", isMember);
+        in.put("link", writeLinks());
+        return in;
+    }
+
+    private ListTag writeLinks() {
+        ListTag out = new ListTag();
+        for(SystemVertex v : linkedVertices)
+            out.add(v.writeTo(new CompoundTag()));
+        return out;
+    }
+
+    private void readLinks(ListTag list) {
+        for(int x = 0; x < list.size(); x++)
+            linkedVertices.add(new SystemVertex(list.getCompound(x)));
     }
 
     public LinkedList<SystemVertex> values() {

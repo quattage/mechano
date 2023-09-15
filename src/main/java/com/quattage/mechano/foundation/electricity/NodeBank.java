@@ -548,7 +548,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
     }
 
     public SystemVertex approximate() {
-        return new SystemVertex(target.getBlockPos());
+        return new SystemVertex(this);
     }
 
     /***

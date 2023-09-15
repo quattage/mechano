@@ -6,6 +6,7 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;

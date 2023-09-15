@@ -1,9 +1,16 @@
 package com.quattage.mechano.foundation.electricity.system;
 
+import com.quattage.mechano.foundation.electricity.NodeBank;
+
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 
 /***
- * A SystemLink represents a connection between two SystemNodes
+ * A SystemVertex is a functional approximation of a NodeBank.
+ * Its main purpose is to store a BlockPos representing the location of a NodeBank.
+ * It also stores an index, which is usually -1.
+ * The index is used to locate the specific ElectricNode that this SystemVertex refers to
+ * when such a distinction is required.
  */
 public class SystemVertex {
     private final BlockPos pos;
@@ -18,6 +25,27 @@ public class SystemVertex {
     public SystemVertex(BlockPos pos, int subIndex) {
         this.pos = pos;
         this.subIndex = subIndex;
+    }
+
+    public SystemVertex(NodeBank<?> bank) {
+        this.pos = bank.target.getBlockPos();
+        this.subIndex = -1;
+    }
+
+    public SystemVertex(CompoundTag in) {
+        this.pos = new BlockPos(
+            in.getInt("x"),
+            in.getInt("y"),
+            in.getInt("z"));
+        this.subIndex = in.getInt("i");
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.putInt("x", pos.getX());
+        in.putInt("y", pos.getY());
+        in.putInt("z", pos.getZ());
+        in.putInt("i", subIndex);
+        return in;
     }
 
     public BlockPos getPos() {

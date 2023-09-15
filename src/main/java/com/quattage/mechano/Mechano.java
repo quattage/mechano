@@ -1,13 +1,17 @@
 package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.foundation.electricity.system.NetworkSavedData;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -52,16 +56,26 @@ public class Mechano {
         MechanoRecipes.register(bussy);
         MechanoSounds.register(bussy);
 
-        bussy.addListener(this::clientSetup);
-        bussy.addListener(this::commonSetup);
+        bussy.addListener(this::onClientSetup);
+        bussy.addListener(this::onCommonSetup);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStart);
     }
 
-    public void clientSetup(final FMLClientSetupEvent event) {
+    public void onClientSetup(final FMLClientSetupEvent event) {
         MechanoPartials.register();
     }
 
-    public void commonSetup(final FMLCommonSetupEvent event) {
+    public void onCommonSetup(final FMLCommonSetupEvent event) {
         MechanoPackets.register();
+    }
+    
+    public void onServerStart(ServerStartedEvent event) {
+        ServerLevel world = event.getServer().getLevel(Level.OVERWORLD);
+        if(!world.isClientSide) {
+            Mechano.log("Mechano Server Started Event");
+            NetworkSavedData auxilaryData = world.getDataStorage().computeIfAbsent(NetworkSavedData::new, NetworkSavedData::new, NetworkSavedData.MECHANO_SAVE_KEY);
+            NetworkSavedData.setInstance(auxilaryData);
+        }
     }
 
     public static void log(String message) {      

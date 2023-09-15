@@ -9,6 +9,9 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 
 /***
  * A TransferSystem stores approximate versions of NodeConnections (edges) 
@@ -27,6 +30,9 @@ public class TransferSystem {
      */
     private HashMap<SystemVertex, SystemNode> systemMatrix = new HashMap<SystemVertex, SystemNode>();
 
+    private int netEnergyPushed = 0;
+    private int netEnergyPulled = 0;
+
     /***
      * Instantiates a blank TransferSystem
      */
@@ -41,6 +47,26 @@ public class TransferSystem {
             systemMatrix.put(node.parent, node);
     }
 
+    public TransferSystem(CompoundTag in) {
+        ListTag net = in.getList("sub", Tag.TAG_COMPOUND);
+        for(int x = 0; x < net.size(); x++) {
+            SystemNode n = new SystemNode(net.getCompound(x));
+            systemMatrix.put(n.getParent(), n);
+        }
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.put("sub", writeMatrix());
+        return in;
+    }
+
+    public ListTag writeMatrix() {
+        ListTag out = new ListTag();
+        for(SystemNode v : systemMatrix.values())
+            out.add(v.writeTo(new CompoundTag()));
+        return out;
+    }
+
     public boolean addNode(SystemNode node) {
         if(node == null) 
             throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
@@ -51,33 +77,30 @@ public class TransferSystem {
     }
 
     /***
-     * Removes a node from this network and returns it
-     * @param at BlockPos key to remove
-     * @return The SystemNode that was removed, if any
+     * Creates a link (edge) between two nodes (vertices) in this SystemNode.
+     * This link is non-directed. It is added symmetrically to both nodes at 
+     * both provided indexes.
+     * 
+     * @throws NullPointerException if either provided BlockPos isn't in this TransferSystem
+     * @param fP BlockPos of the first vertex
+     * @param tP BlockPos of the second vertex
+     * @return
      */
-    public SystemNode popNode(BlockPos at) {
-        return systemMatrix.remove(at);
+    public boolean link(BlockPos fP, BlockPos tP) {
+        return link(fP, -1, tP, -1);
     }
 
     /***
-     * Removes a node from this network
-     * @param at BlockPos key to remove
-     * @return True if this TransferSystem was modified as a result of this removal
-     */
-    public boolean removeNode(BlockPos at) {
-        SystemNode removed = systemMatrix.remove(at);
-        return removed != null;
-    }
-
-    /***
-     * Create a link (edge) between the SystemNodes located at the 
-     * given indexes. This link is non-directed. It is added 
-     * symmetrically to both nodes at both provided indexes.
-     * @throws NullPointerException If either provided BlockPos 
-     * isn't in this TransferSystem.
-     * @param indexFrom Index of one SystemNode to link
-     * @param indexTo Index of the other SystemNode to link
-     * @return True if the SystemNodes were modified
+     * Creates a link (edge) between two nodes (vertices) in this SystemNode.
+     * This link is non-directed. It is added symmetrically to both nodes at 
+     * both provided indexes.
+     * 
+     * @throws NullPointerException if either provided BlockPos isn't in this TransferSystem
+     * @param fP BlockPos of the first vertex
+     * @param fI Sub index of the first vertex
+     * @param tP BlockPos of the second vertex
+     * @param tI Sub index of the second vertex
+     * @return
      */
     public boolean link(BlockPos fP, int fI, BlockPos tP, int tI) {
 
@@ -227,7 +250,7 @@ public class TransferSystem {
         for(SystemVertex link : linkSet) {
             if(link == null) 
                 throw new NullPointerException(failMessage + " - The provided SystemLink is null!");
-            if(!systemMatrix.containsKey(link.getPos()))
+            if(!systemMatrix.containsKey(new SystemVertex(link.getPos())))
                 throw new NullPointerException(failMessage + " - No valid SystemNode matching SystemLink " 
                 + link + " could be found!");
         }
@@ -241,4 +264,6 @@ public class TransferSystem {
                 throw new NullPointerException(failMessage + " - The provided SystemNode does not exist in this TransferSystem!");
         }       
     }
+
+    
 }

@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.electricity.system.SystemNode;
+import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.electricity.system.TransferSystem;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
@@ -32,9 +32,9 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
             BlockPos lookingBlockPos, double pTicks) {
         
         for(TransferSystem sys : NETWORK.all()) {
-            SystemNode last = null;
+            SystemVertex last = null;
             Color col = sys.getDebugColor();
-            for(SystemNode node : sys.all()) {
+            for(SystemVertex node : sys.all()) {
                 if(node != null && last != null) {
                     CreateClient.OUTLINER
                         .showLine(node.getPos(), node.getPos().getCenter(), last.getPos().getCenter())
@@ -48,7 +48,7 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
         }
     }
 
-    public void drawNetworkStatistics(ClientLevel world, SystemNode node) {   
+    public void drawNetworkStatistics(ClientLevel world, SystemVertex node) {   
         BlockEntity targetBE = world.getBlockEntity(node.getPos());
         BlockPos drawLocation = node.getPos().relative(DirectionTransformer.getUp(targetBE.getBlockState()), 2);
     }

@@ -1,4 +1,4 @@
-package com.quattage.mechano.content.item.spool;
+package com.quattage.mechano.foundation.electricity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,8 +9,6 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.foundation.electricity.NodeBank;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConnection;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;

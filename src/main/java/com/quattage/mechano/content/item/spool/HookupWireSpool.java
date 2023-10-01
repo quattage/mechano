@@ -1,6 +1,7 @@
 package com.quattage.mechano.content.item.spool;
 
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.foundation.electricity.WireSpool;
 
 import net.minecraft.world.item.Item;
 

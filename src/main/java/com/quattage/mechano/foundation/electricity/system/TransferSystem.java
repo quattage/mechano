@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
 
@@ -12,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerLevel;
 
 /***
  * A TransferSystem stores approximate versions of NodeConnections (edges) 
@@ -28,7 +31,7 @@ public class TransferSystem {
     /***
      * Stores the X axis of the adjacency matrix
      */
-    private HashMap<SystemVertex, SystemNode> systemMatrix = new HashMap<SystemVertex, SystemNode>();
+    private HashMap<SVID, SystemVertex> systemMatrix = new HashMap<>();
 
     private int netEnergyPushed = 0;
     private int netEnergyPulled = 0;
@@ -42,16 +45,26 @@ public class TransferSystem {
      * Populates this TransferSystem with members of a list
      * @param cluster ArrayList of SystemNodes to add to this TransferSystem upon creation
      */
-    public TransferSystem(ArrayList<SystemNode> cluster) {
-        for(SystemNode node : cluster)
-            systemMatrix.put(node.parent, node);
+    public TransferSystem(ArrayList<SystemVertex> cluster) {
+        for(SystemVertex node : cluster)
+            systemMatrix.put(node.getSVID(), node);
     }
 
-    public TransferSystem(CompoundTag in) {
+    public TransferSystem(CompoundTag in, ServerLevel world) {
         ListTag net = in.getList("sub", Tag.TAG_COMPOUND);
         for(int x = 0; x < net.size(); x++) {
-            SystemNode n = new SystemNode(net.getCompound(x));
-            systemMatrix.put(n.getParent(), n);
+            SystemVertex n = new SystemVertex(net.getCompound(x));
+            BlockPos check = n.getPos();
+
+            // preventative measure to stop networks from being built where they shouldn't if something goes wrong
+            if(!(world.getBlockEntity(check) instanceof WireNodeBlockEntity)) {
+                Mechano.LOGGER.warn("TransferSystem skipping registration of SystemVertex at [" 
+                    + check.getX() + ", " + check.getY() + ", " + check.getZ() + "] - No valid BlockEntity was found at this location!" +
+                    " If you've recently experienced a crash, this is probably worth reporting.");
+                continue;
+            }
+
+            systemMatrix.put(n.getSVID(), n);
         }
     }
 
@@ -62,70 +75,70 @@ public class TransferSystem {
 
     public ListTag writeMatrix() {
         ListTag out = new ListTag();
-        for(SystemNode v : systemMatrix.values())
+        for(SystemVertex v : systemMatrix.values())
             out.add(v.writeTo(new CompoundTag()));
         return out;
     }
 
-    public boolean addNode(SystemNode node) {
+    public boolean addNode(SystemVertex node) {
         if(node == null) 
-            throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
-        if(systemMatrix.containsKey(node.parent))
+        throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
+        if(systemMatrix.containsKey(node.getSVID()))
             return false;
-        systemMatrix.put(node.parent, node);
+        systemMatrix.put(node.getSVID(), node);
+        return true;
+    }
+
+    public boolean addNode(SVID id) {
+        if(id == null)
+            throw new NullPointerException("Failed to add node to TransferSystem - The provided SVID is null!");
+        if(systemMatrix.containsKey(id))
+            return false;
+        systemMatrix.put(id, id.toVertex());
         return true;
     }
 
     /***
-     * Creates a link (edge) between two nodes (vertices) in this SystemNode.
-     * This link is non-directed. It is added symmetrically to both nodes at 
-     * both provided indexes.
-     * 
-     * @throws NullPointerException if either provided BlockPos isn't in this TransferSystem
-     * @param fP BlockPos of the first vertex
-     * @param tP BlockPos of the second vertex
-     * @return
-     */
-    public boolean link(BlockPos fP, BlockPos tP) {
-        return link(fP, -1, tP, -1);
-    }
-
-    /***
-     * Creates a link (edge) between two nodes (vertices) in this SystemNode.
-     * This link is non-directed. It is added symmetrically to both nodes at 
-     * both provided indexes.
-     * 
-     * @throws NullPointerException if either provided BlockPos isn't in this TransferSystem
-     * @param fP BlockPos of the first vertex
-     * @param fI Sub index of the first vertex
-     * @param tP BlockPos of the second vertex
-     * @param tI Sub index of the second vertex
-     * @return
+     * Creates a link (edge) between two SystemVertices located at the given BlockPos
+     * and index combinations.
+     * @throws NullPointerException If the provided BlockPos and sub index combinations
+     * don't indicate the location of a SystemVertex in this TransferSystem.
+     * @param fP BlockPos of first connection
+     * @param fI sub index of second connection
+     * @param tP BlockPos of second connection
+     * @param tI sub index of second connection
+     * @return True if the SystemVertices were modified as a result of this call.
      */
     public boolean link(BlockPos fP, int fI, BlockPos tP, int tI) {
-
-        SystemVertex from = new SystemVertex(fP, fI);
-        SystemVertex to = new SystemVertex(tP, tI);
-        requireValidLink("Failed to link SystemNodes", from, to);
-        SystemNode nodeF = systemMatrix.get(from);
-        SystemNode nodeT = systemMatrix.get(to);
-        return nodeF.linkTo(nodeT) && nodeT.linkTo(nodeF);
+        return link(new SVID(fP, fI), new SVID(tP, tI));
     }
 
     /***
-     * Create a link (edge) between the SystemNodes located at the 
-     * given indexes. This link is non-directed. It is added 
-     * symmetrically to both nodes at both provided indexes.
-     * @throws NullPointerException If either provided SystemNode
+     * Creates a link (edge) between two SystemVertices
+     * @throws NullPointerException If either provided SystemVertex
      * does not exist within this TransferSystem.
-     * @param first SystemNode to link
-     * @param second SystemNode to link
-     * @return True if the SystemNodes were modified
+     * @param first SystemVertex to link
+     * @param second SystemVertex to link
+     * @return True if the SystemVertices were modified as a result of this call,
      */
-    public boolean link(SystemNode first, SystemNode second) {
+    public boolean link(SystemVertex first, SystemVertex second) {
         requireValidNode("Failed to link SystemNodes", first, second);
-
         return first.linkTo(second) && second.linkTo(first);
+    }
+
+    /***
+     * Creates a link (edge) between two SystemVertices at the provided SVIDs
+     * @throws NullPointerException If either provided SVID doesn't 
+     * indicate the location of a SystemVertex in this TransferSystem.
+     * @param first SVID to locate and link
+     * @param second SVID object to locate and link
+     * @return True if the SystemVertices were modified as a result of this call,
+     */
+    public boolean link(SVID first, SVID second) {
+        requireValidLink("Failed to link SystemNodes", first, second);
+        SystemVertex vertF = systemMatrix.get(first);
+        SystemVertex vertT = systemMatrix.get(second);
+        return vertF.linkTo(vertT) && vertT.linkTo(vertF);
     }
 
     /***
@@ -139,13 +152,13 @@ public class TransferSystem {
      */
     public ArrayList<TransferSystem> trySplit() {
 
-        HashSet<SystemVertex> visited = new HashSet<>();
+        HashSet<SVID> visited = new HashSet<>();
         ArrayList<TransferSystem> clusters = new ArrayList<TransferSystem>();
 
-        for(SystemVertex vertex : systemMatrix.keySet()) {
-            if(visited.contains(vertex)) continue;
-            ArrayList<SystemNode> clusterContents = new ArrayList<>();
-            depthFirstPopulate(vertex, visited, clusterContents);
+        for(SVID identifier : systemMatrix.keySet()) {
+            if(visited.contains(identifier)) continue;
+            ArrayList<SystemVertex> clusterContents = new ArrayList<>();
+            depthFirstPopulate(identifier, visited, clusterContents);
             if(clusterContents.size() > 1)
                 clusters.add(new TransferSystem(clusterContents));
         }
@@ -161,14 +174,15 @@ public class TransferSystem {
      * @param visted HashSet (usually just instantiated directly and empty when called) to store visited vertices
      * @param cluster ArrayList which will be populated with all nodes that can be found connected to the given vertex.
      */
-    public void depthFirstPopulate(SystemVertex vertex, HashSet<SystemVertex> visited, ArrayList<SystemNode> cluster) {
-        SystemNode thisIteration = getNode(vertex);
+    public void depthFirstPopulate(SVID vertex, HashSet<SVID> visited, ArrayList<SystemVertex> cluster) {
+        SystemVertex thisIteration = getNode(vertex);
         visited.add(vertex);
         cluster.add(thisIteration);
 
-        for(SystemVertex neighbor : thisIteration.linkedVertices) {
-            if(!visited.contains(neighbor))
-                depthFirstPopulate(neighbor, visited, cluster);
+        for(SystemVertex neighbor : thisIteration.links) {
+            SVID currentID = neighbor.getSVID();
+            if(!visited.contains(currentID))
+                depthFirstPopulate(currentID, visited, cluster);
         }
     }
 
@@ -187,14 +201,16 @@ public class TransferSystem {
      * @param BlockPos
      * @return SystemNode at the given BlockPos
      */
-    public SystemNode getNode(SystemVertex pos) {
+    public SystemVertex getNode(SVID pos) {
         return systemMatrix.get(pos);
     }
+
+
 
     /***
      * @return True if this TransferSystem contains the given SystemNode
      */
-    public boolean containsNode(SystemNode node) {
+    public boolean containsNode(SystemVertex node) {
         return systemMatrix.containsValue(node);
     }
 
@@ -203,7 +219,7 @@ public class TransferSystem {
      * <strong>Modifying this map is not reccomended.</strong>
      * @return Collection containing all SystemNodes in this TransferSystem
      */
-    public Collection<SystemNode> all() {
+    public Collection<SystemVertex> all() {
         return systemMatrix.values();
     }
 
@@ -219,7 +235,7 @@ public class TransferSystem {
      * (This network has no edges)
      */
     public boolean hasLinks() {
-        for(SystemNode node : systemMatrix.values())
+        for(SystemVertex node : systemMatrix.values())
             if(!node.isEmpty()) return true;
         return false;
     }
@@ -229,35 +245,39 @@ public class TransferSystem {
      * @return a Color representing this TransferSystem
      */
     public Color getDebugColor() {
-        return VectorHelper.toColor(((SystemNode)systemMatrix.values().toArray()[0]).getPos().getCenter());
+        return VectorHelper.toColor(((SystemVertex)systemMatrix.values().toArray()[0]).getPos().getCenter());
     }
 
     public int size() {
         return systemMatrix.size();
     }
+    
+    public SystemVertex[] getAllConnections() {
+        return systemMatrix.values().toArray(size -> new SystemVertex[size]);
+    }
 
     public String toString() {
         String output = "";
         int x = 1;
-        for(SystemNode node : systemMatrix.values()) {
+        for(SystemVertex node : systemMatrix.values()) {
             output += "\tNode " + x + ": " + node + "\n";
             x++;
         }
         return output;
     }
 
-    public void requireValidLink(String failMessage, SystemVertex... linkSet) {
-        for(SystemVertex link : linkSet) {
-            if(link == null) 
+    public void requireValidLink(String failMessage, SVID... idSet) {
+        for(SVID id : idSet) {
+            if(id == null) 
                 throw new NullPointerException(failMessage + " - The provided SystemLink is null!");
-            if(!systemMatrix.containsKey(new SystemVertex(link.getPos())))
-                throw new NullPointerException(failMessage + " - No valid SystemNode matching SystemLink " 
-                + link + " could be found!");
+            if(!systemMatrix.containsKey(id))
+                throw new NullPointerException(failMessage + " - No valid SystemNode matching SystemID " 
+                + id + " could be found!");
         }
     }
 
-    public void requireValidNode(String failMessage, SystemNode... nodeSet) {
-        for(SystemNode node : nodeSet) {
+    public void requireValidNode(String failMessage, SystemVertex... nodeSet) {
+        for(SystemVertex node : nodeSet) {
             if(node == null)
                 throw new NullPointerException(failMessage + " - The provided SystemNode is null!");
             if(!systemMatrix.containsValue(node))

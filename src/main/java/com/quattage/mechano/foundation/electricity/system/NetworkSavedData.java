@@ -5,6 +5,7 @@ import com.quattage.mechano.Mechano;
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
 public class NetworkSavedData extends SavedData {
@@ -17,26 +18,33 @@ public class NetworkSavedData extends SavedData {
 
     public NetworkSavedData() { super(); }
 
-    public NetworkSavedData(CompoundTag in) {
+    public NetworkSavedData(CompoundTag in, ServerLevel initialWorld) {
         this();
-        Mechano.log("!! READING NETWORK FROM DISK !! ");
-        NETWORK.readFrom(in);
+        NETWORK.readFrom(in, initialWorld);
     }
 
     @Override
     public CompoundTag save(CompoundTag in) {
-        Mechano.log("!! WRITING NETWORK TO DISK !!");
         NETWORK.writeTo(in);
+        Mechano.LOGGER.info("Serialized network stack to NBT:\n" + in);
         return in;
     }
 
     public static void markInstanceDirty() {
-        Mechano.log("GlobalTransferNetwork marked as dirty");
-        if(INSTANCE != null) INSTANCE.setDirty();
+        if(INSTANCE != null) {
+            Mechano.LOGGER.info("Network stack has been marked dirty");
+            INSTANCE.setDirty();
+        }
+    }
+
+    public static void markInstanceDirty(SVID id) {
+        if(INSTANCE != null) {
+            Mechano.LOGGER.info("Network stack has been marked dirty from " + id);
+            INSTANCE.setDirty();
+        }
     }
 
     public static void setInstance(NetworkSavedData data) {
-        Mechano.log("Registering SaveData instance");
         INSTANCE = data;
     }
 }

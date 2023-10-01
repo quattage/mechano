@@ -5,7 +5,6 @@ import java.util.HashSet;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
@@ -16,6 +15,7 @@ import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConne
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Pair;
@@ -128,6 +128,21 @@ public class NodeBank<T extends ElectricBlockEntity> {
         return allNodes.length;
     }
 
+    /***
+     * @return An array containing all ElectricNodes in this NodeBank.
+     */
+    public ElectricNode[] getAllNodes() {
+        return allNodes;
+    }
+
+
+    /***
+     * Returns a Pair representing a list of all ElectricNodes in this bank. <p>
+     * The first member of the Pair is a list of all ElectricNodes, and the second member of the
+     * Pair is an Integer index of the closest ElectricNode in the list to the given Vec3 position.
+     * @param hit Vec3 position. Usually this would just be <code>BlockHitResult.getLocation()</code>
+     * @return A Pair containing a list of all ElectricNodes.
+     */
     public Pair<ElectricNode[], Integer> getAllNodes(Vec3 hit) {
         return getAllNodes(hit, 0.0f);
     }
@@ -202,6 +217,8 @@ public class NodeBank<T extends ElectricBlockEntity> {
      * @param world World to operate within
      * @param start Vec3 starting position of the search (camera posiiton)
      * @param end Vec3 ending position of the search (BlockHitResult)
+     * @param scope (Optional, default 5) Width (in blocks) of the "cone" that is searched.
+     * Must be an odd number >= 3.
      * @return An ArrayList of pairs, where the first member is the NodeBank itself, and the
      * second member is the point along the ray that is closest to the NodeBank.
 
@@ -449,7 +466,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
     public void destroy() {
         for(NodeBank<?> bank : getAllTargetBanks()) {
             for(int x = 0; x < bank.allNodes.length; x++)
-                NETWORK.unlink(new SystemVertex(this.target.getBlockPos()), new SystemVertex(bank.target.getBlockPos()));
+                NETWORK.unlink(new SVID(this.target.getBlockPos(), -1), new SVID(bank.target.getBlockPos(), -1), true);
             bank.removeSharedConnections(this);
         }
     }
@@ -541,14 +558,14 @@ public class NodeBank<T extends ElectricBlockEntity> {
             allNodes[fake.getSourceID()].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
 
-            NETWORK.link(new SystemVertex(fromConnection.getParentPos(), fake.getSourceID()), new SystemVertex(targetConnection.getParentPos(), targetID));
+            NETWORK.link(new SVID(fromConnection.getParentPos(), fake.getSourceID()), new SVID(targetConnection.getParentPos(), targetID));
             return NodeConnectResult.WIRE_SUCCESS;
         }        
         return r1;
     }
 
-    public SystemVertex approximate() {
-        return new SystemVertex(this);
+    public SystemVertex approximate(ElectricNode node) {
+        return new SystemVertex(this.target.getBlockPos(), node.getIndex());
     }
 
     /***

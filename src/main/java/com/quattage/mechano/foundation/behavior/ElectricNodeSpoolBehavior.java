@@ -9,12 +9,12 @@ import javax.annotation.Nullable;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.item.spool.WireSpool;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.effect.ParticleBuilder;
 import com.quattage.mechano.foundation.effect.ParticleSpawner;
 import com.quattage.mechano.foundation.electricity.NodeBank;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireSpool;
 import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
 import com.quattage.mechano.foundation.helper.VectorHelper;

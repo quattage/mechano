@@ -72,8 +72,7 @@ public class Mechano {
     public void onServerStart(ServerStartedEvent event) {
         ServerLevel world = event.getServer().getLevel(Level.OVERWORLD);
         if(!world.isClientSide) {
-            Mechano.log("Mechano Server Started Event");
-            NetworkSavedData auxilaryData = world.getDataStorage().computeIfAbsent(NetworkSavedData::new, NetworkSavedData::new, NetworkSavedData.MECHANO_SAVE_KEY);
+            NetworkSavedData auxilaryData = world.getDataStorage().computeIfAbsent(nbt -> new NetworkSavedData(nbt, world), NetworkSavedData::new, NetworkSavedData.MECHANO_SAVE_KEY);
             NetworkSavedData.setInstance(auxilaryData);
         }
     }

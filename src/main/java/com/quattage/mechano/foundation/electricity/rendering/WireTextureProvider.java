@@ -11,7 +11,7 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.content.item.spool.WireSpool;
+import com.quattage.mechano.foundation.electricity.WireSpool;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;

@@ -9,6 +9,7 @@ import com.quattage.mechano.content.block.power.transfer.connector.transmission.
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.foundation.block.IBE;
@@ -71,6 +72,8 @@ public class TransmissionConnectorBlock extends DirectionalBlock implements IBE<
 
         BlockState check = world.getBlockState(pos.relative(dir.getOpposite()));
         BlockState checkF = world.getBlockState(pos.relative(dir));
+
+        if(DirectionalEnergyStorable.hasMatchingCaps(world, pos, dir)) return true;
         
 		return  check.getBlock() != MechanoBlocks.CONNECTOR_STACKED_ZERO.get() && 
                 check.getBlock() != MechanoBlocks.CONNECTOR_STACKED_ONE.get() &&

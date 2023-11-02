@@ -21,7 +21,7 @@ public class BlockMath {
     }
 
     public static BlockPos getNearestBlock(Vec3 root) {
-        Vec3 pos = VectorHelper.getCenter(root);
+        Vec3 pos = VectorHelper.toNearestBlockCenter(root);
         return VectorHelper.toBlockPos(pos);
     }
 

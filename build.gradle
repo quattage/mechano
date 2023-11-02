@@ -7,7 +7,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: "${forgegradle_version}", changing: true
+        classpath "net.minecraftforge.gradle:ForgeGradle:${forgegradle_version}"
         classpath "org.parchmentmc:librarian:${librarian_version}"
         classpath "org.spongepowered:mixingradle:${mixingradle_version}"
     }
@@ -159,7 +159,13 @@ dependencies {
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${geckolib_version}")
 
     // BetterF3
-    runtimeOnly fg.deobf("curse.maven:betterf3-401648:${project.betterf3_version}")
+    if(Boolean.parseBoolean(project.use_betterf3)) {
+        runtimeOnly fg.deobf("curse.maven:betterf3-401648:${project.betterf3_version}")
+    }
+
+    if(Boolean.parseBoolean(project.use_mekanism)) {
+        runtimeOnly fg.deobf("mekanism:Mekanism:${minecraft_version}-${mekanism_version}")
+    }
 }
 
 jar {

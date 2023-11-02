@@ -4,14 +4,14 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import com.jozufozu.flywheel.util.Color;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
-import com.quattage.mechano.foundation.electricity.WireSpool;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.electricity.system.TransferSystem;
@@ -30,11 +30,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBlockEntityRenderer<T> {
@@ -167,11 +164,18 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
             Pair<TransferSystem, SystemVertex> boundVertex = NETWORK.getSystemAndNode(new SVID(ebe.getBlockPos(), nodeI));
 
             String lineA = "";
+            int color = -1;
             ArrayList<String> connLines = new ArrayList<>();
 
             int x = 0;
             if(boundVertex != null) {
-                for(SystemVertex node : boundVertex.getFirst().getAllConnections()) {
+                if(boundVertex.getSecond().isMember()) {
+                    Mechano.logSlow("MEMBER");
+                    color = 25500;
+                } else {
+                    Mechano.logSlow("NOT MEMBER");
+                }
+                for(SystemVertex node : boundVertex.getFirst().allVerts()) {
                     if(node == null || node.getPos() == null)
                         connLines.add(x  + ": [NULL]");
                     else
@@ -200,23 +204,14 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
 
             matrix.mulPose(cameraRotation);            
             matrix.scale(-0.025F, -0.025F, 0.025F);
-            fontRenderer.drawInBatch(lineA, textOffset, 0f, -1, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
+            fontRenderer.drawInBatch(lineA, textOffset, 0f, color, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
 
             for(String connLine : connLines) {
                 matrix.translate(0f, -8f, 0f);
                 textOffset = -fontRenderer.width(connLine) / 2;
-                fontRenderer.drawInBatch(connLine, textOffset, 0f, -1, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
+                fontRenderer.drawInBatch(connLine, textOffset, 0f, color, false, matrix4f, buffer, DisplayMode.SEE_THROUGH, 0, light, false);
             }
             matrix.popPose();
         }
-    }
-
-    private AABB boxFromPos(Vec3 pos) {
-        return boxFromPos(pos, 0.1f);
-    }
-
-    private AABB boxFromPos(Vec3 pos, float s) {
-        Vec3 size = new Vec3(s, s, s);
-        return new AABB(pos.subtract(size), pos.add(size));
     }
 }

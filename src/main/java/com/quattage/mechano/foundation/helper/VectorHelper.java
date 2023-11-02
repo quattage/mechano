@@ -46,21 +46,11 @@ public class VectorHelper {
         return new Vec3(vec.x + randX, vec.y + randY, vec.z + randZ);
     }
 
-    /***
-     * Gets a random value whose range is centered on zero. 
-     * @param dispersion width of the random range
-     * @return a double between -dispersion and + dispersion
-     */
     public static double getRandom(double dispersion) {
         return (rand.nextFloat() * dispersion) - (dispersion / 2);
     }
 
-    /***
-     * 
-     * @param root
-     * @return
-     */
-    public static Vec3 getCenter(Vec3 vec) {
+    public static Vec3 toNearestBlockCenter(Vec3 vec) {
         BlockPos converted = toBlockPos(vec);
         Vec3 out = new Vec3(
             converted.getX(), 
@@ -70,9 +60,6 @@ public class VectorHelper {
         return out;
     }
 
-    /***
-     * Converts a BlockPos to a Vec3
-     */
     public static Vec3 toVec(BlockPos pos) {
         return new Vec3(pos.getX(), pos.getY(), pos.getZ());
     }
@@ -308,5 +295,9 @@ public class VectorHelper {
         return player.getCommandSenderWorld().clip(
             new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)
         );
+    }
+
+    public static String asString(BlockPos pos) {
+        return pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
     }
 }

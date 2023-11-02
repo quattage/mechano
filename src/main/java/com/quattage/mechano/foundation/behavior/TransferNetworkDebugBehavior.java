@@ -9,7 +9,10 @@ import net.minecraft.world.phys.Vec3;
 
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
+import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.electricity.system.TransferSystem;
 import com.simibubi.create.CreateClient;
@@ -32,18 +35,23 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
             BlockPos lookingBlockPos, double pTicks) {
         
         for(TransferSystem sys : NETWORK.all()) {
-            SystemVertex last = null;
             Color col = sys.getDebugColor();
-            for(SystemVertex node : sys.all()) {
-                if(node != null && last != null) {
+            if(sys.allEdges().isEmpty()) {
+                Mechano.logSlow("No edges");
+                continue;
+            }
+
+            for(ISystemEdge edge : sys.allEdges()) {
+                if(edge != null) {
                     CreateClient.OUTLINER
-                        .showLine(node.getPos(), node.getPos().getCenter(), last.getPos().getCenter())
+                        .showLine("edge-" + edge.getVecB() + edge.getVecA(), edge.getVecA(), edge.getVecB())
                         .lineWidth(1/16f)
                         .disableCull()
                         .disableLineNormals()
                         .colored(col);
+                } else {
+                    Mechano.log("NULL EDGE!");
                 }
-                last = node;
             }
         }
     }

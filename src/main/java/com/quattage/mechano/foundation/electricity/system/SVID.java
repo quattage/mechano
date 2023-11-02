@@ -1,67 +1,77 @@
 package com.quattage.mechano.foundation.electricity.system;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
 
 /***
  * SVID (System Vertex ID) is a (not really) lightweight class for downmixing a SystemVertex 
- * object into a simple String for quick storage in datasets that require hashing.
+ * into only its barest components for storage in datasets that require hashing.
  */
 public class SVID {
-    private final String ID;
+
+
+    private final BlockPos pos;
+    private final int subIndex;
     
     public SVID(SystemVertex vert) {
         if(vert == null) throw new NullPointerException("Failed to create SVID - SystemVertex is null!");
-        BlockPos vP = vert.getPos();
-        this.ID = vP.getX() + "," + vP.getY() + "," + vP.getZ() + "," + vert.getSubIndex();
+        this.pos = vert.getPos();
+        this.subIndex = vert.getSubIndex();
     }
 
     public SVID(BlockPos pos, int subIndex) {
         if(pos == null) throw new NullPointerException("Failed to create SVID - BlockPos is null!");
-        this.ID = pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + subIndex;
+        this.pos = pos;
+        this.subIndex = subIndex;
+    }
+
+    public SVID(BlockPos pos) {
+        if(pos == null) throw new NullPointerException("Failed to create SVID - BlockPos is null!");
+        this.pos = pos;
+        this.subIndex = -1;
     }
 
     public String toString() {
-        return "[" + ID + "]";
+        return "[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + subIndex + "]";
     }
 
     public SystemVertex toVertex() {
-        String[] split = ID.split(",");
-        BlockPos pos = new BlockPos(
-            pull(split[0]), 
-            pull(split[1]),
-            pull(split[2])
-        );
-        return new SystemVertex(pos, pull(split[3]));
+        return new SystemVertex(pos, subIndex);
     }
 
-    private int pull(String x) {
-        return Integer.valueOf(x);
+    public BlockPos getPos() {
+        return pos;
     }
 
+    /***
+     * Whether or not this SVID is ambiguous. Ambiguous SVIDs don't require distinction between
+     * subindexes.
+     * @return True if this SVID's subindex is negative
+     */
+    public boolean isAmbiguous() {
+        return subIndex < 0;
+    }
+
+    public SVID copy() {
+        return new SVID(pos, subIndex);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if(o instanceof SVID other) {
-
-            String[] mem1 = this.ID.split(",");
-            String[] mem2 = other.ID.split(",");
-
-            if(Integer.valueOf(mem1[3]) >= 0 || Integer.valueOf(mem2[3]) >= 0)
-                return this.ID.equals(other.ID);
-            return equalsWithoutIndex(mem1, mem2);
+            if(other.isAmbiguous() || this.isAmbiguous())
+                return other.pos.equals(this.pos);
+            return other.pos.equals(this.pos) && other.subIndex == this.subIndex;
         }
+
         return false;
     }
 
-
-    private boolean equalsWithoutIndex(String[] mem1, String[] mem2) {
-        for(int x = 0; x < 2; x++)
-            if(mem1[x] != mem2[x]) return false;
-        return true;
-    }
-
+    @Override
     public int hashCode() {
-        return ID.hashCode();
+        return pos.hashCode();
     }
 }

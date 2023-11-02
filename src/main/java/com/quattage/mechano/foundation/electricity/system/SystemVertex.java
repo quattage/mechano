@@ -6,32 +6,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
 /***
- * A SystemNode is an approximation of a NodeBank. 
- * The lication of this SystemNode is stored as a SystemVertex, 
+ * A SystemVertex is an approximation of a NodeBank. 
+ * The lication of this SystemVertex is stored as a SystemVertex, 
  * and links to other SystemVertices are stored in a list.
  */
 public class SystemVertex {
 
     /***
-     * A System node can be a <strong>Member,</strong> or an <strong>Actor.</strong> <p>
-     * 
-     * <strong>Members</strong> within the TransferSystem are active participants which control the TransferSystem.
-     * <strong>Actors</strong> within the TransferSystem are passive and have no control over the system.
-     * Implementation should use this boolean to prevent excessive calls when iterating over a TransferSystem.
-     * (You don't want to push or pull power when the node isn't connected to any external source)
-     * If this boolean is true, this SystemNode is marked as being an active participant in this network, which can
-     * send or receive power. If it is false, this node is not connected to any external producers/consumers, and will
-     * basically just be "fake."
+     * Member status dictates whether this vertex interfaces with blocks outside of the TransferSystem.
+     * If this boolean is false, this vertex will be skipped during iteration when signals are propagated
      */
-    public boolean isMember;
-
-    /***
-     * Since a SystemNode is an approximation of a NodeBank, we must store the BlockPos of that NodeBank.
-     * When in the right context, this BlockPos can be used to pull a NodeBank instance from the world.
-     */
-    //protected SystemVertex parent;
+    private boolean isMember = false; //TODO INIT SEQUENCE DOESN'T UPDATE THIS STATUS YET
 
     private final BlockPos pos;
     private final int subIndex;
@@ -47,13 +35,19 @@ public class SystemVertex {
     public SystemVertex(BlockPos pos, int subIndex) {
         this.pos = pos;
         this.subIndex = subIndex;
-        this.isMember = false;
+        NETWORK.refreshVertex(this);
+    }
+
+    public SystemVertex(SystemVertex original, int subIndex) {
+        this.pos = original.pos;
+        this.subIndex = subIndex;
     }
 
     public SystemVertex(BlockPos pos, int subIndex, boolean isMember) {
         this.pos = pos;
         this.subIndex = subIndex;
         this.isMember = isMember;
+        NETWORK.refreshVertex(this);
     }
 
     public SystemVertex(CompoundTag in) {
@@ -69,6 +63,7 @@ public class SystemVertex {
             this.isMember = false;
 
         readLinks(in.getList("link", Tag.TAG_COMPOUND));
+        NETWORK.refreshVertex(this);
     }
 
     public CompoundTag writeTo(CompoundTag in) {
@@ -96,11 +91,11 @@ public class SystemVertex {
 
     private void readLinks(ListTag list) {
         for(int x = 0; x < list.size(); x++)
-            links.add(new SystemVertex(list.getCompound(x)));
+            linkTo(new SystemVertex(list.getCompound(x)));
     }
 
     /**
-     * Gets the real-world position of this SystemNode
+     * Gets the real-world position of this SystemVertex
      * @return BlockPos
      */
     public BlockPos getPos() {
@@ -108,8 +103,8 @@ public class SystemVertex {
     }
 
     /***
-     * Gets the sub index of this SystemNode
-     * @return Int representing the index of this SystemNode's ElectricNode representation
+     * Gets the sub index of this SystemVertex
+     * @return Int representing the index of this SystemVertex's ElectricNode representation
      */
     public int getSubIndex() {
         return subIndex;
@@ -120,7 +115,7 @@ public class SystemVertex {
      * that require hashing.
      * @return a new SVID object representing this SystemVertex's BlockPos and SubIndex summarized as a String.
      */
-    public SVID getSVID() {
+    public SVID toSVID() {
         return new SVID(this);
     }
 
@@ -129,30 +124,31 @@ public class SystemVertex {
     }
 
     /***
-     * Returns a copy of this SystemNode at a given location
+     * Returns a copy of this SystemVertex at a given location
      * @param newPos Position that the copied node will hold
-     * @return A copy of this SystemNode with its position set to the provided BlockPos
+     * @return A copy of this SystemVertex with its position set to the provided BlockPos
      */
     public SystemVertex getMovedCopy(BlockPos newPos) {
         return new SystemVertex(newPos, this.subIndex, this.isMember);
     }
 
     /***
-     * Adds a link from the given SystemNode to this SystemNode.
-     * @param other Other SystemNode within the given TransferSystem to add to this SystemNode
-     * @return True if the list of connections within this SystemNode was changed.
+     * Adds a link from the given SystemVertex to this SystemVertex.
+     * @param other Other SystemVertex within the given TransferSystem to add to this SystemVertex
+     * @return True if the list of connections within this SystemVertex was changed.
      */
     protected boolean linkTo(SystemVertex other) {
         if(links.contains(other)) return false;
+
         return links.add(other);
     }
 
     /***
-     * Adds a link from the given SystemNode to this SystemNode.
+     * Adds a link from the given SystemVertex to this SystemVertex.
      * Does not perform any sanity checks to ensure that there is a valid
-     * SystemNode at the givem BlockPos.
-     * @param other Other SystemNode within the given TransferSystem to add to this SystemNode
-     * @return True if the list of connections within this SystemNode was changed.
+     * SystemVertex at the givem BlockPos.
+     * @param other Other SystemVertex within the given TransferSystem to add to this SystemVertex
+     * @return True if the list of connections within this SystemVertex was changed.
      */
     protected boolean linkTo(BlockPos otherPos, int subIndex) {
         SystemVertex newLink = new SystemVertex(otherPos, subIndex);
@@ -161,39 +157,44 @@ public class SystemVertex {
     }
 
     /***
-     * Removes the link from this SystemNode to the given SystemNode.
+     * Removes the link from this SystemVertex to the given SystemVertex.
      * @param other
+     * @returns True if this SystemVertex was modified as a result of this call
      */
-    public void unlinkFrom(SystemVertex other) {
-        links.remove(other);
+    public boolean unlinkFrom(SystemVertex other) {
+        return links.remove(other);
     }
 
     /***
-     * Removes the link from this SystemNode to the given SystemNode.
-     * Does not perform any sanity checks to ensure that there is a valid
-     * SystemNode at the givem BlockPos.
+     * Removes the link from this SystemVertex to all nodes at the given SVID safely
      * @param other
+     * @returns True if this SystemVertex was modified as a result of this call
      */
-    public void unlinkFrom(BlockPos otherPos, int subIndex) {
-        links.remove(new SystemVertex(otherPos, subIndex));
+    public boolean unlinkFromContextually(SVID other, TransferSystem sys) {
+        boolean changed = false;
+        for(SystemVertex vert : links) {
+            if(vert.getPos().equals(other.getPos()))
+                if(this.unlinkFrom(vert)) changed = true;
+        }
+        return changed;
     }
 
     /***
-     * Checks whether this SystemNode is linked to the given SystemNode.
-     * @param other SystemNode to check for 
-     * @return True if this SystemNode contains a link to the given SystemNode
+     * Checks whether this SystemVertex is linked to the given SystemVertex.
+     * @param other SystemVertex to check for 
+     * @return True if this SystemVertex contains a link to the given SystemVertex
      */
     public boolean isLinkedTo(SystemVertex other) {
         return this.links.contains(other);
     }
 
     /***
-     * Checks whether this SystemNode is linked to the given BlockPos.
+     * Checks whether this SystemVertex is linked to the given BlockPos.
      * Does not perform any sanity checks to ensure that there is a valid
-     * SystemNode at the givem BlockPos.
+     * SystemVertex at the givem BlockPos.
      * @param matrix TransferSystem to check
-     * @param other SystemNode to get from the links within this SystemNode
-     * @return True if this SystemNode contains a link to the given SystemNode
+     * @param other SystemVertex to get from the links within this SystemVertex
+     * @return True if this SystemVertex contains a link to the given SystemVertex
      */
     public boolean isLinkedTo(BlockPos otherPos, int subIndex) {
         return this.links.contains(new SystemVertex(otherPos, subIndex));
@@ -204,10 +205,11 @@ public class SystemVertex {
     }
 
     /***
-     * Checks whether this SystemNode has any links attached to it
-     * @return True if this SystemNode doesn't contain any links
+     * Checks whether this SystemVertex has any links attached to it
+     * @return True if this SystemVertex doesn't contain any links
      */
     public boolean isEmpty() {
+        if(links == null) return true;
         return links.isEmpty();
     }
 
@@ -227,9 +229,12 @@ public class SystemVertex {
         return "[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", i" + subIndex + "]";
     }
 
+    /***
+     * Equivalence comparison by position. Does not compare links to other nodes.
+     */
     public boolean equals(Object other) {
         if(other instanceof SystemVertex sl) {
-            if(this.subIndex == -1 || sl.getSubIndex() == -1) 
+            if(this.subIndex == -1 || sl.getSubIndex() == -1)
                 return this.pos.equals(sl.pos);
             return this.pos.equals(sl.pos) && this.subIndex == sl.subIndex;
         }
@@ -237,9 +242,19 @@ public class SystemVertex {
     }
 
     public int hashCode() {
-        if(subIndex < 0) return pos.hashCode();
-        return pos.hashCode() + subIndex;
+        return pos.hashCode();
     }
 
+    public boolean isMember() {
+        return isMember;
+        // return !isEmpty() && isMember;
+    }
 
+    public void setIsMember(boolean isMember) {
+        this.isMember = isMember;
+    }
+
+    public void setIsMember() {
+        setIsMember(true);
+    }
 }

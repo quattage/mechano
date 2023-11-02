@@ -20,6 +20,7 @@ public class NetworkSavedData extends SavedData {
 
     public NetworkSavedData(CompoundTag in, ServerLevel initialWorld) {
         this();
+        NETWORK.initializeWithin(initialWorld);
         NETWORK.readFrom(in, initialWorld);
     }
 
@@ -38,7 +39,7 @@ public class NetworkSavedData extends SavedData {
     }
 
     public static void markInstanceDirty(SVID id) {
-        if(INSTANCE != null) {
+        if(INSTANCE != null && !INSTANCE.isDirty()) {
             Mechano.LOGGER.info("Network stack has been marked dirty from " + id);
             INSTANCE.setDirty();
         }

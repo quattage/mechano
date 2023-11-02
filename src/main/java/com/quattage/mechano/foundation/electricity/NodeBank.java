@@ -15,6 +15,7 @@ import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConne
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -205,15 +206,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
 
     /***
      * Continually searches in the area surrounding the player's look direction for 
-     * NodeBanks to pull nodes from. This is a key step required to provide the functionality 
-     * related to targeting ElectricNodes to make connections without having to be looking at 
-     * the block's VoxelShape directly. This is Intended to be used internally, but may have 
-     * some utility elsewhere.<p>
-     * 
-     * It searches in a straight line outward from the given start to the given end position,
-     * and also indexes through the surrounding blocks in that line in a sort of "cone" shape. 
-     * It's pretty computationally expensive. Use with caution.
-     * 
+     * NodeBanks to pull nodes from. 
      * @param world World to operate within
      * @param start Vec3 starting position of the search (camera posiiton)
      * @param end Vec3 ending position of the search (BlockHitResult)
@@ -229,7 +222,8 @@ public class NodeBank<T extends ElectricBlockEntity> {
 
         if(scope % 2 == 0) scope += 1;
         if(scope < 3) scope = 3;
-
+        
+        // TODO jeezy creezy refectoreeni 
         // steps through in a straight line out away from the start to the end.
         for(int iteration = 0; iteration < maxIterations; iteration++) {
             float percent = iteration / (float) maxIterations;
@@ -254,7 +248,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
                                 out.add(Pair.of(ebe.nodeBank, lookStep));
                                 continue;
                             }
-
+                            
                             boolean alreadyExists = false;
                             for(int search = 0; search < out.size(); search++) {
                                 Pair<NodeBank<?>, Vec3> lookup = out.get(search);
@@ -464,9 +458,8 @@ public class NodeBank<T extends ElectricBlockEntity> {
      * when this NodeBank's parent Block is destroyed.
      */
     public void destroy() {
+        NETWORK.destroyVertex(new SVID(target.getBlockPos()));
         for(NodeBank<?> bank : getAllTargetBanks()) {
-            for(int x = 0; x < bank.allNodes.length; x++)
-                NETWORK.unlink(new SVID(this.target.getBlockPos(), -1), new SVID(bank.target.getBlockPos(), -1), true);
             bank.removeSharedConnections(this);
         }
     }
@@ -558,7 +551,7 @@ public class NodeBank<T extends ElectricBlockEntity> {
             allNodes[fake.getSourceID()].replaceLastConnection(fromConnection);
             markDirty(); targetBank.markDirty();
 
-            NETWORK.link(new SVID(fromConnection.getParentPos(), fake.getSourceID()), new SVID(targetConnection.getParentPos(), targetID));
+            NETWORK.link(new SVID(fromConnection.getParentPos(),targetID), new SVID(targetConnection.getParentPos(), fake.getSourceID()));
             return NodeConnectResult.WIRE_SUCCESS;
         }        
         return r1;

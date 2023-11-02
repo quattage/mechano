@@ -1,7 +1,8 @@
 package com.quattage.mechano.foundation.electricity.core.connection;
 
 import com.quattage.mechano.foundation.electricity.NodeBank;
-import com.quattage.mechano.foundation.electricity.WireSpool;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
+import com.quattage.mechano.foundation.electricity.spool.WireSpoolManager;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -46,7 +47,7 @@ public class ElectricNodeConnection extends NodeConnection {
     public ElectricNodeConnection(BlockEntity target, Vec3 sourcePos, CompoundTag in) {
         super(target.getBlockPos());
         this.destinationID = in.getInt("to");
-        this.spoolType = WireSpool.get(in.getString("type"));
+        this.spoolType = WireSpoolManager.getType(in.getString("type"));
         this.sourcePos = sourcePos;
         this.relativePos = new Vec3i(
             in.getInt("rX"), 

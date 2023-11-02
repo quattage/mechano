@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.electricity;
+package com.quattage.mechano.foundation.electricity.spool;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,6 +9,8 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.foundation.electricity.NodeBank;
+import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConnection;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
 import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
@@ -40,7 +42,6 @@ public abstract class WireSpool extends Item {
     protected final String name;
     protected final ItemStack emptySpoolDrop;
     protected final ItemStack rawDrop;
-    public static final HashMap<String, WireSpool> spoolTypes = new HashMap<String, WireSpool>();
 
     private int useCooldown = 0;
     private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
@@ -60,35 +61,7 @@ public abstract class WireSpool extends Item {
         this.rate = setRate();
         this.emptySpoolDrop = new ItemStack(setEmptySpoolDrop());
         this.rawDrop = new ItemStack(setRawDrop());
-        WireSpool.addType(this);
-    }
-
-    /***
-     * Add a WireSpool object to the WireSpool cache. 
-     * The stored WireSpool instance is then used by {@link #get() get()} 
-     * to look up WireSpool types by ID when said ID retrieved from NBT.
-     * <strong>Note: You don't have to do this yourself. It's done automatically
-     * by the WireSpool's  {@link #WireSpool(Properties properties) constructor}.</strong>
-     * @param spool WireSpool instance to cache.
-     */
-    public static final void addType(WireSpool spool) {
-        spoolTypes.put(spool.getId(), spool);
-    }
-
-    /***
-     * Retrieve a WireSpool object from the cache. This is used 
-     * @param id ID to retrieve (ex. 'wire_hookup' or 'wire_transmission')
-     */
-    public static final WireSpool get(String id) {
-        return spoolTypes.get(id);
-    }
-
-    /***
-     * Gets the stored singleton HashMap of spool ItemStacks.
-     * @return
-     */
-    public static final HashMap<String, WireSpool> getAllTypes() {
-        return spoolTypes;
+        WireSpoolManager.addType(this);
     }
 
     /***
@@ -330,41 +303,22 @@ public abstract class WireSpool extends Item {
         if(clear && intermediary != null) cancelConnection(ebe, intermediary.getSecond().getSourceID());
     }
 
-    /***
-     * Reverts connection to reflect the state of the NodeBank before the connection was attempted.
-     */
     private void cancelConnection(WireNodeBlockEntity ebe, int sourceID) {
         if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
         sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
     }
 
-    /***
-     * Provides player tactility in the form of sound and an informational message
-     * @param world World to play sound in.
-     * @param pos Position to play sound,
-     * @param result NodeConnectResult to get the sound and info message from.
-     */
     private void sendInfo(Level world, BlockPos pos, NodeConnectResult result) {
         player.displayClientMessage(result.getMessage(), true);
         result.playConnectSound(world, pos);
     }
 
-    /***
-     * Clears all connection-associated data from this WireSpool.
-     * @param result (Optional) Result of the associated connection to clear; won't clear if it's not necessary
-     * @param stack ItemStack to clear tags from.
-     */
     private void clearTag(ItemStack stack) {
         //if(!stack.hasTag()) return;
         stack.removeTagKey("at");
         stack.removeTagKey("from");
     }
 
-    /***
-     * Clears all connection-associated data from this WireSpool.
-     * @param result Result of the associated connection to clear; won't clear if it's not necessary
-     * @param stack ItemStack to clear tags from.
-     */
     private void clearTag(NodeConnectResult result, ItemStack stack) {
         if(!result.isSuccessful() && !result.isFatal()) return;
         stack.removeTagKey("at");

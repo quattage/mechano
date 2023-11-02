@@ -3,13 +3,19 @@ package com.quattage.mechano.foundation.electricity.system;
 import java.util.ArrayList;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 /***
  * The GlobalTransferNetwork is an elevated level controller for TransferSystems.
@@ -20,11 +26,15 @@ import net.minecraft.server.level.ServerLevel;
 public class GlobalTransferNetwork {
     
     private ArrayList<TransferSystem> subsystems = new ArrayList<TransferSystem>();
-    private boolean loaded = false;
+    private ServerLevel world = null;
 
     public static final GlobalTransferNetwork NETWORK = new GlobalTransferNetwork();
 
     public GlobalTransferNetwork() {}
+
+    private void debug(String operation) {
+        Mechano.log(operation + ": \n" + NETWORK);
+    }
 
     public void readFrom(CompoundTag in, ServerLevel world) {
         CompoundTag net = in.getCompound(NetworkSavedData.MECHANO_NETWORK_KEY);
@@ -34,23 +44,28 @@ public class GlobalTransferNetwork {
             return;
         }
 
-        // TODO ECC
-
         ListTag subs = net.getList("all", Tag.TAG_COMPOUND);
         Mechano.LOGGER.warn("Reading " + subs.size() + " TransferNetworks from NBT");
 
         boolean hadFailures = false;
         for(int x = 0; x < subs.size(); x++) {
-            Mechano.LOGGER.info("Adding a TransferNetwork containing the following data:\n" + subs.getCompound(x));
-            TransferSystem sysToAdd = new TransferSystem(subs.getCompound(x), world);
-            if(sysToAdd.isEmpty())
-                hadFailures = true;
+            CompoundTag subsystem = subs.getCompound(x);
+            Mechano.LOGGER.info("Adding a TransferNetwork containing the following data:\n" + subsystem);
+            TransferSystem sysToAdd = new TransferSystem(subsystem, world);
+
+            // systems may be missing members due to failed registration so deal with them conditionally
+            if(sysToAdd.size() != subsystem.getList("sub", Tag.TAG_COMPOUND).size()) {
+                subsystems.add(sysToAdd);
+                hadFailures = true; 
+            }
+            else if(sysToAdd.isEmpty()) 
+                hadFailures = true; 
             else 
-                subsystems.add(new TransferSystem(subs.getCompound(x), world));
+                subsystems.add(sysToAdd); 
         }
         if(hadFailures) {
-            Mechano.LOGGER.warn("The GlobalTransferNetwork detected that 1 or more TransferSystems failed to register! " + 
-                "Affected blocks' coordinates should be above this message.");
+            Mechano.LOGGER.warn("The GlobalTransferNetwork detected that 1 or more TransferSystems failed to register or registered with missing components! " + 
+                "Affected blocks' coordinates should be above this message. If you've recently experienced a crash, this might be why.");
             declusterize();
             onSystemModified();
         }
@@ -64,12 +79,39 @@ public class GlobalTransferNetwork {
         return in;
     }
 
-    public boolean needsLoaded() {
-        if(!loaded) {
-            loaded = true;
-            return true;
+    /***
+     * Called whenever the status of a BlockEntity host has changes that should be reflected.
+     */
+    public void refreshVertex(SystemVertex vert) {
+        if(!hasWorld()) return;            
+
+        BlockEntity be = world.getBlockEntity(vert.getPos());
+        BlockState state = world.getBlockState(vert.getPos());
+        Direction dir = DirectionTransformer.getUp(state);
+
+        if(be instanceof WireNodeBlockEntity wbe) {
+            Mechano.log("Vertex refreshed at " + vert.getPos());
+            if(DirectionalEnergyStorable.hasMatchingCaps(world, vert.getPos(), dir)) {
+                vert.setIsMember();
+                // other such goofy shit here
+            }
         }
-        return false;
+    }
+
+    /***
+     * Called whenever the status of a BlockEntity host has changes that should be reflected.
+     */
+    public void refreshVertex(BlockPos pos) {
+        SystemVertex vert = getVertAt(new SVID(pos));
+        refreshVertex(vert);
+    }
+
+    public void initializeWithin(ServerLevel world) {
+        this.world = world;
+    }
+
+    public boolean hasWorld() {
+        return world != null;
     }
 
     public ListTag writeAllSubsystems() {
@@ -88,51 +130,61 @@ public class GlobalTransferNetwork {
     }
 
     /***
-     * Links two SystemNodes without question. If these nodes don't belong to a subsystem,
-     * a new subsystem is made form them. If both nodes are in independent subsystems, these
+     * Links two SystemVerticies without question. If these nodes don't belong to a subsystem,
+     * a new subsystem is made from them. If both nodes are in independent subsystems, these
      * subsystems are merged.
-     * @param nodeOne
-     * @param nodeTwo
+     * @param idA
+     * @param idB
      */
-    public void link(SVID nodeOne, SVID nodeTwo) {
-        Pair<Integer, TransferSystem> fromSystem = getSystemContaining(nodeOne);
-        Pair<Integer, TransferSystem> toSystem = getSystemContaining(nodeTwo);
+    public void link(SVID idA, SVID idB) {
+        Pair<Integer, TransferSystem> sysA = getSystemContaining(idA);
+        Pair<Integer, TransferSystem> sysB = getSystemContaining(idB);
 
-        if(fromSystem == null && toSystem == null) {
+        if(sysA == null && sysB == null) {
             TransferSystem newSystem = new TransferSystem();
-            newSystem.addNode(nodeOne.toVertex());
-            newSystem.addNode(nodeTwo.toVertex());
-            newSystem.link(nodeOne, nodeTwo);
+            newSystem.addVert(idA.toVertex());
+            newSystem.addVert(idB.toVertex());
+            newSystem.linkVerts(idA, idB);
             subsystems.add(newSystem);
 
-        } else if(fromSystem != null && toSystem == null) {
-            fromSystem.getSecond().addNode(nodeTwo);
-            fromSystem.getSecond().link(nodeOne, nodeTwo);
+        } else if(sysA != null && sysB == null) {
+            sysA.getSecond().addVert(idB);
+            sysA.getSecond().linkVerts(idA, idB);
 
-        } else if(fromSystem == null && toSystem != null) {
-            toSystem.getSecond().addNode(nodeOne);
-            toSystem.getSecond().link(nodeOne, nodeTwo);
+        } else if(sysA == null && sysB != null) {
+            sysB.getSecond().addVert(idA);
+            sysB.getSecond().linkVerts(idA, idB);
 
-        } else if(fromSystem.getFirst() == toSystem.getFirst()) {
-            fromSystem.getSecond().link(nodeOne, nodeTwo);
+        } else if(sysA.getFirst() == sysB.getFirst()) {
+            sysA.getSecond().linkVerts(idA, idB);
 
-        } else if(fromSystem.getFirst() != toSystem.getFirst()) {
-            if(fromSystem.getFirst() < toSystem.getFirst()) {
-                fromSystem.getSecond().mergeWith(toSystem.getSecond());
-                subsystems.remove(toSystem.getSecond());
+        } else if(sysA.getFirst() != sysB.getFirst()) {
+            // comparison here ensures that systems get merged down rather than up
+            // so we don't end up with null systems in the array
+            if(sysA.getFirst() < sysB.getFirst()) {
+                sysA.getSecond().mergeWith(sysB.getSecond());
+                subsystems.remove(sysB.getSecond());
             } else {
-                toSystem.getSecond().mergeWith(fromSystem.getSecond());
-                subsystems.remove(fromSystem.getSecond());
+                sysB.getSecond().mergeWith(sysA.getSecond());
+                subsystems.remove(sysA.getSecond());
             }
         }
-        onSystemModified(nodeOne);
-        debug("LINK OPERATION");
+        onSystemModified(idA);
     }
 
+    /***
+     * called whenever a system is modified from a global context 
+     * (discrete modifications on the individual level won't call this)
+     */
     public void onSystemModified() {
         NetworkSavedData.markInstanceDirty();
     }
 
+    /***
+     * called whenever a system is modified from a global context 
+     * (discrete modifications on the individual level won't call this)
+     * @param id origin of the modification
+     */
     public void onSystemModified(SVID id) {
         NetworkSavedData.markInstanceDirty(id);
     }
@@ -146,43 +198,95 @@ public class GlobalTransferNetwork {
      * will be declusterized at the end of the unlinking operation.
      */
     public void unlink(SVID linkOne, SVID linkTwo, boolean clean) {
-        SystemVertex nodeOne = getNodeAt(linkOne);
-        SystemVertex nodeTwo = getNodeAt(linkTwo);
-        if(nodeOne == null) throw new NullPointerException("Failed to unlink SystemNode from a global context - " + 
-            "No valid SystemNode at " + linkOne + " could be found! (first provided parameter)");
+        SystemVertex nodeOne = getVertAt(linkOne);
+        SystemVertex nodeTwo = getVertAt(linkTwo);
+        if(nodeOne == null) throw new NullPointerException("Failed to unlink SystemVertex from a global context - " + 
+            "No valid SystemVertex at " + linkOne + " could be found! (first provided parameter)");
 
-        if(nodeTwo == null) throw new NullPointerException("Failed to unlink SystemNode from a global context - " + 
-            "No valid SystemNode at " + linkTwo + " could be found! (second provided parameter)");
+        if(nodeTwo == null) throw new NullPointerException("Failed to unlink SystemVertex from a global context - " + 
+            "No valid SystemVertex at " + linkTwo + " could be found! (second provided parameter)");
 
         nodeOne.unlinkFrom(nodeTwo);
         nodeTwo.unlinkFrom(nodeOne);
-        debug("UNLINK OPERATION");
         if(clean)
             declusterize();
         onSystemModified();
     }
 
     /***
-     * Removes the link between two provided SystemNodes.
+     * Removes the link between nodes at two given positions as long as they exist.
+     * @throws NullPointerException if no node could be found at either given BlockPos
+     * @param linkOne
+     * @param linkTwo
+     * @param clean (Defaults to true, reccomended) If true, the network
+     * will be declusterized at the end of the unlinking operation.
+     */ 
+    public void unlink(SVID linkOne, SVID linkTwo) {
+        unlink(linkOne, linkTwo, true);
+    }
+
+    /***
+     * Removes the link between two provided SystemVerticies.
+     * @param linkOne
+     * @param linkTwo
+     * @param clean (Defaults to true, reccomended) If true, the network
+     * will be declusterized at the end of the unlinking operationtt.
+     */
+    public void unlink(SystemVertex vertOne, SystemVertex vertTwo, boolean clean) {
+        vertOne.unlinkFrom(vertTwo);
+        vertTwo.unlinkFrom(vertOne);
+        if(clean)
+            declusterize();
+        onSystemModified();
+    }
+
+    /***
+     * Removes the link between two provided SystemVerticies.
      * @param linkOne
      * @param linkTwo
      * @param clean (Defaults to true, reccomended) If true, the network
      * will be declusterized at the end of the unlinking operation.
      */
-    public void unlink(SystemVertex nodeOne, SystemVertex nodeTwo, boolean clean) {
-        nodeOne.unlinkFrom(nodeTwo);
-        nodeTwo.unlinkFrom(nodeOne);
-        debug("UNLINK OPERATION");
-        if(clean)
-            declusterize();
-        onSystemModified();
+    public void unlink(SystemVertex vertOne, SystemVertex vertTwo) {
+        unlink(vertOne, vertTwo, true);
     }
 
     /***
-     * Removes clusters from TransferSystems in this GlobalTransferNetwork.
-     * Whenever a TransferSystem has discontinuities, this method breaks those
-     * "clusters" out into their own TransferSystem instances. This way we can
-     * always guarantee that valid paths exist between SystemNodes in a TransferSystem.
+     * Destroys all instances of this vertex in all child systems. 
+     * @param vert SystemVertex to remove
+     */
+    public void destroyVertex(SystemVertex vert) {
+        boolean modified = false;
+        for(TransferSystem sys : subsystems) {
+            if(sys.contains(vert))
+                modified = sys.destroyVert(vert);
+        }
+        if(modified) {
+            declusterize();
+            onSystemModified();
+        }
+    }
+
+    /***
+     * Destroys all verticies at the provided SVID in all child systems. 
+     * @param id SVID to remove
+     */
+    public void destroyVertex(SVID id) {
+        boolean modified = false;
+        for(TransferSystem sys : subsystems) {
+            if(sys.contains(id)) 
+                modified = sys.destroyVertsAt(id);
+        }
+        if(modified) {
+            declusterize();
+            onSystemModified();
+        }
+    }
+
+    /***
+     * Splits TransferSystems by their discontinuities.
+     * Called automatically whenever a node is removed
+     * from the system.
      */
     public void declusterize() {
         ArrayList<TransferSystem> evaluated = new ArrayList<>();
@@ -190,8 +294,10 @@ public class GlobalTransferNetwork {
             evaluated.addAll(sys.trySplit());
         subsystems.clear();
         subsystems.addAll(evaluated);
-        debug("DECLUSTERIZE RESULT");
-    }
+    } 
+    // TODO Directed DFS for better optimization 
+    // store the index of the parent TransferSystem in each vertex so we don't have to loop over all systems
+    // also, if the vertex has only one connection, it won't generate any discontinuities when broken, no DFS requried.
 
     public Pair<Integer, TransferSystem> getSystemContaining(SVID id) {
         int x = 0;
@@ -203,11 +309,11 @@ public class GlobalTransferNetwork {
     }
 
     /***
-     * Gets the SystemNode at this SVID.
+     * Gets the SystemVertex at this SVID.
      * @param pos
-     * @return Returns the SystemNode at this SVID, or null if none exists.
+     * @return Returns the SystemVertex at this SVID, or null if none exists.
      */
-    public SystemVertex getNodeAt(SVID id) {
+    public SystemVertex getVertAt(SVID id) {
         for(TransferSystem sys : subsystems) {
             SystemVertex node = sys.getNode(id);
             if(node != null) return node;
@@ -217,19 +323,19 @@ public class GlobalTransferNetwork {
 
     public boolean existsInSystem(SystemVertex vert) {
         for(TransferSystem sys : subsystems) {
-            for(SystemVertex vertCompare : sys.all())
+            for(SystemVertex vertCompare : sys.allVerts())
                 if(vertCompare.equals(vert)) return true;
         }
         return false;
     }
 
     /***
-     * Gets the SystemNode at this BlockPos. If one does not exist,
-     * a new SystemNode will be created there instead.
-     * @param pos
-     * @return Returns the pre-existing or new SystemNode at the given BlockPos
+     * Gets the SystemVertex at this BlockPos. If one does not exist,
+     * a new SystemVertex will be created there instead.
+     * @param link SVID to find the vertex or make one at
+     * @return Returns the pre-existing or new SystemVertex at the given BlockPos
      */
-    public SystemVertex getOrCreateNodeAt(SVID link) {
+    public SystemVertex getOrCreateVertAt(SVID link) {
         for(TransferSystem sys : subsystems) {
             SystemVertex node = sys.getNode(link);
             if(node != null) return node;
@@ -249,13 +355,13 @@ public class GlobalTransferNetwork {
         return null;
     }
 
-
+    // at the moment IDs are just indices
     public int getSubsystemID(TransferSystem system) {
         return subsystems.indexOf(system);
     }
 
-    public boolean isIndexValid(int index) {
-        return -1 < index && index < subsystems.size();
+    public boolean isIDValid(int id) {
+        return -1 < id && id < subsystems.size();
     }
 
     public String toString() {
@@ -270,9 +376,5 @@ public class GlobalTransferNetwork {
         }
 
         return head + "\n" + systems + "]";
-    }
-
-    public void debug(String operation) {
-        Mechano.log(operation + ": \n" + NETWORK);
     }
 }

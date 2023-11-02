@@ -11,7 +11,8 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.electricity.WireSpool;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
+import com.quattage.mechano.foundation.electricity.spool.WireSpoolManager;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -47,7 +48,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
     public Map<ResourceLocation, JsonModel> load(ResourceManager manager) {
 
         Map<ResourceLocation, JsonModel> out = new HashMap<>();
-        for (WireSpool spoolType : WireSpool.getAllTypes().values()) {
+        for (WireSpool spoolType : WireSpoolManager.getTypes().values()) {
             Mechano.LOGGER.info("Searching for resource: " + modelFromSpool(spoolType));
             manager.getResource(modelFromSpool(spoolType)).ifPresentOrElse(resource -> {
                 Reader reader;

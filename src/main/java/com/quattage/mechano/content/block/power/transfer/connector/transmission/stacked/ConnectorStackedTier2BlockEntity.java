@@ -39,4 +39,9 @@ public class ConnectorStackedTier2BlockEntity extends WireNodeBlockEntity {
             .buildInteraction()
         .build();
 	}
+
+    @Override
+    public boolean shouldMergeImplicitNodes() {
+        return true;
+    }
 }

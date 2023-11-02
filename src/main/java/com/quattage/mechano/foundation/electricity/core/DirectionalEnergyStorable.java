@@ -8,7 +8,12 @@ import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
@@ -61,11 +66,23 @@ public interface DirectionalEnergyStorable {
         if(side == null || cap != ForgeCapabilities.ENERGY) return LazyOptional.empty();
         if(energyDirs.length >= 6) return getEnergyHandler();
 
-        for(int x = 0; x < energyDirs.length; x++) {
-            Mechano.log("Supposed: '" + side + "' -> Actual: '" + energyDirs[x] + "'");
-            if(side.ordinal() == energyDirs[x].ordinal()) return getEnergyHandler();
-        }
+        for(int x = 0; x < energyDirs.length; x++)
+            if(side.equals(energyDirs[x])) return getEnergyHandler();
 
         return LazyOptional.empty();
+    }
+
+    static boolean hasMatchingCaps(Level world, BlockPos parentPos, Direction dirToCheck) {
+        BlockEntity be = world.getBlockEntity(parentPos.relative(dirToCheck.getOpposite()));
+        
+        if(be == null) return false;
+        return be.getCapability(ForgeCapabilities.ENERGY, dirToCheck).isPresent();
+    }
+
+    static boolean hasMatchingCaps(LevelReader world, BlockPos parentPos, Direction dirToCheck) {
+        BlockEntity be = world.getBlockEntity(parentPos.relative(dirToCheck.getOpposite()));
+        
+        if(be == null) return false;
+        return be.getCapability(ForgeCapabilities.ENERGY, dirToCheck).isPresent();
     }
 }

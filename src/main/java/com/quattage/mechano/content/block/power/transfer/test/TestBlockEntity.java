@@ -46,4 +46,9 @@ public class TestBlockEntity extends WireNodeBlockEntity {
             .buildInteraction()
         .build();
     }
+
+    @Override
+    public boolean shouldMergeImplicitNodes() {
+        return true;
+    }
 }

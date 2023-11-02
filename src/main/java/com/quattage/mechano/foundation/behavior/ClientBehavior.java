@@ -56,14 +56,6 @@ public abstract class ClientBehavior {
 			return;
 
         this.hit = raycast.getLocation();
-
-        /** DEBUG SHIT */
-
-        //NodeBank.findAlongRay(instance.cameraEntity.getEyePosition(), raycast.getLocation());
-
-        /** END OF DEBUG SHIT */
-
-
         BlockPos hitBlockPos = raycast.getBlockPos();
 
         if(!shouldTick(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos)) return;

@@ -82,6 +82,11 @@ public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
         super.read(tag, clientPacket);
     }
 
+    /***
+     * If true, all nodes in this WireNodeBlockEntity will share power.
+     */
+    public abstract boolean shouldMergeImplicitNodes();
+
     @Override
     public void handleUpdateTag(CompoundTag tag) {
         super.handleUpdateTag(tag);

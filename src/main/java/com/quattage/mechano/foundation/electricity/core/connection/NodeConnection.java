@@ -1,6 +1,6 @@
 package com.quattage.mechano.foundation.electricity.core.connection;
 
-import com.quattage.mechano.foundation.electricity.WireSpool;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;

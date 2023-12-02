@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.block;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.helper.BlockMath;
 import com.quattage.mechano.foundation.electricity.core.IElectricWrenchable;
+import com.quattage.mechano.foundation.helper.BlockMath;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 

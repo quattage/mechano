@@ -16,16 +16,9 @@ authors="quattage"
 description='''
 Bringing Create polish to other mods.'''
 
-[[dependencies.create]]
+[[dependencies.mechano]]
     modId="forge"
     mandatory=true
-    versionRange="[47.0.0,)"
-    ordering="NONE"
-    side="BOTH"
-
-[[dependencies.create]]
-    modId="minecraft"
-    mandatory=true
-    versionRange="[1.20,1.21)"
+    versionRange="[47.1.43,)"
     ordering="NONE"
     side="BOTH"

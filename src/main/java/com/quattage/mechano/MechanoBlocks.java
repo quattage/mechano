@@ -34,7 +34,7 @@ import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 //This is where blocks go to get registered
 public class MechanoBlocks {
     static {
-		REGISTRATE.useCreativeTab(MechanoGroups.MAIN_TAB);
+		REGISTRATE.setCreativeTab(MechanoGroups.MAIN_TAB);
 	}
 
     public static final BlockEntry<UpgradeBlock> FORGE_UPGRADE = REGISTRATE.block("tool_forge", UpgradeBlock::new)

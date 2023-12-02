@@ -14,8 +14,7 @@ public class MechanoSounds {
         DeferredRegister.create(ForgeRegistries.SOUND_EVENTS, Mechano.MOD_ID);
     
     public static final RegistryObject<SoundEvent>
-        CABLE_CREATE = create("cable_create")
-    ;
+        CABLE_CREATE = create("cable_create");
 
     
 

@@ -11,8 +11,8 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
 import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
-import com.quattage.mechano.foundation.electricity.system.edge.ElectricSystemEdge;
 import com.quattage.mechano.foundation.helper.VectorHelper;
+import com.quattage.mechano.foundation.electricity.system.edge.ElectricSystemEdge;
 import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.core.BlockPos;

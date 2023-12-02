@@ -8,9 +8,8 @@ import com.quattage.mechano.content.block.power.alternator.collector.CollectorBl
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.quattage.mechano.foundation.helper.BlockMath;
-
+import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;

@@ -12,7 +12,7 @@ import static com.quattage.mechano.Mechano.REGISTRATE;
 public class MechanoItems {
     
     static {
-		REGISTRATE.useCreativeTab(MechanoGroups.MAIN_TAB);
+		REGISTRATE.setCreativeTab(MechanoGroups.MAIN_TAB);
 	}
 
     public static final ItemEntry<EmptySpool> EMPTY_SPOOL = REGISTRATE.item("empty_spool", EmptySpool::new)

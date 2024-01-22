@@ -12,10 +12,10 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.effect.ParticleBuilder;
 import com.quattage.mechano.foundation.effect.ParticleSpawner;
-import com.quattage.mechano.foundation.electricity.NodeBank;
+import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
-import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.AllSpecialTextures;
@@ -33,8 +33,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import oshi.util.tuples.Triplet;
@@ -61,13 +59,11 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, 
         Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks) {
-
         boolean isOccupied = false;
 
         if(mainHand.hasTag()) {
             isOccupied = mainHand.getTag().contains("at") || mainHand.getTag().contains("from");
         }
-    
 
         drawCapabilityMarkers(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
         drawNodes(world, player, mainHand, offHand, lookingPosition, lookingBlockPos, pTicks, isOccupied);
@@ -79,35 +75,34 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
      */
     private void drawNodes(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, 
         Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks, boolean isOccupied) {
-
-        Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> releventNodes = null;
+        Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> releventNodes = null;
 
         // if we're looking directly at an ElectricBlockEntity we don't have to find one
         if(world.getBlockEntity(lookingBlockPos) instanceof WireNodeBlockEntity ebe) {
-            Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(lookingPosition);
-            releventNodes = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> (
-                    new ArrayList<ElectricNode>(Arrays.asList(direct.getFirst())), 
+            Pair<AnchorPoint[], Integer> direct = ebe.nodeBank.getAllNodes(lookingPosition);
+            releventNodes = new Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> (
+                    new ArrayList<AnchorPoint>(Arrays.asList(direct.getFirst())), 
                     direct.getSecond(), ebe.nodeBank
                 );
         }
         else {
-            releventNodes = NodeBank.findClosestNodeAlongRay(
+            releventNodes = AnchorPointBank.findClosestNodeAlongRay(
                 world, 
                 instance.cameraEntity.getEyePosition(), 
                 lookingPosition, 0
             );
         }
 
-        ElectricNode indicated = getIndicatedNode(world, mainHand);
+        AnchorPoint indicated = getIndicatedNode(world, mainHand);
         if(indicated != null) drawFizzles(world, indicated);
 
         if(releventNodes.getB() == -1) {
             decrementGrow();
         }
 
-        NodeBank<?> indicatedBank = releventNodes.getC();
+        AnchorPointBank<?> indicatedBank = releventNodes.getC();
         int index = 0;
-        for(ElectricNode node : releventNodes.getA()) {
+        for(AnchorPoint node : releventNodes.getA()) {
 
             // i have no idea how the bank is ever null but this check prevents a crash
             if(indicatedBank == null) continue;
@@ -162,7 +157,7 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
         }
     }
 
-    private void drawFizzles(ClientLevel world, ElectricNode indicated) {
+    private void drawFizzles(ClientLevel world, AnchorPoint indicated) {
 
         ParticleSpawner poofParticle = 
         ParticleBuilder.ofType(new DustParticleOptions(indicated.getColor().asVectorF(), 1f))
@@ -176,7 +171,7 @@ public class ElectricNodeSpoolBehavior extends ClientBehavior {
         poofParticle.spawnAsClient(world);
     }
 
-    private ElectricNode getIndicatedNode(ClientLevel world, ItemStack stack) {
+    private AnchorPoint getIndicatedNode(ClientLevel world, ItemStack stack) {
         WireNodeBlockEntity target = getBoundTarget(world, stack);
         if(target == null) return null;
         int id = stack.getTag().getInt("from");

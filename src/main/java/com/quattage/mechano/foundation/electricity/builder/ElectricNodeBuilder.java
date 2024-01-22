@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation.electricity.builder;
 
-import com.quattage.mechano.foundation.electricity.core.node.NodeLocation;
-import com.quattage.mechano.foundation.electricity.core.node.NodeMode;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorTransform;
+import com.quattage.mechano.foundation.electricity.core.anchor.NodeMode;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -15,7 +15,7 @@ public class ElectricNodeBuilder {
     private NodeBankBuilder activeBuilder;
     private final BlockEntity target;
     private NodeMode mode = NodeMode.BOTH;
-    private NodeLocation location;
+    private AnchorTransform location;
     private int maxConnections = 1;
     private float size = 4/16f;
 
@@ -81,7 +81,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(int x, int y, int z) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH);
+        location = new AnchorTransform(target.getBlockPos(), x, y, z, size, Direction.NORTH);
         return this;
     }
 
@@ -102,7 +102,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(double x, double y, double z) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH);
+        location = new AnchorTransform(target.getBlockPos(), x, y, z, size, Direction.NORTH);
         return this;
     }
 
@@ -123,7 +123,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(int x, int y, int z, Direction defaultFacing) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, size, defaultFacing);
+        location = new AnchorTransform(target.getBlockPos(), x, y, z, size, defaultFacing);
         return this;
     }
 
@@ -144,7 +144,7 @@ public class ElectricNodeBuilder {
      * @return this ElectircNodeBuilder with the modified value.
      */
     public ElectricNodeBuilder at(double x, double y, double z, Direction defaultFacing) {
-        location = new NodeLocation(target.getBlockPos(), x, y, z, size, defaultFacing);
+        location = new AnchorTransform(target.getBlockPos(), x, y, z, size, defaultFacing);
         return this;
     }
     
@@ -159,7 +159,7 @@ public class ElectricNodeBuilder {
     }
 
     public ElectricNodeBuilder size(float size) {
-        location = new NodeLocation(location, size);
+        location = new AnchorTransform(location, size);
         return this;
     }
 

@@ -1,14 +1,14 @@
 package com.quattage.mechano.foundation.network;
 
-import com.quattage.mechano.foundation.electricity.NodeBank;
+import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 
 import net.minecraft.network.FriendlyByteBuf;
 
 public class NodeDataPacket {
 
-    private NodeBank<?> nb;
+    private AnchorPointBank<?> nb;
 
-    public NodeDataPacket(NodeBank<?> nb) {
+    public NodeDataPacket(AnchorPointBank<?> nb) {
         this.nb = nb;
     }
 

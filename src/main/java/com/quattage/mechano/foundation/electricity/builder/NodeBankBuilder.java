@@ -6,15 +6,15 @@ import java.util.HashSet;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.NodeBank;
-import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
-import com.quattage.mechano.foundation.electricity.core.node.NodeLocation;
-import com.quattage.mechano.foundation.electricity.core.node.NodeMode;
+import com.quattage.mechano.foundation.electricity.AnchorPointBank;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorTransform;
+import com.quattage.mechano.foundation.electricity.core.anchor.NodeMode;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-public class NodeBankBuilder<T extends ElectricBlockEntity> {
+public class NodeBankBuilder<T extends BlockEntity> {
     
     private int capacity = 10000;
     private int maxInput = 5000;
@@ -23,7 +23,7 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
 
     private T target = null;
     
-    private final ArrayList<ElectricNode> nodesToAdd = new ArrayList<ElectricNode>();
+    private final ArrayList<AnchorPoint> nodesToAdd = new ArrayList<AnchorPoint>();
     private HashSet<RelativeDirection> dirsToAdd = null;
 
     public NodeBankBuilder() {};
@@ -221,7 +221,7 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param node ElectricNode to add
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> add(ElectricNode node) {
+    public NodeBankBuilder<T> add(AnchorPoint node) {
         nodesToAdd.add(node);
         return this;
     }
@@ -234,8 +234,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(NodeLocation location, int maxConnections) {
-        return add(new ElectricNode(location, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(AnchorTransform location, int maxConnections) {
+        return add(new AnchorPoint(location, maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -246,8 +246,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @param maxConnections
      * @return
      */
-    public NodeBankBuilder<T> add(NodeLocation location, NodeMode mode, int maxConnections) {
-        return add(new ElectricNode(location, mode, maxConnections, nodesToAdd.size()));
+    public NodeBankBuilder<T> add(AnchorTransform location, NodeMode mode, int maxConnections) {
+        return add(new AnchorPoint(location, mode, maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -259,7 +259,7 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @return
      */
     public NodeBankBuilder<T> add(int x, int y, int z, float size, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, Direction.NORTH), maxConnections, nodesToAdd.size()));
+        return add(new AnchorPoint(new AnchorTransform(target.getBlockPos(), x, y, z, size, Direction.NORTH), maxConnections, nodesToAdd.size()));
     }
 
     /***
@@ -271,7 +271,7 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * @return
      */
     public NodeBankBuilder<T> add(int x, int y, int z, float size, Direction defaultDir, int maxConnections) {
-        return add(new ElectricNode(new NodeLocation(target.getBlockPos(), x, y, z, size, defaultDir), maxConnections, nodesToAdd.size()));
+        return add(new AnchorPoint(new AnchorTransform(target.getBlockPos(), x, y, z, size, defaultDir), maxConnections, nodesToAdd.size()));
     }
 
     private void doCompleteCheck() {
@@ -286,8 +286,8 @@ public class NodeBankBuilder<T extends ElectricBlockEntity> {
      * (see {@link #at(BlockEntity) at()})
      * @return a NodeBank instance.
      */
-    public NodeBank<T> build() {
+    public AnchorPointBank<T> build() {
         doCompleteCheck();
-        return new NodeBank<T>(target, nodesToAdd, dirsToAdd, capacity, maxInput, maxOutput, startEnergy);
+        return new AnchorPointBank<T>(target, nodesToAdd, dirsToAdd, capacity, maxInput, maxOutput, startEnergy);
     }
 }

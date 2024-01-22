@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
 
-    public final NodeBank<WireNodeBlockEntity> nodeBank;
+    public final AnchorPointBank<WireNodeBlockEntity> nodeBank;
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}

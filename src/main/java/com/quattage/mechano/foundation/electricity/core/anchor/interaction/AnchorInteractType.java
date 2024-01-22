@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.electricity.core.connection;
+package com.quattage.mechano.foundation.electricity.core.anchor.interaction;
 
 import java.util.Locale;
 
@@ -11,7 +11,7 @@ import net.minecraft.world.level.Level;
  * when the player makes a NodeConnection. NodeConnectResults also generate their
  * own translation keys to display them to the user.
  */
-public enum NodeConnectResult {
+public enum AnchorInteractType {
     // status 
     LINK_STARTED(true),      // this link was made (first node right clicked)
     LINK_ADDED(true),        // this link was added. applies to source and destination connections
@@ -30,32 +30,32 @@ public enum NodeConnectResult {
     WIRE_OBSTRUCTED(false),   // this wire is obstructed by blocks (unused for now)
 
     // success
-    WIRE_SUCCESS(true, NodeConnectSound.CONFIRM),    // this wire was successfully created by the player
+    WIRE_SUCCESS(true, AnchorInteractSound.CONFIRM),    // this wire was successfully created by the player
     WIRE_REMOVED(true);      // this wire was successfully removed by the player
 
     private final String key;
     private final Component message;
     private final boolean success;
     private final boolean fatal;
-    private final NodeConnectSound sound;
+    private final AnchorInteractSound sound;
 
-    private NodeConnectResult(boolean success) {
+    private AnchorInteractType(boolean success) {
         this.success = success;
         this.fatal = true;
         this.key = makeKey();
         this.message = Component.translatable(key);
-        this.sound = NodeConnectSound.DENY_SOFT;
+        this.sound = AnchorInteractSound.DENY_SOFT;
     }
 
-    private NodeConnectResult(boolean success, boolean fatal) {
+    private AnchorInteractType(boolean success, boolean fatal) {
         this.success = success;
         this.fatal = fatal;
         this.key = makeKey();
         this.message = Component.translatable(key);
-        this.sound = NodeConnectSound.DENY_SOFT;
+        this.sound = AnchorInteractSound.DENY_SOFT;
     }
 
-    private NodeConnectResult(boolean success, NodeConnectSound sound) {
+    private AnchorInteractType(boolean success, AnchorInteractSound sound) {
         this.success = success;
         this.fatal = true;
         this.key = makeKey();
@@ -63,7 +63,7 @@ public enum NodeConnectResult {
         this.sound = sound;
     }
 
-    private NodeConnectResult(boolean success, boolean fatal, NodeConnectSound sound) {
+    private AnchorInteractType(boolean success, boolean fatal, AnchorInteractSound sound) {
         this.success = success;
         this.fatal = fatal;
         this.key = makeKey();
@@ -78,7 +78,7 @@ public enum NodeConnectResult {
      */
     public void playConnectSound(Level world, BlockPos pos) {
         if(sound == null) return;
-        sound.play(world, pos);
+        sound.playInWorld(world, pos);
     }
 
     private String makeKey() {

@@ -9,11 +9,10 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.foundation.electricity.NodeBank;
+import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
-import com.quattage.mechano.foundation.electricity.core.connection.FakeNodeConnection;
-import com.quattage.mechano.foundation.electricity.core.connection.NodeConnectResult;
-import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -44,7 +43,7 @@ public abstract class WireSpool extends Item {
     protected final ItemStack rawDrop;
 
     private int useCooldown = 0;
-    private Pair<NodeConnectResult, FakeNodeConnection> intermediary;
+    private Pair<AnchorInteractType, FakeNodeConnection> intermediary;
     private Player player; 
     private WireNodeBlockEntity target;
 
@@ -123,17 +122,17 @@ public abstract class WireSpool extends Item {
         ItemStack handStack = player.getItemInHand(hand);
 
         Vec3 clickedLocation = VectorHelper.getLookingPos(player).getLocation();
-        Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary = null;
+        Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary = null;
 
         // ignore physical search if the player interacts directly with an EBE
         if(world.getBlockEntity(VectorHelper.toBlockPos(clickedLocation)) instanceof WireNodeBlockEntity ebe) {
-            Pair<ElectricNode[], Integer> direct = ebe.nodeBank.getAllNodes(clickedLocation);
-            clickSummary = new Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> (
-                    new ArrayList<ElectricNode>(Arrays.asList(direct.getFirst())), 
+            Pair<AnchorPoint[], Integer> direct = ebe.nodeBank.getAllNodes(clickedLocation);
+            clickSummary = new Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> (
+                    new ArrayList<AnchorPoint>(Arrays.asList(direct.getFirst())), 
                     direct.getSecond(), ebe.nodeBank
                 );
         } else {
-            clickSummary = NodeBank.findClosestNodeAlongRay(world, player.getEyePosition(), clickedLocation, 0);
+            clickSummary = AnchorPointBank.findClosestNodeAlongRay(world, player.getEyePosition(), clickedLocation, 0);
         }
 
         // this sanity check prevents a crash, don't remove it
@@ -185,9 +184,9 @@ public abstract class WireSpool extends Item {
      * first initiates the connection. Creates a FakeNodeConnection attached to the player.
      * @return InteractionResult indicating the success or failure of this interaction
      */
-    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
+    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary, Vec3 clickedLoc) {
 
-        ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
+        AnchorPoint targetedNode = clickSummary.getA().get(clickSummary.getB());
         int index = clickSummary.getC().indexOf(targetedNode);
         this.intermediary = clickSummary.getC().makeFakeConnection(this, index, player);
 
@@ -211,9 +210,9 @@ public abstract class WireSpool extends Item {
      * Turns the previously established FakeNodeConnection into an ElectricNodeConnection.
      * @return InteractionResult indicating the success or failure of this interaction
      */
-    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<ElectricNode>, Integer, NodeBank<?>> clickSummary, Vec3 clickedLoc) {
+    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary, Vec3 clickedLoc) {
 
-        ElectricNode targetedNode = clickSummary.getA().get(clickSummary.getB());
+        AnchorPoint targetedNode = clickSummary.getA().get(clickSummary.getB());
         int index = clickSummary.getC().indexOf(targetedNode);
         if(wireStack.getItem() instanceof WireSpool spool) {
             CompoundTag nbt = wireStack.getTag();
@@ -224,7 +223,7 @@ public abstract class WireSpool extends Item {
                     return InteractionResult.PASS; // the connection is just ignored in this case, you'll have to click it again.
                 }
 
-                NodeConnectResult result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), index);
+                AnchorInteractType result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), index);
                 // Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
 
                 if(!world.isClientSide() && !result.isSuccessful()) {
@@ -305,10 +304,10 @@ public abstract class WireSpool extends Item {
 
     private void cancelConnection(WireNodeBlockEntity ebe, int sourceID) {
         if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
-        sendInfo(ebe.getLevel(), ebe.getBlockPos(), NodeConnectResult.LINK_CANCELLED);
+        sendInfo(ebe.getLevel(), ebe.getBlockPos(), AnchorInteractType.LINK_CANCELLED);
     }
 
-    private void sendInfo(Level world, BlockPos pos, NodeConnectResult result) {
+    private void sendInfo(Level world, BlockPos pos, AnchorInteractType result) {
         player.displayClientMessage(result.getMessage(), true);
         result.playConnectSound(world, pos);
     }
@@ -319,7 +318,7 @@ public abstract class WireSpool extends Item {
         stack.removeTagKey("from");
     }
 
-    private void clearTag(NodeConnectResult result, ItemStack stack) {
+    private void clearTag(AnchorInteractType result, ItemStack stack) {
         if(!result.isSuccessful() && !result.isFatal()) return;
         stack.removeTagKey("at");
         stack.removeTagKey("from");

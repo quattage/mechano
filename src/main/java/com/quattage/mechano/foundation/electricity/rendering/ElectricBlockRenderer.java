@@ -9,8 +9,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.connection.NodeConnection;
-import com.quattage.mechano.foundation.electricity.core.node.ElectricNode;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
@@ -53,10 +53,10 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
         if(mc.options.renderDebug == true) 
             drawDebug(ebe, mc, matrix, buffers, light);
 
-        ElectricNode[] nodes = ebe.nodeBank.values();
+        AnchorPoint[] nodes = ebe.nodeBank.values();
 
         for(int n = 0; n < nodes.length; n++) {
-            ElectricNode thisNode = nodes[n];
+            AnchorPoint thisNode = nodes[n];
             NodeConnection[] theseConnections = thisNode.getConnections();
 
             for(int c = 0; c < theseConnections.length; c++) {
@@ -159,7 +159,7 @@ public class ElectricBlockRenderer<T extends WireNodeBlockEntity> extends SafeBl
 
         
 
-        ElectricNode[] allNodes = ebe.nodeBank.getAllNodes();
+        AnchorPoint[] allNodes = ebe.nodeBank.getAnchorPoints();
         for(int nodeI = 0; nodeI < allNodes.length; nodeI++) {
             Pair<TransferSystem, SystemVertex> boundVertex = NETWORK.getSystemAndNode(new SVID(ebe.getBlockPos(), nodeI));
 

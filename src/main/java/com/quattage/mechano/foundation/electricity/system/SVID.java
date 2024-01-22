@@ -1,9 +1,5 @@
 package com.quattage.mechano.foundation.electricity.system;
 
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
-import com.simibubi.create.foundation.utility.Pair;
-
 import net.minecraft.core.BlockPos;
 
 /***
@@ -46,15 +42,6 @@ public class SVID {
         return pos;
     }
 
-    /***
-     * Whether or not this SVID is ambiguous. Ambiguous SVIDs don't require distinction between
-     * subindexes.
-     * @return True if this SVID's subindex is negative
-     */
-    public boolean isAmbiguous() {
-        return subIndex < 0;
-    }
-
     public SVID copy() {
         return new SVID(pos, subIndex);
     }
@@ -62,8 +49,6 @@ public class SVID {
     @Override
     public boolean equals(Object o) {
         if(o instanceof SVID other) {
-            if(other.isAmbiguous() || this.isAmbiguous())
-                return other.pos.equals(this.pos);
             return other.pos.equals(this.pos) && other.subIndex == this.subIndex;
         }
 

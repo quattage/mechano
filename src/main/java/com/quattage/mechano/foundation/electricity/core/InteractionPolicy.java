@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
-import com.quattage.mechano.foundation.electricity.core.node.NodeMode;
+import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractColor;
+import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.core.BlockPos;
@@ -133,10 +134,10 @@ public class InteractionPolicy {
     }
 
     public Color getColor() {
-        if(isInput && isOutput) return NodeMode.BOTH.getHighlightColor();
-        if(isInput) return NodeMode.INSERT.getHighlightColor();
-        if(isOutput) return NodeMode.EXTRACT.getHighlightColor();
-        return NodeMode.NONE.getHighlightColor();
+        if(isInput && isOutput) return AnchorInteractColor.BOTH.get();
+        if(isInput) return AnchorInteractColor.INSERT.get();
+        if(isOutput) return AnchorInteractColor.EXTRACT.get();
+        return AnchorInteractColor.NONE.get();
     }
 
 

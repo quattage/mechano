@@ -22,16 +22,16 @@ import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /***
- * This class is designed to deal with all of the conflicting ways that blocks
- * express their orientations in Minecraft. I wrote CombinedOrientation for my needs,
- * but it doesn't play very well with other directional formats. This class
- * provides helper methods for extracting directions from BlockStates in a more
- * universally applicable way.
+ * This class is designed to deal with all of the differing (and sometimes conflicting) 
+ * ways that blocks express their orientations in Minecraft. I wrote CombinedOrientation 
+ * for my needs, but it doesn't play very well with other directional formats. This class
+ * provides helper methods for extracting directions from most other block types and
+ * converting them to CombinedOrientations.
  */
 public class DirectionTransformer {
     
     /***
-     * Pulls the facing direction from the given BlockState and returns it.
+     * Pulls the forwards facing direction from the given BlockState and returns it.
      * @param state
      * @return A direction representing the forward facing direction of the given BlockState,
      * or null if this BlockState's block doesn't hold a valid direction property.

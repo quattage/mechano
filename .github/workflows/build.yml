@@ -1,5 +1,6 @@
 # Builds and deposits artifacts automatically. Based on Fabric's configs
 
+
 name: Publish Test
 on:
   push:

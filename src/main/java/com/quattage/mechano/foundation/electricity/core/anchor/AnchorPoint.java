@@ -1,29 +1,52 @@
 package com.quattage.mechano.foundation.electricity.core.anchor;
 
+import javax.annotation.Nullable;
+
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
+import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
 import com.quattage.mechano.foundation.electricity.system.SVID;
+import com.quattage.mechano.foundation.helper.VectorHelper;
+import com.simibubi.create.foundation.utility.Color;
 
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class AnchorPoint {
-
     private final SVID systemLocation;
     private final AnchorTransform transform;
 
-    // private final AnchorCapability[] capabilities;
+    private final int maxConnections;
 
-    private final float anchorSize;
+    private float anchorSize;
+    private float targetFactor = 0;
     private AABB hitbox = null;
 
-    public AnchorPoint(AnchorTransform worldLocation, SVID systemLocation) {
+    // TODO breakout
+    private static final Color rawColor = new Color(205, 240, 231);
+    private static final Color selectedColor = new Color(0, 255, 189);
+
+    public AnchorPoint(AnchorTransform transform, SVID systemLocation, int maxConnections) {
         this.systemLocation = systemLocation;
-        this.transform = new AnchorTransform(8, 8, 8);
-        this.anchorSize = 0.6f;
+        this.transform = transform;
+        this.maxConnections = maxConnections;
+        this.anchorSize = 0;
     }
+
+    @Nullable
+    public static AnchorPoint getAnchorAt(Level world, SVID loc) {
+        if(world == null) return null;
+        if(loc == null) return null;
+        BlockEntity be = world.getBlockEntity(loc.getPos());
+        if(be instanceof WireAnchorBlockEntity wbe) 
+            return wbe.getAnchorBank().get(loc.getSubIndex());
+        return null;
+    }   
 
     /***
      * Updates the location of this AnchorPoint
@@ -53,8 +76,8 @@ public class AnchorPoint {
      * @return an AABB representing the bounds of this AnchorPoint at its current location
      */
     public AABB getHitbox() {
-        if(hitbox == null) throw new IllegalStateException("Error obtaining AnchorPoint hitbox - AnchorPoint has not been initialized!");
-        return hitbox;
+        if(hitbox == null) return null;
+        return hitbox.inflate(anchorSize * 0.005f);
     }
 
     /***
@@ -64,34 +87,87 @@ public class AnchorPoint {
         return anchorSize;
     }
 
-    public void refreshHitbox() {
-        Vec3 realPos = getLocation();
-        hitbox = new AABB(
-            realPos.x - anchorSize, 
-            realPos.y - anchorSize, 
-            realPos.z - anchorSize, 
-            anchorSize + realPos.x, 
-            anchorSize + realPos.y, 
-            anchorSize + realPos.z
-        );
-    }
-
-    public Vec3 getLocation() {
-        return transform.toRealPos(systemLocation.getPos());
+    /***
+     * Sets the size of this AnchorPoint
+     * @param anchorSize
+     */
+    public void setSize(int anchorSize) {
+        this.anchorSize = anchorSize;
+        if(anchorSize < 0) anchorSize = 0;
     }
 
     /***
-     * Compares AnchorPoints for equivalence. <p>
-     * Note that "equivalence" in this case does not
-     * compare the exact vector location.
-     * @param other Object to compare
-     * @return True if these AnchorPoints are equivalent. 
-     * Two AnchorPoints are equivalent if both BlockPos
-     * and indices are identical.
+     * Decreases the size of this AnchorPoint
      */
+    public void deflate(float amt) {
+        this.anchorSize -= amt;
+        if(anchorSize < 0) anchorSize = 0;
+    }
+
+    /***
+     * Increases the size of this AnchorPoint
+     */
+    public void inflate(float amt) {
+        this.anchorSize += amt;
+    }
+
+    public void incTargetTick() {
+        if(targetFactor < 1)
+            targetFactor+= 0.05f;
+    }
+
+    public void decTargetTick() {
+        if(targetFactor > 0) 
+            targetFactor -= 0.05f;
+    }
+
+    public void refreshHitbox() {
+        Vec3 realPos = getPos();
+        this.hitbox = new AABB(
+            realPos.x - 0.001, 
+            realPos.y - 0.001, 
+            realPos.z - 0.001, 
+            0.001 + realPos.x, 
+            0.001 + realPos.y, 
+            0.001 + realPos.z
+        );
+    }
+
+    public Vec3 getPos() {
+        return transform.toRealPos(systemLocation.getPos());
+    }
+
+    public SVID getID() {
+        return systemLocation;
+    }
+
+    public int getMaxConnections() {
+        return maxConnections;
+    }
+
+    public double getDistanceToRaycast(Vec3 start, Vec3 end) {
+        double closestDist = -1;
+        Vec3 anchorPos = getPos();
+        for(float x = 0f; x < 1; x += 0.1f) {
+            Vec3 rayPos = start.lerp(end, x);
+            double dist = rayPos.distanceTo(anchorPos);
+            if(closestDist == -1 || dist < closestDist) 
+                closestDist = dist;
+        }
+        return closestDist;
+    }
+
     public boolean equals(Object other) {
         if(other instanceof AnchorPoint otherAnchor)
             return systemLocation.equals(otherAnchor.systemLocation);
         return false;
+    }
+
+    public int hashCode() {
+        return systemLocation.hashCode();
+    }
+
+    public Color getColor() {
+        return selectedColor.copy().mixWith(rawColor, anchorSize / (float)WireAnchorBlockRenderer.ANCHOR_SELECT_SIZE);
     }
 }

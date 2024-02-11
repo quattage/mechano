@@ -2,12 +2,15 @@ package com.quattage.mechano.foundation.behavior;
 
 import java.util.HashMap;
 
+import com.quattage.mechano.foundation.helper.VectorHelper;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -28,7 +31,8 @@ public abstract class ClientBehavior {
     private double pTicks = 0;
 
     private long lastTime = 0;
-    private long thisTime = 0;
+    private long thisTime = 0; 
+    private HitResult customContextRaycast = null;
 
     public static HashMap<String, ClientBehavior> behaviors = new HashMap<String, ClientBehavior>();
 
@@ -43,6 +47,7 @@ public abstract class ClientBehavior {
 		player = instance.player;
 		mainHandStack = player.getMainHandItem();
         offHandStack = player.getOffhandItem();
+        this.customContextRaycast = defineCustomContextRaycast(instance.player);
     }
     
     public boolean isShifting() {
@@ -52,11 +57,18 @@ public abstract class ClientBehavior {
     @OnlyIn(Dist.CLIENT)
 	public void tick() {
         updateValues();
-		if (player == null || world == null || !(instance.hitResult instanceof BlockHitResult raycast))
+		if (player == null || world == null)
 			return;
 
-        this.hit = raycast.getLocation();
-        BlockPos hitBlockPos = raycast.getBlockPos();
+        BlockPos hitBlockPos;
+        if(customContextRaycast == null) {
+            if(!(instance.hitResult instanceof BlockHitResult raycast)) return;
+            this.hit = raycast.getLocation();
+            hitBlockPos = raycast.getBlockPos();
+        } else {
+            this.hit = customContextRaycast.getLocation();
+            hitBlockPos = VectorHelper.toBlockPos(this.hit);
+        }
 
         if(!shouldTick(world, player, mainHandStack, offHandStack, this.hit, hitBlockPos)) return;
         
@@ -107,4 +119,8 @@ public abstract class ClientBehavior {
     @OnlyIn(Dist.CLIENT)
     public abstract void tickSafe(ClientLevel world, Player player, ItemStack mainHand, 
         ItemStack offHand, Vec3 lookingPosition, BlockPos lookingBlockPos, double pTicks);
+
+    public HitResult defineCustomContextRaycast(Player player) {
+        return null;
+    }
 }

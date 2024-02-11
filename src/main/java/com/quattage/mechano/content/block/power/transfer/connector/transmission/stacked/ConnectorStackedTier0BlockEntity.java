@@ -2,25 +2,24 @@ package com.quattage.mechano.content.block.power.transfer.connector.transmission
 
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
-import com.quattage.mechano.foundation.electricity.builder.NodeBankBuilder;
+import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class ConnectorStackedTier0BlockEntity extends WireNodeBlockEntity {
+public class ConnectorStackedTier0BlockEntity extends WireAnchorBlockEntity {
 
     public ConnectorStackedTier0BlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 
 	@Override
-	public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
+	public void createWireNodeDefinition(AnchorBankBuilder<WireAnchorBlockEntity> builder) {
 		builder.newNode()
             .at(8, 16, 8) 
-            .mode("B")
             .connections(2)
             .build();
 	}
@@ -34,9 +33,4 @@ public class ConnectorStackedTier0BlockEntity extends WireNodeBlockEntity {
             .buildInteraction()
         .build();
 	}
-
-    @Override
-    public boolean shouldMergeImplicitNodes() {
-        return true;
-    }
 }

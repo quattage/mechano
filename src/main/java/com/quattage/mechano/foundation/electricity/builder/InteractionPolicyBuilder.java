@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
+import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 
 import net.minecraft.world.level.block.Block;
 
@@ -77,7 +77,7 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
     
 
     public BatteryBankBuilder<T> buildInteraction() {
-        base.addInteraction(new InteractionPolicy(new RelativeDirection(relative), isInput, isOutput, blocksList, denyOrAllow));
+        base.addInteraction(new ForgeEnergyJunction(new RelativeDirection(relative), isInput, isOutput, blocksList, denyOrAllow));
         return base;
     }
 

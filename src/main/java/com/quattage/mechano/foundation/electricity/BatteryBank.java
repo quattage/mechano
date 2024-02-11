@@ -11,7 +11,7 @@ import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
-import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
+import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 import com.quattage.mechano.foundation.electricity.core.LocalEnergyStorage;
 import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
 
@@ -29,11 +29,11 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
 
     private final T target;
     @Nullable
-    private final InteractionPolicy[] interactions;
+    private final ForgeEnergyJunction[] interactions;
     public final LocalEnergyStorage<BatteryBank<T>> battery;    
     public LazyOptional<IEnergyStorage> energyHandler = LazyOptional.empty();
 
-    public BatteryBank(T target, InteractionPolicy[] interactions, int capacity, int maxRecieve, int maxExtract, int energy) {
+    public BatteryBank(T target, ForgeEnergyJunction[] interactions, int capacity, int maxRecieve, int maxExtract, int energy) {
         this.target = target;
         this.interactions = interactions;
         this.battery = new LocalEnergyStorage<BatteryBank<T>>(this, capacity, maxRecieve, maxExtract, energy);
@@ -56,7 +56,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      */
     public boolean canSendTo(Block block) {
         if(!canInteractDirectly()) return false;
-        for(InteractionPolicy p : interactions)
+        for(ForgeEnergyJunction p : interactions)
             if(p.canSendTo(block)) return true;
         return false;
     }
@@ -70,7 +70,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      */
     public boolean canRecieveFrom(Block block) {
         if(!canInteractDirectly()) return false;
-        for(InteractionPolicy p : interactions)
+        for(ForgeEnergyJunction p : interactions)
             if(p.canRecieveFrom(block)) return true;
         return false;
     }
@@ -145,7 +145,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
     public BatteryBank<T> reflectStateChange(BlockState state) {
         if(state == null) return this;
         CombinedOrientation target = DirectionTransformer.extract(state);
-        for(InteractionPolicy interaction : interactions)
+        for(ForgeEnergyJunction interaction : interactions)
             interaction.rotateToFace(target);
         return this;
     }
@@ -170,7 +170,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
 
         Direction[] out = new Direction[interactions.length];
         for(int x = 0; x < interactions.length; x++) {
-            InteractionPolicy p = interactions[x];
+            ForgeEnergyJunction p = interactions[x];
             if(p.isInput || p.isOutput)
                 out[x] = interactions[x].getDirection();
         }
@@ -184,7 +184,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      * @return True if this BatteryBank is interacting with a ForgeEnergy BlockEntity
      */
     public boolean isConnectedExternally() {
-        for(InteractionPolicy pol : interactions) 
+        for(ForgeEnergyJunction pol : interactions) 
             if(pol.canSendOrReceive(target)) return true;
         return false;
     }
@@ -195,7 +195,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      * summarizing the interactions as a list of Directions.
      * @return
      */
-    public InteractionPolicy[] getRawInteractions() {
+    public ForgeEnergyJunction[] getRawInteractions() {
         return interactions;
     }
 }

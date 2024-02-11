@@ -9,16 +9,20 @@ import net.minecraft.world.phys.Vec3;
 
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
-import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.electricity.system.TransferSystem;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
 
 public class TransferNetworkDebugBehavior extends ClientBehavior {
+
+    Iterator<TransferSystem> subsystems;
 
     public TransferNetworkDebugBehavior(String name) {
         super(name);
@@ -33,11 +37,14 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos, double pTicks) {
-        
-        for(TransferSystem sys : NETWORK.all()) {
+    
+        ArrayList<TransferSystem> subsystems = NETWORK.all();
+        for(int x = 0; x < subsystems.size(); x++) {
+
+            TransferSystem sys = subsystems.get(x);
+
             Color col = sys.getDebugColor();
             if(sys.allEdges().isEmpty()) {
-                Mechano.logSlow("No edges");
                 continue;
             }
 
@@ -49,8 +56,6 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
                         .disableCull()
                         .disableLineNormals()
                         .colored(col);
-                } else {
-                    Mechano.log("NULL EDGE!");
                 }
             }
         }

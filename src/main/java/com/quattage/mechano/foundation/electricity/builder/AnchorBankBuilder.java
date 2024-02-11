@@ -9,12 +9,12 @@ import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorTransform;
-import com.quattage.mechano.foundation.electricity.core.anchor.NodeMode;
+import com.quattage.mechano.foundation.electricity.system.SVID;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-public class NodeBankBuilder<T extends BlockEntity> {
+public class AnchorBankBuilder<T extends BlockEntity> {
     
     private int capacity = 10000;
     private int maxInput = 5000;
@@ -24,16 +24,16 @@ public class NodeBankBuilder<T extends BlockEntity> {
     private T target = null;
     
     private final ArrayList<AnchorPoint> nodesToAdd = new ArrayList<AnchorPoint>();
-    private HashSet<RelativeDirection> dirsToAdd = null;
+    private ArrayList<RelativeDirection> dirsToAdd = null;
 
-    public NodeBankBuilder() {};
+    public AnchorBankBuilder() {};
 
     /***
      * Bind this NodeBank to a given BlockEntity.
      * @param target BlockEntity to bind this NodeBank to
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> at(T target) {
+    public AnchorBankBuilder<T> at(T target) {
         this.target = target;
         return this;
     }
@@ -44,7 +44,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param capacity
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> capacity(int capacity) {
+    public AnchorBankBuilder<T> capacity(int capacity) {
         this.capacity = capacity;
         return this;
     }
@@ -55,7 +55,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param io FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> maxIO(int io) {
+    public AnchorBankBuilder<T> maxIO(int io) {
         this.maxInput = io;
         this.maxOutput = io;
         return this;
@@ -67,7 +67,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param maxInput FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> maxInput(int maxInput) {
+    public AnchorBankBuilder<T> maxInput(int maxInput) {
         this.maxInput = maxInput;
         return this;
     }
@@ -78,18 +78,15 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param maxInput FE per Tick
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> maxOutput(int maxOutput) {
+    public AnchorBankBuilder<T> maxOutput(int maxOutput) {
         this.maxOutput = maxOutput;
         return this;
     }
 
     /***
-     * Adds an Energy Capability direction to this NodeBank. This allows
+     * Adds an external junction in this direction. This allows, for example, for
      * energy to pass through the face located in this direction. RelativeDirections
-     * (up, down, left, right, etc.) are as you'd expect them to be. Keep in mind that
-     * they're relative to the model's orientation in BlockBench. <p>
-     * <strong>(RelativeOrientation.FRONT = The arrow pointing north in BlockBench.)
-     * </strong>
+     * (up, down, left, right, etc.) are as you'd expect them to be. 
      * <p>
      * Accepts a RelativeDirection object or a String shorthand:
      * <pre>
@@ -104,7 +101,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @return This NodeBankBuilder, modified to reflect this change.
      * * Leave empty to completely disable energy interactions.
      */
-    public NodeBankBuilder<T> interfaceSide(Relative dir) {
+    public AnchorBankBuilder<T> interfaceSide(Relative dir) {
         newDirsIfNull();
         dirsToAdd.add(new RelativeDirection(dir));
         clearDirsIfFull();
@@ -112,12 +109,9 @@ public class NodeBankBuilder<T extends BlockEntity> {
     }
 
     /***
-     * Adds an Energy Capability direction to this NodeBank. This allows
+     * Adds an external junction in this direction. This allows, for example, for
      * energy to pass through the face located in this direction. RelativeDirections
-     * (up, down, left, right, etc.) are as you'd expect them to be. Keep in mind that
-     * they're relative to the model's orientation in BlockBench. <p>
-     * <strong>(RelativeOrientation.FRONT = The arrow pointing north in BlockBench.)
-     * </strong>
+     * (up, down, left, right, etc.) are as you'd expect them to be.
      * 
      * <p>
      * Accepts a RelativeDirection object or a String shorthand:
@@ -133,7 +127,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param dir RelativeDirection to add
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> interfaceSide(String s) {
+    public AnchorBankBuilder<T> interfaceSide(String s) {
         newDirsIfNull();
         if(s.toUpperCase().equals("ALL") || s.toUpperCase().equals("A")) {
             dirsToAdd.clear();
@@ -168,7 +162,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * Creates a new HashSet if the HashSet is null.
      */
     private void newDirsIfNull() {
-        if(dirsToAdd == null) dirsToAdd = new HashSet<RelativeDirection>();
+        if(dirsToAdd == null) dirsToAdd = new ArrayList<RelativeDirection>();
     }
 
     /***
@@ -188,7 +182,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * This behavior is default.</strong>
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> noEnergySides() {
+    public AnchorBankBuilder<T> noEnergySides() {
         dirsToAdd = null;
         return this;
     }
@@ -200,7 +194,7 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @param startEnergy FE to start with
      * @return This NodeBankBuilder, modified to reflect this change.
      */
-    public NodeBankBuilder<T> withStartingEnergy(int startEnergy) {
+    public AnchorBankBuilder<T> withStartingEnergy(int startEnergy) {
         if(startEnergy > capacity) startEnergy = capacity;
         this.startEnergy = startEnergy;
         return this;
@@ -211,67 +205,16 @@ public class NodeBankBuilder<T extends BlockEntity> {
      * @return
      */
     public ElectricNodeBuilder newNode() {
-        return new ElectricNodeBuilder(this, target);
+        return new ElectricNodeBuilder(this);
     }
 
-    /***
-     * Adds a new ElectricNode to this NodeBank from scratch. <p>
-     * Requires manual addressing of ElectricNode's constructor.
-     * I reccomend using {@link #newNode()} instead.
-     * @param node ElectricNode to add
-     * @return This NodeBankBuilder, modified to reflect this change.
-     */
-    public NodeBankBuilder<T> add(AnchorPoint node) {
+    protected AnchorBankBuilder<T> add(AnchorTransform transform, int maxConnections) {
+        return add(new AnchorPoint(transform, new SVID(target.getBlockPos(), nodesToAdd.size()), maxConnections));
+    }
+
+    private AnchorBankBuilder<T> add(AnchorPoint node) {
         nodesToAdd.add(node);
         return this;
-    }
-
-    /***
-     * Builds a new ElectricNode from manually addressed constructor properties.
-     * I reccomend using {@link #newNode()} instead.
-     * @param location
-     * @param id
-     * @param maxConnections
-     * @return
-     */
-    public NodeBankBuilder<T> add(AnchorTransform location, int maxConnections) {
-        return add(new AnchorPoint(location, maxConnections, nodesToAdd.size()));
-    }
-
-    /***
-     * Builds a new ElectricNode from manually addressed constructor properties.
-     * I reccomend using {@link #newNode()} instead.
-     * @param location
-     * @param id
-     * @param maxConnections
-     * @return
-     */
-    public NodeBankBuilder<T> add(AnchorTransform location, NodeMode mode, int maxConnections) {
-        return add(new AnchorPoint(location, mode, maxConnections, nodesToAdd.size()));
-    }
-
-    /***
-     * Builds a new ElectricNode from manually addressed constructor properties.
-     * I reccomend using {@link #newNode()} instead.
-     * @param location
-     * @param id
-     * @param maxConnections
-     * @return
-     */
-    public NodeBankBuilder<T> add(int x, int y, int z, float size, int maxConnections) {
-        return add(new AnchorPoint(new AnchorTransform(target.getBlockPos(), x, y, z, size, Direction.NORTH), maxConnections, nodesToAdd.size()));
-    }
-
-    /***
-     * Builds a new ElectricNode from manually addressed constructor properties.
-     * I reccomend using {@link #newNode()} instead.
-     * @param location
-     * @param id
-     * @param maxConnections
-     * @return
-     */
-    public NodeBankBuilder<T> add(int x, int y, int z, float size, Direction defaultDir, int maxConnections) {
-        return add(new AnchorPoint(new AnchorTransform(target.getBlockPos(), x, y, z, size, defaultDir), maxConnections, nodesToAdd.size()));
     }
 
     private void doCompleteCheck() {
@@ -280,14 +223,14 @@ public class NodeBankBuilder<T extends BlockEntity> {
     }
 
     /***
-     * Finalizes all changes made to this NodeBankBuilder and returns
-     * a new NodeBank. Use this after you've set up all your values.
+     * Finalizes all changes made to this AnchorPointBankBuilder and returns
+     * a new AnchorPointBank. Use this after you've set up all your values.
      * @throws IllegalStateException If you haven't yet configured a BlockEntity target
      * (see {@link #at(BlockEntity) at()})
      * @return a NodeBank instance.
      */
     public AnchorPointBank<T> build() {
         doCompleteCheck();
-        return new AnchorPointBank<T>(target, nodesToAdd, dirsToAdd, capacity, maxInput, maxOutput, startEnergy);
+        return new AnchorPointBank<T>(target, nodesToAdd, dirsToAdd);
     }
 }

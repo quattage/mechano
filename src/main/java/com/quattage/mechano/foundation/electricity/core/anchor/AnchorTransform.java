@@ -28,8 +28,8 @@ public class AnchorTransform {
     public Vec3 toRealPos(BlockPos pos) {
         return new Vec3(
             ((double) pos.getX()) + realOffset.x,
-            ((double) pos.getX()) + realOffset.y,
-            ((double) pos.getX()) + realOffset.z
+            ((double) pos.getY()) + realOffset.y,
+            ((double) pos.getZ()) + realOffset.z
         );
     }
 

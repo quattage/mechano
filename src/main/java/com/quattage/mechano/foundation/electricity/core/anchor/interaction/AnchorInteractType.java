@@ -18,16 +18,18 @@ public enum AnchorInteractType {
     LINK_CANCELLED(false),   // this link was canceled (player left clicks with spool)
 
     // error
-    LINK_INVALID(false),      // generic catch-all error for links (temporary)
+    LINK_INVALID(false),             // generic catch-all error for links (temporary)
     LINK_CONFLICT(false, false),     // this link's target and destination positions belong to the same block
     LINK_EXISTS(false, false),       // this link already exsists
-    LINK_INCOMPATABLE(false), // this link's WireType doesn't match with the nodes allowed WireTypes
+    LINK_INCOMPATABLE(false),        // this link's WireType doesn't match with the nodes allowed WireTypes
 
-    NODE_EMPTY(false),        // this node is already empty, but the player tried to remove a link
-    NODE_FULL(false, false),         // this node is already full, but the player tried to add a link
+    ANCHOR_EMPTY(false),               // this node is already empty, but the player tried to remove a link
+    ANCHOR_FULL(false, false),         // this node is already full, but the player tried to add a link
     
     WIRE_LONG(false),         // this wire is too long
     WIRE_OBSTRUCTED(false),   // this wire is obstructed by blocks (unused for now)
+
+    GENERIC(true),            // "something went wrong :("
 
     // success
     WIRE_SUCCESS(true, AnchorInteractSound.CONFIRM),    // this wire was successfully created by the player

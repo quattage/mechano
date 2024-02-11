@@ -2,6 +2,7 @@ package com.quattage.mechano;
 
 import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
 import com.quattage.mechano.foundation.network.Packetable;
+import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -10,8 +11,8 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public class MechanoPackets {
+
     private static SimpleChannel NETWORK;
-    
     private static int packetId = 0;
 
     public static void register() {
@@ -24,8 +25,6 @@ public class MechanoPackets {
         
         NETWORK = net;
 
-        
-        
         registerPackets();
     }
 
@@ -34,6 +33,12 @@ public class MechanoPackets {
             .decoder(EnergySyncS2CPacket::new)
             .encoder(EnergySyncS2CPacket::toBytes)
             .consumerMainThread(EnergySyncS2CPacket::handle)
+            .add();
+
+        NETWORK.messageBuilder(AnchorSelectC2SPacket.class, nextId(), NetworkDirection.PLAY_TO_SERVER)
+            .decoder(AnchorSelectC2SPacket::new)
+            .encoder(AnchorSelectC2SPacket::toBytes)
+            .consumerMainThread(AnchorSelectC2SPacket::handle)
             .add();
     }
 

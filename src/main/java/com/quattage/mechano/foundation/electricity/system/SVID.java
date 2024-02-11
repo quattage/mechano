@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.electricity.system;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 
 /***
  * SVID (System Vertex ID) is a (not really) lightweight class for downmixing a SystemVertex 
@@ -30,6 +31,14 @@ public class SVID {
         this.subIndex = -1;
     }
 
+    public static SVID of(CompoundTag nbt) {
+        return new SVID(new BlockPos(nbt.getInt("x"), nbt.getInt("y"), nbt.getInt("z")), nbt.getInt("i"));
+    }
+
+    public static boolean isValidTag(CompoundTag nbt) {
+        return nbt.contains("x") && nbt.contains("y") && nbt.contains("z") && nbt.contains("i");
+    }
+
     public String toString() {
         return "[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + subIndex + "]";
     }
@@ -40,6 +49,10 @@ public class SVID {
 
     public BlockPos getPos() {
         return pos;
+    }
+
+    public int getSubIndex() {
+        return subIndex;
     }
 
     public SVID copy() {
@@ -57,6 +70,14 @@ public class SVID {
 
     @Override
     public int hashCode() {
-        return pos.hashCode();
+        return (pos.hashCode() + subIndex) * 31;
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.putInt("x", pos.getX());
+        in.putInt("y", pos.getY());
+        in.putInt("z", pos.getZ());
+        in.putInt("i", subIndex);
+        return in;
     }
 }

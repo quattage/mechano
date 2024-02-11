@@ -3,9 +3,16 @@ package com.quattage.mechano.foundation.electricity;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import javax.annotation.Nullable;
+
+import org.joml.Vector3f;
+
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.helper.VectorHelper;
+import com.simibubi.create.AllSpecialTextures;
+import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Pair;
 
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
@@ -15,6 +22,7 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import oshi.util.tuples.Triplet;
 
@@ -23,28 +31,49 @@ import oshi.util.tuples.Triplet;
  * An Anchor
  */
 public class AnchorPointBank<T extends BlockEntity> {
-
-    public static final float HITFAC = 4f;
-
-    private final AnchorPoint[] anchorPoints;
+    
     public final T target;
+    private final AnchorPoint[] anchorPoints;
 
-    public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, HashSet<RelativeDirection> dirsToAdd, 
-        int capacity, int maxRecieve, int maxExtract, int energy) {
+    @Nullable
+    private final RelativeDirection[] interfaceDirections;
+    
+
+    public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, ArrayList<RelativeDirection> dirsToAdd) {
         this.target = target;
         this.anchorPoints = populateNodes(nodesToAdd);
+        this.interfaceDirections = populateJunctions(dirsToAdd);
+    }
+
+    @Nullable
+    public static AnchorPointBank<?> getAnchorPointBankAt(Level world, BlockPos pos) {
+        if(world == null) return null;
+        if(pos == null) return null;
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be instanceof WireAnchorBlockEntity wbe)
+            return wbe.getAnchorBank();
+        return null;
     }
 
     private AnchorPoint[] populateNodes(ArrayList<AnchorPoint> nodesToAdd) {
         if(nodesToAdd == null) 
-            throw new NullPointerException("Cannot instantiate new NodeBank instance - nodesToAdd is null!");
+            throw new NullPointerException("Cannot instantiate new AnchorPointBank instance - nodesToAdd is null!");
         if(nodesToAdd.isEmpty()) 
-            throw new IllegalArgumentException("Cannot instantiate new NodeBank instance - nodesToAdd is empty!");
+            throw new IllegalArgumentException("Cannot instantiate new AnchorPointBank instance - nodesToAdd is empty!");
 
         AnchorPoint[] out = new AnchorPoint[nodesToAdd.size()];
-        for(int x = 0; x < out.length; x++) {
+        for(int x = 0; x < out.length; x++)
             out[x] = nodesToAdd.get(x);
-        }
+        return out;
+    }
+
+    private RelativeDirection[] populateJunctions(ArrayList<RelativeDirection> dirsToAdd) {
+        if(dirsToAdd == null || dirsToAdd.isEmpty())
+            return null;
+
+        RelativeDirection[] out = new RelativeDirection[dirsToAdd.size()];
+        for(int x = 0; x < out.length; x++)
+            out[x] = dirsToAdd.get(x);
         return out;
     }
 
@@ -99,175 +128,24 @@ public class AnchorPointBank<T extends BlockEntity> {
         return anchorPoints;
     }
 
+    public Pair<AnchorPoint, Double> getClosestAnchor(Vec3 hit) {
 
-    /***
-     * Returns a Pair representing a list of all ElectricNodes in this bank. <p>
-     * The first member of the Pair is a list of all ElectricNodes, and the second member of the
-     * Pair is an Integer index of the closest ElectricNode in the list to the given Vec3 position.
-     * @param hit Vec3 position. Usually this would just be <code>BlockHitResult.getLocation()</code>
-     * @return A Pair containing a list of all ElectricNodes.
-     */
-    public Pair<AnchorPoint[], Integer> getAllNodes(Vec3 hit) {
-        return getAllNodes(hit, 0.0f);
-    }
+        AnchorPoint closestAnchor = null;
+        double closestDistance = -1;
 
-    /***
-     * Returns a Pair representing a list of all ElectricNodes in this bank. <p>
-     * The first member of the Pair is a list of all ElectricNodes, and the second member of the
-     * Pair is an Integer index of the closest ElectricNode in the list to the given Vec3 position.
-     * @param tolerance Any distance higher than this number will be disregarded as too far away,
-     * and will return null.
-     * @param hit Vec3 position. Usually this would just be <code>BlockHitResult.getLocation()</code>
-     * @return A Pair containing a list of all ElectricNodes.
-     */
-    public Pair<AnchorPoint[], Integer> getAllNodes(Vec3 hit, float tolerance) {
+        for(AnchorPoint anchor : anchorPoints) {
+            Vec3 center = anchor.getPos();
+            double distance = Math.abs(hit.distanceTo(center));
 
-        Pair<AnchorPoint[], Integer> out = Pair.of(getAll(), -1);
-        if(length() == 1) return Pair.of(getAll(), 0);
+            //if(distance > anchor.getSize() * 6f) continue;
 
-        double lastDistance = 256;
-
-        for(int x = 0; x < anchorPoints.length; x++) {
-            Vec3 center = anchorPoints[x].getLocation();
-            double currentDistance = Math.abs(hit.distanceTo(center));
-            
-            if(tolerance == 0) tolerance = anchorPoints[x].getSize() * 5f;
-            if(currentDistance > tolerance) continue;
-            if(currentDistance < lastDistance) out.setSecond(x);
-            lastDistance = currentDistance;
-        }
-
-        return out;
-    }
-
-    /***
-     * Continually searches in the area surrounding the player's look direction for 
-     * BlockEntities that possess AnchorPoints.
-     * @param world World to operate within
-     * @param start Vec3 starting position of the search (camera posiiton)
-     * @param end Vec3 ending position of the search (BlockHitResult)
-     * @param scope (Optional, default 5) Width (in blocks) of the "cone" that is searched.
-     * Must be an odd number >= 3.
-     * @return An ArrayList of pairs, where the first member is the NodeBank itself, and the
-     * second member is the point along the ray that is closest to the NodeBank.
-     */
-    public static ArrayList<Pair<AnchorPointBank<?>, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end) {
-        return findBanksAlongRay(world, start, end, 5);
-    }
-
-    /***
-     * Continually searches in the area surrounding the player's look direction for 
-     * BlockEntities that possess AnchorHolders.
-     * @param world World to operate within
-     * @param start Vec3 starting position of the search (camera posiiton)
-     * @param end Vec3 ending position of the search (BlockHitResult)
-     * @param scope (Optional, default 5) Width (in blocks) of the "cone" that is searched.
-     * Must be an odd number >= 3.
-     * @return An ArrayList of pairs, where the first member is the AnchorHolder itself, and the
-     * second member is the point along the ray that is closest to that AnchorHolder.
-
-     */
-    public static ArrayList<Pair<AnchorPointBank<?>, Vec3>> findBanksAlongRay(Level world, Vec3 start, Vec3 end, int scope) {
-        ArrayList<Pair<AnchorPointBank<?>, Vec3>> out =  new ArrayList<Pair<AnchorPointBank<?>, Vec3>>();
-        int maxIterations =  (int)((AnchorPointBank.HITFAC * 0.43) * start.distanceTo(end));
-
-        if(scope % 2 == 0) scope += 1;
-        if(scope < 3) scope = 3;
-        
-        // TODO jeezy creezy refectoreeni 
-        // steps through in a straight line out away from the start to the end.
-        for(int iteration = 0; iteration < maxIterations; iteration++) {
-            float percent = iteration / (float) maxIterations;
-            Vec3 lookStep = start.lerp(end, percent);
-
-            BlockPos origin = VectorHelper.toBlockPos(lookStep);
-
-            // nested loops here step through the surrounding area in a cube
-            for(int y = 0; y < scope; y++) {
-                for(int x = 0; x < scope; x++) {
-                    for(int z = 0; z < scope; z++) {
-                        Vec3i boxOffset = new Vec3i(
-                            (int)(x - (scope / 2)), 
-                            (int)(y - (scope / 2)), 
-                            (int)(z - (scope / 2))
-                        );
-
-                        if(world.getBlockEntity(origin.offset(boxOffset)) instanceof WireNodeBlockEntity ebe) {
-
-                            if(ebe.nodeBank == null) continue;
-                            if(out.size() == 0) {
-                                out.add(Pair.of(ebe.nodeBank, lookStep));
-                                continue;
-                            }
-                            
-                            boolean alreadyExists = false;
-                            for(int search = 0; search < out.size(); search++) {
-                                Pair<AnchorPointBank<?>, Vec3> lookup = out.get(search);
-                                if(lookup.getFirst().equals(ebe.nodeBank)) { 
-                                    Vec3 bankCenter = ebe.getBlockPos().getCenter();
-                                    double oldDistance = lookup.getSecond().distanceTo(bankCenter);
-                                    if(oldDistance < 0.002) break;
-                                    if(lookStep.distanceTo(bankCenter) > oldDistance) {
-                                        out.set(search, Pair.of(ebe.nodeBank, lookStep));
-                                        alreadyExists = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if(!alreadyExists)
-                                out.add(Pair.of(ebe.nodeBank, lookStep));
-                        }
-                    }
-                }
-            }
-        }
-        return out;
-    }
-
-    /***
-     * See {@link #findBanksAlongRay(Level world, Vec3 start, Vec3 end) findBanksAlongRay()} 
-     * for additional context.
-     * @param world World to operate within
-     * @param start Vec3 starting position of the search
-     * @param end Vec3 ending position of the search
-     * @return A Triplet -  
-     * 1: List of all AnchorPoints that were deemed "close enough",
-     * 2: Integer index of the closest AnchorPoint in the aforementioned list,
-     * and 3: the AnchorHolder that the closest AnchorPoint belongs to.
-     */
-    public static Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> findClosestNodeAlongRay(Level world, Vec3 start, Vec3 end, float tolerance) {
-
-        int closestIndex = -1;
-        AnchorPointBank<?> closestBank = null;
-        double lastDist = 256;
-        ArrayList<AnchorPoint> allNearbyNodes = new ArrayList<AnchorPoint>();
-
-        for(Pair<AnchorPointBank<?>, Vec3> potential : findBanksAlongRay(world, start, end)) {
-            for(AnchorPoint node : potential.getFirst().anchorPoints) {
-                allNearbyNodes.add(node);
-                Vec3 center = node.getLocation();
-                double dist = Math.abs(potential.getSecond().distanceTo(center));
-
-                if(tolerance == 0) tolerance = node.getSize() * 5f;
-                if(dist > tolerance) continue;
-
-                if(dist < lastDist) {
-                    closestIndex = allNearbyNodes.size() - 1;
-                    closestBank = potential.getFirst();
-                }
-
-            lastDist = dist;
+            if(distance < closestDistance || closestDistance == -1) {
+                closestAnchor = anchor;
+                closestDistance = distance;
             }
         }
 
-        return new Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>>(allNearbyNodes, closestIndex, closestBank);
-    }
-
-    public Pair<AnchorPoint, Double> getClosestNode(Vec3 hit) {
-        Pair<AnchorPoint[], Integer> out = getAllNodes(hit);
-        if(out.getSecond() == -1) return null;
-        AnchorPoint closest = out.getFirst()[out.getSecond()];
-        return Pair.of(closest, closest.getLocation().distanceTo(hit));
+        return Pair.of(closestAnchor, closestDistance);
     }
 
     /***
@@ -305,5 +183,11 @@ public class AnchorPointBank<T extends BlockEntity> {
             target.getBlockState(), 
             3);
         target.setChanged();
+    }
+
+    public void destroy() {
+        for(AnchorPoint anchor : anchorPoints) {
+            NETWORK.destroyVertex(anchor.getID());
+        }
     }
 }

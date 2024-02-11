@@ -8,7 +8,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
 import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -67,7 +67,7 @@ public class TransferSystem {
             BlockPos check = n.getPos();
 
             // preventative measure to stop vertices from being added if they have bad data
-            if((!(world.getBlockEntity(check) instanceof WireNodeBlockEntity)) || (n.isEmpty())) {
+            if((!(world.getBlockEntity(check) instanceof WireAnchorBlockEntity)) || (n.isEmpty())) {
                 Mechano.LOGGER.warn("TransferSystem skipping registration of SystemVertex at [" 
                 + check.getX() + ", " + check.getY() + ", " + check.getZ() + "]");
                 continue;

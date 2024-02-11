@@ -240,6 +240,10 @@ public class VectorHelper {
         return Math.sqrt(Math.pow(x, 2.0) + Math.pow(y, 2.0) + Math.pow(z, 2.0));
     }
 
+    public static double getNorm(Vec3 vec) {
+        return Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+    } 
+
     public static double getGreaterMagnitude(Vec3 vec1, Vec3 vec2) {
         double fT = getMagnitude(vec1);
         double tF = getMagnitude(vec2);
@@ -285,16 +289,64 @@ public class VectorHelper {
      * @param player 
      * @return HitResult describing the player's absolute look position.
      */
-    public static HitResult getLookingPos(Player player) {
-        Vec3 viewDir = player.getViewVector(1f);
-        float dist = 20;
+    public static HitResult getLookingRay(Player player) {
+        return getLookingRay(player, 20);
+    }
 
+    /***
+     * Gets the HitResult for the given player.
+     * @param player 
+     * @param dist
+     * @return HitResult describing the player's absolute look position.
+     */
+    public static HitResult getLookingRay(Player player, float dist) {
+        Vec3 viewDir = player.getViewVector(1f);
+    
         Vec3 start = player.getEyePosition(1f);
         Vec3 end = start.add(viewDir.x * dist, viewDir.y * dist, viewDir.z * dist);
 
         return player.getCommandSenderWorld().clip(
             new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)
         );
+    }
+
+    // i cannot find an equivalent way to do this properly with joml or minecraft math so this is here now
+    public static double[][] calculateRotationMatrix(Vec3 axis) {
+        double cosTheta = Math.cos(getNorm(axis));
+        double sinTheta = Math.sin(getNorm(axis));
+
+        double x = axis.x;
+        double y = axis.y;
+        double z = axis.z;
+
+        double[][] rotationMatrix = new double[3][3];
+
+        rotationMatrix[0][0] = cosTheta + x * x * (1 - cosTheta);
+        rotationMatrix[0][1] = x * y * (1 - cosTheta) - z * sinTheta;
+        rotationMatrix[0][2] = x * z * (1 - cosTheta) + y * sinTheta;
+
+        rotationMatrix[1][0] = y * x * (1 - cosTheta) + z * sinTheta;
+        rotationMatrix[1][1] = cosTheta + y * y * (1 - cosTheta);
+        rotationMatrix[1][2] = y * z * (1 - cosTheta) - x * sinTheta;
+
+        rotationMatrix[2][0] = z * x * (1 - cosTheta) - y * sinTheta;
+        rotationMatrix[2][1] = z * y * (1 - cosTheta) + x * sinTheta;
+        rotationMatrix[2][2] = cosTheta + z * z * (1 - cosTheta);
+
+        return rotationMatrix;
+    }
+
+    public static double[] multiplyMatrixVector(double[][] matrix, double[] vector) {
+        double[] result = new double[3];
+
+        for (int i = 0; i < 3; i++) {
+            result[i] = 0;
+            for (int j = 0; j < 3; j++) {
+                result[i] += matrix[i][j] * vector[j];
+            }
+        }
+
+        return result;
     }
 
     public static String asString(BlockPos pos) {

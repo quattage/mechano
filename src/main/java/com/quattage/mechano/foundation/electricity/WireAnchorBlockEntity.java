@@ -2,27 +2,26 @@ package com.quattage.mechano.foundation.electricity;
 
 import java.util.List;
 
-import com.quattage.mechano.foundation.electricity.builder.NodeBankBuilder;
+import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
+public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
 
-    public final AnchorPointBank<WireNodeBlockEntity> nodeBank;
+    private final AnchorPointBank<WireAnchorBlockEntity> anchors;
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
 
-    public WireNodeBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    public WireAnchorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         setLazyTickRate(20);
-        NodeBankBuilder<WireNodeBlockEntity> init = new NodeBankBuilder<WireNodeBlockEntity>().at(this);
+        AnchorBankBuilder<WireAnchorBlockEntity> init = new AnchorBankBuilder<WireAnchorBlockEntity>().at(this);
         createWireNodeDefinition(init);
-        nodeBank = init.build();
+        anchors = init.build();
     }
 
     /***
@@ -47,49 +46,29 @@ public abstract class WireNodeBlockEntity extends ElectricBlockEntity {
      * </pre>
      * @param builder The NodeBuilder to add connections to
      */
-    public abstract void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder);
+    public abstract void createWireNodeDefinition(AnchorBankBuilder<WireAnchorBlockEntity> builder);
+
+    public AnchorPointBank<?> getAnchorBank() {
+        return anchors;
+    }
 
     @Override
     public void reOrient() {
-        nodeBank.reflectStateChange(this.getBlockState());
+        anchors.reflectStateChange(this.getBlockState());
         super.reOrient();
     }
 
     @Override
     public void remove() {
         if(!this.level.isClientSide)
-            nodeBank.destroy();
+            anchors.destroy();
         super.remove();
     }
 
     @Override
     public void initialize() {
         super.initialize();
-        nodeBank.init();
         reOrient();
         this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
-    }
-    
-    @Override
-    protected void write(CompoundTag tag, boolean clientPacket) {
-        super.write(tag, clientPacket);
-        nodeBank.writeTo(tag);
-    }
-
-    @Override
-    protected void read(CompoundTag tag, boolean clientPacket) {
-        nodeBank.readFrom(tag);
-        super.read(tag, clientPacket);
-    }
-
-    /***
-     * If true, all nodes in this WireNodeBlockEntity will share power.
-     */
-    public abstract boolean shouldMergeImplicitNodes();
-
-    @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        super.handleUpdateTag(tag);
-        nodeBank.readFrom(tag);
     }
 }

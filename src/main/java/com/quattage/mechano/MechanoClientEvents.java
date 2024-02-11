@@ -2,7 +2,6 @@ package com.quattage.mechano;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
 import com.quattage.mechano.foundation.behavior.ClientBehavior;
-import com.quattage.mechano.foundation.behavior.ElectricNodeSpoolBehavior;
 import com.quattage.mechano.foundation.behavior.TransferNetworkDebugBehavior;
 
 import net.minecraft.client.Minecraft;
@@ -15,7 +14,6 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
-    public static final ElectricNodeSpoolBehavior SPOOL_BEHAVIOR = new ElectricNodeSpoolBehavior("SpoolLookingAtElectricNode");
     public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
     public static final TransferNetworkDebugBehavior WIRE_DEBUG_BEHAVIOR = new TransferNetworkDebugBehavior("DebugMenuElectricNode");
 

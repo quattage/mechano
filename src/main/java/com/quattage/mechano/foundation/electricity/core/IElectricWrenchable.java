@@ -2,7 +2,7 @@ package com.quattage.mechano.foundation.electricity.core;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.world.item.context.UseOnContext;
@@ -26,7 +26,7 @@ public interface IElectricWrenchable extends IWrenchable {
 
         Mechano.log("Wrench Hit");
 
-        if(be instanceof WireNodeBlockEntity wbe) {
+        if(be instanceof WireAnchorBlockEntity wbe) {
             wbe.reOrient();
             playRotateSound(context.getLevel(), context.getClickedPos());
             return;

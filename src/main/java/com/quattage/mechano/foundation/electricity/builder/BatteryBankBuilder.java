@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.electricity.BatteryBank;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.core.InteractionPolicy;
+import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 
 public class BatteryBankBuilder<T extends ElectricBlockEntity> {
     
@@ -15,7 +15,7 @@ public class BatteryBankBuilder<T extends ElectricBlockEntity> {
     private int startEnergy = 0;
 
     private T target = null;
-    private ArrayList<InteractionPolicy> interactions = new ArrayList<InteractionPolicy>();
+    private ArrayList<ForgeEnergyJunction> interactions = new ArrayList<ForgeEnergyJunction>();
 
     public BatteryBankBuilder() {}
 
@@ -80,20 +80,20 @@ public class BatteryBankBuilder<T extends ElectricBlockEntity> {
 
     public BatteryBankBuilder<T> interactsWithAllSides() {
         for(Relative rel: Relative.values())
-            interactions.add(new InteractionPolicy(rel));
+            interactions.add(new ForgeEnergyJunction(rel));
         return this;
     }
 
     public BatteryBank<T> build() {
         if(interactions == null) new BatteryBank<T>(target, null, capacity, maxInput, maxOutput, startEnergy);
-        return new BatteryBank<T>(target, interactions.toArray(new InteractionPolicy[0]), capacity, maxInput, maxOutput, startEnergy);
+        return new BatteryBank<T>(target, interactions.toArray(new ForgeEnergyJunction[0]), capacity, maxInput, maxOutput, startEnergy);
     }
 
     /***
      * Add an InteractionPolicy directly. This is designed to be used
      * by the builder, you don't have to call it yourself.
      */
-    protected void addInteraction(InteractionPolicy p) {
+    protected void addInteraction(ForgeEnergyJunction p) {
         if(p == null) return;
         interactions.add(p);
     }

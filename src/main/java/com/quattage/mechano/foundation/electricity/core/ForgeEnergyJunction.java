@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 
-public class InteractionPolicy {
+public class ForgeEnergyJunction {
     
     private final RelativeDirection dir;
     public boolean isInput;
@@ -29,14 +29,14 @@ public class InteractionPolicy {
     private final Block[] interactions;
 
     /***
-     * Create a new InteractionPolicy at the given RelativeDirection.
+     * Create a new ForgeEnergyJunction at the given RelativeDirection.
      * @param dir RelativeDirection 
-     * @param isInput True if this InteractionPolicy can accept energy from external sources
-     * @param isOutput True if this InteractionPolicy can send energy to external sources
+     * @param isInput True if this ForgeEnergyJunction can accept energy from external sources
+     * @param isOutput True if this ForgeEnergyJunction can send energy to external sources
      * @param interactions An array representing a list of blocks to consider
      * @param denyOrAllow True if the interactions list is a whitelist, or false if the interactions list is a blacklist.
      */
-    public InteractionPolicy(RelativeDirection dir, boolean isInput, boolean isOutput, Block[] interactions, boolean denyOrAllow) {
+    public ForgeEnergyJunction(RelativeDirection dir, boolean isInput, boolean isOutput, Block[] interactions, boolean denyOrAllow) {
         this.dir = dir;
         this.isInput = isInput;
         this.isOutput = isOutput;
@@ -45,12 +45,12 @@ public class InteractionPolicy {
     }
 
     /***
-     * Create a new InteractionPolicy at the given RelativeDirection.
+     * Create a new ForgeEnergyJunction at the given RelativeDirection.
      * @param dir RelativeDirection
-     * @param isInput True if this InteractionPolicy can accept energy from external sources
-     * @param isOutput True if this InteractionPolicy can send energy to external sources
+     * @param isInput True if this ForgeEnergyJunction can accept energy from external sources
+     * @param isOutput True if this ForgeEnergyJunction can send energy to external sources
      */
-    public InteractionPolicy(RelativeDirection dir, boolean isInput, boolean isOutput) {
+    public ForgeEnergyJunction(RelativeDirection dir, boolean isInput, boolean isOutput) {
         this.dir = dir;
         this.isInput = isInput;
         this.isOutput = isOutput;
@@ -59,11 +59,11 @@ public class InteractionPolicy {
     }
 
     /***
-     * Create a new InteractionPolicy at the given RelativeDirection. <p>
+     * Create a new ForgeEnergyJunction at the given RelativeDirection. <p>
      * This policy has no exceptions, and will always interact.
      * @param dir
      */
-    public InteractionPolicy(RelativeDirection dir) {
+    public ForgeEnergyJunction(RelativeDirection dir) {
         this.dir = dir;
         this.isInput = true;
         this.isOutput = true;
@@ -72,11 +72,11 @@ public class InteractionPolicy {
     }
 
     /***
-     * Create a new InteractionPolicy at the given RelativeDirection. <p>
+     * Create a new ForgeEnergyJunction at the given RelativeDirection. <p>
      * This policy has no exceptions, and will always interact.
      * @param dir
      */
-    public InteractionPolicy(Relative rel) {
+    public ForgeEnergyJunction(Relative rel) {
         this.dir = new RelativeDirection(rel);
         this.isInput = true;
         this.isOutput = true;
@@ -88,7 +88,7 @@ public class InteractionPolicy {
         return dir.get();
     }
 
-    public InteractionPolicy rotateToFace(CombinedOrientation orient) {
+    public ForgeEnergyJunction rotateToFace(CombinedOrientation orient) {
         dir.rotate(orient);
         return this;
     }
@@ -114,11 +114,11 @@ public class InteractionPolicy {
     }
 
     /***
-     * Determines whether or not this InteractionPolicy
+     * Determines whether or not this ForgeEnergyJunction
      * is interacting with any ForgeEnergy capabilities 
      * in the world.
      * @param parent BlockEntity to use as a reference for getting real-world positions
-     * @return True if this InteractionPolicy is facing towards
+     * @return True if this ForgeEnergyJunction is facing towards
      * a block which provides ForgeEnergy capabilities in the opposing direction
      */
     public boolean canSendOrReceive(BlockEntity parent) {
@@ -142,7 +142,7 @@ public class InteractionPolicy {
 
 
     public boolean equals(Object other) {
-        if(other instanceof InteractionPolicy ip) 
+        if(other instanceof ForgeEnergyJunction ip) 
             return dir.equals(ip.dir) && 
                 this.isInput == ip.isInput && 
                 this.isOutput == ip.isOutput;

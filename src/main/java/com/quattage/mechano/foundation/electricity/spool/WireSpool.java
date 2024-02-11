@@ -1,34 +1,30 @@
 package com.quattage.mechano.foundation.electricity.spool;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-
-import javax.annotation.Nullable;
-
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.foundation.electricity.AnchorPointBank;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
-import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.foundation.utility.Pair;
+import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
+import com.quattage.mechano.foundation.electricity.system.SVID;
+import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 
+import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
+
+import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-import oshi.util.tuples.Triplet;
 
 /***
  * A WireSpool object is both a Minecraft Item as well as a logical representation
@@ -36,16 +32,13 @@ import oshi.util.tuples.Triplet;
  */
 public abstract class WireSpool extends Item {
 
-    protected final String PREFIX = "wire_";
-    protected final int rate;
-    protected final String name;
-    protected final ItemStack emptySpoolDrop;
-    protected final ItemStack rawDrop;
+    private final String PREFIX = "wire_";
+    private final int rate;
+    private final String name;
+    private final ItemStack emptyDrop;
+    private final ItemStack rawDrop;
 
-    private int useCooldown = 0;
-    private Pair<AnchorInteractType, FakeNodeConnection> intermediary;
-    private Player player; 
-    private WireNodeBlockEntity target;
+    private SVID selectedAnchorID = null;
 
     /***
      * Create a new WireSpool object
@@ -58,7 +51,7 @@ public abstract class WireSpool extends Item {
         super(properties);
         this.name = setName().toLowerCase();
         this.rate = setRate();
-        this.emptySpoolDrop = new ItemStack(setEmptySpoolDrop());
+        this.emptyDrop = new ItemStack(setEmptySpoolDrop());
         this.rawDrop = new ItemStack(setRawDrop());
         WireSpoolManager.addType(this);
     }
@@ -105,7 +98,7 @@ public abstract class WireSpool extends Item {
     }
 
     public final ItemStack getEmptySpool() {
-        return emptySpoolDrop;
+        return emptyDrop;
     }
     
     public final ItemStack getRawDrop() {
@@ -118,209 +111,97 @@ public abstract class WireSpool extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
-
+        
         ItemStack handStack = player.getItemInHand(hand);
 
-        Vec3 clickedLocation = VectorHelper.getLookingPos(player).getLocation();
-        Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary = null;
+        if(world.isClientSide()) {
+            MechanoPackets.sendToServer(new AnchorSelectC2SPacket(WireAnchorBlockRenderer.getSelectedAnchor()));
+            return super.use(world, player, hand);
+        }
 
-        // ignore physical search if the player interacts directly with an EBE
-        if(world.getBlockEntity(VectorHelper.toBlockPos(clickedLocation)) instanceof WireNodeBlockEntity ebe) {
-            Pair<AnchorPoint[], Integer> direct = ebe.nodeBank.getAllNodes(clickedLocation);
-            clickSummary = new Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> (
-                    new ArrayList<AnchorPoint>(Arrays.asList(direct.getFirst())), 
-                    direct.getSecond(), ebe.nodeBank
-                );
+        if(selectedAnchorID == null)
+            return InteractionResultHolder.pass(handStack);
+
+        AnchorPoint currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
+        if(currentAnchor == null) return InteractionResultHolder.fail(handStack);
+
+        if(!NETWORK.isVertAvailable(currentAnchor.getID())) {
+            player.displayClientMessage(AnchorInteractType.ANCHOR_FULL.getMessage(), true);
+            return InteractionResultHolder.fail(handStack);
+        } 
+        
+        CompoundTag nbt = handStack.getOrCreateTag();
+        if(nbt.isEmpty()) {
+            selectedAnchorID.writeTo(nbt);
         } else {
-            clickSummary = AnchorPointBank.findClosestNodeAlongRay(world, player.getEyePosition(), clickedLocation, 0);
-        }
-
-        // this sanity check prevents a crash, don't remove it
-        if(clickSummary.getC() == null)
-            return new InteractionResultHolder<ItemStack>(
-                InteractionResult.PASS,
-                handStack
-            );
-
-        this.target = (WireNodeBlockEntity)clickSummary.getC().target;
-        target.reOrient();
-        this.player = player;
-        
-        if(clickSummary.getB() == -1) 
-            return new InteractionResultHolder<ItemStack>(
-                InteractionResult.PASS,
-                handStack
-            );
-
-        if(handStack.hasTag()) {
-            if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
-                return new InteractionResultHolder<ItemStack>(
-                    handleTo(world, handStack, clickSummary, clickedLocation),
-                    handStack
-                );
-        }
-
-        return new InteractionResultHolder<ItemStack>(
-            handleFrom(world, handStack, clickSummary, clickedLocation),
-            handStack
-        ); 
-    }
-
-    // @Override
-    // public InteractionResult useOn(UseOnContext context) {
-    //     Level world = context.getLevel();
-    //     Vec3 clickedLoc = VectorHelper.getLookingPos(context.getPlayer()).getLocation();
-    //     ItemStack handStack = context.getItemInHand();
-        
-    //     if(handStack.hasTag()) {
-    //         if(handStack.getTag().contains("at") && handStack.getTag().contains("from"))
-    //             return handleTo(world, handStack, clickedLoc, context.getPlayer());
-    //     }
-    //     return handleFrom(world, handStack, clickedLoc, context.getPlayer()); 
-    // }
-
-    /***
-     * Implementation of NodeBank and ElectricNode tomfoolery that occurs when the player
-     * first initiates the connection. Creates a FakeNodeConnection attached to the player.
-     * @return InteractionResult indicating the success or failure of this interaction
-     */
-    private InteractionResult handleFrom(Level world, ItemStack wireStack, Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary, Vec3 clickedLoc) {
-
-        AnchorPoint targetedNode = clickSummary.getA().get(clickSummary.getB());
-        int index = clickSummary.getC().indexOf(targetedNode);
-        this.intermediary = clickSummary.getC().makeFakeConnection(this, index, player);
-
-        if(intermediary.getFirst().isSuccessful()) {
-            CompoundTag nbt = wireStack.getOrCreateTag();   
-            nbt.put("at", writePos(clickSummary.getC().pos));
-            nbt.putInt("from", index);
-            sendInfo(world, clickSummary.getC().pos, intermediary.getFirst());
-            return InteractionResult.PASS;
-        }
-
-        if(!intermediary.getFirst().isSuccessful())
-            revert(wireStack, false);
-
-        sendInfo(world, clickSummary.getC().pos, intermediary.getFirst());
-        return InteractionResult.FAIL;
-    }
-
-    /***
-     * Follow-through from handleFrom, called when the connection is made real. 
-     * Turns the previously established FakeNodeConnection into an ElectricNodeConnection.
-     * @return InteractionResult indicating the success or failure of this interaction
-     */
-    private InteractionResult handleTo(Level world, ItemStack wireStack, Triplet<ArrayList<AnchorPoint>, Integer, AnchorPointBank<?>> clickSummary, Vec3 clickedLoc) {
-
-        AnchorPoint targetedNode = clickSummary.getA().get(clickSummary.getB());
-        int index = clickSummary.getC().indexOf(targetedNode);
-        if(wireStack.getItem() instanceof WireSpool spool) {
-            CompoundTag nbt = wireStack.getTag();
-            if(world.getBlockEntity(getPos(nbt)) instanceof WireNodeBlockEntity ebeFrom) {
-
-                if(intermediary == null && wireStack.hasTag()) { // on world load this item may have NBT but no valid intermediary
-                    clearTag(wireStack);
-                    return InteractionResult.PASS; // the connection is just ignored in this case, you'll have to click it again.
-                }
-
-                AnchorInteractType result = ebeFrom.nodeBank.connect(intermediary.getSecond(), clickSummary.getC(), index);
-                // Mechano.log("Success? " + result.isSuccessful() + " Fatal? " + result.isFatal());
-
-                if(!world.isClientSide() && !result.isSuccessful()) {
-                    if(result.isFatal()) {
-                        revert(wireStack, false);
-                        if(wireStack.hasTag())
-                            target = (WireNodeBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
-                    } else {
-                        if(wireStack.hasTag()) {
-                            target = (WireNodeBlockEntity)world.getBlockEntity(getPos(wireStack.getTag()));
-                        }
-                    }
-                }
-                sendInfo(world, clickSummary.getC().pos, result);
-                clearTag(result, wireStack);
-                return InteractionResult.PASS;
+            if(!SVID.isValidTag(nbt)) { // validate just in case, this code may never be reached idk
+                clearTag(handStack);
+                player.displayClientMessage(AnchorInteractType.GENERIC.getMessage(), true);
+                return InteractionResultHolder.fail(handStack);
             }
+
+            AnchorPoint previousAnchor = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
+            if(previousAnchor == null ) {
+                clearTag(handStack);
+                return InteractionResultHolder.fail(handStack);
+            }
+
+            if(!previousAnchor.equals(currentAnchor)) {
+                if(NETWORK.isVertAvailable(currentAnchor.getID()) && NETWORK.isVertAvailable(previousAnchor.getID())) {
+                    AnchorInteractType linkResult = NETWORK.link(previousAnchor.getID(), selectedAnchorID);
+                    player.displayClientMessage(linkResult.getMessage(), true);
+                    clearTag(handStack);
+                    if(linkResult.isSuccessful())
+                        return InteractionResultHolder.success(handStack);
+                    return InteractionResultHolder.fail(handStack);
+                }
+
+                player.displayClientMessage(AnchorInteractType.ANCHOR_FULL.getMessage(), true);
+                clearTag(handStack);
+                return InteractionResultHolder.pass(handStack);
+            }
+
+            player.displayClientMessage(AnchorInteractType.LINK_CONFLICT.getMessage(), true);
+            clearTag(handStack);
+            return InteractionResultHolder.pass(handStack);
         }
-        return InteractionResult.FAIL;
+
+        return InteractionResultHolder.fail(handStack);
     }
 
-    private CompoundTag writePos(BlockPos pos) {
-        CompoundTag out = new CompoundTag();
-        out.putInt("x", pos.getX());
-        out.putInt("y", pos.getY());
-        out.putInt("z", pos.getZ());
-        return out;
+
+    @SuppressWarnings("unused")
+    public void clearTag(ItemStack stack) {
+        stack.setTag(new CompoundTag());
     }
 
-    /***
-     * Grabs the bound position of the WireSpool from the provided
-     * CompoundTag.
-     * @param in CompoundTag to pull from
-     * @return A composed BlockPos indicating the connection target.
-     */
-    @Nullable
-    public BlockPos getPos(CompoundTag in) {
-
-        if(!in.contains("at")) return null;
-        CompoundTag at = in.getCompound("at");
-        BlockPos out = new BlockPos(
-            at.getInt("x"),
-            at.getInt("y"),
-            at.getInt("z")
-        );
-
-        return out;
-    }
-
-    /***
-     * Cancels the connection if the player isn't holding the wire or punches with it
-     */
+    //                                        §    https://hypixel.net/attachments/colorcodes-png.2694223/
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
-        super.inventoryTick(stack, world, entity, slot, isSelected);
-        if(entity instanceof Player player && stack.getTag() != null) {
-            if(stack.getTag().contains("at") || stack.getTag().contains("from")) {
-                if(player.oAttackAnim != 0 || player.getMainHandItem().getItem() != stack.getItem()) {
-                    if(!world.isClientSide) {
-                        revert(stack, true);
-                    }
+        if(entity instanceof Player player) {
+            if(isSelected) {
+                CompoundTag nbt = stack.getOrCreateTag();
+                if(SVID.isValidTag(nbt)) {
+                    MutableComponent message = Component.translatable("actionbar.mechano.connection.linking");
+                    message.append(" §r§7[§r§l§a§l" + nbt.getInt("x") + "§r§2, §r§a§l" + nbt.getInt("y") + "§r§2, §r§a§l" + nbt.getInt("z") + "§r§7]");
+                    player.displayClientMessage(message, true);
                 }
+            } else {
+                CompoundTag nbt = stack.getTag();
+                if(SVID.isValidTag(nbt)) {
+                    player.displayClientMessage(AnchorInteractType.LINK_CANCELLED.getMessage(), true);
+                    stack.setTag(new CompoundTag());
+                } 
             }
         }
-
-        if(useCooldown > 0) useCooldown--;
     }
 
-    private void revert(ItemStack stack, boolean clear) {
-        clearTag(stack);
-        if(clear && intermediary != null) cancelConnection(target, intermediary.getSecond().getSourceID());
-    }
-
-    private void revert(WireNodeBlockEntity ebe, ItemStack stack, boolean clear) {
-        clearTag(stack);
-        if(clear && intermediary != null) cancelConnection(ebe, intermediary.getSecond().getSourceID());
-    }
-
-    private void cancelConnection(WireNodeBlockEntity ebe, int sourceID) {
-        if(ebe != null) ebe.nodeBank.cancelConnection(sourceID);
-        sendInfo(ebe.getLevel(), ebe.getBlockPos(), AnchorInteractType.LINK_CANCELLED);
-    }
-
-    private void sendInfo(Level world, BlockPos pos, AnchorInteractType result) {
+    private void sendInfo(Level world, Player player, BlockPos pos, AnchorInteractType result) {
         player.displayClientMessage(result.getMessage(), true);
         result.playConnectSound(world, pos);
     }
 
-    private void clearTag(ItemStack stack) {
-        //if(!stack.hasTag()) return;
-        stack.removeTagKey("at");
-        stack.removeTagKey("from");
-    }
-
-    private void clearTag(AnchorInteractType result, ItemStack stack) {
-        if(!result.isSuccessful() && !result.isFatal()) return;
-        stack.removeTagKey("at");
-        stack.removeTagKey("from");
+    public void setSelectedAnchor(SVID selectedAnchorID) {
+        this.selectedAnchorID = selectedAnchorID;
     }
 }

@@ -111,25 +111,10 @@ mixin {
     debug.export = true
 }
 
-// this is required in order to patch what I believe is a gradle-vscode bug when running in windows 11
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-
-    var resourceTargets = [
-        'META-INF/mods.toml', 
-        'pack.mcmeta'
-    ]
-    var intoTargets = ["$rootDir/bin/main/"]
-    intoTargets.each { target ->
-        if (file(target).exists()) {
-            copy {
-                from(sourceSets.main.resources) {
-                    include resourceTargets
-                    //expand replaceProperties
-                }
-                into target
-            }
-        }
+eclipse {
+    synchronizationTasks processResources
+    classpath {
+        defaultOutputDir = file('$rootDir/bin/main')
     }
 }
 
@@ -208,6 +193,29 @@ jar {
         ])
     }
     
+}
+
+// this is required in order to patch what I believe is a gradle-vscode bug when running in windows 11
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    var resourceTargets = [
+        'META-INF/mods.toml', 
+        'pack.mcmeta',
+        'logo.png',
+        'mechano.mixins.json'
+    ]
+    var intoTargets = ["$rootDir/bin/main/"]
+    intoTargets.each { target ->
+        if (file(target).exists()) {
+            copy {
+                from(sourceSets.main.resources) {
+                    include resourceTargets
+                }
+                into target
+            }
+        }
+    }
 }
 
 jar.finalizedBy('reobfJar')

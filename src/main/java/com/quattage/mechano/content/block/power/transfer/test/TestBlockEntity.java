@@ -3,14 +3,14 @@ package com.quattage.mechano.content.block.power.transfer.test;
 import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
-import com.quattage.mechano.foundation.electricity.builder.NodeBankBuilder;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
+import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class TestBlockEntity extends WireNodeBlockEntity { 
+public class TestBlockEntity extends WireAnchorBlockEntity { 
 
     public int test;
 
@@ -19,20 +19,17 @@ public class TestBlockEntity extends WireNodeBlockEntity {
     }
 
 	@Override
-	public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
+	public void createWireNodeDefinition(AnchorBankBuilder<WireAnchorBlockEntity> builder) {
 		builder.newNode()
             .at(16, 10, 6) 
-            .mode("I")
             .connections(2)
             .build()
         .newNode()
             .at(0, 6, 11)
-            .mode("O")
             .connections(2)
             .build()
         .newNode()
             .at(8, 16, 8)
-            .mode("B")
             .connections(2)
             .build();
 	}
@@ -45,10 +42,5 @@ public class TestBlockEntity extends WireNodeBlockEntity {
             .newInteraction(Relative.BOTTOM)
             .buildInteraction()
         .build();
-    }
-
-    @Override
-    public boolean shouldMergeImplicitNodes() {
-        return true;
     }
 }

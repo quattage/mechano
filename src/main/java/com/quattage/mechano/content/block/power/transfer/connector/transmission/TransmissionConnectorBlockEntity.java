@@ -3,15 +3,14 @@ package com.quattage.mechano.content.block.power.transfer.connector.transmission
 import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
-import com.quattage.mechano.foundation.electricity.builder.NodeBankBuilder;
-import com.quattage.mechano.foundation.electricity.core.anchor.NodeMode;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
+import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class TransmissionConnectorBlockEntity extends WireNodeBlockEntity {
+public class TransmissionConnectorBlockEntity extends WireAnchorBlockEntity {
 
 
     public TransmissionConnectorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
@@ -19,10 +18,9 @@ public class TransmissionConnectorBlockEntity extends WireNodeBlockEntity {
     }
 
     @Override
-    public void createWireNodeDefinition(NodeBankBuilder<WireNodeBlockEntity> builder) {
+    public void createWireNodeDefinition(AnchorBankBuilder<WireAnchorBlockEntity> builder) {
         builder.newNode()
             .at(8, 16, 8)
-            .mode(NodeMode.BOTH)
             .connections(2)
             .build();
     }
@@ -35,10 +33,5 @@ public class TransmissionConnectorBlockEntity extends WireNodeBlockEntity {
             .newInteraction(Relative.BOTTOM)
             .buildInteraction()
         .build();
-    }
-
-    @Override
-    public boolean shouldMergeImplicitNodes() {
-        return true;
     }
 }

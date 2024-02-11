@@ -1,11 +1,15 @@
 package com.quattage.mechano.foundation.electricity.system;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.electricity.WireNodeBlockEntity;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
+import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
+import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -28,7 +32,7 @@ public class GlobalTransferNetwork {
     private ArrayList<TransferSystem> subsystems = new ArrayList<TransferSystem>();
     private ServerLevel world = null;
 
-    public static final GlobalTransferNetwork NETWORK = new GlobalTransferNetwork();
+    public static GlobalTransferNetwork NETWORK = new GlobalTransferNetwork();
 
     public GlobalTransferNetwork() {}
 
@@ -89,7 +93,7 @@ public class GlobalTransferNetwork {
         BlockState state = world.getBlockState(vert.getPos());
         Direction dir = DirectionTransformer.getUp(state);
 
-        if(be instanceof WireNodeBlockEntity wbe) {
+        if(be instanceof WireAnchorBlockEntity wbe) {
             Mechano.log("Vertex refreshed at " + vert.getPos());
             if(DirectionalEnergyStorable.hasMatchingCaps(world, vert.getPos(), dir)) {
                 vert.setIsMember();
@@ -133,12 +137,17 @@ public class GlobalTransferNetwork {
      * Links two SystemVerticies without question. If these nodes don't belong to a subsystem,
      * a new subsystem is made from them. If both nodes are in independent subsystems, these
      * subsystems are merged.
+     * <p>
+     * <strong>Merges are assumed to be From -> To,</strong> or idA -> idB. Only idB is checked for specific 
+     * in-world things, since idA should be checked <strong>before this is called.</strong>
      * @param idA
      * @param idB
      */
-    public void link(SVID idA, SVID idB) {
+    public AnchorInteractType link(SVID idA, SVID idB) {
         Pair<Integer, TransferSystem> sysA = getSystemContaining(idA);
         Pair<Integer, TransferSystem> sysB = getSystemContaining(idB);
+
+        if(doesLinkExist(idA, idB)) return AnchorInteractType.LINK_EXISTS;
 
         if(sysA == null && sysB == null) {
             TransferSystem newSystem = new TransferSystem();
@@ -164,12 +173,18 @@ public class GlobalTransferNetwork {
             if(sysA.getFirst() < sysB.getFirst()) {
                 sysA.getSecond().mergeWith(sysB.getSecond());
                 subsystems.remove(sysB.getSecond());
+                sysA.getSecond().linkVerts(idA, idB);
             } else {
                 sysB.getSecond().mergeWith(sysA.getSecond());
                 subsystems.remove(sysA.getSecond());
+                sysB.getSecond().linkVerts(idA, idB);
             }
+
+            
         }
+        
         onSystemModified(idA);
+        return AnchorInteractType.LINK_ADDED;
     }
 
     /***
@@ -321,7 +336,20 @@ public class GlobalTransferNetwork {
         return null;
     }
 
-    public boolean existsInSystem(SystemVertex vert) {
+    public boolean doesLinkExist(SVID idA, SVID idB) {
+        if(idA == null || idB == null) return false;
+
+        SystemVertex vA = getVertAt(idA);
+        if(vA == null) return false;
+
+        SystemVertex vB = getVertAt(idB);
+        if(vB == null) return false;
+
+        if(vA.isLinkedTo(vB)) return true;
+        return false;
+    }
+
+    public boolean doesVertExist(SystemVertex vert) {
         for(TransferSystem sys : subsystems) {
             for(SystemVertex vertCompare : sys.allVerts())
                 if(vertCompare.equals(vert)) return true;
@@ -343,6 +371,37 @@ public class GlobalTransferNetwork {
         return link.toVertex();
     }
 
+    /***
+     * @return True if the vertex at the given SVID is both present and has available connections. A Vertex is
+     * assumed available if it does not currently exist.
+     */
+    public boolean isVertAvailable(SVID id) {
+        AnchorPoint anchor = AnchorPoint.getAnchorAt(world, id);
+        if(anchor == null) {
+            Mechano.log("null");
+            return false;
+        }
+        SystemVertex vert = getVertAt(id);
+        if(vert == null) return true;
+
+        Mechano.log(anchor.getMaxConnections() + " > " + vert.links.size());
+        if(anchor.getMaxConnections() > vert.links.size()) return true;
+        return false;
+    }
+
+    /***
+     * Clean slate. Isn't used normally in-game, as this
+     * wipes the player's network (and, by extension, their progress)
+     */
+    public void wipeNetwork(ServerLevel world) {
+        Mechano.log("Wiped all " + subsystems.size() + " subsystems");
+        NETWORK = new GlobalTransferNetwork();
+        NETWORK.initializeWithin(world);
+    }
+
+    public Iterator<TransferSystem> getSubsystemsIterator() {
+        return subsystems.iterator();
+    }
 
     /***
      * Gets the node and the TransferSystem it belongs to based on a provided SVID

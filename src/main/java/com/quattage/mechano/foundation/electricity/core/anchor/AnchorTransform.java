@@ -33,6 +33,10 @@ public class AnchorTransform {
         );
     }
 
+    public Vector3f getRaw() {
+        return realOffset;
+    }
+
     // you cannot stop me
     public void rotateToFace(CombinedOrientation dir) {
         switch(dir) {

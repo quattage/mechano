@@ -1,11 +1,14 @@
 {
 	"required": true,
 	"priority": 1000,
-	"package": "com.quattage.mechano.mixin",
+	"package": "com.quattage.mechano.foundation.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"refmap": "mechano.refmap.json",
 	"mixins": [
 		
+	],
+	"client": [
+		"client.ThirdPersonWireRendererMixin"
 	],
 	"minVersion": "0.8.5"
 }

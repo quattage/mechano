@@ -2,12 +2,14 @@ package com.quattage.mechano.foundation.electricity;
 
 import java.util.List;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
 
@@ -27,19 +29,13 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
     /***
      * Prepare this ElectricBlockEntity instance with all of its associated properties.
      * <pre>
-        nodeBank
-        .capacity(7500)       // this bank can hold up to 7500 FE
-        .maxIO(70)            // this bank can input and output up to 70 FE/t
+        anchorPointBank
         .newNode()            // build a new node
-            .id("out1")       // set the name of the node
             .at(0, 6, 11)     // define the pixel offset of the node
-            .mode("O")        // this node is an output node
             .connections(2)   // this node can connect to up to two other nodes
             .build()          // finish building this node
         .newNode()            // build a new node
-            .id("in1")        // set the name of the node
             .at(16, 10, 6)    // define the pixel offset of the node
-            .mode("I")        // this node is an input node
             .connections(2)   // this node can connect to up to two other nodes
             .build()          // finish building this node
         ;
@@ -63,6 +59,13 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
         if(!this.level.isClientSide)
             anchors.destroy();
         super.remove();
+    }
+
+    @Override
+    public AABB getRenderBoundingBox() {
+        if(anchors.isAwaitingConnection) 
+            return AABB.ofSize(getBlockPos().getCenter(), Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+        return super.getRenderBoundingBox();
     }
 
     @Override

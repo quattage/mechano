@@ -376,11 +376,11 @@ public class GlobalTransferNetwork {
      * assumed available if it does not currently exist.
      */
     public boolean isVertAvailable(SVID id) {
-        AnchorPoint anchor = AnchorPoint.getAnchorAt(world, id);
-        if(anchor == null) {
-            Mechano.log("null");
-            return false;
-        }
+        Pair<AnchorPoint, WireAnchorBlockEntity> anchorPair = AnchorPoint.getAnchorAt(world, id);
+        if(anchorPair == null) return false;
+
+        AnchorPoint anchor = anchorPair.getFirst();
+        if(anchor == null) return false;
         SystemVertex vert = getVertAt(id);
         if(vert == null) return true;
 

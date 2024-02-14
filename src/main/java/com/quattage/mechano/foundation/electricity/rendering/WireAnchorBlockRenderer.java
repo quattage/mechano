@@ -1,39 +1,58 @@
 package com.quattage.mechano.foundation.electricity.rendering;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoRenderTypes;
 import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
+import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
+import com.simibubi.create.foundation.utility.Pair;
 
 import java.util.HashSet;
 
 import javax.annotation.Nullable;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.AirBlock;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements BlockEntityRenderer<T> {
 
-    // private final WireModelRenderer wireRenderer = new WireModelRenderer();
-    Entity renderSubject = null;
-    BlockEntityRenderDispatcher cachedDispatcher;
+    private static Entity renderSubject = null;
+    private static BlockEntityRenderDispatcher cachedDispatcher;
+    private static Minecraft instance = null;
+    private static float time = 0;
+
     private static AnchorPoint selectedAnchor = null;
 
     private static final int ANCHOR_NORM_SIZE = 25;
     public static final int ANCHOR_SELECT_SIZE = 40;
     private static final int ANCHOR_HOOK_RENDER_DISTANCE = 11;
+    
+
+    private static Vec3 oldToPos = new Vec3(0, 0, 0);
 
     private static final HashSet<AnchorPoint> nearbyAnchors = new HashSet<AnchorPoint>();
 
@@ -42,24 +61,97 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
         identifyRenderer(context.getBlockEntityRenderDispatcher());
     }
 
-    // TODO probably remove this idk if its useful
-    public static HashSet<AnchorPoint> getNearbyAnchors() {
-        return nearbyAnchors;
-    }
-
     @Override
-    public void render(T be, float partialTicks, PoseStack ms, MultiBufferSource bufferSource, int light,
+    public void render(T be, float partialTicks, PoseStack matrixStack, MultiBufferSource bufferSource, int light,
             int overlay) {
 
         identifyRenderer(cachedDispatcher);
         if(renderSubject instanceof Player player) {
-            showHooks(player, be, partialTicks);
+            showNearbyAnchorPoints(player, be, partialTicks);
+            showWireProgress(player, be, partialTicks, matrixStack, bufferSource);
         }
 
         return;
     }
 
-    private void showHooks(Player player, T be, float pTicks) {
+    @Override
+    public boolean shouldRender(T pBlockEntity, Vec3 pCameraPos) {
+        return true;
+    }
+
+    @Override
+    public boolean shouldRenderOffScreen(T pBlockEntity) {
+        return true;
+    }
+
+    private void showWireProgress(Player player, T be, float pTicks, PoseStack matrixStack, MultiBufferSource bufferSource) {
+
+        // world sanity checks
+        if(!instance.options.getCameraType().isFirstPerson()) return;
+        if(!(be instanceof WireAnchorBlockEntity wbe)) return;
+        Level world = player.level();
+        if(!world.isClientSide()) return;
+
+        // spool sanity checks
+        ItemStack spool = WireSpool.getHeldSpool(player);
+        if(spool == null) return;
+        CompoundTag spoolTag = spool.getOrCreateTag();
+        if(!SVID.isValidTag(spoolTag)) return;
+
+        // anchor sanity checks
+        SVID connectID = SVID.of(spoolTag);
+        Pair<AnchorPoint, WireAnchorBlockEntity> targetAnchor = AnchorPoint.getAnchorAt(world, connectID);
+        if(targetAnchor == null || targetAnchor.getFirst() == null || !wbe.equals(targetAnchor.getSecond())) 
+            return;
+
+        if(time < 1)
+            time += 0.003f;
+        else
+            time = 0;
+
+        Vec3 fromPos = targetAnchor.getFirst().getPos();
+        Vec3 fromOffset = targetAnchor.getFirst().getLocalOffset();
+        Vec3 toPos;
+        boolean isAnchored = false;
+
+        if(AnchorPoint.getAnchorAt(world, selectedAnchor.getID()) == null)
+            selectedAnchor = null;
+
+        if(selectedAnchor != null && !selectedAnchor.equals(targetAnchor.getFirst())) {
+            isAnchored = true;
+            toPos = oldToPos.lerp(selectedAnchor.getPos(), 0.16);
+        }
+        else if(instance.hitResult instanceof BlockHitResult hit) {
+            Mechano.log("hit: " + hit.getBlockPos());
+            toPos = oldToPos.lerp(hit.getBlockPos().relative(hit.getDirection(), 1).getCenter(), 0.1);
+        }
+        else {
+            toPos = oldToPos;
+        }
+
+        
+
+        matrixStack.pushPose();
+        matrixStack.translate(fromOffset.x, fromOffset.y, fromOffset.z);
+        VertexConsumer buffer = bufferSource.getBuffer(MechanoRenderTypes.wireTranslucent(((WireSpool)spool.getItem()).asResource()));
+
+        Vector3f offset = WireModelRenderer.getWireOffset(fromPos, toPos);
+        matrixStack.translate(offset.x(), 0, offset.z());
+        
+        Vec3 startPos = fromPos.add(offset.x(), 0, offset.z());
+        Vec3 endPos = toPos.add(-offset.x(), 0, -offset.z());
+        Vector3f wireOrigin = new Vector3f((float)(endPos.x - startPos.x), (float)(endPos.y - startPos.y), (float)(endPos.z - startPos.z));
+
+        float angleY = -(float)Math.atan2(wireOrigin.z(), wireOrigin.x());
+        matrixStack.mulPose(new Quaternionf().rotateXYZ(0, angleY, 0));
+
+        WireModelRenderer.INSTANCE.renderDynamic(buffer, matrixStack, wireOrigin, 1, 15, 4, 15, !isAnchored, (int)((Math.sin(time * 3.1) * 89f) + 60f));
+        matrixStack.popPose();
+
+        oldToPos = toPos;
+    }
+
+    private void showNearbyAnchorPoints(Player player, T be, float pTicks) {
 
         float distance = (float)player.position().distanceTo(be.getBlockPos().getCenter());
         float dmo = Mth.clamp((distance * -0.3f) + 3f, 0.4f, 6f);
@@ -142,5 +234,6 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
         cachedDispatcher = dispatcher;
         if(dispatcher.camera == null) return;
         renderSubject = dispatcher.camera.getEntity();
+        instance = Minecraft.getInstance();
     }
 }

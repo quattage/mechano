@@ -10,9 +10,6 @@ import org.joml.Vector3f;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.AllSpecialTextures;
-import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Pair;
 
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
@@ -33,10 +30,13 @@ import oshi.util.tuples.Triplet;
 public class AnchorPointBank<T extends BlockEntity> {
     
     public final T target;
+    public boolean isAwaitingConnection = false;
+
     private final AnchorPoint[] anchorPoints;
 
     @Nullable
     private final RelativeDirection[] interfaceDirections;
+    
     
 
     public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, ArrayList<RelativeDirection> dirsToAdd) {
@@ -79,6 +79,11 @@ public class AnchorPointBank<T extends BlockEntity> {
 
     public Level getWorld() {
         return target.getLevel();
+    }
+
+    public boolean doesAnchorBelong(AnchorPoint anchor) {
+        if(anchor == null) return false;
+        return target.getBlockPos().equals(anchor.getID().getPos());
     }
 
     /***
@@ -171,6 +176,16 @@ public class AnchorPointBank<T extends BlockEntity> {
         for(int x = 0; x < anchorPoints.length; x++) 
             out += x + ": " + anchorPoints[x] + "\n";
         return out + "}\n\n";
+    }
+
+    public boolean isEmpty() {
+        return anchorPoints.length > 0;
+    }
+
+
+    public void setIsAwaitingConnection(Level world, boolean isAwaitingConnection) {
+        if(world.isClientSide)
+            this.isAwaitingConnection = isAwaitingConnection;
     }
 
     /***

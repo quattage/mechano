@@ -10,6 +10,7 @@ import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRend
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
+import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -39,12 +40,12 @@ public class AnchorPoint {
     }
 
     @Nullable
-    public static AnchorPoint getAnchorAt(Level world, SVID loc) {
+    public static Pair<AnchorPoint, WireAnchorBlockEntity> getAnchorAt(Level world, SVID loc) {
         if(world == null) return null;
         if(loc == null) return null;
         BlockEntity be = world.getBlockEntity(loc.getPos());
         if(be instanceof WireAnchorBlockEntity wbe) 
-            return wbe.getAnchorBank().get(loc.getSubIndex());
+            return Pair.of(wbe.getAnchorBank().get(loc.getSubIndex()), wbe);
         return null;
     }   
 
@@ -135,6 +136,10 @@ public class AnchorPoint {
 
     public Vec3 getPos() {
         return transform.toRealPos(systemLocation.getPos());
+    }
+
+    public Vec3 getLocalOffset() {
+        return VectorHelper.toVec(transform.getRaw());
     }
 
     public SVID getID() {

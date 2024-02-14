@@ -2,15 +2,25 @@
 
 package com.quattage.mechano.foundation.electricity.rendering;
 
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -22,30 +32,18 @@ public class WireModelRenderer {
     /***
      * Overall scale, or "thickness" of the wire
      */
-    private static final float SCALE = 1f;
-
-    /***
-     * The rotation (in degrees) of the wire's profile
-     */
-    private static final int SKEW = 90;
-
-    /***
-     * How much the wire hangs
-     */
-    private static final float SAGGINESS = 3f;
+    private static final float SCALE = 0.8f;
 
     /***
      * The wire's Level of Detail
      */
-    private static final float LOD = 3f;
+    private static final float LOD = 0.3f;
 
     /***
      * The maximum amount of iterations for a single wire. Used
      * to prevent lag or stack overflows in extreme edge cases 
      */
     private static final int LOD_LIMIT = 512;
-
-    private Vec3 fromPos = new Vec3(0, 0, 0);
 
     /***
      * Represents a hash, used as an identifier for a WireModel's place in the cache.
@@ -81,122 +79,100 @@ public class WireModelRenderer {
         }
     }
 
+
+    // HI HI HELLO
+    // if you're reading this, pretty much all of this vector math has been ripped from
+    // legoatoom's ConnectableChains mod: https://github.com/legoatoom/ConnectibleChains
+    // It has been adapted in some subtle (rather distinct) ways, but it still remains 
+    // extremely similar. This approach is really nice and I probably wouldn't have been
+    // able to figure this out without direct reference from this mod.
     private final Object2ObjectOpenHashMap<BakedModelHashKey, WireModel> modelCache = new Object2ObjectOpenHashMap<>(256);
+    public static final WireModelRenderer INSTANCE = new WireModelRenderer();
 
     /***
-     * Renders a WireModel from the cache, or builds a new one if it does not exist.
-     * @param buffer
-     * @param matrix
-     * @param key
-     * @param origin
-     * @param fromBlockLight
-     * @param toBlockLight
-     * @param fromSkyLight
-     * @param toSkyLight
+     * Renders a static wire. Builds this wire once. All successive calls use the Hashkey provided, 
+     * rather than building the model from scratch every frame.
+     * @param buffer VertexConsumer 
+     * @param matrix PoseStack
+     * @param key HashKey considering this model's start end end destinations
+     * @param origin Vector with direction (orientation of wire) and magnitude (length of wire)
+     * @param fromBlockLight Block Light at the starting position
+     * @param toBlockLight Block Light at the destination position
+     * @param fromSkyLight Sky light at the starting position
+     * @param toSkyLight Sky light at the destination position
      */
-    public void renderFromCache(VertexConsumer buffer, PoseStack matrix, BakedModelHashKey key, Vector3f origin, 
+    public void renderStatic(VertexConsumer buffer, PoseStack matrix, BakedModelHashKey key, Vector3f origin, 
         int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
-
         WireModel model;
         if(modelCache.containsKey(key)) 
             model = modelCache.get(key);
         else {
-            model = buildWireModel(origin);
+            model = buildWireModel(-1, 0, origin);
             modelCache.put(key, model);
         }
-        
         model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
     }
 
     /***
-     * Renders a WireModel while ignoring the cache.
-     * @param buffer
-     * @param matrices
-     * @param chainVec
-     * @param blockLight0
-     * @param blockLight1
-     * @param skyLight0
-     * @param skyLight1
+     * Renders a dynamic wire (a wire that can move, doesn't use the cache at all)
+     * This is useful for wires that aren't yet confirmed, or placed in-world.
      */
-    public void renderFrequent(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+    public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
         int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
-            
-        WireModel model = buildWireModel(origin);
+        WireModel model = buildWireModel(-1, 0, origin);
         model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
     }
 
     /***
-     * Renders a WireModel with a step value and partial ticks, used to drive pre-defined animations.
-     * In this case, A wiggly wire will jiggle (and wiggle) until you giggle.
-     * @param buffer
-     * @param matrices
-     * @param chainVec
-     * @param age
-     * @param blockLight0
-     * @param blockLight1
-     * @param skyLight0
-     * @param skyLight1
+     * Renders a dynamic wire (a wire that can move, doesn't use the cache at all)
+     * This is useful for wires that aren't yet confirmed, or placed in-world.
      */
-    public void renderWiggly(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
-        int age, float pTicks, int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
-        
+    public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight, boolean isGlowingRed, int alpha) {
+        WireModel model = buildWireModel(-1, 0, origin);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha);
+    }
+
+    /***
+     * Renders a dynamic wire (a wire that can move, doesn't use the cache at all)
+     * With an "age" attribute to drive animations.
+    */
+    public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+        int age, float pTicks, int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight, boolean isGlowingRed, int alpha) {
         WireModel model = buildWireModel(age, pTicks, origin);
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha);
     }
 
-    public void setFrom(Vec3 fromPos) {
-        this.fromPos = fromPos;
+    public void purgeCache() {
+        modelCache.clear();
     }
 
-    /***
-     * Adds vertices to a WireModel based on the given Origin vector
-     * @param origin
-     * @param age - Optional, to drive animations
-     * @param pTicks - Optional, to lerp animations
-     * @return
-     */
-    private WireModel buildWireModel(Vector3f origin) {
-        return buildWireModel(-1, 0, origin);
-    }
-
-    /***
-     * Adds vertices to a WireModel based on the given Origin vector
-     * @param origin
-     * @param age - Optional, to drive animations
-     * @param pTicks - Optional, to lerp animations
-     * @return
-     */
+    // builds a wire model and returns the result
     private WireModel buildWireModel(int age, float pTicks, Vector3f origin) {
         int capacity = (int)(2 * new Vec3(origin).lengthSqr());
         WireModel.WireBuilder builder = WireModel.builder(capacity);
 
         float dXZ = (float)Math.sqrt(origin.x() * origin.x() + origin.z() * origin.z());
-        if(dXZ < 0.3) {
-            buildVertical(builder, origin, age, pTicks, SKEW, WireUV.SKEW_A);
-            buildVertical(builder, origin, age, pTicks, SKEW + 90, WireUV.SKEW_B);
+        if(dXZ < 0.1) {
+            buildVerticalWireCountour(builder, origin, age, pTicks, 0.785398f, WireUV.SKEW_A);
+            buildVerticalWireCountour(builder, origin, age, pTicks, 2.35619f, WireUV.SKEW_B);
         } else {
-            buildNominal(builder, origin, age, pTicks, SKEW, false, WireUV.SKEW_A, 1f, dXZ);
-            buildNominal(builder, origin, age, pTicks, SKEW + 90, false, WireUV.SKEW_B, 1f, dXZ);
+            buildWireContour(builder, origin, age, pTicks, 0.785398f, false, WireUV.SKEW_A, 1f, dXZ);
+            buildWireContour(builder, origin, age, pTicks, 2.35619f, false, WireUV.SKEW_B, 1f, dXZ);
         }
         return builder.build();
     }
 
-    /***
-     * Builds a model, but only when the wire is perfectly vertical.
-     * This is done for optimization purposes, and because {@link #buildNominal buildNominal}
-     * breaks down when rendering perfectly vertical wires.
-     * @param builder
-     * @param vec
-     * @param angle
-     * @param uv
-     */
-    private void buildVertical(WireModel.WireBuilder builder, Vector3f vec, int age, 
+    // builds one elongated manifold that makes up one "face" of the wire. In this case,
+    // the math breaks down as dX approaches 0, so perfectly vertical wires use a different, 
+    // more simplified algorithm.
+    private void buildVerticalWireCountour(WireModel.WireBuilder builder, Vector3f vec, int age, 
         float pTicks, float angle, WireUV uv) {
 
         float contextualLength = 1f / LOD;
         float chainWidth = (uv.x1() - uv.x0()) / 16 * SCALE;
 
-        Vector3f normal = new Vector3f((float)Math.cos(Math.toRadians(angle)), 0, (float)Math.sin(Math.toRadians(angle)));
+        Vector3f normal = new Vector3f((float)Math.cos(angle), 0, (float)Math.sin(Math.toRadians(angle)));
         normal.mul(chainWidth);
 
         Vector3f vert00 = new Vector3f(-normal.x()/2, 0, -normal.z()/2), vert01 = new Vector3f(vert00);
@@ -231,12 +207,15 @@ public class WireModelRenderer {
         }
     }
 
-    private void buildNominal(WireModel.WireBuilder builder, Vector3f vec, int age, 
+    // builds one elongated manifold that makes up one "face" of the wire.
+    // The other face (to create the X shape seen in-game) is done with
+    // a second call to this method.
+    private void buildWireContour(WireModel.WireBuilder builder, Vector3f vec, int age, 
         float pTicks, float angle, boolean inv, WireUV uv, float offset, float distanceXZ) {
-        
-        float animatedSag = SAGGINESS;
+
+        float animatedSag = Mth.clamp(0.8267f * (float)Math.pow(1.06814f, distanceXZ), 0.5f, 4.8f);
+        float realLength, desiredLength = 1 / (Mth.clamp(2.05118f * (float)Math.pow(0.882237f, distanceXZ), 0.15f, 2.8f));
         float distance = VectorHelper.getLength(vec);
-        float realLength, desiredLength = 1 / LOD;
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
             vertB2 = new Vector3f(), vertB1 = new Vector3f();
@@ -265,18 +244,18 @@ public class WireModelRenderer {
 
         normal.rotateAxis(angle, rotAxis.x, rotAxis.y, rotAxis.z);
         normal.mul(width);
-        vertA1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
-        vertB1.set(vertA1);
-        vertB1.add(normal);
+        vertB1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
+        vertB2.set(vertA1);
+        vertB2.add(normal);
 
         realLength = VectorHelper.distanceBetween(point0, point1);
     
-        // thanks to legoatoom's ConnectableChains for most of this code
         boolean lastIter = false;
         for (int segment = 0; segment < LOD_LIMIT; segment++) {
 
             rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
             rotAxis.normalize();
+            
 
             normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
             normal.normalize();
@@ -293,14 +272,6 @@ public class WireModelRenderer {
             uvv0 = uvv1;
             uvv1 = uvv0 + realLength / SCALE;
 
-            //drawPoint(vertA1, new Color(255, 255, 255));
-            //drawPoint(vertB1, new Color(255, 0, 0));
-            //drawPoint(vertA2, new Color(0, 255, 0));
-            //drawPoint(vertB2, new Color(0, 0, 255));
-
-            //drawPoint(vertC1, new Color(0, 0, 0));
-
-            
             builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
             builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
 
@@ -324,29 +295,27 @@ public class WireModelRenderer {
             realLength = VectorHelper.distanceBetween(point0, point1);
         }
     }
-    
-    private void drawPoint(Vector3f point) {
-        drawPoint(point, new Color(255, 255, 255));
+
+    public static Vector3f getWireOffset(Vec3 start, Vec3 end) {
+        Vector3f offset = end.subtract(start).toVector3f();
+        offset.set(offset.x(), 0, offset.z());
+        offset.normalize();
+        offset.mul(1 / 64f);
+        return offset;
     }
 
-    private void drawPoint(Vector3f point, Color c) {
-        Vec3 p = VectorHelper.toVec(point);
-        CreateClient.OUTLINER.showAABB(point, boxFromPos(fromPos.add(p), 0.01f))
-            .disableLineNormals()
-            .lineWidth(0.01f)
-            .colored(c);
+    public static int[] deriveLightmap(Level world, Vec3 from, Vec3 to) {
+        return deriveLightmap(world, VectorHelper.toBlockPos(from), VectorHelper.toBlockPos(to));
     }
 
-    private AABB boxFromPos(Vec3 pos, float s) {
-        Vec3 size = new Vec3(s, s, s);
-        return new AABB(pos.subtract(size), pos.add(size));
-    }
+    public static int[] deriveLightmap(Level world, BlockPos from, BlockPos to) {
+        int[] out = new int[4];
 
-    public static float getScale() {
-        return SCALE;
-    }
+        out[0] = world.getBrightness(LightLayer.BLOCK, from);
+        out[1] = world.getBrightness(LightLayer.BLOCK, to);
+        out[2] = world.getBrightness(LightLayer.SKY, from);
+        out[3] = world.getBrightness(LightLayer.SKY, to);
 
-    public void purgeCache() {
-        modelCache.clear();
+        return out;
     }
 }

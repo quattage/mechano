@@ -36,6 +36,7 @@ public class SVID {
     }
 
     public static boolean isValidTag(CompoundTag nbt) {
+        if(nbt.isEmpty()) return false;
         return nbt.contains("x") && nbt.contains("y") && nbt.contains("z") && nbt.contains("i");
     }
 

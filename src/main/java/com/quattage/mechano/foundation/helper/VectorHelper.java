@@ -72,6 +72,10 @@ public class VectorHelper {
         root.set((p0.x() - p1.x()) + m, (p0.y() - p1.y()), (p0.z() - p1.z()) + m);
     }
 
+    public static boolean isGreater(Vec3 a, Vec3 b) {
+        return a.x > b.x && a.y > b.y && a.z > b.z();
+    }
+
     /***
      * Draws a simple debug box at the given Vec3 position
      */

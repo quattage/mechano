@@ -4,11 +4,13 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
+import com.simibubi.create.foundation.utility.Pair;
 
 import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
@@ -39,6 +41,7 @@ public abstract class WireSpool extends Item {
     private final ItemStack rawDrop;
 
     private SVID selectedAnchorID = null;
+    private Pair<AnchorPoint, WireAnchorBlockEntity> aP = null;
 
     /***
      * Create a new WireSpool object
@@ -109,6 +112,15 @@ public abstract class WireSpool extends Item {
         return rate;
     }
 
+    public static ItemStack getHeldSpool(Player player) {
+        if(player == null) return null;
+        ItemStack stack = player.getMainHandItem();
+        if(stack != null && stack.getItem() instanceof WireSpool) return stack;
+        stack = player.getOffhandItem();
+        if(stack != null && stack.getItem() instanceof WireSpool) return stack;
+        return null;
+    }
+
     @Override
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         
@@ -116,16 +128,16 @@ public abstract class WireSpool extends Item {
 
         if(world.isClientSide()) {
             MechanoPackets.sendToServer(new AnchorSelectC2SPacket(WireAnchorBlockRenderer.getSelectedAnchor()));
-            return super.use(world, player, hand);
+            return InteractionResultHolder.pass(handStack);
         }
 
         if(selectedAnchorID == null)
             return InteractionResultHolder.pass(handStack);
 
-        AnchorPoint currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
-        if(currentAnchor == null) return InteractionResultHolder.fail(handStack);
+        Pair<AnchorPoint, WireAnchorBlockEntity> currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
+        if(currentAnchor == null || currentAnchor.getFirst() == null) return InteractionResultHolder.fail(handStack);
 
-        if(!NETWORK.isVertAvailable(currentAnchor.getID())) {
+        if(!NETWORK.isVertAvailable(currentAnchor.getFirst().getID())) {
             player.displayClientMessage(AnchorInteractType.ANCHOR_FULL.getMessage(), true);
             return InteractionResultHolder.fail(handStack);
         } 
@@ -140,35 +152,29 @@ public abstract class WireSpool extends Item {
                 return InteractionResultHolder.fail(handStack);
             }
 
-            AnchorPoint previousAnchor = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
+            Pair<AnchorPoint, WireAnchorBlockEntity> previousAnchor = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
             if(previousAnchor == null ) {
                 clearTag(handStack);
                 return InteractionResultHolder.fail(handStack);
             }
 
             if(!previousAnchor.equals(currentAnchor)) {
-                if(NETWORK.isVertAvailable(currentAnchor.getID()) && NETWORK.isVertAvailable(previousAnchor.getID())) {
-                    AnchorInteractType linkResult = NETWORK.link(previousAnchor.getID(), selectedAnchorID);
+                if(NETWORK.isVertAvailable(currentAnchor.getFirst().getID()) && NETWORK.isVertAvailable(previousAnchor.getFirst().getID())) {
+                    AnchorInteractType linkResult = NETWORK.link(previousAnchor.getFirst().getID(), selectedAnchorID);
                     player.displayClientMessage(linkResult.getMessage(), true);
                     clearTag(handStack);
-                    if(linkResult.isSuccessful())
+                    if(linkResult.isSuccessful()) {
                         return InteractionResultHolder.success(handStack);
+                    }
                     return InteractionResultHolder.fail(handStack);
                 }
-
-                player.displayClientMessage(AnchorInteractType.ANCHOR_FULL.getMessage(), true);
                 clearTag(handStack);
                 return InteractionResultHolder.pass(handStack);
             }
-
-            player.displayClientMessage(AnchorInteractType.LINK_CONFLICT.getMessage(), true);
-            clearTag(handStack);
             return InteractionResultHolder.pass(handStack);
         }
-
         return InteractionResultHolder.fail(handStack);
     }
-
 
     @SuppressWarnings("unused")
     public void clearTag(ItemStack stack) {
@@ -179,19 +185,24 @@ public abstract class WireSpool extends Item {
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
         if(entity instanceof Player player) {
-            if(isSelected) {
-                CompoundTag nbt = stack.getOrCreateTag();
-                if(SVID.isValidTag(nbt)) {
+
+            CompoundTag nbt = stack.getOrCreateTag();
+            if(SVID.isValidTag(nbt)) {
+                aP = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
+                if(isSelected) {
                     MutableComponent message = Component.translatable("actionbar.mechano.connection.linking");
                     message.append(" §r§7[§r§l§a§l" + nbt.getInt("x") + "§r§2, §r§a§l" + nbt.getInt("y") + "§r§2, §r§a§l" + nbt.getInt("z") + "§r§7]");
                     player.displayClientMessage(message, true);
-                }
-            } else {
-                CompoundTag nbt = stack.getTag();
-                if(SVID.isValidTag(nbt)) {
+                } else {
                     player.displayClientMessage(AnchorInteractType.LINK_CANCELLED.getMessage(), true);
                     stack.setTag(new CompoundTag());
-                } 
+                }
+                if(aP != null && aP.getSecond() != null) 
+                    aP.getSecond().getAnchorBank().setIsAwaitingConnection(world, true);
+            } else {
+                if(aP != null && aP.getSecond() != null) 
+                    aP.getSecond().getAnchorBank().setIsAwaitingConnection(world, false);
+                aP = null;
             }
         }
     }

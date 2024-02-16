@@ -72,6 +72,7 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
     public void initialize() {
         super.initialize();
         reOrient();
+        this.anchors.initialize(getLevel());
         this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
     }
 }

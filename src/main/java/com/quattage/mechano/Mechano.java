@@ -1,18 +1,22 @@
 package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.foundation.electricity.system.NetworkSavedData;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetworkProvider;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.CapabilityManager;
+import net.minecraftforge.common.capabilities.CapabilityToken;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -35,6 +39,7 @@ public class Mechano {
 
     public static final Logger LOGGER = LogUtils.getLogger();
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.MOD_ID);
+    public static final Capability<GlobalTransferNetwork> NETWORK_CAPABILITY = CapabilityManager.get(new CapabilityToken<>(){});
 
     public static final SimpleChannel network = NetworkRegistry.ChannelBuilder
         .named(Mechano.asResource("mechanoNetwork"))
@@ -58,7 +63,7 @@ public class Mechano {
 
         bussy.addListener(this::onClientSetup);
         bussy.addListener(this::onCommonSetup);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStart);
+        MinecraftForge.EVENT_BUS.addGenericListener(Level.class, this::addWorldCapabilities);
     }
 
     public void onClientSetup(final FMLClientSetupEvent event) {
@@ -68,13 +73,9 @@ public class Mechano {
     public void onCommonSetup(final FMLCommonSetupEvent event) {
         MechanoPackets.register();
     }
-    
-    public void onServerStart(ServerStartedEvent event) {
-        ServerLevel world = event.getServer().getLevel(Level.OVERWORLD);
-        if(!world.isClientSide) {
-            NetworkSavedData auxilaryData = world.getDataStorage().computeIfAbsent(nbt -> new NetworkSavedData(nbt, world), NetworkSavedData::new, NetworkSavedData.MECHANO_SAVE_KEY);
-            NetworkSavedData.setInstance(auxilaryData);
-        }
+
+    public void addWorldCapabilities(AttachCapabilitiesEvent<Level> event) {
+        event.addCapability(asResource("transfer_network"), new GlobalTransferNetworkProvider(event.getObject()));
     }
 
     public static void log(String message) {      

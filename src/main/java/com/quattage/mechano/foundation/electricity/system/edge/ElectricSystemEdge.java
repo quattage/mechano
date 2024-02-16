@@ -1,28 +1,32 @@
 package com.quattage.mechano.foundation.electricity.system.edge;
 
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 
-public class ElectricSystemEdge implements ISystemEdge {
+public class ElectricSystemEdge extends SystemEdge {
 
 
     private final int transferRate;
     private final SVID sideA;
     private final SVID sideB;
 
-    public ElectricSystemEdge(SVID sideA, SVID sideB) {
+    public ElectricSystemEdge(GlobalTransferNetwork parent, SVID sideA, SVID sideB) {
+        super(parent, sideA.combine(sideB));
         this.transferRate = Integer.MAX_VALUE;
         this.sideA = sideA;
         this.sideB = sideB;
     }
 
-    public ElectricSystemEdge(SVID sideA, SVID sideB, int transferRate) {
+    public ElectricSystemEdge(GlobalTransferNetwork parent, SVID sideA, SVID sideB, int transferRate) {
+        super(parent, sideA.combine(sideB));
         this.transferRate = transferRate;
         this.sideA = sideA;
         this.sideB = sideB;
     }
 
-    public ElectricSystemEdge(WireSpool type, SVID sideA,  SVID sideB) {
+    public ElectricSystemEdge(GlobalTransferNetwork parent, WireSpool type, SVID sideA,  SVID sideB) {
+        super(parent, sideA.combine(sideB));
         this.sideA = sideA;
         this.sideB = sideB;
         this.transferRate = type.getRate();

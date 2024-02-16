@@ -87,10 +87,11 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
     private void showWireProgress(Player player, T be, float pTicks, PoseStack matrixStack, MultiBufferSource bufferSource) {
 
         // world sanity checks
-        if(!instance.options.getCameraType().isFirstPerson()) return;
-        if(!(be instanceof WireAnchorBlockEntity wbe)) return;
+        if(player == null) return;
         Level world = player.level();
         if(!world.isClientSide()) return;
+        if(!(be instanceof WireAnchorBlockEntity wbe)) return;
+        if(!instance.options.getCameraType().isFirstPerson()) return;
 
         // spool sanity checks
         ItemStack spool = WireSpool.getHeldSpool(player);
@@ -114,26 +115,22 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
         Vec3 toPos;
         boolean isAnchored = false;
 
-        if(AnchorPoint.getAnchorAt(world, selectedAnchor.getID()) == null)
+        
+        if(selectedAnchor != null && AnchorPoint.getAnchorAt(world, selectedAnchor.getID()) == null)
             selectedAnchor = null;
 
         if(selectedAnchor != null && !selectedAnchor.equals(targetAnchor.getFirst())) {
             isAnchored = true;
             toPos = oldToPos.lerp(selectedAnchor.getPos(), 0.16);
         }
-        else if(instance.hitResult instanceof BlockHitResult hit) {
-            Mechano.log("hit: " + hit.getBlockPos());
+        else if(instance.hitResult instanceof BlockHitResult hit)
             toPos = oldToPos.lerp(hit.getBlockPos().relative(hit.getDirection(), 1).getCenter(), 0.1);
-        }
-        else {
+        else
             toPos = oldToPos;
-        }
-
-        
 
         matrixStack.pushPose();
         matrixStack.translate(fromOffset.x, fromOffset.y, fromOffset.z);
-        VertexConsumer buffer = bufferSource.getBuffer(MechanoRenderTypes.wireTranslucent(((WireSpool)spool.getItem()).asResource()));
+        VertexConsumer buffer = bufferSource.getBuffer(MechanoRenderTypes.getWireTranslucent(((WireSpool)spool.getItem()).asResource()));
 
         Vector3f offset = WireModelRenderer.getWireOffset(fromPos, toPos);
         matrixStack.translate(offset.x(), 0, offset.z());

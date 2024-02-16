@@ -1,27 +1,19 @@
 package com.quattage.mechano.foundation.electricity;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import javax.annotation.Nullable;
 
-import org.joml.Vector3f;
-
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.simibubi.create.foundation.utility.Pair;
 
-import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
-
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import oshi.util.tuples.Triplet;
 
 
 /***
@@ -31,12 +23,11 @@ public class AnchorPointBank<T extends BlockEntity> {
     
     public final T target;
     public boolean isAwaitingConnection = false;
-
     private final AnchorPoint[] anchorPoints;
 
     @Nullable
     private final RelativeDirection[] interfaceDirections;
-    
+    private GlobalTransferNetwork net;
     
 
     public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, ArrayList<RelativeDirection> dirsToAdd) {
@@ -99,6 +90,10 @@ public class AnchorPointBank<T extends BlockEntity> {
 
     public int hashCode() {
         return target.getBlockPos().hashCode();
+    }
+
+    public void initialize(Level world) {
+        this.net = GlobalTransferNetwork.get(world);
     }
 
     /***
@@ -182,6 +177,10 @@ public class AnchorPointBank<T extends BlockEntity> {
         return anchorPoints.length > 0;
     }
 
+    public boolean onlyHasOneNode() {
+        return anchorPoints.length == 1;
+    }
+
 
     public void setIsAwaitingConnection(Level world, boolean isAwaitingConnection) {
         if(world.isClientSide)
@@ -201,8 +200,9 @@ public class AnchorPointBank<T extends BlockEntity> {
     }
 
     public void destroy() {
+        if(net == null) return;
         for(AnchorPoint anchor : anchorPoints) {
-            NETWORK.destroyVertex(anchor.getID());
+            net.destroyVertex(anchor.getID());
         }
     }
 }

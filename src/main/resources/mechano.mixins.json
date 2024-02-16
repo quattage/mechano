@@ -8,7 +8,8 @@
 		
 	],
 	"client": [
-		"client.ThirdPersonWireRendererMixin"
+		"client.DynamicWireRenderMixin",
+		"client.StaticWireRenderMixin"
 	],
 	"minVersion": "0.8.5"
 }

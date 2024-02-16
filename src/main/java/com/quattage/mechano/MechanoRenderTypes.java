@@ -33,8 +33,27 @@ public class MechanoRenderTypes extends RenderType {
         return create("wire", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, wireComposite);
     });
 
+    // the same for now
+    public static final Function<ResourceLocation, RenderType> WIRE_STATIC = Util.memoize((spoolType) -> {
+        RenderType.CompositeState wireComposite = RenderType.CompositeState.builder()
+            .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_TRANSLUCENT_SHADER)
+            .setTextureState(new RenderStateShard.TextureStateShard((ResourceLocation)spoolType, false, false))
+            .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+            .setOverlayState(OVERLAY)
+            .setLightmapState(LIGHTMAP)
+            .setOutputState(TRANSLUCENT_TARGET)
+            .setCullState(new RenderStateShard.CullStateShard(false))
+            .createCompositeState(false);
 
-    public static RenderType wireTranslucent(ResourceLocation spoolType) {
+        return create("wire", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 256, true, false, wireComposite);
+    });
+
+    public static RenderType getWireStatic(ResourceLocation spoolType) {
+        return WIRE_TRANSLUCENT.apply(spoolType);
+    }
+
+
+    public static RenderType getWireTranslucent(ResourceLocation spoolType) {
         return WIRE_TRANSLUCENT.apply(spoolType);
     }
 }

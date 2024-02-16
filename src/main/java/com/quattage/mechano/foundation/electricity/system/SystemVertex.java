@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
 /***
  * A SystemVertex is an approximation of a NodeBank. 
@@ -20,7 +19,8 @@ public class SystemVertex {
      * If this boolean is false, this vertex will be skipped during iteration when signals are propagated
      */
     private boolean isMember = false; //TODO INIT SEQUENCE DOESN'T UPDATE THIS STATUS YET
-
+    
+    private final GlobalTransferNetwork parent;
     private final BlockPos pos;
     private final int subIndex;
 
@@ -32,25 +32,29 @@ public class SystemVertex {
     protected LinkedList<SystemVertex> links = new LinkedList<SystemVertex>();
 
 
-    public SystemVertex(BlockPos pos, int subIndex) {
+    public SystemVertex(GlobalTransferNetwork parent, BlockPos pos, int subIndex) {
+        this.parent = parent;
         this.pos = pos;
         this.subIndex = subIndex;
-        NETWORK.refreshVertex(this);
+        this.parent.refreshVertex(this);
     }
 
-    public SystemVertex(SystemVertex original, int subIndex) {
+    public SystemVertex(GlobalTransferNetwork parent, SystemVertex original, int subIndex) {
+        this.parent = parent;
         this.pos = original.pos;
         this.subIndex = subIndex;
     }
 
-    public SystemVertex(BlockPos pos, int subIndex, boolean isMember) {
+    public SystemVertex(GlobalTransferNetwork parent, BlockPos pos, int subIndex, boolean isMember) {
+        this.parent = parent;
         this.pos = pos;
         this.subIndex = subIndex;
         this.isMember = isMember;
-        NETWORK.refreshVertex(this);
+        this.parent.refreshVertex(this);
     }
 
-    public SystemVertex(CompoundTag in) {
+    public SystemVertex(GlobalTransferNetwork parent, CompoundTag in) {
+        this.parent = parent;
         this.pos = new BlockPos(
             in.getInt("x"),
             in.getInt("y"),
@@ -63,7 +67,7 @@ public class SystemVertex {
             this.isMember = false;
 
         readLinks(in.getList("link", Tag.TAG_COMPOUND));
-        NETWORK.refreshVertex(this);
+        this.parent.refreshVertex(this);
     }
 
     public CompoundTag writeTo(CompoundTag in) {
@@ -91,7 +95,7 @@ public class SystemVertex {
 
     private void readLinks(ListTag list) {
         for(int x = 0; x < list.size(); x++)
-            linkTo(new SystemVertex(list.getCompound(x)));
+            linkTo(new SystemVertex(parent, list.getCompound(x)));
     }
 
     /**
@@ -129,7 +133,7 @@ public class SystemVertex {
      * @return A copy of this SystemVertex with its position set to the provided BlockPos
      */
     public SystemVertex getMovedCopy(BlockPos newPos) {
-        return new SystemVertex(newPos, this.subIndex, this.isMember);
+        return new SystemVertex(this.parent, newPos, this.subIndex, this.isMember);
     }
 
     /***
@@ -151,7 +155,7 @@ public class SystemVertex {
      * @return True if the list of connections within this SystemVertex was changed.
      */
     protected boolean linkTo(BlockPos otherPos, int subIndex) {
-        SystemVertex newLink = new SystemVertex(otherPos, subIndex);
+        SystemVertex newLink = new SystemVertex(this.parent, otherPos, subIndex);
         if(links.contains(newLink)) return false;
         return links.add(newLink);
     }
@@ -197,7 +201,7 @@ public class SystemVertex {
      * @return True if this SystemVertex contains a link to the given SystemVertex
      */
     public boolean isLinkedTo(BlockPos otherPos, int subIndex) {
-        return this.links.contains(new SystemVertex(otherPos, subIndex));
+        return this.links.contains(new SystemVertex(parent, otherPos, subIndex));
     }
 
     protected void unlinkAll() {

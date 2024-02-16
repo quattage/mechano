@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.electricity.system.edge;
 
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 
 import net.minecraft.core.BlockPos;
@@ -9,20 +10,18 @@ import net.minecraft.core.BlockPos;
  * Normal connectors only have one node, and don't need this, but some connectors have 2+ connnections
  * This edge is created to simulate a fake connection between all nodes within the same block as needed.
  */
-public class ImpliedClusterEdge implements ISystemEdge {
+public class ImpliedClusterEdge extends SystemEdge {
 
     private final BlockPos pos;
 
-    public ImpliedClusterEdge(BlockPos pos) {
+    public ImpliedClusterEdge(GlobalTransferNetwork parent, BlockPos pos) {
+        // TODO UNFUCK
+        super(parent, null); // <<<<<-----------
         this.pos = pos;
     }
 
     public SVID asSVID() {
         return new SVID(pos, -1);
-    }
-
-    public SVIDPair asSVIDPair() {
-        return new SVIDPair(asSVID(), asSVID());
     }
 
     @Override

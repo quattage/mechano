@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.electricity.system;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -9,53 +10,65 @@ import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
-import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
+import com.quattage.mechano.foundation.electricity.system.edge.SystemEdge;
 import com.simibubi.create.foundation.utility.Pair;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.util.LazyOptional;
 
 /***
- * The GlobalTransferNetwork is an elevated level controller for TransferSystems.
+ * The GlobalTransferNetwork is an elevated level con++troller for TransferSystems.
  * It offers functionality to intelligently manage a list of networks, where
  * individual networks are stored as subsystems which can be added to, removed from,
  * split, merged, repaired, etc.
  */
 public class GlobalTransferNetwork {
-    
-    private ArrayList<TransferSystem> subsystems = new ArrayList<TransferSystem>();
-    private ServerLevel world = null;
 
-    public static GlobalTransferNetwork NETWORK = new GlobalTransferNetwork();
+    private final ArrayList<TransferSystem> subsystems = new ArrayList<TransferSystem>();
+    private final Object2ObjectOpenHashMap<SectionPos, List<SystemEdge>> clientRenderQueue;
+    private final Level world;
 
-    public GlobalTransferNetwork() {}
+    public GlobalTransferNetwork(Level world) {
+        if(world == null)
+            throw new NullPointerException("Error instantiating new GlobalTransferNetwork - World cannot be null!");
 
-    private void debug(String operation) {
-        Mechano.log(operation + ": \n" + NETWORK);
+        this.world = world;
+
+        if(isClient())
+            clientRenderQueue = new Object2ObjectOpenHashMap<>();
+        else
+            clientRenderQueue = null;
     }
 
-    public void readFrom(CompoundTag in, ServerLevel world) {
-        CompoundTag net = in.getCompound(NetworkSavedData.MECHANO_NETWORK_KEY);
+    public static GlobalTransferNetwork get(Level world) {
+        if(world == null) throw new NullPointerException("Error getting GlobalTransferNetwork - World is null!");
+        LazyOptional<GlobalTransferNetwork> network = world.getCapability(Mechano.NETWORK_CAPABILITY);
+        if(!network.isPresent()) throw new RuntimeException("Error getting GlobalTransferNetwork from " + world.dimension().location() 
+            + " - No handler registered for this dimension!");
+        GlobalTransferNetwork realNetwork = network.orElseThrow(RuntimeException::new);
+        return realNetwork;
+    }
 
-        if(NetworkSavedData.SAVE_VERSION != net.getInt("ver")) {
-            Mechano.LOGGER.warn("Unable to serialize GlobalTransferNetwork from disk - saved copy was marked as depricated!");
-            return;
-        }
+    public void readFrom(CompoundTag in) {
+        CompoundTag net = in.getCompound(getDimensionName());
 
         ListTag subs = net.getList("all", Tag.TAG_COMPOUND);
-        Mechano.LOGGER.warn("Reading " + subs.size() + " TransferNetworks from NBT");
+        Mechano.LOGGER.warn("Global network in [" + getDimensionName() + "] is reading " + subs.size() + " TransferNetworks from NBT");
 
         boolean hadFailures = false;
         for(int x = 0; x < subs.size(); x++) {
             CompoundTag subsystem = subs.getCompound(x);
             Mechano.LOGGER.info("Adding a TransferNetwork containing the following data:\n" + subsystem);
-            TransferSystem sysToAdd = new TransferSystem(subsystem, world);
+            TransferSystem sysToAdd = new TransferSystem(this, subsystem, world);
 
             // systems may be missing members due to failed registration so deal with them conditionally
             if(sysToAdd.size() != subsystem.getList("sub", Tag.TAG_COMPOUND).size()) {
@@ -68,7 +81,7 @@ public class GlobalTransferNetwork {
                 subsystems.add(sysToAdd); 
         }
         if(hadFailures) {
-            Mechano.LOGGER.warn("The GlobalTransferNetwork detected that 1 or more TransferSystems failed to register or registered with missing components! " + 
+            Mechano.LOGGER.warn("GlobalTransferNetwork [" + getDimensionName() + "] detected that 1 or more TransferSystems failed to register or registered with missing components! " + 
                 "Affected blocks' coordinates should be above this message. If you've recently experienced a crash, this might be why.");
             declusterize();
             onSystemModified();
@@ -77,10 +90,27 @@ public class GlobalTransferNetwork {
 
     public CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
-        out.putInt("ver", NetworkSavedData.SAVE_VERSION);
         out.put("all", writeAllSubsystems());
-        in.put(NetworkSavedData.MECHANO_NETWORK_KEY, out);
+        in.put(getDimensionName(), out);
         return in;
+    }
+
+    public String getDimensionName() { 
+        if(world == null) return "NONE";
+        return world.dimension().location().toString();
+    }
+
+    public Object2ObjectOpenHashMap<SectionPos, List<SystemEdge>> getClientRenderQueue() {
+        return clientRenderQueue;
+    }
+
+    public List<SystemEdge> getEdgesWithin(SectionPos section) {
+        synchronized(clientRenderQueue) {
+            if(clientRenderQueue == null) throw new IllegalStateException("Error accessing clientRenderQueue - Can only be accessed on the client! (clientRenderQueue is null)");
+            List<SystemEdge> edges = clientRenderQueue.get(section);
+            if(edges == null) return null;
+            return List.copyOf(edges);
+        }
     }
 
     /***
@@ -98,6 +128,8 @@ public class GlobalTransferNetwork {
             if(DirectionalEnergyStorable.hasMatchingCaps(world, vert.getPos(), dir)) {
                 vert.setIsMember();
                 // other such goofy shit here
+
+                // TODO the goofy shit
             }
         }
     }
@@ -108,10 +140,6 @@ public class GlobalTransferNetwork {
     public void refreshVertex(BlockPos pos) {
         SystemVertex vert = getVertAt(new SVID(pos));
         refreshVertex(vert);
-    }
-
-    public void initializeWithin(ServerLevel world) {
-        this.world = world;
     }
 
     public boolean hasWorld() {
@@ -150,9 +178,9 @@ public class GlobalTransferNetwork {
         if(doesLinkExist(idA, idB)) return AnchorInteractType.LINK_EXISTS;
 
         if(sysA == null && sysB == null) {
-            TransferSystem newSystem = new TransferSystem();
-            newSystem.addVert(idA.toVertex());
-            newSystem.addVert(idB.toVertex());
+            TransferSystem newSystem = new TransferSystem(this);
+            newSystem.addVert(new SystemVertex(this, idA.getPos(), idA.getSubIndex()));
+            newSystem.addVert(new SystemVertex(this, idB.getPos(), idB.getSubIndex()));
             newSystem.linkVerts(idA, idB);
             subsystems.add(newSystem);
 
@@ -192,7 +220,7 @@ public class GlobalTransferNetwork {
      * (discrete modifications on the individual level won't call this)
      */
     public void onSystemModified() {
-        NetworkSavedData.markInstanceDirty();
+        // NetworkSavedData.markInstanceDirty();
     }
 
     /***
@@ -201,7 +229,7 @@ public class GlobalTransferNetwork {
      * @param id origin of the modification
      */
     public void onSystemModified(SVID id) {
-        NetworkSavedData.markInstanceDirty(id);
+        // NetworkSavedData.markInstanceDirty(id);
     }
 
     /***
@@ -368,7 +396,7 @@ public class GlobalTransferNetwork {
             SystemVertex node = sys.getNode(link);
             if(node != null) return node;
         }
-        return link.toVertex();
+        return new SystemVertex(this, link.getPos(), link.getSubIndex());
     }
 
     /***
@@ -387,16 +415,6 @@ public class GlobalTransferNetwork {
         Mechano.log(anchor.getMaxConnections() + " > " + vert.links.size());
         if(anchor.getMaxConnections() > vert.links.size()) return true;
         return false;
-    }
-
-    /***
-     * Clean slate. Isn't used normally in-game, as this
-     * wipes the player's network (and, by extension, their progress)
-     */
-    public void wipeNetwork(ServerLevel world) {
-        Mechano.log("Wiped all " + subsystems.size() + " subsystems");
-        NETWORK = new GlobalTransferNetwork();
-        NETWORK.initializeWithin(world);
     }
 
     public Iterator<TransferSystem> getSubsystemsIterator() {
@@ -423,9 +441,17 @@ public class GlobalTransferNetwork {
         return -1 < id && id < subsystems.size();
     }
 
+    public boolean isClient() {
+        return world.isClientSide();
+    }
+
+    public Level getWorld() {
+        return world;
+    }
+
     public String toString() {
         String head = "[";
-        if(subsystems.isEmpty()) return head + "BLANK";
+        if(subsystems.isEmpty()) return "[EMPTY]";
 
         String systems = "";
         for(int x = 0; x < subsystems.size(); x++) {

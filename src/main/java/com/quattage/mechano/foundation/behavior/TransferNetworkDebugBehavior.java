@@ -7,22 +7,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
-import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
-
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
+import com.quattage.mechano.foundation.electricity.system.edge.SystemEdge;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 import com.quattage.mechano.foundation.electricity.system.TransferSystem;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Color;
+import com.simibubi.create.foundation.utility.Pair;
 
 public class TransferNetworkDebugBehavior extends ClientBehavior {
 
-    Iterator<TransferSystem> subsystems;
+
+    private GlobalTransferNetwork network = null;
 
     public TransferNetworkDebugBehavior(String name) {
         super(name);
@@ -37,8 +37,15 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos, double pTicks) {
+
+        Mechano.logSlow("NET: " + network);
+        
+        if(network == null || (!network.getWorld().equals(world))) {
+            network = GlobalTransferNetwork.get(world);
+            return;
+        }
     
-        ArrayList<TransferSystem> subsystems = NETWORK.all();
+        ArrayList<TransferSystem> subsystems = network.all();
         for(int x = 0; x < subsystems.size(); x++) {
 
             TransferSystem sys = subsystems.get(x);
@@ -48,10 +55,15 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
                 continue;
             }
 
-            for(ISystemEdge edge : sys.allEdges()) {
+            for(SystemEdge edge : sys.allEdges()) {
+
+                Pair<Vec3, Vec3> edges = edge.getPositions(world);
+                if(edges == null || edges.getFirst() == null  || edges.getSecond() == null)
+                    continue;
+                
                 if(edge != null) {
                     CreateClient.OUTLINER
-                        .showLine("edge-" + edge.getVecB() + edge.getVecA(), edge.getVecA(), edge.getVecB())
+                        .showLine("edge-" + edges.getFirst() + edges.getSecond(), edges.getFirst(), edges.getSecond())
                         .lineWidth(1/16f)
                         .disableCull()
                         .disableLineNormals()

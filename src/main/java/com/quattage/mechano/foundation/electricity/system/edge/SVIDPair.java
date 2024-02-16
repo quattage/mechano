@@ -1,9 +1,11 @@
 package com.quattage.mechano.foundation.electricity.system.edge;
 
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.electricity.system.SystemVertex;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 
 /***
  * An SVID pair is literally just 2 SVIDs, which is used for hashing edges that need access to SVIDs on both ends.
@@ -27,11 +29,11 @@ public class SVIDPair {
         this.idB = new SVID(pB);
     }
 
-    public SVID getA() {
+    public SVID getSideA() {
         return idA;
     }
 
-    public SVID getB() {
+    public SVID getSideB() {
         return idB;
     }
 

@@ -9,17 +9,19 @@ import java.util.Map;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
-import com.quattage.mechano.foundation.electricity.system.edge.ISystemEdge;
+import com.quattage.mechano.foundation.electricity.system.edge.SystemEdge;
 import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.quattage.mechano.foundation.electricity.system.edge.ElectricSystemEdge;
 import com.simibubi.create.foundation.utility.Color;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 
 /***
  * A TransferSystem stores approximate versions of NodeConnections (edges) 
@@ -33,13 +35,10 @@ import net.minecraft.server.level.ServerLevel;
  */
 public class TransferSystem {
     
-    /***
-     * Stores the X axis of the adjacency matrix
-     */
-    private HashMap<SVID, SystemVertex> vertMatrix = new HashMap<>();
+    private Map<SVID, SystemVertex> vertMatrix = new Object2ObjectOpenHashMap<>();
+    private Map<SVIDPair, SystemEdge> edgeMatrix = new Object2ObjectOpenHashMap<>();
 
-    // TODO hashing edges like this is probably not necessary
-    private HashMap<SVIDPair, ISystemEdge> edgeMatrix = new HashMap<>();
+    private final GlobalTransferNetwork parent;
 
     private int netEnergyPushed = 0;
     private int netEnergyPulled = 0;
@@ -47,25 +46,27 @@ public class TransferSystem {
     /***
      * Instantiates a blank TransferSystem
      */
-    public TransferSystem() {}
+    public TransferSystem(GlobalTransferNetwork parent) {
+        this.parent = parent;
+    }
 
     /***
      * Populates this TransferSystem with members of a list
      * @param cluster ArrayList of SystemNodes to add to this TransferSystem upon creation
      */
-    @SuppressWarnings("unchecked")
-    public TransferSystem(ArrayList<SystemVertex> cluster,  HashMap<SVIDPair, ISystemEdge> edgeMatrix) {
+    public TransferSystem(GlobalTransferNetwork parent, ArrayList<SystemVertex> cluster,  Map<SVIDPair, SystemEdge> edgeMatrix) {
         for(SystemVertex node : cluster)
             vertMatrix.put(node.toSVID(), node);
-        this.edgeMatrix = (HashMap<SVIDPair, ISystemEdge>)(edgeMatrix.clone());
+        this.edgeMatrix = ((Object2ObjectOpenHashMap<SVIDPair, SystemEdge>)edgeMatrix).clone();
+        this.parent = parent;
     }
 
-    public TransferSystem(CompoundTag in, ServerLevel world) {
+    public TransferSystem(GlobalTransferNetwork parent, CompoundTag in, Level world) {
+        this.parent = parent;
         ListTag net = in.getList("sub", Tag.TAG_COMPOUND);
         for(int x = 0; x < net.size(); x++) {
-            SystemVertex n = new SystemVertex(net.getCompound(x));
+            SystemVertex n = new SystemVertex(this.parent, net.getCompound(x));
             BlockPos check = n.getPos();
-
             // preventative measure to stop vertices from being added if they have bad data
             if((!(world.getBlockEntity(check) instanceof WireAnchorBlockEntity)) || (n.isEmpty())) {
                 Mechano.LOGGER.warn("TransferSystem skipping registration of SystemVertex at [" 
@@ -95,6 +96,13 @@ public class TransferSystem {
             addEdge(vert.toSVID(), connected.toSVID());
     }
 
+    public void getEdgesWithin(SectionPos section) {
+        for(SystemEdge edge : edgeMatrix.values()) {
+            if(edge == null) continue;
+            
+        }
+    }
+
     public void onSystemUpdated() {
         Mechano.log("SYSTEM UPDATED");
         printEdgesForTest();
@@ -102,7 +110,7 @@ public class TransferSystem {
 
     private void printEdgesForTest() {
         int x = 1;
-        for(ISystemEdge edge : edgeMatrix.values()) {
+        for(SystemEdge edge : edgeMatrix.values()) {
             Mechano.log(x + ": " + VectorHelper.asString(edge.getPosA()) 
                 + " -> " + VectorHelper.asString(edge.getPosB()) + "\n");
             x++;
@@ -124,7 +132,7 @@ public class TransferSystem {
             throw new NullPointerException("Failed to add node to TransferSystem - The provided SVID is null!");
         if(vertMatrix.containsKey(id))
             return false;
-        vertMatrix.put(id, id.toVertex());
+        vertMatrix.put(id, new SystemVertex(parent, id.getPos(), id.getSubIndex()));
         onSystemUpdated();
         return true;
     }
@@ -281,7 +289,7 @@ public class TransferSystem {
             ArrayList<SystemVertex> clusterVerts = new ArrayList<>();
             depthFirstPopulate(identifier, visited, clusterVerts);
             if(clusterVerts.size() > 1) {
-                TransferSystem clusterResult = new TransferSystem(clusterVerts, edgeMatrix);
+                TransferSystem clusterResult = new TransferSystem(parent, clusterVerts, edgeMatrix);
                 clusterResult.cleanEdges();
                 clusters.add(clusterResult);
             }
@@ -360,11 +368,11 @@ public class TransferSystem {
      * @return True if this TransferSystem was modified as a result of this call.
      */
     public boolean cleanEdges() {
-        Iterator<Map.Entry<SVIDPair, ISystemEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
+        Iterator<Map.Entry<SVIDPair, SystemEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
         boolean changed = false;
         while(matrixIterator.hasNext()) {
             SVIDPair currentKey = matrixIterator.next().getKey();
-            if(!(vertMatrix.containsKey(currentKey.getA()) && vertMatrix.containsKey(currentKey.getB()))) {
+            if(!(vertMatrix.containsKey(currentKey.getSideA()) && vertMatrix.containsKey(currentKey.getSideB()))) {
                 changed = true;
                 matrixIterator.remove();
             }
@@ -404,7 +412,7 @@ public class TransferSystem {
      * Gets this TransferSystem's edge graph as a raw Collection. 
      * @return Collection containing all SystemNodes in this TransferSystem
      */
-    public Collection<ISystemEdge> allEdges() {
+    public Collection<SystemEdge> allEdges() {
         return edgeMatrix.values();
     }
 
@@ -437,17 +445,20 @@ public class TransferSystem {
         }       
     }
 
+    public Map<SVIDPair, SystemEdge> getEdgeMatrix() {
+        return edgeMatrix;
+    }
+
     // to be used internally, other methods deal with this for u //
     protected void addEdge(SystemVertex first, SystemVertex second) {
         addEdge(first.toSVID(), second.toSVID());
     }
 
     protected void addEdge(SVID idA, SVID idB) {
-        edgeMatrix.put(new SVIDPair(idA, idB), new ElectricSystemEdge(idA, idB));
+        edgeMatrix.put(new SVIDPair(idA, idB), new ElectricSystemEdge(parent, idA, idB));
     }   
 
     protected boolean removeEdge(SVIDPair key) {
-        Mechano.log("EDGE? MORE LIKE DEAD AMIRITE FELLAS UP TOP");
         return edgeMatrix.remove(key) != null;
     }
 

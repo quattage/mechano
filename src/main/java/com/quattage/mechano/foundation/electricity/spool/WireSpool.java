@@ -8,11 +8,10 @@ import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
+import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
 import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 import com.simibubi.create.foundation.utility.Pair;
-
-import static com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork.NETWORK;
 
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
@@ -40,6 +39,7 @@ public abstract class WireSpool extends Item {
     private final ItemStack emptyDrop;
     private final ItemStack rawDrop;
 
+    private GlobalTransferNetwork network = null;
     private SVID selectedAnchorID = null;
     private Pair<AnchorPoint, WireAnchorBlockEntity> aP = null;
 
@@ -127,8 +127,10 @@ public abstract class WireSpool extends Item {
         ItemStack handStack = player.getItemInHand(hand);
 
         if(world.isClientSide()) {
+            network = GlobalTransferNetwork.get(world);
             MechanoPackets.sendToServer(new AnchorSelectC2SPacket(WireAnchorBlockRenderer.getSelectedAnchor()));
-            return InteractionResultHolder.pass(handStack);
+        } else {
+            network = GlobalTransferNetwork.get(world);
         }
 
         if(selectedAnchorID == null)
@@ -137,7 +139,7 @@ public abstract class WireSpool extends Item {
         Pair<AnchorPoint, WireAnchorBlockEntity> currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
         if(currentAnchor == null || currentAnchor.getFirst() == null) return InteractionResultHolder.fail(handStack);
 
-        if(!NETWORK.isVertAvailable(currentAnchor.getFirst().getID())) {
+        if(!network.isVertAvailable(currentAnchor.getFirst().getID())) {
             player.displayClientMessage(AnchorInteractType.ANCHOR_FULL.getMessage(), true);
             return InteractionResultHolder.fail(handStack);
         } 
@@ -159,8 +161,8 @@ public abstract class WireSpool extends Item {
             }
 
             if(!previousAnchor.equals(currentAnchor)) {
-                if(NETWORK.isVertAvailable(currentAnchor.getFirst().getID()) && NETWORK.isVertAvailable(previousAnchor.getFirst().getID())) {
-                    AnchorInteractType linkResult = NETWORK.link(previousAnchor.getFirst().getID(), selectedAnchorID);
+                if(network.isVertAvailable(currentAnchor.getFirst().getID()) && network.isVertAvailable(previousAnchor.getFirst().getID())) {
+                    AnchorInteractType linkResult = network.link(previousAnchor.getFirst().getID(), selectedAnchorID);
                     player.displayClientMessage(linkResult.getMessage(), true);
                     clearTag(handStack);
                     if(linkResult.isSuccessful()) {

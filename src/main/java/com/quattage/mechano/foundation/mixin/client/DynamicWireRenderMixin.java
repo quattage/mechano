@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 // Usually seen by other players, or you in third person.
 // Uses a simplified, non-contextual rendering pipeline for optimization purposes.
 @Mixin(PlayerRenderer.class)
-public class ThirdPersonWireRendererMixin {
+public class DynamicWireRenderMixin {
 
     @Inject(method = "render(Lnet/minecraft/client/player/AbstractClientPlayer;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", at = {@At(value = "TAIL")}, cancellable = true)
     public void renderWireThirdPerson(AbstractClientPlayer player, float yaw, float pTicks, PoseStack matrixStack, MultiBufferSource bufferSource, int packedLight, CallbackInfo info) { 

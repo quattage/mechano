@@ -1,5 +1,7 @@
 package com.quattage.mechano.foundation.electricity.system;
 
+import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
@@ -44,10 +46,6 @@ public class SVID {
         return "[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + subIndex + "]";
     }
 
-    public SystemVertex toVertex() {
-        return new SystemVertex(pos, subIndex);
-    }
-
     public BlockPos getPos() {
         return pos;
     }
@@ -58,6 +56,10 @@ public class SVID {
 
     public SVID copy() {
         return new SVID(pos, subIndex);
+    }
+
+    public SVIDPair combine(SVID other) {
+        return new SVIDPair(this, other);
     }
 
     @Override

@@ -1,6 +1,12 @@
-package com.quattage.mechano.foundation.electricity.system;
+package com.quattage.mechano.foundation.electricity.power.features;
 
 import java.util.LinkedList;
+
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
+import com.quattage.mechano.foundation.electricity.power.GridClientCache;
+import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
+import com.quattage.mechano.foundation.electricity.power.LocalTransferGrid;
+import com.quattage.mechano.foundation.network.GridSyncPacketType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -12,40 +18,30 @@ import net.minecraft.nbt.Tag;
  * The lication of this SystemVertex is stored as a SystemVertex, 
  * and links to other SystemVertices are stored in a list.
  */
-public class SystemVertex {
+public class GridVertex {
 
-    /***
-     * Member status dictates whether this vertex interfaces with blocks outside of the TransferSystem.
-     * If this boolean is false, this vertex will be skipped during iteration when signals are propagated
-     */
     private boolean isMember = false; //TODO INIT SEQUENCE DOESN'T UPDATE THIS STATUS YET
     
-    private final GlobalTransferNetwork parent;
+    private final GlobalTransferGrid parent;
     private final BlockPos pos;
     private final int subIndex;
+    public LinkedList<GridVertex> links = new LinkedList<GridVertex>();
 
 
-    /***
-     * Storing links is required to build the matrix. A link between nodes can be thought of as an "edge," where
-     * all links in the list are between this vertcex, and the specified vertex in this list.
-     */
-    protected LinkedList<SystemVertex> links = new LinkedList<SystemVertex>();
-
-
-    public SystemVertex(GlobalTransferNetwork parent, BlockPos pos, int subIndex) {
+    public GridVertex(GlobalTransferGrid parent, BlockPos pos, int subIndex) {
         this.parent = parent;
         this.pos = pos;
         this.subIndex = subIndex;
         this.parent.refreshVertex(this);
     }
 
-    public SystemVertex(GlobalTransferNetwork parent, SystemVertex original, int subIndex) {
+    public GridVertex(GlobalTransferGrid parent, GridVertex original, int subIndex) {
         this.parent = parent;
         this.pos = original.pos;
         this.subIndex = subIndex;
     }
 
-    public SystemVertex(GlobalTransferNetwork parent, BlockPos pos, int subIndex, boolean isMember) {
+    public GridVertex(GlobalTransferGrid parent, BlockPos pos, int subIndex, boolean isMember) {
         this.parent = parent;
         this.pos = pos;
         this.subIndex = subIndex;
@@ -53,7 +49,7 @@ public class SystemVertex {
         this.parent.refreshVertex(this);
     }
 
-    public SystemVertex(GlobalTransferNetwork parent, CompoundTag in) {
+    public GridVertex(GlobalTransferGrid parent, CompoundTag in) {
         this.parent = parent;
         this.pos = new BlockPos(
             in.getInt("x"),
@@ -82,7 +78,7 @@ public class SystemVertex {
 
     private ListTag writeLinks() {
         ListTag out = new ListTag();
-        for(SystemVertex v : links) {
+        for(GridVertex v : links) {
             CompoundTag coord = new CompoundTag();
             coord.putInt("x", v.pos.getX());
             coord.putInt("y", v.pos.getY());
@@ -95,7 +91,7 @@ public class SystemVertex {
 
     private void readLinks(ListTag list) {
         for(int x = 0; x < list.size(); x++)
-            linkTo(new SystemVertex(parent, list.getCompound(x)));
+            linkTo(new GridVertex(parent, list.getCompound(x)));
     }
 
     /**
@@ -119,11 +115,11 @@ public class SystemVertex {
      * that require hashing.
      * @return a new SVID object representing this SystemVertex's BlockPos and SubIndex summarized as a String.
      */
-    public SVID toSVID() {
-        return new SVID(this);
+    public GID getGID() {
+        return new GID(this);
     }
 
-    public LinkedList<SystemVertex> connections() {
+    public LinkedList<GridVertex> connections() {
         return links;
     }
 
@@ -132,8 +128,8 @@ public class SystemVertex {
      * @param newPos Position that the copied node will hold
      * @return A copy of this SystemVertex with its position set to the provided BlockPos
      */
-    public SystemVertex getMovedCopy(BlockPos newPos) {
-        return new SystemVertex(this.parent, newPos, this.subIndex, this.isMember);
+    public GridVertex getMovedCopy(BlockPos newPos) {
+        return new GridVertex(this.parent, newPos, this.subIndex, this.isMember);
     }
 
     /***
@@ -141,7 +137,7 @@ public class SystemVertex {
      * @param other Other SystemVertex within the given TransferSystem to add to this SystemVertex
      * @return True if the list of connections within this SystemVertex was changed.
      */
-    protected boolean linkTo(SystemVertex other) {
+    public boolean linkTo(GridVertex other) {
         if(links.contains(other)) return false;
 
         return links.add(other);
@@ -154,8 +150,8 @@ public class SystemVertex {
      * @param other Other SystemVertex within the given TransferSystem to add to this SystemVertex
      * @return True if the list of connections within this SystemVertex was changed.
      */
-    protected boolean linkTo(BlockPos otherPos, int subIndex) {
-        SystemVertex newLink = new SystemVertex(this.parent, otherPos, subIndex);
+    public boolean linkTo(BlockPos otherPos, int subIndex) {
+        GridVertex newLink = new GridVertex(this.parent, otherPos, subIndex);
         if(links.contains(newLink)) return false;
         return links.add(newLink);
     }
@@ -165,7 +161,7 @@ public class SystemVertex {
      * @param other
      * @returns True if this SystemVertex was modified as a result of this call
      */
-    public boolean unlinkFrom(SystemVertex other) {
+    public boolean unlinkFrom(GridVertex other) {
         return links.remove(other);
     }
 
@@ -174,11 +170,13 @@ public class SystemVertex {
      * @param other
      * @returns True if this SystemVertex was modified as a result of this call
      */
-    public boolean unlinkFromContextually(SVID other, TransferSystem sys) {
+    public boolean unlinkEdgesToThisVertex(GID other, LocalTransferGrid sys) {
         boolean changed = false;
-        for(SystemVertex vert : links) {
-            if(vert.getPos().equals(other.getPos()))
-                if(this.unlinkFrom(vert)) changed = true;
+        for(GridVertex vert : links) {
+            if(vert.getPos().equals(other.getPos())) {
+                if(this.unlinkFrom(vert))
+                    changed = true;
+            }
         }
         return changed;
     }
@@ -188,7 +186,7 @@ public class SystemVertex {
      * @param other SystemVertex to check for 
      * @return True if this SystemVertex contains a link to the given SystemVertex
      */
-    public boolean isLinkedTo(SystemVertex other) {
+    public boolean isLinkedTo(GridVertex other) {
         return this.links.contains(other);
     }
 
@@ -201,7 +199,7 @@ public class SystemVertex {
      * @return True if this SystemVertex contains a link to the given SystemVertex
      */
     public boolean isLinkedTo(BlockPos otherPos, int subIndex) {
-        return this.links.contains(new SystemVertex(parent, otherPos, subIndex));
+        return this.links.contains(new GridVertex(parent, otherPos, subIndex));
     }
 
     protected void unlinkAll() {
@@ -218,15 +216,15 @@ public class SystemVertex {
     }
 
     public String toString() {
-        String sig = isMember ? "M" : "A" + ", [";
-        String content = "";
+        String sig = isMember ? "MEMBER" : "actor";
+        String content = "at " + posAsString() + ", ->";
         for(int x = 0; x < links.size(); x++) {
-            SystemVertex connectionTarget = links.get(x);
+            GridVertex connectionTarget = links.get(x);
             content += connectionTarget.posAsString();
             if(x < links.size() - 1)
                 content += ", ";
         }
-        return sig + " -> " + content;
+        return sig + " " + content;
     }
 
     public String posAsString() {
@@ -237,7 +235,7 @@ public class SystemVertex {
      * Equivalence comparison by position. Does not compare links to other nodes.
      */
     public boolean equals(Object other) {
-        if(other instanceof SystemVertex sl) {
+        if(other instanceof GridVertex sl) {
             if(this.subIndex == -1 || sl.getSubIndex() == -1)
                 return this.pos.equals(sl.pos);
             return this.pos.equals(sl.pos) && this.subIndex == sl.subIndex;

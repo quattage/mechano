@@ -1,48 +1,58 @@
-package com.quattage.mechano.foundation.electricity.system.edge;
+package com.quattage.mechano.foundation.electricity.power.features;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
-import com.quattage.mechano.foundation.electricity.system.SVID;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
+import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
+import com.quattage.mechano.foundation.network.GridSyncPacketType;
 import com.simibubi.create.foundation.utility.Pair;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /***
- * A SystemEdge is a logical representation of a connection between two verticies in a TransferSystem.
- * Where verticies represent connectors themselves, edges can be thought of as the wires between connectors.
+ * A GridEdge is a logical representation of a connection between two verticies in a LocalTransferGrid
+ * Where GridVertices represent connectors themselves, edges can be thought of as the wires between connectors.
  */
-public abstract class SystemEdge {
+public class GridEdge {
 
+    private final int wireType;
+    private final GIDPair target;
 
-    private final SVIDPair target;
-
-    public SystemEdge(GlobalTransferNetwork parent, SVIDPair edgeID) {
+    public GridEdge(GlobalTransferGrid parent, GIDPair edgeID, int wireType) {
         if(parent == null) throw new NullPointerException("Error instantiating SystemEdge - Parent network is null!");
         if(edgeID == null) throw new NullPointerException("Error instantiating SystemEdge - Target is null!");
         this.target = edgeID;
-        if(parent.isClient()) {
-            Object2ObjectOpenHashMap<SectionPos, List<SystemEdge>> clientRenderQueue = parent.getClientRenderQueue();
-            SectionPos sectionPosition = SectionPos.of(edgeID.getSideA().getPos());
-            List<SystemEdge> section = clientRenderQueue.get(sectionPosition);
-            if(section == null) section = new ArrayList<SystemEdge>();
-            section.add(this);
-            parent.getClientRenderQueue().put(SectionPos.of(edgeID.getSideA().getPos()), section);
-        }
+        this.wireType = wireType;
+        GridSyncDirector.informPlayerEdgeUpdate(GridSyncPacketType.ADD, this.toLightweight());
     }
+
+    public GridEdge(GlobalTransferGrid parent, CompoundTag tag) {
+        if(parent == null) throw new NullPointerException("Error instantiating SystemEdge - Parent network is null!");
+        this.wireType = tag.getInt("t");
+        this.target = GIDPair.of(tag.getCompound("e"));
+    }
+
+    public CompoundTag writeTo(CompoundTag nbt) {
+        nbt.putInt("t", wireType);
+        nbt.put("e", target.writeTo(new CompoundTag()));
+        return nbt;
+    }
+
 
     /***
      * Whether or not this SystemEdge should have a wire rendered for it
      * @return
      */
-    abstract boolean rendersWire();
+    public boolean rendersWire() {
+        return true;
+    }
 
     /***
      * Whether or not this SystemEdge is "real."
@@ -77,15 +87,15 @@ public abstract class SystemEdge {
      * @param target SVID to check
      * @return True if one of this SystemEdge's ends are at this SVID
      */
-    public boolean connectsTo(SVID target) {
+    public boolean connectsTo(GID target) {
         return target == getSideA() || target == getSideB(); 
     }
 
-    public SVID getSideA() {
+    public GID getSideA() {
         return target.getSideA();
     }
 
-    public SVID getSideB() {
+    public GID getSideB() {
         return target.getSideB();
     }
 
@@ -96,6 +106,10 @@ public abstract class SystemEdge {
         return getSideA().getPos();
     }
 
+    public int getWireType() {
+        return wireType;
+    }
+
     /***
      * @return BlockPos position of this edge's B side
      */
@@ -103,9 +117,17 @@ public abstract class SystemEdge {
         return getSideB().getPos();
     }
 
+    public GIDPair getID() {
+        return target;
+    }
+
+    public GridClientEdge toLightweight() {
+        return new GridClientEdge(this.target, this.wireType);
+    }
+
     public Pair<Vec3, Vec3> getPositions(Level world) {
         Pair<AnchorPoint, WireAnchorBlockEntity> cA = AnchorPoint.getAnchorAt(world, getSideA());
-        Pair<AnchorPoint, WireAnchorBlockEntity> cB = AnchorPoint.getAnchorAt(world, getSideA());
+        Pair<AnchorPoint, WireAnchorBlockEntity> cB = AnchorPoint.getAnchorAt(world, getSideB());
 
         if(cA == null || cA.getFirst() == null || cB == null || cB.getFirst() == null) return null;
         return Pair.of(cA.getFirst().getPos(), cB.getFirst().getPos());

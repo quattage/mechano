@@ -1,40 +1,33 @@
-package com.quattage.mechano.foundation.electricity.system;
-
-import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
+package com.quattage.mechano.foundation.electricity.power.features;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
-/***
- * SVID (System Vertex ID) is a (not really) lightweight class for downmixing a SystemVertex 
- * into only its barest components for storage in datasets that require hashing.
- */
-public class SVID {
-
+public class GID {
 
     private final BlockPos pos;
     private final int subIndex;
     
-    public SVID(SystemVertex vert) {
+    public GID(GridVertex vert) {
         if(vert == null) throw new NullPointerException("Failed to create SVID - SystemVertex is null!");
         this.pos = vert.getPos();
         this.subIndex = vert.getSubIndex();
     }
 
-    public SVID(BlockPos pos, int subIndex) {
+    public GID(BlockPos pos, int subIndex) {
         if(pos == null) throw new NullPointerException("Failed to create SVID - BlockPos is null!");
         this.pos = pos;
         this.subIndex = subIndex;
     }
 
-    public SVID(BlockPos pos) {
+    public GID(BlockPos pos) {
         if(pos == null) throw new NullPointerException("Failed to create SVID - BlockPos is null!");
         this.pos = pos;
         this.subIndex = -1;
     }
 
-    public static SVID of(CompoundTag nbt) {
-        return new SVID(new BlockPos(nbt.getInt("x"), nbt.getInt("y"), nbt.getInt("z")), nbt.getInt("i"));
+    public static GID of(CompoundTag nbt) {
+        return new GID(new BlockPos(nbt.getInt("x"), nbt.getInt("y"), nbt.getInt("z")), nbt.getInt("i"));
     }
 
     public static boolean isValidTag(CompoundTag nbt) {
@@ -54,17 +47,17 @@ public class SVID {
         return subIndex;
     }
 
-    public SVID copy() {
-        return new SVID(pos, subIndex);
+    public GID copy() {
+        return new GID(pos, subIndex);
     }
 
-    public SVIDPair combine(SVID other) {
-        return new SVIDPair(this, other);
+    public GIDPair combine(GID other) {
+        return new GIDPair(this, other);
     }
 
     @Override
     public boolean equals(Object o) {
-        if(o instanceof SVID other) {
+        if(o instanceof GID other) {
             return other.pos.equals(this.pos) && other.subIndex == this.subIndex;
         }
 

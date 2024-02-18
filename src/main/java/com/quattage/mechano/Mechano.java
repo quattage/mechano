@@ -1,8 +1,8 @@
 package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetworkProvider;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGridProvider;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -39,7 +39,7 @@ public class Mechano {
 
     public static final Logger LOGGER = LogUtils.getLogger();
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.MOD_ID);
-    public static final Capability<GlobalTransferNetwork> NETWORK_CAPABILITY = CapabilityManager.get(new CapabilityToken<>(){});
+    public static final Capability<GlobalTransferGrid> NETWORK_CAPABILITY = CapabilityManager.get(new CapabilityToken<>(){});
 
     public static final SimpleChannel network = NetworkRegistry.ChannelBuilder
         .named(Mechano.asResource("mechanoNetwork"))
@@ -75,7 +75,9 @@ public class Mechano {
     }
 
     public void addWorldCapabilities(AttachCapabilitiesEvent<Level> event) {
-        event.addCapability(asResource("transfer_network"), new GlobalTransferNetworkProvider(event.getObject()));
+        if(event.getObject().isClientSide) return;
+        Mechano.log("Attached capability to " + event.getObject().dimension().location());
+        event.addCapability(asResource("transfer_network"), new GlobalTransferGridProvider(event.getObject()));
     }
 
     public static void log(String message) {      

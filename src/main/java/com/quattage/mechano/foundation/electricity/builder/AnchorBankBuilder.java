@@ -9,7 +9,7 @@ import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorTransform;
-import com.quattage.mechano.foundation.electricity.system.SVID;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -209,7 +209,7 @@ public class AnchorBankBuilder<T extends BlockEntity> {
     }
 
     protected AnchorBankBuilder<T> add(AnchorTransform transform, int maxConnections) {
-        return add(new AnchorPoint(transform, new SVID(target.getBlockPos(), nodesToAdd.size()), maxConnections));
+        return add(new AnchorPoint(transform, new GID(target.getBlockPos(), nodesToAdd.size()), maxConnections));
     }
 
     private AnchorBankBuilder<T> add(AnchorPoint node) {

@@ -6,8 +6,8 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
-import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
 import com.simibubi.create.foundation.utility.Pair;
@@ -19,7 +19,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class AnchorPoint {
-    private final SVID systemLocation;
+    private final GID systemLocation;
     private final AnchorTransform transform;
 
     private final int maxConnections;
@@ -32,7 +32,7 @@ public class AnchorPoint {
     private static final Color rawColor = new Color(205, 240, 231);
     private static final Color selectedColor = new Color(0, 255, 189);
 
-    public AnchorPoint(AnchorTransform transform, SVID systemLocation, int maxConnections) {
+    public AnchorPoint(AnchorTransform transform, GID systemLocation, int maxConnections) {
         this.systemLocation = systemLocation;
         this.transform = transform;
         this.maxConnections = maxConnections;
@@ -40,7 +40,7 @@ public class AnchorPoint {
     }
 
     @Nullable
-    public static Pair<AnchorPoint, WireAnchorBlockEntity> getAnchorAt(Level world, SVID loc) {
+    public static Pair<AnchorPoint, WireAnchorBlockEntity> getAnchorAt(Level world, GID loc) {
         if(world == null) return null;
         if(loc == null) return null;
         BlockEntity be = world.getBlockEntity(loc.getPos());
@@ -142,7 +142,7 @@ public class AnchorPoint {
         return VectorHelper.toVec(transform.getRaw());
     }
 
-    public SVID getID() {
+    public GID getID() {
         return systemLocation;
     }
 
@@ -166,6 +166,10 @@ public class AnchorPoint {
         if(other instanceof AnchorPoint otherAnchor)
             return systemLocation.equals(otherAnchor.systemLocation);
         return false;
+    }
+
+    public String toString() {
+        return "{" + systemLocation + ", " + maxConnections + "}";
     }
 
     public int hashCode() {

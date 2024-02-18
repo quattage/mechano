@@ -7,8 +7,8 @@ import com.quattage.mechano.MechanoRenderTypes;
 import com.quattage.mechano.foundation.electricity.AnchorPointBank;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
-import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.AllSpecialTextures;
 import com.simibubi.create.CreateClient;
@@ -97,10 +97,10 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
         ItemStack spool = WireSpool.getHeldSpool(player);
         if(spool == null) return;
         CompoundTag spoolTag = spool.getOrCreateTag();
-        if(!SVID.isValidTag(spoolTag)) return;
+        if(!GID.isValidTag(spoolTag)) return;
 
         // anchor sanity checks
-        SVID connectID = SVID.of(spoolTag);
+        GID connectID = GID.of(spoolTag);
         Pair<AnchorPoint, WireAnchorBlockEntity> targetAnchor = AnchorPoint.getAnchorAt(world, connectID);
         if(targetAnchor == null || targetAnchor.getFirst() == null || !wbe.equals(targetAnchor.getSecond())) 
             return;

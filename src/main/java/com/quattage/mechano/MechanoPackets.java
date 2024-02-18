@@ -1,8 +1,10 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.network.GlobalNetworkSyncS2CPacket;
 import com.quattage.mechano.foundation.network.Packetable;
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
+import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
+import com.quattage.mechano.foundation.network.GridEdgeUpdateSyncS2CPacket;
+import com.quattage.mechano.foundation.network.GridVertDestroySyncS2CPacket;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -29,12 +31,27 @@ public class MechanoPackets {
     }
 
     public static void registerPackets() {  
-        NETWORK.messageBuilder(GlobalNetworkSyncS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
-            .decoder(GlobalNetworkSyncS2CPacket::new)
-            .encoder(GlobalNetworkSyncS2CPacket::toBytes)
-            .consumerMainThread(GlobalNetworkSyncS2CPacket::handle)
+
+        //S2C
+        NETWORK.messageBuilder(EnergySyncS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(EnergySyncS2CPacket::new)
+            .encoder(EnergySyncS2CPacket::toBytes)
+            .consumerMainThread(EnergySyncS2CPacket::handle)
             .add();
 
+        NETWORK.messageBuilder(GridVertDestroySyncS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(GridVertDestroySyncS2CPacket::new)
+            .encoder(GridVertDestroySyncS2CPacket::toBytes)
+            .consumerMainThread(GridVertDestroySyncS2CPacket::handle)
+            .add();
+
+        NETWORK.messageBuilder(GridEdgeUpdateSyncS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(GridEdgeUpdateSyncS2CPacket::new)
+            .encoder(GridEdgeUpdateSyncS2CPacket::toBytes)
+            .consumerMainThread(GridEdgeUpdateSyncS2CPacket::handle)
+            .add();
+
+        //C2S
         NETWORK.messageBuilder(AnchorSelectC2SPacket.class, nextId(), NetworkDirection.PLAY_TO_SERVER)
             .decoder(AnchorSelectC2SPacket::new)
             .encoder(AnchorSelectC2SPacket::toBytes)

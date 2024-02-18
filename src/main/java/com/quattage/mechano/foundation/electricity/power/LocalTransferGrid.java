@@ -1,19 +1,22 @@
-package com.quattage.mechano.foundation.electricity.system;
+package com.quattage.mechano.foundation.electricity.power;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
-import com.quattage.mechano.foundation.electricity.system.edge.SystemEdge;
-import com.quattage.mechano.foundation.electricity.system.edge.SVIDPair;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
+import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
+import com.quattage.mechano.foundation.electricity.power.features.GridEdge;
+import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.quattage.mechano.foundation.electricity.system.edge.ElectricSystemEdge;
 import com.simibubi.create.foundation.utility.Color;
+import com.quattage.mechano.foundation.network.GridSyncPacketType;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
@@ -24,21 +27,21 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
 
 /***
- * A TransferSystem stores approximate versions of NodeConnections (edges) 
- * and NodeBanks (vertices) objects in an undirected graph represented by 
- * an adjacency matrix. <p>
- * A TransferSystem allows energy to be pushed and pulled from connected nodes
- * in an addressable and optimized way. <p>
+ * A LocalGrid stores GridVertices in an undirected graph, forming an adjacency matrix.
+ * Connections between these vertices are stored in two ways: <p>
+ * - Each GridVertex contains a LinkedList of vertices that it is connected to <p>
+ * - Each LocalGrid contains a HashMap of each edge for direct access. <p>
  * 
- * * I have been informed that the use of a LinkedList in the Y axis of this matrix actually makes it an adjacency LIST. 
+ * * I have been informed that the use of a LinkedList in the Y axis of this matrix actually 
+ *  makes it an adjacency LIST.
  * * I will continue to refer to this as an adjacency matrix anyway, because it sounds cooler.
  */
-public class TransferSystem {
+public class LocalTransferGrid {
     
-    private Map<SVID, SystemVertex> vertMatrix = new Object2ObjectOpenHashMap<>();
-    private Map<SVIDPair, SystemEdge> edgeMatrix = new Object2ObjectOpenHashMap<>();
+    private Map<GID, GridVertex> vertMatrix = new Object2ObjectOpenHashMap<>();
+    private Map<GIDPair, GridEdge> edgeMatrix = new Object2ObjectOpenHashMap<>();
 
-    private final GlobalTransferNetwork parent;
+    private final GlobalTransferGrid parent;
 
     private int netEnergyPushed = 0;
     private int netEnergyPulled = 0;
@@ -46,7 +49,7 @@ public class TransferSystem {
     /***
      * Instantiates a blank TransferSystem
      */
-    public TransferSystem(GlobalTransferNetwork parent) {
+    public LocalTransferGrid(GlobalTransferGrid parent) {
         this.parent = parent;
     }
 
@@ -54,18 +57,18 @@ public class TransferSystem {
      * Populates this TransferSystem with members of a list
      * @param cluster ArrayList of SystemNodes to add to this TransferSystem upon creation
      */
-    public TransferSystem(GlobalTransferNetwork parent, ArrayList<SystemVertex> cluster,  Map<SVIDPair, SystemEdge> edgeMatrix) {
-        for(SystemVertex node : cluster)
-            vertMatrix.put(node.toSVID(), node);
-        this.edgeMatrix = ((Object2ObjectOpenHashMap<SVIDPair, SystemEdge>)edgeMatrix).clone();
+    public LocalTransferGrid(GlobalTransferGrid parent, ArrayList<GridVertex> cluster,  Map<GIDPair, GridEdge> edgeMatrix) {
+        for(GridVertex node : cluster)
+            vertMatrix.put(node.getGID(), node);
+        this.edgeMatrix = ((Object2ObjectOpenHashMap<GIDPair, GridEdge>)edgeMatrix).clone();
         this.parent = parent;
     }
 
-    public TransferSystem(GlobalTransferNetwork parent, CompoundTag in, Level world) {
+    public LocalTransferGrid(GlobalTransferGrid parent, CompoundTag in, Level world) {
         this.parent = parent;
-        ListTag net = in.getList("sub", Tag.TAG_COMPOUND);
+        ListTag net = in.getList("nt", Tag.TAG_COMPOUND);
         for(int x = 0; x < net.size(); x++) {
-            SystemVertex n = new SystemVertex(this.parent, net.getCompound(x));
+            GridVertex n = new GridVertex(this.parent, net.getCompound(x));
             BlockPos check = n.getPos();
             // preventative measure to stop vertices from being added if they have bad data
             if((!(world.getBlockEntity(check) instanceof WireAnchorBlockEntity)) || (n.isEmpty())) {
@@ -73,122 +76,94 @@ public class TransferSystem {
                 + check.getX() + ", " + check.getY() + ", " + check.getZ() + "]");
                 continue;
             }
+            vertMatrix.put(n.getGID(), n);
+        }
 
-            surmiseLinks(n);
-            vertMatrix.put(n.toSVID(), n);
+        ListTag edgeList = in.getList("ed", Tag.TAG_COMPOUND);
+        for(int x = 0; x < edgeList.size(); x++) {
+            GridEdge edge = new GridEdge(this.parent, edgeList.getCompound(x));
         }
     }
 
     public CompoundTag writeTo(CompoundTag in) {
-        in.put("sub", writeMatrix());
+        in.put("nt", writeMatrix());
+        in.put("ed", writeEdges());
         return in;
     }
 
     public ListTag writeMatrix() {
         ListTag out = new ListTag();
-        for(SystemVertex v : vertMatrix.values())
+        for(GridVertex v : vertMatrix.values())
             out.add(v.writeTo(new CompoundTag()));
         return out;
     }
 
-    public void surmiseLinks(SystemVertex vert) {
-        for(SystemVertex connected : vert.links)
-            addEdge(vert.toSVID(), connected.toSVID());
+    public ListTag writeEdges() {
+        ListTag out = new ListTag();
+        for(GridEdge edge : edgeMatrix.values())
+            out.add(edge.writeTo(new CompoundTag()));
+        return out;
     }
 
     public void getEdgesWithin(SectionPos section) {
-        for(SystemEdge edge : edgeMatrix.values()) {
+        for(GridEdge edge : edgeMatrix.values()) {
             if(edge == null) continue;
             
         }
     }
 
     public void onSystemUpdated() {
-        Mechano.log("SYSTEM UPDATED");
-        printEdgesForTest();
+    
     }
 
-    private void printEdgesForTest() {
-        int x = 1;
-        for(SystemEdge edge : edgeMatrix.values()) {
-            Mechano.log(x + ": " + VectorHelper.asString(edge.getPosA()) 
-                + " -> " + VectorHelper.asString(edge.getPosB()) + "\n");
-            x++;
-        }
-    }
-
-    public boolean addVert(SystemVertex node) {
+    public boolean addVert(GridVertex node) {
         if(node == null) 
         throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
-        if(vertMatrix.containsKey(node.toSVID()))
+        if(vertMatrix.containsKey(node.getGID()))
             return false;
-        vertMatrix.put(node.toSVID(), node);
+        vertMatrix.put(node.getGID(), node);
         onSystemUpdated();
         return true;
     }
 
-    public boolean addVert(SVID id) {
+    public boolean addVert(GID id) {
         if(id == null)
             throw new NullPointerException("Failed to add node to TransferSystem - The provided SVID is null!");
         if(vertMatrix.containsKey(id))
             return false;
-        vertMatrix.put(id, new SystemVertex(parent, id.getPos(), id.getSubIndex()));
-        onSystemUpdated();
-        return true;
-    }
-
-    /***
-     * Removes the specified SystemVertex and removes all
-     * references to that vertex from all other verticies. The graph
-     * is likely to be discontinuous after this call, so it must be cleaned.
-     * @param vertToRemove SystemVertex to remove
-     * @return Boolean if this TransferSystem was modified as a result of this call
-     */
-    public boolean destroyVert(SystemVertex vertToRemove) {
-        if(vertToRemove == null)
-            throw new NullPointerException("Failed to destroy node - The provided SystemVertex is null!");
-        if(!vertMatrix.containsValue(vertToRemove))
-            return false;
-
-        Iterator<SystemVertex> matrixIterator = vertMatrix.values().iterator();
-        while(matrixIterator.hasNext()) {
-            SystemVertex vert = matrixIterator.next();
-            if(vert.equals(vertToRemove)) {
-                matrixIterator.remove();
-            }
-            else
-                vert.unlinkFrom(vertToRemove);
-        }
+        vertMatrix.put(id, new GridVertex(parent, id.getPos(), id.getSubIndex()));
         onSystemUpdated();
         return true;
     }
 
     /***
      * Removes all SystemVerticiees at the given SVID (ignores subIndex) and 
-     * removes all references to those verticies from every other vertex.. The 
+     * removes all references to those verticies from every other vertex. The 
      * graph is likely to be discontinuous after this call, so it must be cleaned.
      * @param id SVID to remove
      * @return True if the SystemVertex was successfully removed (false if it didn't exist)
      */
-    public boolean destroyVertsAt(SVID id) {
-        if(id == null)
-            throw new NullPointerException("Failed to destroy node - The provided SVID is null!");
+    public boolean destroyVertsAt(GID id) {
+        if(id == null) throw new NullPointerException("Error destroying SystemVertex - The provided SVID is null!");
 
-        Iterator<Map.Entry<SVID, SystemVertex>> matrixIterator = vertMatrix.entrySet().iterator();
+        Iterator<Map.Entry<GID, GridVertex>> matrixIterator = vertMatrix.entrySet().iterator();
         boolean changed = false;
         while(matrixIterator.hasNext()) {
-            SystemVertex vert = matrixIterator.next().getValue();
+            GridVertex vert = matrixIterator.next().getValue();
             if(vert.getPos().equals(id.getPos())) {
                 changed = true;
                 matrixIterator.remove();
             }
             else {
-                Mechano.log("Attempting to unlink " + vert);
-                if(vert.unlinkFromContextually(id, this) == true) changed = true;
+                if(vert.unlinkEdgesToThisVertex(id, this) == true)
+                    changed = true; 
             }
-                
         }
-        if(changed) onSystemUpdated();
+
+        if(changed) {
+            onSystemUpdated();
+            GridSyncDirector.informPlayerVertexDestroyed(GridSyncPacketType.REMOVE, id);
+        }
         return changed;
     }
 
@@ -197,9 +172,9 @@ public class TransferSystem {
      * @param pos BlockPos to check
      * @return An array of SystemVerticies at this BlockPos
      */
-    public ArrayList<SystemVertex> getVertsAt(BlockPos pos) {
-        ArrayList<SystemVertex> out = new ArrayList<>();
-        for(SystemVertex vert : vertMatrix.values())
+    public ArrayList<GridVertex> getVertsAt(BlockPos pos) {
+        ArrayList<GridVertex> out = new ArrayList<>();
+        for(GridVertex vert : vertMatrix.values())
             if(vert.getPos().equals(pos)) out.add(vert);
         return out;
     }
@@ -207,14 +182,14 @@ public class TransferSystem {
     /***
      * @return True if this TransferSystem contains the given SystemVertex
      */
-    public boolean contains(SystemVertex vert) {
-        return contains(new SVID(vert.getPos(), vert.getSubIndex()));
+    public boolean contains(GridVertex vert) {
+        return contains(new GID(vert.getPos(), vert.getSubIndex()));
     }
 
     /***
      * @return True if this TransferSystem contains a SystemVertex at the given SVID
      */
-    public boolean contains(SVID id) {
+    public boolean contains(GID id) {
         return vertMatrix.containsKey(id);
     }
 
@@ -229,8 +204,8 @@ public class TransferSystem {
      * @param tI sub index of second connection
      * @return True if the SystemVertices were modified as a result of this call.
      */
-    public boolean linkVerts(BlockPos fP, int fI, BlockPos tP, int tI) {
-        return linkVerts(new SVID(fP, fI), new SVID(tP, tI));
+    public boolean linkVerts(BlockPos fP, int fI, BlockPos tP, int tI, int wireType) {
+        return linkVerts(new GID(fP, fI), new GID(tP, tI), wireType);
     }
 
     /***
@@ -241,9 +216,9 @@ public class TransferSystem {
      * @param second SystemVertex to link
      * @return True if the SystemVertices were modified as a result of this call,
      */
-    public boolean linkVerts(SystemVertex first, SystemVertex second) {
+    public boolean linkVerts(GridVertex first, GridVertex second, int wireType) {
         requireValidNode("Failed to link SystemNodes", first, second);
-        addEdge(first, second);
+        addEdge(first, second, wireType);
         if(first.linkTo(second) && second.linkTo(first)) {
             onSystemUpdated();
             return true;
@@ -259,11 +234,11 @@ public class TransferSystem {
      * @param second SVID object to locate and link
      * @return True if the SystemVertices were modified as a result of this call,
      */
-    public boolean linkVerts(SVID first, SVID second) {
+    public boolean linkVerts(GID first, GID second, int wireType) {
         requireValidLink("Failed to link SystemNodes", first, second);
-        SystemVertex vertF = vertMatrix.get(first);
-        SystemVertex vertT = vertMatrix.get(second);
-        addEdge(first, second);
+        GridVertex vertF = vertMatrix.get(first);
+        GridVertex vertT = vertMatrix.get(second);
+        addEdge(first, second, wireType);
         if(vertF.linkTo(vertT) && vertT.linkTo(vertF)) {
             onSystemUpdated();
             return true;
@@ -280,16 +255,16 @@ public class TransferSystem {
      * @return ArrayList of TransferSystems formed from the individual clusters 
      * within this TransferSystem.
      */
-    public ArrayList<TransferSystem> trySplit() {
-        HashSet<SVID> visited = new HashSet<>();
-        ArrayList<TransferSystem> clusters = new ArrayList<TransferSystem>();
+    public ArrayList<LocalTransferGrid> trySplit() {
+        HashSet<GID> visited = new HashSet<>();
+        ArrayList<LocalTransferGrid> clusters = new ArrayList<LocalTransferGrid>();
 
-        for(SVID identifier : vertMatrix.keySet()) {
+        for(GID identifier : vertMatrix.keySet()) {
             if(visited.contains(identifier)) continue;
-            ArrayList<SystemVertex> clusterVerts = new ArrayList<>();
+            ArrayList<GridVertex> clusterVerts = new ArrayList<>();
             depthFirstPopulate(identifier, visited, clusterVerts);
             if(clusterVerts.size() > 1) {
-                TransferSystem clusterResult = new TransferSystem(parent, clusterVerts, edgeMatrix);
+                LocalTransferGrid clusterResult = new LocalTransferGrid(parent, clusterVerts, edgeMatrix);
                 clusterResult.cleanEdges();
                 clusters.add(clusterResult);
             }
@@ -306,16 +281,16 @@ public class TransferSystem {
      * @param visted HashSet (usually just instantiated directly and empty when called) to cache visited vertices
      * @param vertices ArrayList which will be populated with all nodes that can be found connected to the given vertex.
      */
-    public void depthFirstPopulate(SVID vertex, HashSet<SVID> visited, ArrayList<SystemVertex> vertices) {
-        SystemVertex thisIteration = getNode(vertex);
+    public void depthFirstPopulate(GID vertex, HashSet<GID> visited, ArrayList<GridVertex> vertices) {
+        GridVertex thisIteration = getNode(vertex);
         visited.add(vertex);
 
         if(thisIteration == null) return;
         vertices.add(thisIteration);
 
         if(thisIteration.isEmpty()) return;
-        for(SystemVertex neighbor : thisIteration.links) {
-            SVID currentID = neighbor.toSVID();
+        for(GridVertex neighbor : thisIteration.links) {
+            GID currentID = neighbor.getGID();
             if(!visited.contains(currentID))
                 depthFirstPopulate(currentID, visited, vertices);
         }
@@ -326,7 +301,7 @@ public class TransferSystem {
      * TransferSystem, modifying it in-place.
      * @return This TransferSystem (for chaining)
      */
-    public TransferSystem mergeWith(TransferSystem other) {
+    public LocalTransferGrid mergeWith(LocalTransferGrid other) {
         if(other.size() > 0) {
             vertMatrix.putAll(other.vertMatrix);
             edgeMatrix.putAll(other.edgeMatrix);
@@ -340,14 +315,14 @@ public class TransferSystem {
      * @param BlockPos
      * @return SystemNode at the given BlockPos
      */
-    public SystemVertex getNode(SVID pos) {
+    public GridVertex getNode(GID pos) {
         return vertMatrix.get(pos);
     }
 
     /***
      * @return True if this TransferSystem contains the given SystemNode
      */
-    public boolean containsNode(SystemVertex node) {
+    public boolean containsNode(GridVertex node) {
         return vertMatrix.containsValue(node);
     }
 
@@ -356,7 +331,7 @@ public class TransferSystem {
      * (This network has no edges)
      */
     public boolean hasLinks() {
-        for(SystemVertex node : vertMatrix.values())
+        for(GridVertex node : vertMatrix.values())
             if(!node.isEmpty()) return true;
         return false;
     }
@@ -368,10 +343,10 @@ public class TransferSystem {
      * @return True if this TransferSystem was modified as a result of this call.
      */
     public boolean cleanEdges() {
-        Iterator<Map.Entry<SVIDPair, SystemEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
+        Iterator<Map.Entry<GIDPair, GridEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
         boolean changed = false;
         while(matrixIterator.hasNext()) {
-            SVIDPair currentKey = matrixIterator.next().getKey();
+            GIDPair currentKey = matrixIterator.next().getKey();
             if(!(vertMatrix.containsKey(currentKey.getSideA()) && vertMatrix.containsKey(currentKey.getSideB()))) {
                 changed = true;
                 matrixIterator.remove();
@@ -386,7 +361,7 @@ public class TransferSystem {
      * @return a Color representing this TransferSystem
      */
     public Color getDebugColor() {
-        return VectorHelper.toColor(((SystemVertex)vertMatrix.values().toArray()[0]).getPos().getCenter());
+        return VectorHelper.toColor(((GridVertex)vertMatrix.values().toArray()[0]).getPos().getCenter());
     }
 
     public int size() {
@@ -404,7 +379,7 @@ public class TransferSystem {
      * Gets this TransferSystem's vertex graph as a raw Collection.
      * @return Collection containing all SystemNodes in this TransferSystem
      */
-    public Collection<SystemVertex> allVerts() {
+    public Collection<GridVertex> allVerts() {
         return vertMatrix.values();
     }
 
@@ -412,22 +387,22 @@ public class TransferSystem {
      * Gets this TransferSystem's edge graph as a raw Collection. 
      * @return Collection containing all SystemNodes in this TransferSystem
      */
-    public Collection<SystemEdge> allEdges() {
+    public Collection<GridEdge> allEdges() {
         return edgeMatrix.values();
     }
 
     public String toString() {
         String output = "";
         int x = 1;
-        for(SystemVertex node : vertMatrix.values()) {
+        for(GridVertex node : vertMatrix.values()) {
             output += "\tNode " + x + ": " + node + "\n";
             x++;
         }
         return output;
     }
 
-    public void requireValidLink(String failMessage, SVID... idSet) {
-        for(SVID id : idSet) {
+    public void requireValidLink(String failMessage, GID... idSet) {
+        for(GID id : idSet) {
             if(id == null) 
                 throw new NullPointerException(failMessage + " - The provided SystemLink is null!");
             if(!vertMatrix.containsKey(id))
@@ -436,8 +411,8 @@ public class TransferSystem {
         }
     }
 
-    public void requireValidNode(String failMessage, SystemVertex... nodeSet) {
-        for(SystemVertex node : nodeSet) {
+    public void requireValidNode(String failMessage, GridVertex... nodeSet) {
+        for(GridVertex node : nodeSet) {
             if(node == null)
                 throw new NullPointerException(failMessage + " - The provided SystemNode is null!");
             if(!vertMatrix.containsValue(node))
@@ -445,25 +420,25 @@ public class TransferSystem {
         }       
     }
 
-    public Map<SVIDPair, SystemEdge> getEdgeMatrix() {
+    public Map<GIDPair, GridEdge> getEdgeMatrix() {
         return edgeMatrix;
     }
 
     // to be used internally, other methods deal with this for u //
-    protected void addEdge(SystemVertex first, SystemVertex second) {
-        addEdge(first.toSVID(), second.toSVID());
+    protected void addEdge(GridVertex first, GridVertex second, int wireType) {
+        addEdge(first.getGID(), second.getGID(), wireType);
     }
 
-    protected void addEdge(SVID idA, SVID idB) {
-        edgeMatrix.put(new SVIDPair(idA, idB), new ElectricSystemEdge(parent, idA, idB));
+    protected void addEdge(GID idA, GID idB, int wireType) {
+        edgeMatrix.put(new GIDPair(idA, idB), new GridEdge(parent, new GIDPair(idA, idB), wireType));
     }   
 
-    protected boolean removeEdge(SVIDPair key) {
+    protected boolean removeEdge(GIDPair key) {
         return edgeMatrix.remove(key) != null;
     }
 
-    protected boolean removeEdge(SystemVertex vertA, SystemVertex vertB) {
-        return removeEdge(new SVIDPair(vertA.toSVID(), vertB.toSVID()));
+    protected boolean removeEdge(GridVertex vertA, GridVertex vertB) {
+        return removeEdge(new GIDPair(vertA.getGID(), vertB.getGID()));
     }
     // to be used internally, other methods deal with this for u //
 }

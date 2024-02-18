@@ -3,8 +3,8 @@ package com.quattage.mechano.foundation.network;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
-import com.quattage.mechano.foundation.electricity.system.SVID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 public class AnchorSelectC2SPacket implements Packetable {
-    private final SVID anchorLocation;
+    private final GID anchorLocation;
 
     public AnchorSelectC2SPacket(AnchorPoint anchor) {
         if(anchor == null)
@@ -30,7 +30,7 @@ public class AnchorSelectC2SPacket implements Packetable {
             return;
         }
 
-        this.anchorLocation = new SVID(buf.readBlockPos(), index);
+        this.anchorLocation = new GID(buf.readBlockPos(), index);
     }
 
     @Override

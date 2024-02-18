@@ -1,8 +1,5 @@
 package com.quattage.mechano.foundation.electricity;
 
-import java.util.HashSet;
-import java.util.Optional;
-
 import javax.annotation.Nullable;
 
 import org.jetbrains.annotations.NotNull;
@@ -13,9 +10,8 @@ import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorable;
 import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 import com.quattage.mechano.foundation.electricity.core.LocalEnergyStorage;
-import com.quattage.mechano.foundation.network.GlobalNetworkSyncS2CPacket;
+import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
@@ -108,7 +104,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
     public void onEnergyUpdated() {
         target.setChanged();
         target.onEnergyUpdated();
-        MechanoPackets.sendToAllClients(new GlobalNetworkSyncS2CPacket(battery.getEnergyStored(), target.getBlockPos()));
+        MechanoPackets.sendToAllClients(new EnergySyncS2CPacket(battery.getEnergyStored(), target.getBlockPos()));
     }
 
     /***

@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -27,8 +27,7 @@ public class AnchorPointBank<T extends BlockEntity> {
 
     @Nullable
     private final RelativeDirection[] interfaceDirections;
-    private GlobalTransferNetwork net;
-    
+    private GlobalTransferGrid net;
 
     public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, ArrayList<RelativeDirection> dirsToAdd) {
         this.target = target;
@@ -93,7 +92,7 @@ public class AnchorPointBank<T extends BlockEntity> {
     }
 
     public void initialize(Level world) {
-        this.net = GlobalTransferNetwork.get(world);
+        this.net = GlobalTransferGrid.get(world);
     }
 
     /***
@@ -177,10 +176,9 @@ public class AnchorPointBank<T extends BlockEntity> {
         return anchorPoints.length > 0;
     }
 
-    public boolean onlyHasOneNode() {
+    public boolean hasOnlyOneAnchor() {
         return anchorPoints.length == 1;
     }
-
 
     public void setIsAwaitingConnection(Level world, boolean isAwaitingConnection) {
         if(world.isClientSide)

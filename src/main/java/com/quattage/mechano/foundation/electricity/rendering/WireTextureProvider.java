@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.electricity.rendering;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -12,7 +11,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
-import com.quattage.mechano.foundation.electricity.spool.WireSpoolManager;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -48,7 +46,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
     public Map<ResourceLocation, JsonModel> load(ResourceManager manager) {
 
         Map<ResourceLocation, JsonModel> out = new HashMap<>();
-        for (WireSpool spoolType : WireSpoolManager.getTypes().values()) {
+        for (WireSpool spoolType : WireSpool.getAllTypes()) {
             Mechano.LOGGER.info("Searching for resource: " + modelFromSpool(spoolType));
             manager.getResource(modelFromSpool(spoolType)).ifPresentOrElse(resource -> {
                 Reader reader;
@@ -56,13 +54,13 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
                     reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8);
                     JsonModel model = GSON.fromJson(reader, JsonModel.class);
                     out.put(modelFromSpool(spoolType), model);
-                    Mechano.log("Successfully loaded resource '" + spoolType.getId() + ".json'");
+                    Mechano.log("Successfully loaded resource '" + spoolType.getSpoolName() + ".json'");
                 } catch (IOException e) {
-                    Mechano.LOGGER.warn("Failed to load Wire Model resource '" + spoolType.getId() + "' - Check your JSON formatting!");
+                    Mechano.LOGGER.warn("Failed to load Wire Model resource '" + spoolType.getSpoolName() + "' - Check your JSON formatting!");
                     
                 }
             }, 
-                () -> Mechano.LOGGER.error("Failure to load Wire Model resource: '" + spoolType.getId() + ".json' could not be found!"));
+                () -> Mechano.LOGGER.error("Failure to load Wire Model resource: '" + spoolType.getSpoolName() + ".json' could not be found!"));
         }
         return out;
     }
@@ -84,7 +82,7 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
 
 
     public static ResourceLocation modelFromSpool(WireSpool spool) {
-        return new ResourceLocation(Mechano.MOD_ID, "models/block/wire/" + spool.getId() + ".json");
+        return new ResourceLocation(Mechano.MOD_ID, "models/block/wire/" + spool.getSpoolName() + ".json");
     }
 
     public ResourceLocation getChainTexture(ResourceLocation chainType) {

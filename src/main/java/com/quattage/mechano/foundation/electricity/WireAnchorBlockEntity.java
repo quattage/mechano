@@ -56,9 +56,13 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
 
     @Override
     public void remove() {
-        if(!this.level.isClientSide)
-            anchors.destroy();
+        anchors.destroy();
         super.remove();
+    }
+
+    @Override
+    public void invalidate() {
+        super.invalidate();
     }
 
     @Override

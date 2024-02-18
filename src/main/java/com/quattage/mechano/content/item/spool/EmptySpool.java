@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.item.spool;
 
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;

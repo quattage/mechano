@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.electricity.system;
+package com.quattage.mechano.foundation.electricity.power;
 
 import java.util.Objects;
 
@@ -15,14 +15,14 @@ import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.common.util.LazyOptional;
 
-public class GlobalTransferNetworkProvider implements ICapabilityProvider, INBTSerializable<CompoundTag> {
+public class GlobalTransferGridProvider implements ICapabilityProvider, INBTSerializable<CompoundTag> {
 
-    private final GlobalTransferNetwork networkInstance;
-    private final LazyOptional<GlobalTransferNetwork> networkOptional;
+    private final GlobalTransferGrid networkInstance;
+    private final LazyOptional<GlobalTransferGrid> networkOptional;
 
-    public GlobalTransferNetworkProvider(Level world) {
-        networkInstance = new GlobalTransferNetwork(world);
-        LazyOptional<GlobalTransferNetwork> networkConstant = LazyOptional.of(() -> Objects.requireNonNull(networkInstance));
+    public GlobalTransferGridProvider(Level world) {
+        networkInstance = new GlobalTransferGrid(world);
+        LazyOptional<GlobalTransferGrid> networkConstant = LazyOptional.of(() -> Objects.requireNonNull(networkInstance));
         networkConstant.resolve();
         networkOptional = networkConstant;
     }

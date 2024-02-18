@@ -12,11 +12,6 @@ public class HookupWireSpool extends WireSpool {
     }
 
     @Override
-    protected String setName() {
-        return "hookup";
-    }
-
-    @Override
     protected int setRate() {
         return 4096;
     }
@@ -24,5 +19,10 @@ public class HookupWireSpool extends WireSpool {
     @Override
     protected Item setRawDrop() {
         return MechanoItems.HOOKUP_WIRE.get();
+    }
+
+    @Override
+    public String setSpoolName() {
+        return "hookup";
     }
 }

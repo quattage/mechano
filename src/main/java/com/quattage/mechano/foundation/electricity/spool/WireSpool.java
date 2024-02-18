@@ -1,5 +1,7 @@
 package com.quattage.mechano.foundation.electricity.spool;
 
+import java.util.ArrayList;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoItems;
@@ -7,13 +9,12 @@ import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
-import com.quattage.mechano.foundation.electricity.system.GlobalTransferNetwork;
-import com.quattage.mechano.foundation.electricity.system.SVID;
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -29,45 +30,62 @@ import net.minecraft.world.level.Level;
 
 /***
  * A WireSpool object is both a Minecraft Item as well as a logical representation
- * of an electric connection's properties. 
+ * of an electric connection's properties. These properties are registered as types
+ * that can be accessed from a static ArrayList
  */
 public abstract class WireSpool extends Item {
 
-    private final String PREFIX = "wire_";
+    private static final String PREFIX = "wire_";
+    private static final ArrayList<WireSpool> SPOOL_TYPES = new ArrayList<>();
+
+    private final String spoolName;
+    private final int spoolID;
     private final int rate;
-    private final String name;
     private final ItemStack emptyDrop;
     private final ItemStack rawDrop;
 
-    private GlobalTransferNetwork network = null;
-    private SVID selectedAnchorID = null;
+    private GlobalTransferGrid network = null;
+    private GID selectedAnchorID = null;
     private Pair<AnchorPoint, WireAnchorBlockEntity> aP = null;
 
-    /***
-     * Create a new WireSpool object
-     * @param properties ItemProperties
-     * @param name String ID of this spool. Simple names (ex. "hookup")
-     * @param rate Transfer rate (in FE per Tick) of this WireSpool's cooresponding wire type
-     * @param base
-     */
     public WireSpool(Properties properties) {
         super(properties);
-        this.name = setName().toLowerCase();
+        this.spoolName = setSpoolName();
+        this.spoolID = SPOOL_TYPES.size();
+        WireSpool.SPOOL_TYPES.add(this);
         this.rate = setRate();
         this.emptyDrop = new ItemStack(setEmptySpoolDrop());
         this.rawDrop = new ItemStack(setRawDrop());
-        WireSpoolManager.addType(this);
     }
 
-    /***
-     * The name of this Spool's wire. This is used as the ID of this spool. 
-     * ex. a name of "hookup" results in an ID of "wire_hookup"
-     * This is used to look up the wire's texture and transmission
-     * properties.
+    /**
+     * @return ArrayList of all registered spools
+     */
+    public static ArrayList<WireSpool> getAllTypes() {
+        return SPOOL_TYPES;
+    }
+
+    /**
+     * @param typeID Type of WireSpool to get
+     * @return WireSpool at the given index
+     */
+    public static WireSpool OfType(int typeID) {
+        return SPOOL_TYPES.get(typeID);
+    }
+
+    /**
+     * Get the id (numerical index) of this WireSpool
      * @return
      */
-    protected abstract String setName();
+    public int getSpoolID() {
+        return spoolID;
+    }
 
+    public String getSpoolName() {
+        return PREFIX + spoolName;
+    }
+
+    protected abstract String setSpoolName();
 
     /***
      * The energy transfer rate of this WireSpool's cooresponding wire type.
@@ -92,12 +110,12 @@ public abstract class WireSpool extends Item {
         return MechanoItems.EMPTY_SPOOL.get();
     }
 
-    public final String getId() {
-        return PREFIX + name;
-    }
-
     public final ResourceLocation asResource() {
         return MechanoClient.WIRE_TEXTURE_PROVIDER.get(this);
+    }
+
+    public String getName() {
+        return PREFIX + "_" + spoolID;
     }
 
     public final ItemStack getEmptySpool() {
@@ -125,18 +143,21 @@ public abstract class WireSpool extends Item {
     public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         
         ItemStack handStack = player.getItemInHand(hand);
+        Pair<AnchorPoint, WireAnchorBlockEntity> currentAnchor = null;
 
         if(world.isClientSide()) {
-            network = GlobalTransferNetwork.get(world);
-            MechanoPackets.sendToServer(new AnchorSelectC2SPacket(WireAnchorBlockRenderer.getSelectedAnchor()));
+            AnchorPoint present = WireAnchorBlockRenderer.getSelectedAnchor();
+            network = GlobalTransferGrid.get(world);
+            MechanoPackets.sendToServer(new AnchorSelectC2SPacket(present));
+            return InteractionResultHolder.pass(handStack);
         } else {
-            network = GlobalTransferNetwork.get(world);
+            network = GlobalTransferGrid.get(world);
         }
 
         if(selectedAnchorID == null)
             return InteractionResultHolder.pass(handStack);
 
-        Pair<AnchorPoint, WireAnchorBlockEntity> currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
+        currentAnchor = AnchorPoint.getAnchorAt(world, selectedAnchorID);
         if(currentAnchor == null || currentAnchor.getFirst() == null) return InteractionResultHolder.fail(handStack);
 
         if(!network.isVertAvailable(currentAnchor.getFirst().getID())) {
@@ -148,26 +169,25 @@ public abstract class WireSpool extends Item {
         if(nbt.isEmpty()) {
             selectedAnchorID.writeTo(nbt);
         } else {
-            if(!SVID.isValidTag(nbt)) { // validate just in case, this code may never be reached idk
+            if(!GID.isValidTag(nbt)) { // validate just in case, this code may never be reached idk
                 clearTag(handStack);
                 player.displayClientMessage(AnchorInteractType.GENERIC.getMessage(), true);
                 return InteractionResultHolder.fail(handStack);
             }
 
-            Pair<AnchorPoint, WireAnchorBlockEntity> previousAnchor = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
+            Pair<AnchorPoint, WireAnchorBlockEntity> previousAnchor = AnchorPoint.getAnchorAt(world, GID.of(nbt));
             if(previousAnchor == null ) {
                 clearTag(handStack);
                 return InteractionResultHolder.fail(handStack);
             }
 
-            if(!previousAnchor.equals(currentAnchor)) {
+            if(!previousAnchor.getFirst().equals(currentAnchor.getFirst())) {
+                
                 if(network.isVertAvailable(currentAnchor.getFirst().getID()) && network.isVertAvailable(previousAnchor.getFirst().getID())) {
-                    AnchorInteractType linkResult = network.link(previousAnchor.getFirst().getID(), selectedAnchorID);
+                    AnchorInteractType linkResult = network.link(previousAnchor.getFirst().getID(), selectedAnchorID, this.getSpoolID());
                     player.displayClientMessage(linkResult.getMessage(), true);
                     clearTag(handStack);
-                    if(linkResult.isSuccessful()) {
-                        return InteractionResultHolder.success(handStack);
-                    }
+                    if(linkResult.isSuccessful()) return InteractionResultHolder.success(handStack);
                     return InteractionResultHolder.fail(handStack);
                 }
                 clearTag(handStack);
@@ -189,8 +209,8 @@ public abstract class WireSpool extends Item {
         if(entity instanceof Player player) {
 
             CompoundTag nbt = stack.getOrCreateTag();
-            if(SVID.isValidTag(nbt)) {
-                aP = AnchorPoint.getAnchorAt(world, SVID.of(nbt));
+            if(GID.isValidTag(nbt)) {
+                aP = AnchorPoint.getAnchorAt(world, GID.of(nbt));
                 if(isSelected) {
                     MutableComponent message = Component.translatable("actionbar.mechano.connection.linking");
                     message.append(" §r§7[§r§l§a§l" + nbt.getInt("x") + "§r§2, §r§a§l" + nbt.getInt("y") + "§r§2, §r§a§l" + nbt.getInt("z") + "§r§7]");
@@ -214,7 +234,7 @@ public abstract class WireSpool extends Item {
         result.playConnectSound(world, pos);
     }
 
-    public void setSelectedAnchor(SVID selectedAnchorID) {
+    public void setSelectedAnchor(GID selectedAnchorID) {
         this.selectedAnchorID = selectedAnchorID;
     }
 }

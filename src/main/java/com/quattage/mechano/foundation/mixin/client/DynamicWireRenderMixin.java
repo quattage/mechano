@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.rendering.WireModelRenderer;
 import com.quattage.mechano.foundation.electricity.spool.WireSpool;
-import com.quattage.mechano.foundation.electricity.system.SVID;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -34,10 +34,10 @@ public class DynamicWireRenderMixin {
         ItemStack spool = WireSpool.getHeldSpool(player);
         if(spool == null) return;
         CompoundTag spoolTag = spool.getOrCreateTag();
-        if(!SVID.isValidTag(spoolTag)) return;
+        if(!GID.isValidTag(spoolTag)) return;
 
         ClientLevel world = player.clientLevel;
-        SVID connectID = SVID.of(spoolTag);
+        GID connectID = GID.of(spoolTag);
 
         Vec3 wireFrom = AnchorPoint.getAnchorAt(world, connectID).getFirst().getPos();
         Vec3 wireTo = player.getPosition(pTicks);

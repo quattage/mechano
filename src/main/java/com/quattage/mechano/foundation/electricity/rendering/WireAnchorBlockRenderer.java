@@ -22,6 +22,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
@@ -106,7 +107,7 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
             return;
 
         if(time < 1)
-            time += 0.003f;
+            time += 0.001f;
         else
             time = 0;
 
@@ -121,10 +122,10 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
 
         if(selectedAnchor != null && !selectedAnchor.equals(targetAnchor.getFirst())) {
             isAnchored = true;
-            toPos = oldToPos.lerp(selectedAnchor.getPos(), 0.16);
+            toPos = oldToPos.lerp(selectedAnchor.getPos(), 0.04);
         }
         else if(instance.hitResult instanceof BlockHitResult hit)
-            toPos = oldToPos.lerp(hit.getBlockPos().relative(hit.getDirection(), 1).getCenter(), 0.1);
+            toPos = oldToPos.lerp(hit.getBlockPos().relative(hit.getDirection(), 1).getCenter(), 0.04);
         else
             toPos = oldToPos;
 

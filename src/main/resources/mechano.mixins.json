@@ -9,7 +9,9 @@
 	],
 	"client": [
 		"client.DynamicWireRenderMixin",
-		"client.StaticWireRenderMixin"
+		"client.StaticWireRenderMixin",
+		"client.StaticWireCullingMixin",
+		"client.RenderChunkInvoker"
 	],
 	"minVersion": "0.8.5"
 }

@@ -13,6 +13,7 @@ import com.quattage.mechano.Mechano;
 
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.Mth;
 
 
@@ -32,30 +33,44 @@ public record WireModel(float[] vertices, float[] uvs) {
      * @param skyLightTo int skylight level at the ending BlockPos
      */
     public void render(VertexConsumer buffer, PoseStack matrix, 
-        int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo, boolean isRed, int alpha) {
+        int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo, boolean isRed, int alpha, TextureAtlasSprite sprite) {
 
         Matrix4f modelMatrix = matrix.last().pose();
         Matrix3f normalMatrix = matrix.last().normal();
         int count = vertices.length / 3;
 
-        for (int i = 0; i < count; i++) {
-            float iter = (i % (count / 2f)) / (count / 2f);
-            int light = lightmapPack(iter, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo);
+        if(sprite == null) {
+            for (int i = 0; i < count; i++) {
+                float iter = (i % (count / 2f)) / (count / 2f);
+                int light = lightmapPack(iter, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo);
 
-            buffer
-                .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
-                .color(255, 255, 255, alpha)                           // vertex color doesn't matter but is required anyway
-                .uv(uvs[i * 2], uvs[i * 2 + 1])                      // texture UVs
-                .overlayCoords(isRed ? OverlayTexture.RED_OVERLAY_V : OverlayTexture.NO_OVERLAY)         // color overlay
-                .uv2(light)                                          // lightmap UVs
-                .normal(normalMatrix, 1, 0.35f, 0)                   // normal
-                .endVertex();                                        // mojang mappings suck balls
+                buffer
+                    .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
+                    .color(255, 255, 255, alpha)                         // vertex color doesn't matter but is required anyway
+                    .uv(uvs[i * 2], uvs[i * 2 + 1])                      // texture UVs
+                    .overlayCoords(isRed ? OverlayTexture.RED_OVERLAY_V : OverlayTexture.NO_OVERLAY)         // color overlay
+                    .uv2(light)                                          // lightmap UVs
+                    .normal(normalMatrix, 1, 0.35f, 0)                   // normal
+                    .endVertex();                                        // mojang mappings suck balls
+            }
+        } else {
+            for (int i = 0; i < count; i++) {
+                float iter = (i % (count / 2f)) / (count / 2f);
+                int light = lightmapPack(iter, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo);
+
+                float v = uvs[i * 2 + 1];
+                if(v > sprite.getV1()) v %= 1; // dumb clipping hack
+
+                buffer
+                    .vertex(modelMatrix, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2])
+                    .color(255, 255, 255, alpha)                      
+                    .uv(sprite.getU(uvs[i * 2] * 16), sprite.getV(v * 16))              
+                    .overlayCoords(isRed ? OverlayTexture.RED_OVERLAY_V : OverlayTexture.NO_OVERLAY)         
+                    .uv2(light)
+                    .normal(normalMatrix, 1, 0.35f, 0)                   
+                    .endVertex();                                        
+            }
         }
-    }
-
-    public void render(VertexConsumer buffer, PoseStack matrix, 
-        int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo) {
-        render(buffer, matrix, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo, false, 255);
     }
 
     public int lightmapPack(float iter, int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo) {
@@ -63,6 +78,11 @@ public record WireModel(float[] vertices, float[] uvs) {
             (int)Mth.lerp(iter, (float)blockLightFrom, (float)blockLightTo),
             (int)Mth.lerp(iter, (float)skyLightFrom, (float)skyLightTo)
         );
+    }
+
+    public void render(VertexConsumer buffer, PoseStack matrix, 
+        int blockLightFrom, int blockLightTo, int skyLightFrom, int skyLightTo, TextureAtlasSprite sprite) {
+        render(buffer, matrix, blockLightFrom, blockLightTo, skyLightFrom, skyLightTo, false, 255, sprite);
     }
 
     /***
@@ -91,7 +111,6 @@ public record WireModel(float[] vertices, float[] uvs) {
             vertices.add(vert.z());
             return this;
         }
-
 
         public WireModel build() {
             if(uvs.size() != currentSize * 2) throw new IllegalArgumentException("WireModel of size " 

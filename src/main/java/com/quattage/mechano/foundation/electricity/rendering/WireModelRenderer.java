@@ -2,26 +2,22 @@
 
 package com.quattage.mechano.foundation.electricity.rendering;
 
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Color;
+import com.quattage.mechano.foundation.mixin.client.RenderChunkInvoker;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /***
@@ -101,16 +97,17 @@ public class WireModelRenderer {
      * @param fromSkyLight Sky light at the starting position
      * @param toSkyLight Sky light at the destination position
      */
-    public void renderStatic(VertexConsumer buffer, PoseStack matrix, BakedModelHashKey key, Vector3f origin, 
-        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
+    public void renderStatic(BakedModelHashKey key, VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
+        int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight, TextureAtlasSprite sprite) {
+
         WireModel model;
         if(modelCache.containsKey(key)) 
             model = modelCache.get(key);
         else {
-            model = buildWireModel(-1, 0, origin);
+            model = buildWireModel(-1, 0, origin, true);
             modelCache.put(key, model);
         }
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, sprite);
     }
 
     /***
@@ -119,8 +116,8 @@ public class WireModelRenderer {
      */
     public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
         int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight) {
-        WireModel model = buildWireModel(-1, 0, origin);
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight);
+        WireModel model = buildWireModel(-1, 0, origin, false);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, null);
     }
 
     /***
@@ -129,8 +126,8 @@ public class WireModelRenderer {
      */
     public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
         int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight, boolean isGlowingRed, int alpha) {
-        WireModel model = buildWireModel(-1, 0, origin);
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha);
+        WireModel model = buildWireModel(-1, 0, origin, false);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha, null);
     }
 
     /***
@@ -139,8 +136,8 @@ public class WireModelRenderer {
     */
     public void renderDynamic(VertexConsumer buffer, PoseStack matrix, Vector3f origin, 
         int age, float pTicks, int fromBlockLight, int toBlockLight, int fromSkyLight, int toSkyLight, boolean isGlowingRed, int alpha) {
-        WireModel model = buildWireModel(age, pTicks, origin);
-        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha);
+        WireModel model = buildWireModel(age, pTicks, origin, false);
+        model.render(buffer, matrix, fromBlockLight, toBlockLight, fromSkyLight, toSkyLight, isGlowingRed, alpha, null);
     }
 
     public void purgeCache() {
@@ -148,7 +145,7 @@ public class WireModelRenderer {
     }
 
     // builds a wire model and returns the result
-    private WireModel buildWireModel(int age, float pTicks, Vector3f origin) {
+    private WireModel buildWireModel(int age, float pTicks, Vector3f origin, boolean backface) {
         int capacity = (int)(2 * new Vec3(origin).lengthSqr());
         WireModel.WireBuilder builder = WireModel.builder(capacity);
 
@@ -159,6 +156,10 @@ public class WireModelRenderer {
         } else {
             buildWireContour(builder, origin, age, pTicks, 0.785398f, false, WireUV.SKEW_A, 1f, dXZ);
             buildWireContour(builder, origin, age, pTicks, 2.35619f, false, WireUV.SKEW_B, 1f, dXZ);
+            if(backface) {
+                buildWireContour(builder, origin, age, pTicks, 3.92699f, false, WireUV.SKEW_A, 1f, dXZ);
+                buildWireContour(builder, origin, age, pTicks, 5.49779f, false, WireUV.SKEW_B, 1f, dXZ);
+            }
         }
         return builder.build();
     }
@@ -175,9 +176,9 @@ public class WireModelRenderer {
         Vector3f normal = new Vector3f((float)Math.cos(angle), 0, (float)Math.sin(Math.toRadians(angle)));
         normal.mul(chainWidth);
 
-        Vector3f vert00 = new Vector3f(-normal.x()/2, 0, -normal.z()/2), vert01 = new Vector3f(vert00);
+        Vector3f vert00 = new Vector3f(-normal.x() / 2, 0, -normal.z() / 2), vert01 = new Vector3f(vert00);
         vert01.add(normal);
-        Vector3f vert10 = new Vector3f(-normal.x()/2, 0, -normal.z()/2), vert11 = new Vector3f(vert10);
+        Vector3f vert10 = new Vector3f(-normal.x() / 2, 0, -normal.z() / 2), vert11 = new Vector3f(vert10);
         vert11.add(normal);
 
         float uvv0 = 0, uvv1 = 0;
@@ -188,8 +189,8 @@ public class WireModelRenderer {
                 contextualLength = vec.y() - vert00.y();
             }
 
-            vert10.add(0, contextualLength, 0);
-            vert11.add(0, contextualLength, 0);
+            vert10.add(0, contextualLength * 3, 0);
+            vert11.add(0, contextualLength * 3, 0);
 
             uvv1 += contextualLength / SCALE;
 
@@ -214,7 +215,7 @@ public class WireModelRenderer {
         float pTicks, float angle, boolean inv, WireUV uv, float offset, float distanceXZ) {
 
         float animatedSag = Mth.clamp(0.8267f * (float)Math.pow(1.06814f, distanceXZ), 0.5f, 4.8f);
-        float realLength, desiredLength = 1 / (Mth.clamp(2.05118f * (float)Math.pow(0.882237f, distanceXZ), 0.15f, 2.8f));
+        float realLength, desiredLength = 1 / (Mth.clamp(2.05118f * (float)Math.pow(0.882237f, distanceXZ), 0.8f, 2.8f));
         float distance = VectorHelper.getLength(vec);
 
         Vector3f vertA1 = new Vector3f(), vertA2 = new Vector3f(), 
@@ -242,6 +243,9 @@ public class WireModelRenderer {
         rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
         rotAxis.normalize();
 
+        float offsetC = (float)((width / 2) * Math.cos(angle));
+        float offsetS = (float)((width / 2) * Math.sin(angle));
+
         normal.rotateAxis(angle, rotAxis.x, rotAxis.y, rotAxis.z);
         normal.mul(width);
         vertB1.set(point0.x() - normal.x() / 2, point0.y() - normal.y() / 2, point0.z() - normal.z() / 2);
@@ -255,6 +259,7 @@ public class WireModelRenderer {
 
             rotAxis.set(point1.x() - point0.x(), point1.y() - point0.y(), point1.z() - point0.z());
             rotAxis.normalize();
+            
             
 
             normal.set(-gradient, Math.abs(distanceXZ / distance), 0);
@@ -270,11 +275,10 @@ public class WireModelRenderer {
             vertB2.add(normal);
 
             uvv0 = uvv1;
-            uvv1 = uvv0 + realLength / SCALE;
+            uvv1 = uvv0 + (realLength / SCALE) / 3;
 
             builder.addVertex(vertA1).withUV(uv.x0() / 16f, uvv0).next();
             builder.addVertex(vertA2).withUV(uv.x1() / 16f, uvv0).next();
-
             builder.addVertex(vertB2).withUV(uv.x1() / 16f, uvv1).next();
             builder.addVertex(vertB1).withUV(uv.x0() / 16f, uvv1).next();
 

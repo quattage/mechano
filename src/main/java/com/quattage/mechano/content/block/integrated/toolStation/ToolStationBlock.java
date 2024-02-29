@@ -91,8 +91,6 @@ public class ToolStationBlock extends HorizontalDirectionalBlock implements IBE<
             else {
                 BlockPos otherpos = pos.relative(state.getValue(FACING).getCounterClockWise());
                 BlockState otherstate = level.getBlockState(otherpos);
-
-                Mechano.log("POSITION: " + otherpos + " STATE: " + otherstate);
                 if (otherstate.getBlock() == this) {
                     level.setBlock(otherpos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                     if (!state.hasBlockEntity())

@@ -10,7 +10,6 @@ import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorabl
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.quattage.mechano.foundation.electricity.power.features.GID;
-import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -19,7 +18,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -154,10 +152,7 @@ public class GlobalTransferGrid {
         Pair<Integer, LocalTransferGrid> sysA = getSystemContaining(idA);
         Pair<Integer, LocalTransferGrid> sysB = getSystemContaining(idB);
 
-        if(idA.equals(idB)) {
-            Mechano.log("GID CONFLICT");
-            return AnchorInteractType.GENERIC;
-        }
+        if(idA.equals(idB)) return AnchorInteractType.GENERIC;
 
         if(doesLinkExist(idA, idB)) return AnchorInteractType.LINK_EXISTS;
 

@@ -37,8 +37,6 @@ public class CombinedOrientedBlock extends Block implements IElectricWrenchable 
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
 
-        Mechano.log("WRENCHED");
-
         Axis intendedRotation = context.getClickedFace().getAxis();
         CombinedOrientation strictCD;
         if(intendedRotation == state.getValue(ORIENTATION).getLocalUp().getAxis())

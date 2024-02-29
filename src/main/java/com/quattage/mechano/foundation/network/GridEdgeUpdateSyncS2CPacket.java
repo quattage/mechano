@@ -3,9 +3,10 @@ package com.quattage.mechano.foundation.network;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
-import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
+import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
 import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -44,7 +45,7 @@ public class GridEdgeUpdateSyncS2CPacket implements Packetable {
                 default:
                     break;
             }
-            
+            GridSyncDirector.markChunksChanged(Minecraft.getInstance().level, edge);
         });
         return true;
     }

@@ -54,7 +54,8 @@ public class WireTextureProvider extends SimplePreparableReloadListener<Map<Reso
                     reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8);
                     JsonModel model = GSON.fromJson(reader, JsonModel.class);
                     out.put(modelFromSpool(spoolType), model);
-                    Mechano.log("Successfully loaded resource '" + spoolType.getSpoolName() + ".json'");
+                    Mechano.LOGGER.info("Successfully loaded resource: " + spoolType.getSpoolName() + ".json'");
+
                 } catch (IOException e) {
                     Mechano.LOGGER.warn("Failed to load Wire Model resource '" + spoolType.getSpoolName() + "' - Check your JSON formatting!");
                     

@@ -28,8 +28,6 @@ public class DiagonalGirderRenderer extends SafeBlockEntityRenderer<DiagonalGird
         BlockState state = blockEntity.getBlockState();
         VertexConsumer vertexBuffer = bufferSource.getBuffer(RenderType.solid());
         render(blockEntity, state, poseStack, (sbb) -> sbb.light(light).renderInto(poseStack, vertexBuffer));   
-
-        //Mechano.log("TICK: " + partialTicks);
     }
 
     private static void render(DiagonalGirderBlockEntity blockEntity, BlockState state, PoseStack local, Consumer<SuperByteBuffer> drawCall) {

@@ -1,8 +1,5 @@
 package com.quattage.mechano.foundation.electricity.power.features;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
@@ -40,8 +37,10 @@ public class GridEdge {
     }
 
     public CompoundTag writeTo(CompoundTag nbt) {
+        
         nbt.putInt("t", wireType);
         nbt.put("e", target.writeTo(new CompoundTag()));
+        Mechano.log("writing GridEdge: " + nbt);
         return nbt;
     }
 

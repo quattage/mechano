@@ -8,4 +8,8 @@ public enum GridSyncPacketType {
     public static GridSyncPacketType get(int x) {
         return GridSyncPacketType.values()[x];
     }
+
+    public String toString() {
+        return this.name();
+    }
 }

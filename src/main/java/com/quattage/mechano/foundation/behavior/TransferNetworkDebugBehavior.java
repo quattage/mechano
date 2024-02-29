@@ -37,8 +37,6 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
     @Override
     public void tickSafe(ClientLevel world, Player player, ItemStack mainHand, ItemStack offHand, Vec3 lookingPosition,
             BlockPos lookingBlockPos, double pTicks) {
-
-        Mechano.logSlow("A   :   " + GridClientCache.INSTANCE.getRenderQueue());
         
         for(Map.Entry<SectionPos, List<GridClientEdge>> renderQueue : GridClientCache.INSTANCE.getRenderQueue().entrySet()) {
             

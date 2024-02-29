@@ -174,7 +174,7 @@ public class GridVertex {
         boolean changed = false;
         for(GridVertex vert : links) {
             if(vert.getPos().equals(other.getPos())) {
-                if(this.unlinkFrom(vert))
+                if(this.unlinkFrom(vert)) 
                     changed = true;
             }
         }

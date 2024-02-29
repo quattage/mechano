@@ -73,8 +73,6 @@ public class ConnectorStackedTier3Block extends UpgradableBlock implements IBE<C
 
         Direction under = state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp().getOpposite();
 
-        Mechano.log("A " + under);
-
         if(world.getBlockState(pos.relative(under)).getBlock() != MechanoBlocks.TRANSMISSION_NODE.get())
             world.destroyBlock(pos, false);
         super.neighborChanged(state, world, pos, block, fromPos, isMoving);

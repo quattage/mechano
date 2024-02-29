@@ -24,8 +24,6 @@ public interface IElectricWrenchable extends IWrenchable {
         if(be == null) return;
         if(be.getBlockState() == oldState) return;
 
-        Mechano.log("Wrench Hit");
-
         if(be instanceof WireAnchorBlockEntity wbe) {
             wbe.reOrient();
             playRotateSound(context.getLevel(), context.getClickedPos());

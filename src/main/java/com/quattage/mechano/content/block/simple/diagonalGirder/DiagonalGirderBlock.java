@@ -170,7 +170,6 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block, BlockPos fromPos, boolean isMoving) {
         super.neighborChanged(state, world, pos, block, fromPos, isMoving);
         forceUpdate(world, pos, state);
-        Mechano.log("neighborChanged");
     }
 
     @Override

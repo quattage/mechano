@@ -49,7 +49,7 @@ public class Mechano {
         .simpleChannel();
 
     public Mechano() {
-        Mechano.log("loading mechano");
+        Mechano.LOGGER.info("loading mechano");
         IEventBus bussy = FMLJavaModLoadingContext.get().getModEventBus();
         REGISTRATE.registerEventListeners(bussy);
 
@@ -67,7 +67,7 @@ public class Mechano {
     }
 
     public void onClientSetup(final FMLClientSetupEvent event) {
-        MechanoPartials.register();
+        MechanoModels.register();
     }
 
     public void onCommonSetup(final FMLCommonSetupEvent event) {
@@ -76,7 +76,7 @@ public class Mechano {
 
     public void addWorldCapabilities(AttachCapabilitiesEvent<Level> event) {
         if(event.getObject().isClientSide) return;
-        Mechano.log("Attached capability to " + event.getObject().dimension().location());
+        Mechano.LOGGER.info("Attached capability to " + event.getObject().dimension().location());
         event.addCapability(asResource("transfer_network"), new GlobalTransferGridProvider(event.getObject()));
     }
 
@@ -119,7 +119,6 @@ public class Mechano {
 
     public static ResourceLocation defer(DataGenContext<?, ?> ctx, String append, String realName) {
         String resource = ctx.getId().getNamespace() + ":block/" + append + "/" + realName;
-        Mechano.log("resource: " + resource);
         return new ResourceLocation(resource);
     }
 

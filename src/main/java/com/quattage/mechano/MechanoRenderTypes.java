@@ -49,7 +49,7 @@ public class MechanoRenderTypes extends RenderType {
     });
 
     public static RenderType getWireStatic(ResourceLocation spoolType) {
-        return WIRE_TRANSLUCENT.apply(spoolType);
+        return WIRE_STATIC.apply(spoolType);
     }
 
 

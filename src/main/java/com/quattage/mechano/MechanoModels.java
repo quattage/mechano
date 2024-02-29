@@ -2,10 +2,8 @@ package com.quattage.mechano;
 
 import com.jozufozu.flywheel.core.PartialModel;
 
-// This is where Partial Models get registered.
-// eg. The needle on Create's Stressometer.
-// CALLED BY LOGICAL CLIENT ONLY
-public class MechanoPartials {
+
+public class MechanoModels {
     public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_FLAT = newPartial("diagonal_girder/partials/short_down_flat");
     public static final PartialModel DIAGONAL_GIRDER_SHORT_DOWN_VERT = newPartial("diagonal_girder/partials/short_down_vert");
     public static final PartialModel DIAGONAL_GIRDER_SHORT_UP_FLAT = newPartial("diagonal_girder/partials/short_up_flat");

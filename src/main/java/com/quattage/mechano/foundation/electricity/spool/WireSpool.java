@@ -15,6 +15,9 @@ import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRend
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 import com.simibubi.create.foundation.utility.Pair;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -69,7 +72,7 @@ public abstract class WireSpool extends Item {
      * @param typeID Type of WireSpool to get
      * @return WireSpool at the given index
      */
-    public static WireSpool OfType(int typeID) {
+    public static WireSpool ofType(int typeID) {
         return SPOOL_TYPES.get(typeID);
     }
 
@@ -114,8 +117,12 @@ public abstract class WireSpool extends Item {
         return MechanoClient.WIRE_TEXTURE_PROVIDER.get(this);
     }
 
+    public final TextureAtlasSprite getWireSprite() {
+        return Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(new ResourceLocation("mechano:block/wire/" + getName()));
+    }
+
     public String getName() {
-        return PREFIX + "_" + spoolID;
+        return PREFIX + spoolName;
     }
 
     public final ItemStack getEmptySpool() {

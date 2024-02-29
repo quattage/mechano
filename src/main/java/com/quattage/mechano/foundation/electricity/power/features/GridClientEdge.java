@@ -81,12 +81,22 @@ public class GridClientEdge {
         return  false;
     }
 
+    public int hashCode() {
+        return (sideA.hashCode() + sideB.hashCode()) * 31;
+    }
+
     public boolean contains(GID id) {
         return sideA.equals(id) || sideB.equals(id);
     }
 
     public boolean containsPos(BlockPos pos) {
-        return sideA.getPos().equals(pos) || sideB.getPos().equals(pos);
+        if(sideA.getPos().equals(pos)) return true;
+        if(sideB.getPos().equals(pos)) return true;
+        return false;
+    }
+
+    public boolean goesNowhere() {
+        return sideA.equals(sideB);
     }
 
     public int getTypeID() {

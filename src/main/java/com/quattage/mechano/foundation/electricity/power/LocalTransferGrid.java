@@ -2,16 +2,15 @@ package com.quattage.mechano.foundation.electricity.power;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
+import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
 import com.quattage.mechano.foundation.electricity.power.features.GridEdge;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -82,6 +81,7 @@ public class LocalTransferGrid {
         ListTag edgeList = in.getList("ed", Tag.TAG_COMPOUND);
         for(int x = 0; x < edgeList.size(); x++) {
             GridEdge edge = new GridEdge(this.parent, edgeList.getCompound(x));
+            edgeMatrix.put(edge.getID(), edge);
         }
     }
 
@@ -155,8 +155,10 @@ public class LocalTransferGrid {
                 matrixIterator.remove();
             }
             else {
-                if(vert.unlinkEdgesToThisVertex(id, this) == true)
+                if(vert.unlinkEdgesToThisVertex(id, this) == true) {
+                    GridSyncDirector.informPlayerEdgeUpdate(GridSyncPacketType.REMOVE, new GridClientEdge(new GIDPair(vert.getGID(), id), -1));
                     changed = true; 
+                }
             }
         }
 
@@ -346,8 +348,8 @@ public class LocalTransferGrid {
         Iterator<Map.Entry<GIDPair, GridEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
         boolean changed = false;
         while(matrixIterator.hasNext()) {
-            GIDPair currentKey = matrixIterator.next().getKey();
-            if(!(vertMatrix.containsKey(currentKey.getSideA()) && vertMatrix.containsKey(currentKey.getSideB()))) {
+            GridEdge currentEdge = matrixIterator.next().getValue();
+            if(!(vertMatrix.containsKey(currentEdge.getSideA()) && vertMatrix.containsKey(currentEdge.getSideB()))) {
                 changed = true;
                 matrixIterator.remove();
             }

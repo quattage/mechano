@@ -24,7 +24,7 @@ public class GIDPair {
     }
 
     public static GIDPair of(CompoundTag in) {
-        return new GIDPair(GID.of(in.getCompound("A")), GID.of(in.getCompound("B")));
+        return new GIDPair(GID.of(in.getCompound("a")), GID.of(in.getCompound("b")));
     }
 
     public GID getSideA() {

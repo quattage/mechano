@@ -67,7 +67,7 @@ public class Mechano {
     }
 
     public void onClientSetup(final FMLClientSetupEvent event) {
-        MechanoModels.register();
+        // MechanoModels.register();
     }
 
     public void onCommonSetup(final FMLCommonSetupEvent event) {

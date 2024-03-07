@@ -4,6 +4,7 @@ import javax.annotation.Nullable;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -23,10 +24,11 @@ import net.minecraftforge.energy.IEnergyStorage;
 
 public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEnergyStorable {
 
-    private final T target;
+    
     @Nullable
     private final ForgeEnergyJunction[] interactions;
     public final LocalEnergyStorage<BatteryBank<T>> battery;    
+    private final T target;
     public LazyOptional<IEnergyStorage> energyHandler = LazyOptional.empty();
 
     public BatteryBank(T target, ForgeEnergyJunction[] interactions, int capacity, int maxRecieve, int maxExtract, int energy) {
@@ -108,7 +110,7 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
     }
 
     /***
-     * Overrides the energy amount in this 
+     * Overrides the energy amount in this BatteryBank
      */
     @Override
     public void setEnergyStored(int energy) {
@@ -155,10 +157,10 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
     }
 
     /***
-     * Gets every direction that this NodeBank can interact with.
+     * Gets every direction that this BatteryBank can interact with.
      * Directions are relative to the world, and will change
-     * depending on the orientation of this NodeBank's parent block.
-     * @return A list of Directions; empty if this NodeBank
+     * depending on the orientation of this BatteryBank's parent block.
+     * @return A list of Directions; empty if this BatteryBank
      * has no interaction directions.
      */
     public Direction[] getInteractionDirections() {

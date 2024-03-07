@@ -49,7 +49,7 @@ public class RelativeDirection {
             facingDir = Direction.rotate(fac, dir.getLocalForward());
             return this;
         }
-        // TODO this works but fucking christ it sucks
+
         if(dir.getLocalUp().getAxis() != Axis.Y) {
             if(rel == Relative.RIGHT) {
                 if(DirectionTransformer.isPositive(dir.getLocalForward())) {

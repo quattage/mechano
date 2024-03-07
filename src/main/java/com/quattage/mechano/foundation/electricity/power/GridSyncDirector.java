@@ -37,7 +37,7 @@ public class GridSyncDirector {
     public static void syncGridChunkWithPlayer(Level world, ChunkPos chunkPos, Player player, GridSyncPacketType type) {
         GlobalTransferGrid grid = GlobalTransferGrid.get(world);
         if(!(player instanceof ServerPlayer sPlayer)) return;
-        for(LocalTransferGrid sys : grid.getSubsystems()) {
+        for(LocalTransferGrid sys : grid.getSubgrids()) {
             for(GridEdge edge : sys.getEdgeMatrix().values()) {
                 if(chunkPos.equals(new ChunkPos(edge.getSideA().getPos()))) {
                     Mechano.log("edge found: " + edge.toLightweight());

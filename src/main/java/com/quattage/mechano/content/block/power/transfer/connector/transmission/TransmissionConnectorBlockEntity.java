@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class TransmissionConnectorBlockEntity extends WireAnchorBlockEntity {
 
-
     public TransmissionConnectorBlockEntity(BlockEntityType<?> tileEntityTypeIn, BlockPos pos, BlockState state) {
         super(tileEntityTypeIn, pos, state);
     }
@@ -31,7 +30,8 @@ public class TransmissionConnectorBlockEntity extends WireAnchorBlockEntity {
             .capacity(5000)
             .maxIO(2500)
             .newInteraction(Relative.BOTTOM)
-            .buildInteraction()
+                .sendsAndReceivesEnergy()
+                .buildInteraction()
         .build();
     }
 }

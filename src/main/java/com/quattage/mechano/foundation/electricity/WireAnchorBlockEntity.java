@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
+import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
 import net.minecraft.core.BlockPos;
@@ -54,6 +55,12 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
         super.reOrient();
     }
 
+    public void refreshInGrid() {
+        if(batteryBank == null) return;
+        if(anchors.isEmpty()) return;
+        // TODO impl
+    }
+
     @Override
     public void remove() {
         anchors.destroy();
@@ -77,6 +84,5 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
         super.initialize();
         reOrient();
         this.anchors.initialize(getLevel());
-        this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
     }
 }

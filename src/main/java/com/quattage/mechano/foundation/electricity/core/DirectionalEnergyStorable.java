@@ -65,8 +65,7 @@ public interface DirectionalEnergyStorable {
 
         if(side == null || cap != ForgeCapabilities.ENERGY) return LazyOptional.empty();
         if(energyDirs.length >= 6) return getEnergyHandler();
-
-        for(int x = 0; x < energyDirs.length; x++)
+        for(int x = 0; x < energyDirs.length; x++) 
             if(side.equals(energyDirs[x])) return getEnergyHandler();
 
         return LazyOptional.empty();

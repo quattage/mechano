@@ -49,6 +49,17 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
     }
 
+    public boolean isConnectedExternally() {
+        return batteryBank.isConnectedExternally();
+    }
+
+    @Override
+    public void onLoad() {
+        reOrient();
+        batteryBank.load();
+        super.onLoad();
+    }
+
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
 
@@ -60,9 +71,6 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity {
     @Override // runs on first tick
     public void initialize() {
         super.initialize();
-        reOrient();
-        this.level.sendBlockUpdated(this.worldPosition, this.getBlockState(), this.getBlockState(), 3);
-        
     }
 
     @Override

@@ -13,7 +13,6 @@ import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoRenderTypes;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
@@ -64,7 +63,6 @@ public class GridClientCache {
     }
 
     public void addToQueue(GridClientEdge edge) {
-        Mechano.log("adding " + edge + " to the renderQueue");
         synchronized(queue) {
             if(edge.goesNowhere()) return;
             SectionPos sectionPosition = SectionPos.of(edge.getSideA().getPos());
@@ -83,7 +81,6 @@ public class GridClientCache {
         synchronized(queue) {
             SectionPos queryA = SectionPos.of(edge.getSideA().getPos());
             SectionPos queryB = SectionPos.of(edge.getSideB().getPos());
-
 
             boolean sided = false;
             List<GridClientEdge> edgeList = queue.get(queryA);
@@ -178,9 +175,12 @@ public class GridClientCache {
             WireModelRenderer.INSTANCE.renderStatic(new BakedModelHashKey(startPos, endPos), buffer, matrixStack, wireOrigin, lightmap[0], lightmap[1], lightmap[2], lightmap[3], WireSpool.ofType(edge.getTypeID()).getWireSprite());
             matrixStack.popPose();
         }
+
         attempts++;
-        if(failed && attempts < 5) renderConnectionsInChunk(renderChunk, renderTypes, chunkBuffers, pos);
-        else attempts = 0;
+        if(failed) {
+            if(attempts > 49) throw new IllegalStateException("Error occured while rendering cache member - exceeded maximum attempts of 50 for chunk at " + pos);
+            renderConnectionsInChunk(renderChunk, renderTypes, chunkBuffers, pos);
+        }
     }
 
     public ObjectSet<SectionPos> getAllSections() {

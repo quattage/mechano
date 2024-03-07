@@ -4,35 +4,32 @@ import java.util.ArrayList;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-
-/***
- * An Anchor
- */
 public class AnchorPointBank<T extends BlockEntity> {
     
     public final T target;
     public boolean isAwaitingConnection = false;
     private final AnchorPoint[] anchorPoints;
 
-    @Nullable
-    private final RelativeDirection[] interfaceDirections;
+    private float time;
+    private float oldTime;
+
     private GlobalTransferGrid net;
 
-    public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd, ArrayList<RelativeDirection> dirsToAdd) {
+    public AnchorPointBank(T target, ArrayList<AnchorPoint> nodesToAdd) {
         this.target = target;
         this.anchorPoints = populateNodes(nodesToAdd);
-        this.interfaceDirections = populateJunctions(dirsToAdd);
     }
 
     @Nullable
@@ -57,86 +54,27 @@ public class AnchorPointBank<T extends BlockEntity> {
         return out;
     }
 
-    private RelativeDirection[] populateJunctions(ArrayList<RelativeDirection> dirsToAdd) {
-        if(dirsToAdd == null || dirsToAdd.isEmpty())
-            return null;
-
-        RelativeDirection[] out = new RelativeDirection[dirsToAdd.size()];
-        for(int x = 0; x < out.length; x++)
-            out[x] = dirsToAdd.get(x);
-        return out;
-    }
-
-    public Level getWorld() {
-        return target.getLevel();
-    }
-
-    public boolean doesAnchorBelong(AnchorPoint anchor) {
-        if(anchor == null) return false;
-        return target.getBlockPos().equals(anchor.getID().getPos());
-    }
-
-    /***
-     * Compares AnchorPointHolders
-     * @param other Object to compare. 
-     * @return True if both AnchorPointHolders share the same target BlockPos.
-     */
-    public boolean equals(Object other) {
-        if(other instanceof AnchorPointBank<?> otherBank) 
-            return this.target.getBlockPos().equals(otherBank.target.getBlockPos());
-        return false;
-    }
-
-    public int hashCode() {
-        return target.getBlockPos().hashCode();
-    }
-
-    public void initialize(Level world) {
-        this.net = GlobalTransferGrid.get(world);
-    }
-
-    /***
-     * Compares this NodeBank's location with a given BlockPos.
-     * @param posToCheck Blockpos to check
-     * @return True if this NodeBank's target BlockEntity is located
-     * at the given BlockPos
-     */
-    public boolean isAt(BlockPos posToCheck) {
-        if(posToCheck == null) return false;
-        return this.target.getBlockPos().equals(posToCheck);
-    }
-
     public AnchorPointBank<T> reflectStateChange(BlockState state) {
         for(AnchorPoint node : anchorPoints)
             node.update(state);
         return this;
     }
 
-    /*** 
-     * The length of this NodeBank
-     * @return int representing how many ElectricNodes can be held in this NodeBank
-     */
-    public int length() {
+    public int size() {
         return anchorPoints.length;
     }
 
-    /***
-     * @return An array containing all ElectricNodes in this NodeBank.
-     */
     public AnchorPoint[] getAnchorPoints() {
         return anchorPoints;
     }
 
     public Pair<AnchorPoint, Double> getClosestAnchor(Vec3 hit) {
-
         AnchorPoint closestAnchor = null;
         double closestDistance = -1;
 
         for(AnchorPoint anchor : anchorPoints) {
             Vec3 center = anchor.getPos();
             double distance = Math.abs(hit.distanceTo(center));
-
-            //if(distance > anchor.getSize() * 6f) continue;
 
             if(distance < closestDistance || closestDistance == -1) {
                 closestAnchor = anchor;
@@ -173,7 +111,7 @@ public class AnchorPointBank<T extends BlockEntity> {
     }
 
     public boolean isEmpty() {
-        return anchorPoints.length > 0;
+        return anchorPoints.length == 0;
     }
 
     public boolean hasOnlyOneAnchor() {
@@ -185,9 +123,27 @@ public class AnchorPointBank<T extends BlockEntity> {
             this.isAwaitingConnection = isAwaitingConnection;
     }
 
-    /***
-     * Instructs the parent BlockEntity to send the block update.
-     */
+    public float tickTime(float pTicks) {
+        return tickTime(pTicks, 0.001f);
+    }
+
+    public float tickTime(float pTicks, float step) {
+        oldTime = time;
+        if(time < 1) time += step;
+        else time = 0;
+        return Mth.lerp(pTicks, oldTime, time);
+    }
+
+    public boolean equals(Object other) {
+        if(other instanceof AnchorPointBank<?> otherBank) 
+            return this.target.getBlockPos().equals(otherBank.target.getBlockPos());
+        return false;
+    }
+
+    public int hashCode() {
+        return target.getBlockPos().hashCode();
+    }
+
     public void markDirty() {
         target.getLevel().sendBlockUpdated(
             target.getBlockPos(),
@@ -199,8 +155,15 @@ public class AnchorPointBank<T extends BlockEntity> {
 
     public void destroy() {
         if(net == null) return;
-        for(AnchorPoint anchor : anchorPoints) {
+        for(AnchorPoint anchor : anchorPoints) 
             net.destroyVertex(anchor.getID());
-        }
+    }
+
+    public void initialize(Level world) {
+        this.net = GlobalTransferGrid.get(world);
+    }
+
+    public Level getWorld() {
+        return target.getLevel();
     }
 }

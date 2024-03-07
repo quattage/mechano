@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import com.quattage.mechano.Mechano;
@@ -36,6 +37,8 @@ import net.minecraft.world.level.Level;
  * * I will continue to refer to this as an adjacency matrix anyway, because it sounds cooler.
  */
 public class LocalTransferGrid {
+
+    private int memberCount = 0;
     
     private Map<GID, GridVertex> vertMatrix = new Object2ObjectOpenHashMap<>();
     private Map<GIDPair, GridEdge> edgeMatrix = new Object2ObjectOpenHashMap<>();
@@ -46,19 +49,19 @@ public class LocalTransferGrid {
     private int netEnergyPulled = 0;
 
     /***
-     * Instantiates a blank TransferSystem
+     * Instantiates a blank LocalTransferGrid
      */
     public LocalTransferGrid(GlobalTransferGrid parent) {
         this.parent = parent;
     }
 
     /***
-     * Populates this TransferSystem with members of a list
-     * @param cluster ArrayList of SystemNodes to add to this TransferSystem upon creation
+     * Populates this LocalTransferGrid with members of a list
+     * @param cluster ArrayList of GridVertexs to add to this LocalTransferGrid upon creation
      */
     public LocalTransferGrid(GlobalTransferGrid parent, ArrayList<GridVertex> cluster,  Map<GIDPair, GridEdge> edgeMatrix) {
-        for(GridVertex node : cluster)
-            vertMatrix.put(node.getGID(), node);
+        for(GridVertex vertex : cluster)
+            vertMatrix.put(vertex.getGID(), vertex);
         this.edgeMatrix = ((Object2ObjectOpenHashMap<GIDPair, GridEdge>)edgeMatrix).clone();
         this.parent = parent;
     }
@@ -67,11 +70,11 @@ public class LocalTransferGrid {
         this.parent = parent;
         ListTag net = in.getList("nt", Tag.TAG_COMPOUND);
         for(int x = 0; x < net.size(); x++) {
-            GridVertex n = new GridVertex(this.parent, net.getCompound(x));
+            GridVertex n = new GridVertex(this, net.getCompound(x));
             BlockPos check = n.getPos();
             // preventative measure to stop vertices from being added if they have bad data
             if((!(world.getBlockEntity(check) instanceof WireAnchorBlockEntity)) || (n.isEmpty())) {
-                Mechano.LOGGER.warn("TransferSystem skipping registration of SystemVertex at [" 
+                Mechano.LOGGER.warn("LocalTransferGrid skipping registration of GridVertex at [" 
                 + check.getX() + ", " + check.getY() + ", " + check.getZ() + "]");
                 continue;
             }
@@ -116,35 +119,18 @@ public class LocalTransferGrid {
     
     }
 
-    public boolean addVert(GridVertex node) {
-        if(node == null) 
-        throw new NullPointerException("Failed to add node to TransferSystem - Cannot store a null node!");
-        if(vertMatrix.containsKey(node.getGID()))
+    public boolean addVert(GridVertex vertex) {
+        if(vertex == null) 
+        throw new NullPointerException("Failed to add vertex to LocalTransferGrid - Cannot store a null vertex!");
+        if(vertMatrix.containsKey(vertex.getGID()))
             return false;
-        vertMatrix.put(node.getGID(), node);
+        vertMatrix.put(vertex.getGID(), vertex);
         onSystemUpdated();
         return true;
     }
 
-    public boolean addVert(GID id) {
-        if(id == null)
-            throw new NullPointerException("Failed to add node to TransferSystem - The provided SVID is null!");
-        if(vertMatrix.containsKey(id))
-            return false;
-        vertMatrix.put(id, new GridVertex(parent, id.getPos(), id.getSubIndex()));
-        onSystemUpdated();
-        return true;
-    }
-
-    /***
-     * Removes all SystemVerticiees at the given SVID (ignores subIndex) and 
-     * removes all references to those verticies from every other vertex. The 
-     * graph is likely to be discontinuous after this call, so it must be cleaned.
-     * @param id SVID to remove
-     * @return True if the SystemVertex was successfully removed (false if it didn't exist)
-     */
     public boolean destroyVertsAt(GID id) {
-        if(id == null) throw new NullPointerException("Error destroying SystemVertex - The provided SVID is null!");
+        if(id == null) throw new NullPointerException("Error destroying GridVertex - The provided GID is null!");
 
         Iterator<Map.Entry<GID, GridVertex>> matrixIterator = vertMatrix.entrySet().iterator();
         boolean changed = false;
@@ -155,7 +141,7 @@ public class LocalTransferGrid {
                 matrixIterator.remove();
             }
             else {
-                if(vert.unlinkEdgesToThisVertex(id, this) == true) {
+                if(vert.unlinkEdgesToThisVertex(id, this)) {
                     GridSyncDirector.informPlayerEdgeUpdate(GridSyncPacketType.REMOVE, new GridClientEdge(new GIDPair(vert.getGID(), id), -1));
                     changed = true; 
                 }
@@ -170,7 +156,7 @@ public class LocalTransferGrid {
     }
 
     /***
-     * Gets all verticies assigned to the given BlockPos
+     * Gets all vertices assigned to the given BlockPos
      * @param pos BlockPos to check
      * @return An array of SystemVerticies at this BlockPos
      */
@@ -182,67 +168,71 @@ public class LocalTransferGrid {
     }
 
     /***
-     * @return True if this TransferSystem contains the given SystemVertex
+     * @return True if this LocalTransferGrid contains the given GridVertex
      */
     public boolean contains(GridVertex vert) {
         return contains(new GID(vert.getPos(), vert.getSubIndex()));
     }
 
     /***
-     * @return True if this TransferSystem contains a SystemVertex at the given SVID
+     * @return True if this LocalTransferGrid contains a GridVertex at the given GID
      */
     public boolean contains(GID id) {
         return vertMatrix.containsKey(id);
     }
 
     /***
-     * Creates a link (edge) between two SystemVertices located at the given BlockPos
+     * Creates a link (edge) between two GridVertices located at the given BlockPos
      * and index combinations.
      * @throws NullPointerException If the provided BlockPos and sub index combinations
-     * don't indicate the location of a SystemVertex in this TransferSystem.
+     * don't indicate the location of a GridVertex in this LocalTransferGrid.
      * @param fP BlockPos of first connection
      * @param fI sub index of second connection
      * @param tP BlockPos of second connection
      * @param tI sub index of second connection
-     * @return True if the SystemVertices were modified as a result of this call.
+     * @return True if the GridVertices were modified as a result of this call.
      */
     public boolean linkVerts(BlockPos fP, int fI, BlockPos tP, int tI, int wireType) {
         return linkVerts(new GID(fP, fI), new GID(tP, tI), wireType);
     }
 
     /***
-     * Creates a link (edge) between two SystemVertices
-     * @throws NullPointerException If either provided SystemVertex
-     * does not exist within this TransferSystem.
-     * @param first SystemVertex to link
-     * @param second SystemVertex to link
-     * @return True if the SystemVertices were modified as a result of this call,
+     * Creates a link (edge) between two GridVertices
+     * @throws NullPointerException If either provided GridVertex
+     * does not exist within this LocalTransferGrid.
+     * @param first GridVertex to link
+     * @param second GridVertex to link
+     * @return True if the GridVertices were modified as a result of this call,
      */
     public boolean linkVerts(GridVertex first, GridVertex second, int wireType) {
-        requireValidNode("Failed to link SystemNodes", first, second);
+        requireValidNode("Failed to link GridVertexs", first, second);
         addEdge(first, second, wireType);
         if(first.linkTo(second) && second.linkTo(first)) {
             onSystemUpdated();
+            first.syncToHostBE();
+            second.syncToHostBE();
             return true;
         }
         return false;
     }
 
     /***
-     * Creates a link (edge) between two SystemVertices at the provided SVIDs
-     * @throws NullPointerException If either provided SVID doesn't 
-     * indicate the location of a SystemVertex in this TransferSystem.
-     * @param first SVID to locate and link
-     * @param second SVID object to locate and link
-     * @return True if the SystemVertices were modified as a result of this call,
+     * Creates a link (edge) between two GridVertices at the provided GIDs
+     * @throws NullPointerException If either provided GID doesn't 
+     * indicate the location of a GridVertex in this LocalTransferGrid.
+     * @param first GID to locate and link
+     * @param second GID object to locate and link
+     * @return True if the GridVertices were modified as a result of this call,
      */
     public boolean linkVerts(GID first, GID second, int wireType) {
-        requireValidLink("Failed to link SystemNodes", first, second);
+        requireValidLink("Failed to link GridVertexs", first, second);
         GridVertex vertF = vertMatrix.get(first);
         GridVertex vertT = vertMatrix.get(second);
         addEdge(first, second, wireType);
         if(vertF.linkTo(vertT) && vertT.linkTo(vertF)) {
             onSystemUpdated();
+            vertF.syncToHostBE();
+            vertT.syncToHostBE();
             return true;
         }
         return false;
@@ -250,12 +240,12 @@ public class LocalTransferGrid {
 
     /***
      * Performs a DFS to determine all of the different "clusters"
-     * that form this TransferSystem. Individual vertices that are found to 
+     * that form this LocalTransferGrid. Individual vertices that are found to 
      * possess no connections are discarded, and are not included in the 
      * resulting clusters. <strong>Does not modify this system in-place.</strong>
      * 
-     * @return ArrayList of TransferSystems formed from the individual clusters 
-     * within this TransferSystem.
+     * @return ArrayList of LocalTransferGrids formed from the individual clusters 
+     * within this LocalTransferGrid.
      */
     public ArrayList<LocalTransferGrid> trySplit() {
         HashSet<GID> visited = new HashSet<>();
@@ -275,13 +265,13 @@ public class LocalTransferGrid {
     }
 
     /***
-     * Populates the given cluster ArrayList with all SystemVertices directly and 
-     * indirectly connected to the node at the given BlockPos. The TransferSystem 
+     * Populates the given cluster ArrayList with all GridVertices directly and 
+     * indirectly connected to the vertex at the given BlockPos. The LocalTransferGrid 
      * is traversed recursively, so calls must instantiate their own HashSet and 
      * ArrayList for storage.
      * @param vertex Vertex to begin the saerch outwards from
      * @param visted HashSet (usually just instantiated directly and empty when called) to cache visited vertices
-     * @param vertices ArrayList which will be populated with all nodes that can be found connected to the given vertex.
+     * @param vertices ArrayList which will be populated with all GridVertices that can be found connected to the given vertex.
      */
     public void depthFirstPopulate(GID vertex, HashSet<GID> visited, ArrayList<GridVertex> vertices) {
         GridVertex thisIteration = getNode(vertex);
@@ -299,9 +289,9 @@ public class LocalTransferGrid {
     }
 
     /***
-     * Appends all elements from the supplied TransferSystem to this
-     * TransferSystem, modifying it in-place.
-     * @return This TransferSystem (for chaining)
+     * Appends all elements from the supplied LocalTransferGrid to this
+     * LocalTransferGrid, modifying it in-place.
+     * @return This LocalTransferGrid (for chaining)
      */
     public LocalTransferGrid mergeWith(LocalTransferGrid other) {
         if(other.size() > 0) {
@@ -313,36 +303,43 @@ public class LocalTransferGrid {
     }
 
     /***
-     * Retrieves a node in this network based on SystemLink.
+     * Retrieves a vertex in this network based on SystemLink.
      * @param BlockPos
-     * @return SystemNode at the given BlockPos
+     * @return GridVertex at the given BlockPos
      */
     public GridVertex getNode(GID pos) {
         return vertMatrix.get(pos);
     }
 
-    /***
-     * @return True if this TransferSystem contains the given SystemNode
-     */
-    public boolean containsNode(GridVertex node) {
-        return vertMatrix.containsValue(node);
+    public List<GridVertex> getAllNodesAt(BlockPos pos) {
+        ArrayList<GridVertex> vertices = new ArrayList<GridVertex>();
+        for(GridVertex vert : vertMatrix.values())
+            if(vert.getGID().getPos().equals(pos)) vertices.add(vert);
+        return vertices;
     }
 
     /***
-     * @return False if ALL of the SystemNodes in this TranferSystem are empty
+     * @return True if this LocalTransferGrid contains the given GridVertex
+     */
+    public boolean containsNode(GridVertex vertex) {
+        return vertMatrix.containsValue(vertex);
+    }
+
+    /***
+     * @return False if ALL of the GridVertexs in this TranferSystem are empty
      * (This network has no edges)
      */
     public boolean hasLinks() {
-        for(GridVertex node : vertMatrix.values())
-            if(!node.isEmpty()) return true;
+        for(GridVertex vertex : vertMatrix.values())
+            if(!vertex.isEmpty()) return true;
         return false;
     }
 
     /***
      * Examines the edge map and the vertex map to find weirdness.
-     * If there are any edges that point to verticies that aren't in this TransferSystem,
+     * If there are any edges that point to vertices that aren't in this LocalTransferGrid,
      * this call will remove them.
-     * @return True if this TransferSystem was modified as a result of this call.
+     * @return True if this LocalTransferGrid was modified as a result of this call.
      */
     public boolean cleanEdges() {
         Iterator<Map.Entry<GIDPair, GridEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
@@ -358,10 +355,6 @@ public class LocalTransferGrid {
         return changed;
     }
 
-    /***
-     * Genreates a Color for this TransferSystem. Useful for debugging.
-     * @return a Color representing this TransferSystem
-     */
     public Color getDebugColor() {
         return VectorHelper.toColor(((GridVertex)vertMatrix.values().toArray()[0]).getPos().getCenter());
     }
@@ -370,25 +363,14 @@ public class LocalTransferGrid {
         return vertMatrix.size();
     }
 
-    /***
-     * @return True if this TransferSystem doesn't contain any SystemNodes.
-     */
     public boolean isEmpty() {
         return vertMatrix.isEmpty();
     }
 
-    /***
-     * Gets this TransferSystem's vertex graph as a raw Collection.
-     * @return Collection containing all SystemNodes in this TransferSystem
-     */
     public Collection<GridVertex> allVerts() {
         return vertMatrix.values();
     }
 
-    /***
-     * Gets this TransferSystem's edge graph as a raw Collection. 
-     * @return Collection containing all SystemNodes in this TransferSystem
-     */
     public Collection<GridEdge> allEdges() {
         return edgeMatrix.values();
     }
@@ -396,37 +378,29 @@ public class LocalTransferGrid {
     public String toString() {
         String output = "";
         int x = 1;
-        for(GridVertex node : vertMatrix.values()) {
-            output += "\tNode " + x + ": " + node + "\n";
+        for(GridVertex vert : vertMatrix.values()) {
+            output += "\tVertex " + x + ": " + vert + "\n";
             x++;
         }
         return output;
-    }
-
-    public void requireValidLink(String failMessage, GID... idSet) {
-        for(GID id : idSet) {
-            if(id == null) 
-                throw new NullPointerException(failMessage + " - The provided SystemLink is null!");
-            if(!vertMatrix.containsKey(id))
-                throw new NullPointerException(failMessage + " - No valid SystemNode matching SystemID " 
-                + id + " could be found!");
-        }
-    }
-
-    public void requireValidNode(String failMessage, GridVertex... nodeSet) {
-        for(GridVertex node : nodeSet) {
-            if(node == null)
-                throw new NullPointerException(failMessage + " - The provided SystemNode is null!");
-            if(!vertMatrix.containsValue(node))
-                throw new NullPointerException(failMessage + " - The provided SystemNode does not exist in this TransferSystem!");
-        }       
     }
 
     public Map<GIDPair, GridEdge> getEdgeMatrix() {
         return edgeMatrix;
     }
 
-    // to be used internally, other methods deal with this for u //
+    public GlobalTransferGrid getParent() {
+        return parent;
+    }
+
+    public int getMemberCount() {
+        return memberCount;
+    }
+
+    public void validatePathsFrom(GridVertex vert) {
+        Mechano.log("Validating paths from: " + vert);
+    }
+
     protected void addEdge(GridVertex first, GridVertex second, int wireType) {
         addEdge(first.getGID(), second.getGID(), wireType);
     }
@@ -442,5 +416,25 @@ public class LocalTransferGrid {
     protected boolean removeEdge(GridVertex vertA, GridVertex vertB) {
         return removeEdge(new GIDPair(vertA.getGID(), vertB.getGID()));
     }
-    // to be used internally, other methods deal with this for u //
+
+
+    /////////
+    private void requireValidLink(String failMessage, GID... idSet) {
+        for(GID id : idSet) {
+            if(id == null) 
+                throw new NullPointerException(failMessage + " - The provided SystemLink is null!");
+            if(!vertMatrix.containsKey(id))
+                throw new NullPointerException(failMessage + " - No valid GridVertex matching SystemID " 
+                + id + " could be found!");
+        }
+    }
+
+    private void requireValidNode(String failMessage, GridVertex... vertexSet) {
+        for(GridVertex vertex : vertexSet) {
+            if(vertex == null)
+                throw new NullPointerException(failMessage + " - The provided GridVertex is null!");
+            if(!vertMatrix.containsValue(vertex))
+                throw new NullPointerException(failMessage + " - The provided GridVertex does not exist in this LocalTransferGrid!");
+        }       
+    }
 }

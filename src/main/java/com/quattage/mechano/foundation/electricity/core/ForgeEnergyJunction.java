@@ -6,7 +6,6 @@ import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractColor;
-import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.core.BlockPos;
@@ -127,9 +126,9 @@ public class ForgeEnergyJunction {
             return false;
 
         BlockPos offset = parent.getBlockPos().relative(getDirection());
-        IEnergyStorage batteryAtPos = world.getBlockEntity(offset)
-            .getCapability(ForgeCapabilities.ENERGY, getDirection().getOpposite())
-            .orElse(null);
+        BlockEntity be = world.getBlockEntity(offset);
+        if(be == null) return false;
+        IEnergyStorage batteryAtPos = be.getCapability(ForgeCapabilities.ENERGY, getDirection().getOpposite()).orElse(null);
         return batteryAtPos != null;
     }
 

@@ -22,7 +22,7 @@ public class StaticWireCullingMixin {
     @Final @Shadow private ObjectArrayList<LevelRenderer.RenderChunkInfo> renderChunksInFrustum;
     @Final @Shadow private AtomicReference<LevelRenderer.RenderChunkStorage> renderChunkStorage;
 
-    // quick and dirty frustum culling patch so wires don't dissappear when they shouldn't
+    // quick and dirty frustum culling patch so wires don't dissappear while in view
     // TODO more intelligent culling for better performance
     @Inject(method = "applyFrustum(Lnet/minecraft/client/renderer/culling/Frustum;)V", at = {@At(value = "TAIL")}, cancellable = true)
     private void applyFrustum(Frustum pFrustum, CallbackInfo info) {

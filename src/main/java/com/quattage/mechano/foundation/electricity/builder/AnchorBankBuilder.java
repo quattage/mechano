@@ -24,7 +24,6 @@ public class AnchorBankBuilder<T extends BlockEntity> {
     private T target = null;
     
     private final ArrayList<AnchorPoint> nodesToAdd = new ArrayList<AnchorPoint>();
-    private ArrayList<RelativeDirection> dirsToAdd = null;
 
     public AnchorBankBuilder() {};
 
@@ -84,110 +83,6 @@ public class AnchorBankBuilder<T extends BlockEntity> {
     }
 
     /***
-     * Adds an external junction in this direction. This allows, for example, for
-     * energy to pass through the face located in this direction. RelativeDirections
-     * (up, down, left, right, etc.) are as you'd expect them to be. 
-     * <p>
-     * Accepts a RelativeDirection object or a String shorthand:
-     * <pre>
-     * builder
-     * .interfaceSide(RelativeDirection.FRONT) // Adds the local forward direction only.
-     * .interfaceSide("A") // adds every direction (all sides).
-     * .interfaceSide("ALL") // also adds every direction.
-     * .interfaceSide("X") // Adds the local X axis (left and right).
-     * .interfaceSide("Y") // Adds the local Y axis (up and down).
-     * </pre>
-     * @param dir RelativeDirection to add
-     * @return This NodeBankBuilder, modified to reflect this change.
-     * * Leave empty to completely disable energy interactions.
-     */
-    public AnchorBankBuilder<T> interfaceSide(Relative dir) {
-        newDirsIfNull();
-        dirsToAdd.add(new RelativeDirection(dir));
-        clearDirsIfFull();
-        return this;
-    }
-
-    /***
-     * Adds an external junction in this direction. This allows, for example, for
-     * energy to pass through the face located in this direction. RelativeDirections
-     * (up, down, left, right, etc.) are as you'd expect them to be.
-     * 
-     * <p>
-     * Accepts a RelativeDirection object or a String shorthand:
-     * <pre>
-     * builder
-     * .interfaceSide(RelativeDirection.FRONT) // Adds the local forward direction only.
-     * .interfaceSide("A") // adds every direction (all sides).
-     * .interfaceSide("ALL") // also adds every direction.
-     * .interfaceSide("X") // Adds the local X axis (left and right).
-     * .interfaceSide("Y") // Adds the local Y axis (up and down).
-     * </pre>
-     * * Leave empty to completely disable energy interactions.
-     * @param dir RelativeDirection to add
-     * @return This NodeBankBuilder, modified to reflect this change.
-     */
-    public AnchorBankBuilder<T> interfaceSide(String s) {
-        newDirsIfNull();
-        if(s.toUpperCase().equals("ALL") || s.toUpperCase().equals("A")) {
-            dirsToAdd.clear();
-        }
-
-        if(s.toUpperCase().equals("X")) {
-            dirsToAdd.add(new RelativeDirection(Relative.LEFT));
-            dirsToAdd.add(new RelativeDirection(Relative.RIGHT));
-            clearDirsIfFull();
-            return this;
-        }
-        
-        if(s.toUpperCase().equals("Y")) {
-            dirsToAdd.add(new RelativeDirection(Relative.TOP));
-            dirsToAdd.add(new RelativeDirection(Relative.BOTTOM));
-            clearDirsIfFull();
-            return this;
-        } 
-        
-        if(s.toUpperCase().equals("Z")) {
-            dirsToAdd.add(new RelativeDirection(Relative.FRONT));
-            dirsToAdd.add(new RelativeDirection(Relative.BACK));
-            clearDirsIfFull();
-            return this;
-        } 
-
-        throw new IllegalArgumentException("NodeBank cannot be built" + 
-            " - Invalid directional argument: '" + s + "', expected 'ALL', 'X', 'Y', or 'Z'");
-    }
-
-    /***
-     * Creates a new HashSet if the HashSet is null.
-     */
-    private void newDirsIfNull() {
-        if(dirsToAdd == null) dirsToAdd = new ArrayList<RelativeDirection>();
-    }
-
-    /***
-     * Clears the HashSet if the length is > 6.
-     */
-    private void clearDirsIfFull() {
-        if(dirsToAdd.size() >= 6) dirsToAdd.clear();
-    }
-
-    /***
-     * Sets this NodeBankBuilder to have no interactions <p>
-     * When called, the resulting NodeBank will have its direct energy
-     * transfer capabilities disabled. It can still transfer energy
-     * through wires, but no energy can be added or subtracted directly
-     * through a face. <p>
-     * <strong>Note: This doesn't actually need to be called anymore.
-     * This behavior is default.</strong>
-     * @return This NodeBankBuilder, modified to reflect this change.
-     */
-    public AnchorBankBuilder<T> noEnergySides() {
-        dirsToAdd = null;
-        return this;
-    }
-
-    /***
      * Sets the amount of energy that this NodeBank will hold when it is populated.
      * This is normally 0. Changing this basically just means that the EnergyStorage
      * in this NodeBank will start with some free energy when the player places it.
@@ -231,6 +126,6 @@ public class AnchorBankBuilder<T extends BlockEntity> {
      */
     public AnchorPointBank<T> build() {
         doCompleteCheck();
-        return new AnchorPointBank<T>(target, nodesToAdd, dirsToAdd);
+        return new AnchorPointBank<T>(target, nodesToAdd);
     }
 }

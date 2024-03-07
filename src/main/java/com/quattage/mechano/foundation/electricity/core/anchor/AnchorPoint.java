@@ -7,6 +7,7 @@ import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.power.features.GID;
+import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
@@ -27,6 +28,8 @@ public class AnchorPoint {
     private float anchorSize;
     private float targetFactor = 0;
     private AABB hitbox = null;
+
+    private GridVertex participant = null;
 
     // TODO breakout
     private static final Color rawColor = new Color(205, 240, 231);
@@ -160,6 +163,18 @@ public class AnchorPoint {
                 closestDist = dist;
         }
         return closestDist;
+    }
+
+    public void nullifyParticipant() {
+        this.participant = null;
+    }
+
+    public void setParticipant(GridVertex participant) {
+        this.participant = participant;
+    }
+
+    public GridVertex getParticipant() {
+        return participant;
     }
 
     public boolean equals(Object other) {

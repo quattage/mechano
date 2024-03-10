@@ -2,7 +2,6 @@ package com.quattage.mechano.foundation.electricity.power.features;
 
 import java.util.LinkedList;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.LocalTransferGrid;
@@ -13,6 +12,10 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+/***
+ * A GridVertex is a logical representation of a connection point within a LocalTransferGrid.
+ * Where GridEdges represent the wires themselves, a GridVertex can be thought of as a connector.
+ */
 public class GridVertex {
 
     private boolean isMember = false;
@@ -21,8 +24,12 @@ public class GridVertex {
     private final WireAnchorBlockEntity host;
     private final BlockPos pos;
     private final int subIndex;
-    public LinkedList<GridVertex> links = new LinkedList<GridVertex>();
 
+    private float f = 0;
+    private float heuristic = 0;
+    private float cumulative = Float.MAX_VALUE;
+
+    public LinkedList<GridVertex> links = new LinkedList<GridVertex>();
 
     public GridVertex(WireAnchorBlockEntity wbe, LocalTransferGrid parent, BlockPos pos, int subIndex) {
         this.parent = parent;
@@ -66,12 +73,49 @@ public class GridVertex {
         else this.host = null;
     }
 
+    /**
+     * Calculate a heuristic value for A* guidance and store it in this GridVertex.
+     * @param other GridVertex to calculate heuristic with
+     * @return The Euclidian distance between this vertex and the given vertex
+     */
+    public float getAndStoreHeuristic(GridVertex other) {
+        BlockPos a = this.getPos();
+        BlockPos b = other.getPos();
+        this.heuristic = (float)Math.sqrt(Math.pow(a.getX() - b.getX(), 2f) + Math.pow(a.getY() - b.getY(), 2f) + Math.pow(a.getZ() - b.getZ(), 2f));
+        this.f = cumulative + heuristic;
+        return this.heuristic;
+    }
+
+    /**
+     * Calculate a heuristic value for A* guidance and store it in this GridVertex
+     * using the pre-computed heuristic value found within a pre-existing edge.
+     * @param other GridEdge to grab the heuristic from
+     * @return The Euclidian distance (length) of the given edge.
+     */
+    public float getAndStoreHeuristic(GridEdge edge) {
+        this.heuristic = edge.getDistance();
+        this.f = cumulative + heuristic;
+        return this.heuristic;
+    }
+
+    public float getCumulative() {
+        return this.cumulative;
+    }
+
+    public void setCumulative(float g) {
+        this.cumulative = g;
+    }
+
+    public float getF() {
+        return this.f;
+    }
+
     public void syncToHostBE() {
         if(host.isConnectedExternally() && !isEmpty()) {
 
             if(!isMember()) {
                 setIsMember(true);
-                parent.validatePathsFrom(this);
+                parent.pathfindFrom(this);
             }
 
             for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
@@ -84,7 +128,8 @@ public class GridVertex {
 
             if(isMember()) {
                 setIsMember(false);
-                // TODO clean paths
+                // TODO remove paths whose ends belong to this vertex, but paths
+                // that skip over this vertex are okay and can stay
             }
 
             for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
@@ -262,10 +307,6 @@ public class GridVertex {
     public boolean isMember() {
         return isMember;
         // return !isEmpty() && isMember;
-    }
-
-    public void sync(WireAnchorBlockEntity wbe) {
-        
     }
 
     public LocalTransferGrid getParent() {

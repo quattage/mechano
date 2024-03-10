@@ -22,6 +22,11 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
 
+/***
+ * The BatteryBank object stores a list of ForgeEnergyJunctions.
+ * It manages sending, receiving, and storing ForgeEnergy and handles
+ * its own capability implementation.
+ */
 public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEnergyStorable {
 
     

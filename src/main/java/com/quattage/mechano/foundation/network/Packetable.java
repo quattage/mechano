@@ -7,7 +7,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 /***
  * Represents the barebones requirements of a Packet class.
- * Also stores a set of Packets for registry.
  */
 public interface Packetable {
     /***

@@ -6,16 +6,16 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /***
- * A builder class that makes creating ElectricNode instances safer
+ * A fluent builder class that makes creating AnchorPoint instances safer
  * and somewhat more intuitive.
  */
-public class ElectricNodeBuilder {
+public class AnchorPointBuilder {
     
     private AnchorBankBuilder<?> activeBuilder;
     private AnchorTransform location;
     private int maxConnections = 1;
 
-    public ElectricNodeBuilder(AnchorBankBuilder<?> activeBuilder) {
+    public AnchorPointBuilder(AnchorBankBuilder<?> activeBuilder) {
         this.activeBuilder = activeBuilder;
     }
 
@@ -24,7 +24,7 @@ public class ElectricNodeBuilder {
      * This is based on pixel measurements (usually out of 16) rather than raw vectors. For example, 
      * if you wanted to place a node on the center of the block (which would normally be 0.5, 0.5, 0.5),
      * you would use:
-     * <pre> ElectricNodeBuilder.at(8, 8, 8); </pre>
+     * <pre> AnchorPointBuilder.at(8, 8, 8); </pre>
      * Since pixel measurements are used here, you can just copy/paste coordinates directly from Blockbench.
      * These pixel measurements are permitted to exist outside of a standard Minecraft block's collider. 
      * (Measurements greater than 16 are permitted) 
@@ -33,17 +33,17 @@ public class ElectricNodeBuilder {
      * @param z z Offset from center (as an int or double)
      * @return this ElectircNodeBuilder with the modified value.
      */
-    public ElectricNodeBuilder at(int x, int y, int z) {
+    public AnchorPointBuilder at(int x, int y, int z) {
         location = new AnchorTransform(x, y, z);
         return this;
     }
     
     /***
-     * The maximum amount of allowed connections to this ElectricNode.
+     * The maximum amount of allowed connections to this AnchorPoint.
      * @param max
      * @return
      */
-    public ElectricNodeBuilder connections(int maxConnections) {
+    public AnchorPointBuilder connections(int maxConnections) {
         this.maxConnections = maxConnections;
         return this;
     }

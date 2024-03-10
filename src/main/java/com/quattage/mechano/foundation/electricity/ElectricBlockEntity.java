@@ -18,6 +18,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 
+/***
+ * ElectricBlockEntity provides a basic ForgeEnergy implementation with no
+ * bells & whistles.
+*/
 public abstract class ElectricBlockEntity extends SmartBlockEntity {
 
     public final BatteryBank<ElectricBlockEntity> batteryBank;

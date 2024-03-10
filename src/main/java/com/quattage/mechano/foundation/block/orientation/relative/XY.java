@@ -1,5 +1,8 @@
 package com.quattage.mechano.foundation.block.orientation.relative;
 
+/***
+ * this is kinda dumb, mostly used for datagen but tbh i dont remember what this was for and i dont want to rewrite it
+ */
 public class XY {
 
     public int x;

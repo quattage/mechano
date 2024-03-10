@@ -2,13 +2,11 @@ package com.quattage.mechano.foundation.block.orientation;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
-import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.simibubi.create.foundation.data.SpecialBlockStateGen;
 import com.tterrag.registrate.providers.DataGenContext;
 import com.tterrag.registrate.providers.RegistrateBlockstateProvider;
 
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.generators.BlockModelBuilder;

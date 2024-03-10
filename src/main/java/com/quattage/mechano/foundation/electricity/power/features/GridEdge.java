@@ -5,6 +5,7 @@ import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
+import com.quattage.mechano.foundation.electricity.spool.WireSpool;
 import com.quattage.mechano.foundation.network.GridSyncPacketType;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -19,34 +20,54 @@ import net.minecraft.world.phys.Vec3;
  */
 public class GridEdge {
 
-    private final int wireType;
+    private final WireSpool wireType;
     private final GIDPair target;
+    private final float distance;
+    private boolean canTransfer = true;
 
     public GridEdge(GlobalTransferGrid parent, GIDPair edgeID, int wireType) {
-        if(parent == null) throw new NullPointerException("Error instantiating SystemEdge - Parent network is null!");
-        if(edgeID == null) throw new NullPointerException("Error instantiating SystemEdge - Target is null!");
+        if(parent == null) throw new NullPointerException("Error instantiating GridEdge - Parent network is null!");
+        if(edgeID == null) throw new NullPointerException("Error instantiating GridEdge - Target is null!");
         this.target = edgeID;
-        this.wireType = wireType;
+        this.wireType = WireSpool.ofType(wireType);
+
+        BlockPos a = target.getSideA().getPos();
+        BlockPos b = target.getSideB().getPos();
+        this.distance = (float)Math.sqrt(Math.pow(a.getX() - b.getX(), 2f) + Math.pow(a.getY() - b.getY(), 2f) + Math.pow(a.getZ() - b.getZ(), 2f));
+
         GridSyncDirector.informPlayerEdgeUpdate(GridSyncPacketType.ADD, this.toLightweight());
     }
 
     public GridEdge(GlobalTransferGrid parent, CompoundTag tag) {
-        if(parent == null) throw new NullPointerException("Error instantiating SystemEdge - Parent network is null!");
-        this.wireType = tag.getInt("t");
+        if(parent == null) throw new NullPointerException("Error instantiating GridEdge - Parent network is null!");
+        this.wireType = WireSpool.ofType(tag.getInt("t"));
         this.target = GIDPair.of(tag.getCompound("e"));
+
+        BlockPos a = target.getSideA().getPos();
+        BlockPos b = target.getSideB().getPos();
+        this.distance = (float)Math.sqrt(Math.pow(a.getX() - b.getX(), 2f) + Math.pow(a.getY() - b.getY(), 2f) + Math.pow(a.getZ() - b.getZ(), 2f));
     }
 
     public CompoundTag writeTo(CompoundTag nbt) {
-        
-        nbt.putInt("t", wireType);
+        nbt.putInt("t", wireType.getSpoolID());
         nbt.put("e", target.writeTo(new CompoundTag()));
-        Mechano.log("writing GridEdge: " + nbt);
         return nbt;
     }
 
+    public float getDistance() {
+        return this.distance;
+    }
+
+    public float calcScore() {
+        return 1.0f / (float)this.wireType.getRate();
+    }
+
+    public WireSpool getWireType() {
+        return wireType;
+    }
 
     /***
-     * Whether or not this SystemEdge should have a wire rendered for it
+     * Whether or not this GridEdge should have a wire rendered for it
      * @return
      */
     public boolean rendersWire() {
@@ -54,7 +75,7 @@ public class GridEdge {
     }
 
     /***
-     * Whether or not this SystemEdge is "real."
+     * Whether or not this GridEdge is "real."
      * "Real" wires are tied to a logical representation of some sort in the world - 
      * they can break if stretched too far, they'll drop wire when broken, they can be
      * placed by the player, etc. 
@@ -63,14 +84,14 @@ public class GridEdge {
      * of a non-real wire would be a wireless or cross-dimensional form of energy transport.
      * @return
     */
-    public boolean isReal() { return false; }
+    public boolean isReal() { return true; }
 
     /***
-     * Whether or not this SystemEdge can transfer any FE/t
+     * Whether or not this GridEdge can transfer any FE/t
      * @return True if this Edge's transfer rate is > 0
      */
     public boolean canTransfer() {
-        return getTransferRate() > 0;
+        return getTransferRate() > 0 && this.canTransfer;
     }
 
     /***
@@ -78,13 +99,13 @@ public class GridEdge {
      * @return Positive integer from 0 to int MAX_VALUE
      */
     public int getTransferRate() {
-        return 0;
+        return wireType.getRate();
     }
 
     /***
-     * Whether or not this SystemEdge interacts with the SystemNode at the given SVID
+     * Whether or not this GridEdge interacts with the SystemNode at the given SVID
      * @param target SVID to check
-     * @return True if one of this SystemEdge's ends are at this SVID
+     * @return True if one of this GridEdge's ends are at this SVID
      */
     public boolean connectsTo(GID target) {
         return target == getSideA() || target == getSideB(); 
@@ -105,10 +126,6 @@ public class GridEdge {
         return getSideA().getPos();
     }
 
-    public int getWireType() {
-        return wireType;
-    }
-
     /***
      * @return BlockPos position of this edge's B side
      */
@@ -121,7 +138,7 @@ public class GridEdge {
     }
 
     public GridClientEdge toLightweight() {
-        return new GridClientEdge(this.target, this.wireType);
+        return new GridClientEdge(this.target, this.wireType.getSpoolID());
     }
 
     public Pair<Vec3, Vec3> getPositions(Level world) {

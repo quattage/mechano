@@ -2,10 +2,12 @@ package com.quattage.mechano.foundation.electricity.power;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
@@ -13,6 +15,7 @@ import com.quattage.mechano.foundation.electricity.power.features.GID;
 import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
 import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
 import com.quattage.mechano.foundation.electricity.power.features.GridEdge;
+import com.quattage.mechano.foundation.electricity.power.features.GridPath;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.foundation.utility.Color;
@@ -27,21 +30,18 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
 
 /***
- * A LocalGrid stores GridVertices in an undirected graph, forming an adjacency matrix.
+ * A LocalGrid stores GridVertices in an undirected graph, forming an adjacency list.
  * Connections between these vertices are stored in two ways: <p>
- * - Each GridVertex contains a LinkedList of vertices that it is connected to <p>
- * - Each LocalGrid contains a HashMap of each edge for direct access. <p>
- * 
- * * I have been informed that the use of a LinkedList in the Y axis of this matrix actually 
- *  makes it an adjacency LIST.
- * * I will continue to refer to this as an adjacency matrix anyway, because it sounds cooler.
+ * - Each GridVertex contains a LinkedList of vertices that said vertex is connected to <p>
+ * - Each LocalTransferGrid contains a HashMap of each edge for direct access. <p>
  */
 public class LocalTransferGrid {
 
     private int memberCount = 0;
     
     private Map<GID, GridVertex> vertMatrix = new Object2ObjectOpenHashMap<>();
-    private Map<GIDPair, GridEdge> edgeMatrix = new Object2ObjectOpenHashMap<>();
+    private Map<GIDPair, GridEdge> edges = new Object2ObjectOpenHashMap<>();
+    private Map<GIDPair, GridPath> paths = new Object2ObjectOpenHashMap<>();
 
     private final GlobalTransferGrid parent;
 
@@ -62,7 +62,7 @@ public class LocalTransferGrid {
     public LocalTransferGrid(GlobalTransferGrid parent, ArrayList<GridVertex> cluster,  Map<GIDPair, GridEdge> edgeMatrix) {
         for(GridVertex vertex : cluster)
             vertMatrix.put(vertex.getGID(), vertex);
-        this.edgeMatrix = ((Object2ObjectOpenHashMap<GIDPair, GridEdge>)edgeMatrix).clone();
+        this.edges = ((Object2ObjectOpenHashMap<GIDPair, GridEdge>)edgeMatrix).clone();
         this.parent = parent;
     }
 
@@ -84,7 +84,7 @@ public class LocalTransferGrid {
         ListTag edgeList = in.getList("ed", Tag.TAG_COMPOUND);
         for(int x = 0; x < edgeList.size(); x++) {
             GridEdge edge = new GridEdge(this.parent, edgeList.getCompound(x));
-            edgeMatrix.put(edge.getID(), edge);
+            edges.put(edge.getID(), edge);
         }
     }
 
@@ -103,13 +103,13 @@ public class LocalTransferGrid {
 
     public ListTag writeEdges() {
         ListTag out = new ListTag();
-        for(GridEdge edge : edgeMatrix.values())
+        for(GridEdge edge : edges.values())
             out.add(edge.writeTo(new CompoundTag()));
         return out;
     }
 
     public void getEdgesWithin(SectionPos section) {
-        for(GridEdge edge : edgeMatrix.values()) {
+        for(GridEdge edge : edges.values()) {
             if(edge == null) continue;
             
         }
@@ -256,7 +256,7 @@ public class LocalTransferGrid {
             ArrayList<GridVertex> clusterVerts = new ArrayList<>();
             depthFirstPopulate(identifier, visited, clusterVerts);
             if(clusterVerts.size() > 1) {
-                LocalTransferGrid clusterResult = new LocalTransferGrid(parent, clusterVerts, edgeMatrix);
+                LocalTransferGrid clusterResult = new LocalTransferGrid(parent, clusterVerts, edges);
                 clusterResult.cleanEdges();
                 clusters.add(clusterResult);
             }
@@ -296,7 +296,7 @@ public class LocalTransferGrid {
     public LocalTransferGrid mergeWith(LocalTransferGrid other) {
         if(other.size() > 0) {
             vertMatrix.putAll(other.vertMatrix);
-            edgeMatrix.putAll(other.edgeMatrix);
+            edges.putAll(other.edges);
             onSystemUpdated();
         }
         return this;
@@ -342,7 +342,7 @@ public class LocalTransferGrid {
      * @return True if this LocalTransferGrid was modified as a result of this call.
      */
     public boolean cleanEdges() {
-        Iterator<Map.Entry<GIDPair, GridEdge>> matrixIterator = edgeMatrix.entrySet().iterator();
+        Iterator<Map.Entry<GIDPair, GridEdge>> matrixIterator = edges.entrySet().iterator();
         boolean changed = false;
         while(matrixIterator.hasNext()) {
             GridEdge currentEdge = matrixIterator.next().getValue();
@@ -372,7 +372,7 @@ public class LocalTransferGrid {
     }
 
     public Collection<GridEdge> allEdges() {
-        return edgeMatrix.values();
+        return edges.values();
     }
 
     public String toString() {
@@ -385,8 +385,8 @@ public class LocalTransferGrid {
         return output;
     }
 
-    public Map<GIDPair, GridEdge> getEdgeMatrix() {
-        return edgeMatrix;
+    public Map<GIDPair, GridEdge> getEdges() {
+        return edges;
     }
 
     public GlobalTransferGrid getParent() {
@@ -397,8 +397,75 @@ public class LocalTransferGrid {
         return memberCount;
     }
 
-    public void validatePathsFrom(GridVertex vert) {
-        Mechano.log("Validating paths from: " + vert);
+    public void pathfindFrom(GridVertex origin) {
+        for(GridVertex vert : vertMatrix.values()) {
+            if(vert.equals(origin)) continue;
+            if(!vert.isMember()) continue;
+
+            GridPath path = astar(origin, vert);
+            if(path != null) paths.put(path.getHashable(), path);
+        }
+    }
+
+    /***
+     * may god have mercy on my soul
+     * @param start
+     * @param goal
+     * @return
+     */
+    private GridPath astar(GridVertex start, GridVertex goal) {
+        PriorityQueue<GridVertex> openVerts = new PriorityQueue<>(Comparator.comparingDouble(vert -> vert.getF()));
+        HashSet<GridVertex> closedVerts = new HashSet<>();
+
+        Mechano.log("Starting A* from " + start.getGID() + " to " + goal.getGID());
+
+        int slowestRate = Integer.MAX_VALUE;
+
+        start.setCumulative(0);
+        start.getAndStoreHeuristic(goal);
+        openVerts.add(start);
+
+        while(!openVerts.isEmpty()) {
+            final GridVertex local = openVerts.poll();
+
+            if(local.equals(goal)) {
+                closedVerts.add(goal);
+                return new GridPath(closedVerts, slowestRate);
+            }
+
+            closedVerts.add(local);
+            for(GridVertex neighbor : local.connections()) {
+
+                if(closedVerts.contains(neighbor)) continue;
+                
+                GridEdge edge = lookupEdge(local, neighbor);
+                if(edge == null) throw new NullPointerException("Error initiating A* - edge from " + local + " to " + neighbor + " could not be found.");
+                int rate = edge.getTransferRate();
+                if(!(rate > 0 && edge.canTransfer())) continue;
+                if(rate < slowestRate) slowestRate = rate;
+
+                float tentative = edge.getDistance() + local.getCumulative();
+
+                if(tentative < neighbor.getCumulative()) {
+
+                    neighbor.setCumulative(tentative);
+                    neighbor.getAndStoreHeuristic(edge);
+                    
+                    closedVerts.add(neighbor);
+
+                    if(!openVerts.contains(neighbor))
+                        openVerts.add(neighbor);
+                }
+            }
+        }
+
+        Mechano.log("No path found");
+
+        return null;
+    }
+
+    public GridEdge lookupEdge(GridVertex a, GridVertex b) {
+        return edges.get(new GIDPair(a.getGID(), b.getGID()));
     }
 
     protected void addEdge(GridVertex first, GridVertex second, int wireType) {
@@ -406,11 +473,11 @@ public class LocalTransferGrid {
     }
 
     protected void addEdge(GID idA, GID idB, int wireType) {
-        edgeMatrix.put(new GIDPair(idA, idB), new GridEdge(parent, new GIDPair(idA, idB), wireType));
+        edges.put(new GIDPair(idA, idB), new GridEdge(parent, new GIDPair(idA, idB), wireType));
     }   
 
     protected boolean removeEdge(GIDPair key) {
-        return edgeMatrix.remove(key) != null;
+        return edges.remove(key) != null;
     }
 
     protected boolean removeEdge(GridVertex vertA, GridVertex vertB) {

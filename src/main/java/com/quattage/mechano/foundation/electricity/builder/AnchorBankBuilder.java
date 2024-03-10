@@ -14,6 +14,9 @@ import com.quattage.mechano.foundation.electricity.power.features.GID;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+/***
+ * A fluent builder for AnchorPointBanks
+ */
 public class AnchorBankBuilder<T extends BlockEntity> {
     
     private int capacity = 10000;
@@ -99,8 +102,8 @@ public class AnchorBankBuilder<T extends BlockEntity> {
      * Adds a new ElectricNode to this NodeBank
      * @return
      */
-    public ElectricNodeBuilder newNode() {
-        return new ElectricNodeBuilder(this);
+    public AnchorPointBuilder newNode() {
+        return new AnchorPointBuilder(this);
     }
 
     protected AnchorBankBuilder<T> add(AnchorTransform transform, int maxConnections) {

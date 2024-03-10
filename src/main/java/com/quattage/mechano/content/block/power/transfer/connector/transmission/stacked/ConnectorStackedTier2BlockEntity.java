@@ -20,11 +20,11 @@ public class ConnectorStackedTier2BlockEntity extends WireAnchorBlockEntity {
 	public void createWireNodeDefinition(AnchorBankBuilder<WireAnchorBlockEntity> builder) {
 		builder.newNode()
             .at(13, 20, 8) 
-            .connections(2)
+            .connections(8)
             .build()
         .newNode()
             .at(3, 20, 8) 
-            .connections(2)
+            .connections(8)
             .build();
 	}
     

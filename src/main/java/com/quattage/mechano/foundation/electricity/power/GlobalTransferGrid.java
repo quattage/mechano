@@ -9,6 +9,7 @@ import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.core.anchor.interaction.AnchorInteractType;
 import com.quattage.mechano.foundation.electricity.power.features.GID;
+import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.simibubi.create.foundation.utility.Pair;
 
@@ -85,11 +86,6 @@ public class GlobalTransferGrid {
         return in;
     }
 
-    public String getDimensionName() { 
-        if(world == null) return "NONE";
-        return world.dimension().location().toString();
-    }
-
     public ListTag writeAllSubsystems() {
         ListTag out = new ListTag();
         for(LocalTransferGrid sys : subgrids)
@@ -97,12 +93,13 @@ public class GlobalTransferGrid {
         return out;
     }
 
-    public int getSubsystemCount() {
-        return subgrids.size();
+    public String getDimensionName() { 
+        if(world == null) return "NONE";
+        return world.dimension().location().toString();
     }
 
-    public ArrayList<LocalTransferGrid> all() {
-        return subgrids;
+    public int getSubsystemCount() {
+        return subgrids.size();
     }
 
     /***
@@ -157,8 +154,6 @@ public class GlobalTransferGrid {
             }
         }
 
-
-
         return AnchorInteractType.LINK_ADDED;
     }
 
@@ -197,31 +192,6 @@ public class GlobalTransferGrid {
      */ 
     public void unlink(GID linkOne, GID linkTwo) {
         unlink(linkOne, linkTwo, true);
-    }
-
-    /***
-     * Removes the link between two provided GridVerticies.
-     * @param linkOne
-     * @param linkTwo
-     * @param clean (Defaults to true, reccomended) If true, the network
-     * will be declusterized at the end of the unlinking operationtt.
-     */
-    public void unlink(GridVertex vertOne, GridVertex vertTwo, boolean clean) {
-        vertOne.unlinkFrom(vertTwo);
-        vertTwo.unlinkFrom(vertOne);
-        if(clean)
-            declusterize();
-    }
-
-    /***
-     * Removes the link between two provided GridVerticies.
-     * @param linkOne
-     * @param linkTwo
-     * @param clean (Defaults to true, reccomended) If true, the network
-     * will be declusterized at the end of the unlinking operation.
-     */
-    public void unlink(GridVertex vertOne, GridVertex vertTwo) {
-        unlink(vertOne, vertTwo, true);
     }
 
     public void destroyVertex(GID id) {
@@ -283,15 +253,8 @@ public class GlobalTransferGrid {
     }
 
     public boolean doesLinkExist(GID idA, GID idB) {
-        if(idA == null || idB == null) return false;
-
-        GridVertex vA = getVertAt(idA);
-        if(vA == null) return false;
-
-        GridVertex vB = getVertAt(idB);
-        if(vB == null) return false;
-
-        if(vA.isLinkedTo(vB)) return true;
+        for(LocalTransferGrid subgrid : subgrids) 
+            if(subgrid.getEdges().containsKey(new GIDPair(idA, idB))) return true;
         return false;
     }
 
@@ -304,7 +267,7 @@ public class GlobalTransferGrid {
         if(anchorPair == null) return false;
         AnchorPoint anchor = anchorPair.getFirst();
         if(anchor == null) return false;
-        GridVertex vert = getVertAt(id);
+        GridVertex vert = anchorPair.getFirst().getParticipant();
         if(vert == null) return true;
         if(anchor.getMaxConnections() > vert.links.size()) return true;
         return false;
@@ -312,29 +275,6 @@ public class GlobalTransferGrid {
 
     public ArrayList<LocalTransferGrid> getSubgrids() {
         return subgrids;
-    }
-
-    public Iterator<LocalTransferGrid> getSubsystemsIterator() {
-        return subgrids.iterator();
-    }
-
-    /***
-     * Gets the node and the LocalTransferGrid it belongs to based on a provided GID
-     */
-    public Pair<LocalTransferGrid, GridVertex> getSystemAndNode(GID id) {
-        for(LocalTransferGrid sys : subgrids) {
-            GridVertex node = sys.getNode(id);
-            if(node != null) return Pair.of(sys, node);
-        }
-        return null;
-    }
-
-    public int getSubsystemID(LocalTransferGrid system) {
-        return subgrids.indexOf(system);
-    }
-
-    public boolean isIDValid(int id) {
-        return -1 < id && id < subgrids.size();
     }
 
     public boolean isClient() {

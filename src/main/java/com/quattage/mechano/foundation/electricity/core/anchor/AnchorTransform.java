@@ -7,6 +7,10 @@ import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
+/***
+ * An AnchorTransform converts a pixel measurement offset into a Vec3 absolute position
+ * relative to the parent block's rotation.
+ */
 public class AnchorTransform {
 
     private final Vector3f baseOffset;
@@ -207,11 +211,6 @@ public class AnchorTransform {
         }
     }
 
-    /***
-     * Inverts a float ranging from 0 to 1
-     * @param in
-     * @return
-     */
     private float iv(float in) {
         float out = in;
         if(in < 0.5f) out = in + ((0.5f - in) * 2.0f);

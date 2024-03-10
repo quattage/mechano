@@ -16,6 +16,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
+/***
+ * The AnchorPointBank represents a collection of AnchorPoints. It also provides helpers and relevent implementation
+ * for BlockEntity related actions.
+ */
 public class AnchorPointBank<T extends BlockEntity> {
     
     public final T target;

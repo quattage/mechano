@@ -12,6 +12,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
+/***
+ * Extending from WireAnchorBlockEntity grants the subclass access to 
+ * all of the wire-connector related features of Mechano, as well as a fluent
+ * builder to set up properties and settings for this WBE.
+ */
 public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
 
     private final AnchorPointBank<WireAnchorBlockEntity> anchors;

@@ -16,8 +16,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 /***
- * Basic behavoir template which exposes useful values to be accessed by subclasses. This is useful to render client-side
- * effects such as AABB highlights for wrenching or client-side particles.
+ * Basic behavoir template which exposes useful values to be accessed by subclasses. Behaviors are used to render client-side
+ * effects such as AABB highlights for wrenching or particle effects.
  */
 public abstract class ClientBehavior {
     protected Minecraft instance = null;

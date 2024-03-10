@@ -2,7 +2,7 @@ package com.quattage.mechano;
 
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderWrenchBehavior;
 import com.quattage.mechano.foundation.behavior.ClientBehavior;
-import com.quattage.mechano.foundation.behavior.TransferNetworkDebugBehavior;
+import com.quattage.mechano.foundation.behavior.GridEdgeDebugBehavior;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
@@ -15,7 +15,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 public class MechanoClientEvents {
 
     public static final DiagonalGirderWrenchBehavior GIRDER_BEHAVIOR = new DiagonalGirderWrenchBehavior("WrenchOnDiagonalGirder");
-    public static final TransferNetworkDebugBehavior WIRE_DEBUG_BEHAVIOR = new TransferNetworkDebugBehavior("DebugMenuElectricNode");
+    public static final GridEdgeDebugBehavior WIRE_DEBUG_BEHAVIOR = new GridEdgeDebugBehavior("DebugMenuElectricNode");
 
     @SubscribeEvent
 	public static void onTick(ClientTickEvent event) {

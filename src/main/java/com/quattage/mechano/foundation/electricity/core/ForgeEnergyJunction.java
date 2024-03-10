@@ -16,6 +16,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 
+/***
+ * A ForgeEnergyJunction is a "rule" describing
+ * what blocks, and in what direction, energy can be
+ * transmitted to/from a parent BlockEntity.
+ */
 public class ForgeEnergyJunction {
     
     private final RelativeDirection dir;

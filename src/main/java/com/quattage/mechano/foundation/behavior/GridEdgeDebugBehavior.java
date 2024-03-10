@@ -11,9 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Map;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
 import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
@@ -21,10 +19,12 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.CreateClient;
 import com.simibubi.create.foundation.utility.Pair;
 
+/***
+ * Represents GridClientEdges received by the GridClientCache as in-world lines and boxes for debugging puroses
+ */
+public class GridEdgeDebugBehavior extends ClientBehavior {
 
-public class TransferNetworkDebugBehavior extends ClientBehavior {
-
-    public TransferNetworkDebugBehavior(String name) {
+    public GridEdgeDebugBehavior(String name) {
         super(name);
     }
 
@@ -59,11 +59,6 @@ public class TransferNetworkDebugBehavior extends ClientBehavior {
                 }
             }
         }
-    }
-
-    public void drawNetworkStatistics(ClientLevel world, GridVertex node) {   
-        BlockEntity targetBE = world.getBlockEntity(node.getPos());
-        BlockPos drawLocation = node.getPos().relative(DirectionTransformer.getUp(targetBE.getBlockState()), 2);
     }
     
     @Override

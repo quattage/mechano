@@ -50,8 +50,6 @@ public class GridClientCache {
         = new Object2ObjectOpenHashMap<SectionPos, List<GridClientEdge>>();;
     private ClientLevel world;
 
-    private int attempts = 0;
-
     public GridClientCache() {
         Mechano.LOGGER.info("GridClientCache initialized");
 
@@ -176,9 +174,7 @@ public class GridClientCache {
             matrixStack.popPose();
         }
 
-        attempts++;
         if(failed) {
-            if(attempts > 49) throw new IllegalStateException("Error occured while rendering cache member - exceeded maximum attempts of 50 for chunk at " + pos);
             renderConnectionsInChunk(renderChunk, renderTypes, chunkBuffers, pos);
         }
     }

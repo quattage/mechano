@@ -9,7 +9,10 @@ import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 
 import net.minecraft.world.level.block.Block;
 
-public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
+/***
+ * A fluent builder for ForgeEnergyJunctions
+ */
+public class ForgeEnergyJunctionBuilder<T extends ElectricBlockEntity> {
 
     private boolean isInput = true;
     private boolean isOutput = true;
@@ -23,7 +26,7 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
 
     
 
-    public InteractionPolicyBuilder(BatteryBankBuilder<T> base, Relative relative) {
+    public ForgeEnergyJunctionBuilder(BatteryBankBuilder<T> base, Relative relative) {
         this.base = base;
         this.relative = relative;
     }
@@ -32,7 +35,7 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
      * This interaction will only send energy to adjacent blocks
      * @return This InteractionPolicyBuilder for chaining
      */
-    public InteractionPolicyBuilder<T> onlySendEnergy() {
+    public ForgeEnergyJunctionBuilder<T> onlySendEnergy() {
         isInput = false;
         isOutput = true;
         return this;
@@ -42,13 +45,13 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
      * This interaction will only recieve energy from adjacent blocks
      * @return This InteractionPolicyBuilder for chaining
      */
-    public InteractionPolicyBuilder<T> onlyRecieveEnergy() {
+    public ForgeEnergyJunctionBuilder<T> onlyRecieveEnergy() {
         isInput = true;
         isOutput = false;
         return this;
     }
 
-    public InteractionPolicyBuilder<T> sendsAndReceivesEnergy() {
+    public ForgeEnergyJunctionBuilder<T> sendsAndReceivesEnergy() {
         isInput = true;
         isOutput = true;
         return this;
@@ -81,12 +84,12 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
         return base;
     }
 
-    public class BlockListBuilder<R extends ElectricBlockEntity> {
+    private class BlockListBuilder<R extends ElectricBlockEntity> {
 
-        private final InteractionPolicyBuilder<R> base;
+        private final ForgeEnergyJunctionBuilder<R> base;
         private final ArrayList<Block> blocksList = new ArrayList<Block>();
     
-        public BlockListBuilder(InteractionPolicyBuilder<R> base) {
+        public BlockListBuilder(ForgeEnergyJunctionBuilder<R> base) {
             this.base = base;
         }
     
@@ -100,7 +103,7 @@ public class InteractionPolicyBuilder<T extends ElectricBlockEntity> {
             return this;
         }
     
-        public InteractionPolicyBuilder<R> confirm() {
+        public ForgeEnergyJunctionBuilder<R> confirm() {
             base.blocksList = blocksList.toArray(new Block[0]);
             return base;
         }

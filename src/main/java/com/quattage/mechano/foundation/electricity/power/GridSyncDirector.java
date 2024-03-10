@@ -38,11 +38,9 @@ public class GridSyncDirector {
         GlobalTransferGrid grid = GlobalTransferGrid.get(world);
         if(!(player instanceof ServerPlayer sPlayer)) return;
         for(LocalTransferGrid sys : grid.getSubgrids()) {
-            for(GridEdge edge : sys.getEdgeMatrix().values()) {
-                if(chunkPos.equals(new ChunkPos(edge.getSideA().getPos()))) {
-                    Mechano.log("edge found: " + edge.toLightweight());
+            for(GridEdge edge : sys.getEdges().values()) {
+                if(chunkPos.equals(new ChunkPos(edge.getSideA().getPos()))) 
                     MechanoPackets.sendToClient(new GridEdgeUpdateSyncS2CPacket(type, edge.toLightweight()), sPlayer);
-                }
             }
         }
     }

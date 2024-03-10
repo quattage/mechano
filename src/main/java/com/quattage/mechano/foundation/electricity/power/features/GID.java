@@ -3,6 +3,9 @@ package com.quattage.mechano.foundation.electricity.power.features;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
+/***
+ * GID is used as an identifier for hashing GridVertex objects
+ */
 public class GID {
 
     private final BlockPos pos;

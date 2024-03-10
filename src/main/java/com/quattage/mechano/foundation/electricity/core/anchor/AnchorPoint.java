@@ -19,6 +19,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+/***
+ * An AnchorPoint provides the framework required for placing GridVertices assigned to a particular BlockEntity
+ * within the world. All connection-related logic is handled by the GridVertex, but the physicality of the vertex
+ * itself is handled by the AnchorPoint.
+ */
 public class AnchorPoint {
     private final GID systemLocation;
     private final AnchorTransform transform;

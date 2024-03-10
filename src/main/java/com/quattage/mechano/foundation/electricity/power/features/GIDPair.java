@@ -4,6 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 
+/***
+ * GIDPair is used as an identifier for hashing GridEdge objects
+ */
 public class GIDPair {
     private final GID idA;
     private final GID idB;

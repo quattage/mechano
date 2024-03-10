@@ -7,6 +7,9 @@ import com.quattage.mechano.foundation.electricity.BatteryBank;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 
+/***
+ * A fluent builder for BatteryBanks
+ */
 public class BatteryBankBuilder<T extends ElectricBlockEntity> {
     
     private int capacity = 10000;
@@ -74,8 +77,8 @@ public class BatteryBankBuilder<T extends ElectricBlockEntity> {
         return this;
     }
 
-    public InteractionPolicyBuilder<T> newInteraction(Relative rel) {
-        return new InteractionPolicyBuilder<T>(this, rel);
+    public ForgeEnergyJunctionBuilder<T> newInteraction(Relative rel) {
+        return new ForgeEnergyJunctionBuilder<T>(this, rel);
     }
 
     public BatteryBankBuilder<T> interactsWithAllSides() {

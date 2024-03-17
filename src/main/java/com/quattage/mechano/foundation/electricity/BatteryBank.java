@@ -187,8 +187,10 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      * @return True if this BatteryBank is interacting with a ForgeEnergy BlockEntity
      */
     public boolean isConnectedExternally() {
-        for(ForgeEnergyJunction pol : interactions) 
+        for(ForgeEnergyJunction pol : interactions) {
+            Mechano.log("CHECKING DIR: " + pol.getDirection());
             if(pol.canSendOrReceive(target)) return true;
+        }
         return false;
     }
 

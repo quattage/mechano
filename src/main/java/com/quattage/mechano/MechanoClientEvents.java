@@ -29,6 +29,7 @@ public class MechanoClientEvents {
         }
     }
 
+    @SuppressWarnings({"resource" })
     protected static boolean isGameActive() {
 		return !(Minecraft.getInstance().level == null || Minecraft.getInstance().player == null);
 	}

@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ChunkBufferBuilderPack;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
@@ -35,7 +36,7 @@ public class StaticWireRenderMixin {
 
     @Inject(method = "compile", at = @At(value = "INVOKE", target = "Ljava/util/Set;iterator()Ljava/util/Iterator;", remap = false))
     public void injectEdgeRendering(float pX, float pY, float pZ, ChunkBufferBuilderPack buffer, CallbackInfoReturnable<?> cir) {
-        GridClientCache.INSTANCE.renderConnectionsInChunk(this$1, mechano$chunkRenderTypes, buffer, this$1.getOrigin());
+        GridClientCache.getInstance().renderConnectionsInChunk(this$1, mechano$chunkRenderTypes, buffer, this$1.getOrigin());
 		this.mechano$chunkRenderTypes = null;
 	}
 }

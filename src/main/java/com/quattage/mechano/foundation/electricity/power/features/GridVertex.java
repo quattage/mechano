@@ -1,7 +1,10 @@
 package com.quattage.mechano.foundation.electricity.power.features;
 
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedList;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.LocalTransferGrid;
@@ -10,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /***
@@ -20,6 +24,7 @@ public class GridVertex {
 
     private boolean isMember = false;
     
+    private static final VertexComparator comparator = new VertexComparator();
     private final LocalTransferGrid parent;
     private final WireAnchorBlockEntity host;
     private final BlockPos pos;
@@ -53,24 +58,105 @@ public class GridVertex {
         this.host = wbe;
     }
 
-    public GridVertex(LocalTransferGrid parent, CompoundTag in) {
+    public GridVertex(Level world, LocalTransferGrid parent, GID id) {
+        this.parent = parent;
+        this.pos = id.getPos();
+        this.subIndex = id.getSubIndex();
+        this.isMember = false;
+
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be instanceof WireAnchorBlockEntity wbe) this.host = wbe;
+        else this.host = null;
+    }
+
+    public GridVertex(LocalTransferGrid parent, CompoundTag in, Level world) {
         this.parent = parent;
         this.pos = new BlockPos(
             in.getInt("x"),
             in.getInt("y"),
             in.getInt("z"));
         this.subIndex = in.getInt("i");
-        
-
-        if(in.contains("m"))
-            this.isMember = in.getBoolean("m");
-        else 
-            this.isMember = false;
-
-        readLinks(in.getList("link", Tag.TAG_COMPOUND));
-        BlockEntity be = parent.getParent().getWorld().getBlockEntity(pos);
+        // TODO VERTS DONT SET THEIR MEMBER STATUS CORRECTLY IF THEY AREN'T FACING STRAIGHT UP
+        readLinks(in.getList("l", Tag.TAG_COMPOUND), world);
+        BlockEntity be = world.getBlockEntity(pos);
         if(be instanceof WireAnchorBlockEntity wbe) this.host = wbe;
         else this.host = null;
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        in.putInt("x", pos.getX());
+        in.putInt("y", pos.getY());
+        in.putInt("z", pos.getZ());
+        in.putInt("i", subIndex);
+        in.putBoolean("m", this.isMember);
+        in.put("l", writeLinks());
+        return in;
+    }
+
+    private ListTag writeLinks() {
+        ListTag out = new ListTag();
+        for(GridVertex v : links) {
+            CompoundTag coord = new CompoundTag();
+            coord.putInt("x", v.pos.getX());
+            coord.putInt("y", v.pos.getY());
+            coord.putInt("z", v.pos.getZ());
+            coord.putInt("i", v.subIndex);
+            out.add(coord);
+        }
+        return out;
+    }
+
+    public void readLinks(ListTag list, Level world) {
+        for(int x = 0; x < list.size(); x++) {
+            GID id = GID.of(list.getCompound(x));
+            GridVertex target = parent.getOrCreateOnLoad(world, id);
+            linkTo(target);
+        }
+    }
+
+    public static VertexComparator getComparator() {
+        return GridVertex.comparator;
+    }
+
+    public void syncToHostBE() {
+        if(host.isConnectedExternally() && !isEmpty()) {
+
+            Mechano.log("Member Flagged");
+
+            for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
+                if(anchor.getID().equals(this.getGID())) {
+                    anchor.setParticipant(this);
+                }
+            }
+
+            if(!isMember()) {
+                setIsMember(true);
+                // do other things? maybe?
+                // TODO this edge case may need special treatment, especially for moving contraptions
+            }
+
+        } else {
+
+            for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
+                if(anchor.getID().equals(this.getGID())) {
+                    anchor.nullifyParticipant();
+                }
+            }
+
+            if(isMember()) {
+                setIsMember(false);
+                parent.removePathsEndingIn(this);
+            }
+        }
+    }
+
+    public void syncOnLoad() {
+        if(isMember()) {
+            for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
+                if(anchor.getID().equals(this.getGID())) 
+                    anchor.setParticipant(this);
+            }
+        }
     }
 
     /**
@@ -82,7 +168,7 @@ public class GridVertex {
         BlockPos a = this.getPos();
         BlockPos b = other.getPos();
         this.heuristic = (float)Math.sqrt(Math.pow(a.getX() - b.getX(), 2f) + Math.pow(a.getY() - b.getY(), 2f) + Math.pow(a.getZ() - b.getZ(), 2f));
-        this.f = cumulative + heuristic;
+        this.f = this.cumulative + this.heuristic;
         return this.heuristic;
     }
 
@@ -106,66 +192,15 @@ public class GridVertex {
         this.cumulative = g;
     }
 
+    public GridVertex reset() {
+        this.f = 0;
+        this.heuristic = 0;
+        this.cumulative = Float.MAX_VALUE;
+        return this;
+    }
+
     public float getF() {
         return this.f;
-    }
-
-    public void syncToHostBE() {
-        if(host.isConnectedExternally() && !isEmpty()) {
-
-            if(!isMember()) {
-                setIsMember(true);
-                parent.pathfindFrom(this);
-            }
-
-            for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
-                if(anchor.getID().equals(this.getGID())) {
-                    anchor.setParticipant(this);
-                }
-            }
-
-        } else {
-
-            if(isMember()) {
-                setIsMember(false);
-                // TODO remove paths whose ends belong to this vertex, but paths
-                // that skip over this vertex are okay and can stay
-            }
-
-            for(AnchorPoint anchor : host.getAnchorBank().getAll()) {
-                if(anchor.getID().equals(this.getGID())) {
-                    anchor.nullifyParticipant();
-                }
-            }
-        }
-    }
-
-    public CompoundTag writeTo(CompoundTag in) {
-        in.putInt("x", pos.getX());
-        in.putInt("y", pos.getY());
-        in.putInt("z", pos.getZ());
-        in.putInt("i", subIndex);
-        in.putBoolean("m", isMember);
-        in.put("link", writeLinks());
-        return in;
-    }
-
-    private ListTag writeLinks() {
-        ListTag out = new ListTag();
-        for(GridVertex v : links) {
-            CompoundTag coord = new CompoundTag();
-            coord.putInt("x", v.pos.getX());
-            coord.putInt("y", v.pos.getY());
-            coord.putInt("z", v.pos.getZ());
-            coord.putInt("i", v.subIndex);
-            out.add(coord);
-        }
-        return out;
-    }
-
-    private void readLinks(ListTag list) {
-        for(int x = 0; x < list.size(); x++)
-            linkTo(new GridVertex(parent, list.getCompound(x)));
     }
 
     /**
@@ -187,7 +222,7 @@ public class GridVertex {
     /***
      * Generate a unique identifier for this GridVertex for storing in datasets
      * that require hashing.
-     * @return a new SVID object representing this GridVertex's BlockPos and SubIndex summarized as a String.
+     * @return a new GID object representing this GridVertex's BlockPos and SubIndex summarized as a String.
      */
     public GID getGID() {
         return new GID(this);
@@ -204,25 +239,7 @@ public class GridVertex {
      */
     public boolean linkTo(GridVertex other) {
         if(links.contains(other)) return false;
-
         return links.add(other);
-    }
-
-    /***
-     * Adds a link from the given GridVertex to this GridVertex.
-     * Does not perform any sanity checks to ensure that there is a valid
-     * GridVertex at the givem BlockPos.
-     * @param other Other GridVertex within the given LocalTransferGrid to add to this GridVertex
-     * @return True if the list of connections within this GridVertex was changed.
-     */
-    public boolean linkTo(BlockPos otherPos, int subIndex) {
-
-        BlockEntity be = parent.getParent().getWorld().getBlockEntity(otherPos);
-        if(!(be instanceof WireAnchorBlockEntity wbe)) return false;
-
-        GridVertex newLink = new GridVertex(wbe, this.parent, otherPos, subIndex);
-        if(links.contains(newLink)) return false;
-        return links.add(newLink);
     }
 
     /***
@@ -232,22 +249,6 @@ public class GridVertex {
      */
     public boolean unlinkFrom(GridVertex other) {
         return links.remove(other);
-    }
-
-    /***
-     * Removes the link from this GridVertex to all nodes at the given SVID safely
-     * @param other
-     * @returns True if this GridVertex was modified as a result of this call
-     */
-    public boolean unlinkEdgesToThisVertex(GID other, LocalTransferGrid sys) {
-        boolean changed = false;
-        for(GridVertex vert : links) {
-            if(vert.getPos().equals(other.getPos())) {
-                if(this.unlinkFrom(vert)) 
-                    changed = true;
-            }
-        }
-        return changed;
     }
 
     /***
@@ -274,7 +275,7 @@ public class GridVertex {
 
     public String toString() {
         String sig = isMember ? "MEMBER" : "actor";
-        String content = "at " + posAsString() + ", ->";
+        String content = "at " + posAsString() + ", ---> ";
         for(int x = 0; x < links.size(); x++) {
             GridVertex connectionTarget = links.get(x);
             content += connectionTarget.posAsString();
@@ -292,10 +293,8 @@ public class GridVertex {
      * Equivalence comparison by position. Does not compare links to other nodes.
      */
     public boolean equals(Object other) {
-        if(other instanceof GridVertex sl) {
-            if(this.subIndex == -1 || sl.getSubIndex() == -1)
-                return this.pos.equals(sl.pos);
-            return this.pos.equals(sl.pos) && this.subIndex == sl.subIndex;
+        if(other instanceof GridVertex ov) {
+            return new GID(this.pos, this.subIndex).equals(new GID(ov.pos, ov.subIndex));
         }
         return false;
     }
@@ -319,5 +318,25 @@ public class GridVertex {
 
     public void setIsMember() {
         setIsMember(true);
+    }
+
+    private static class VertexComparator implements Comparator<GridVertex> {
+
+        @Override
+        public int compare(GridVertex vertA, GridVertex vertB) {
+            if(vertA.getF() > vertB.getF()) return 1;
+            if(vertA.getF() < vertB.getF()) return -1;
+
+            BlockPos a = vertA.getPos();
+            BlockPos b = vertB.getPos();
+            if(a.getX() > b.getX()) return 1;
+            if(a.getX() < b.getX()) return -1;
+            if(a.getY() > b.getY()) return 1;
+            if(a.getY() < b.getY()) return -1;
+            if(a.getZ() > b.getZ()) return 1;
+            if(a.getZ() < b.getZ()) return -1;
+            return 0;
+        }
+        
     }
 }

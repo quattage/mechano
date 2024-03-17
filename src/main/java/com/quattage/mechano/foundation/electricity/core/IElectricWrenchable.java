@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.electricity.core;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;

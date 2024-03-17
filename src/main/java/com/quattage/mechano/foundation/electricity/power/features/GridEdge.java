@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.electricity.power.features;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;

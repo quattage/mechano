@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.network;
 
 import java.util.function.Supplier;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
 import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
 import com.quattage.mechano.foundation.electricity.power.features.GridClientEdge;
@@ -31,22 +32,25 @@ public class GridEdgeUpdateSyncS2CPacket implements Packetable {
         edge.toBytes(buf);
     }
 
+    
     @Override
+    @SuppressWarnings("resource")
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             switch(type) {
                 case ADD:
-                    GridClientCache.INSTANCE.addToQueue(edge);
+                    GridClientCache.getInstance().addToQueue(edge);
                     break;
                 case REMOVE:
-                    GridClientCache.INSTANCE.removeFromQueue(edge);
+                    GridClientCache.getInstance().removeFromQueue(edge);
+                    Mechano.log("RECEIVED PACKET AND REMOVED EDGE");
                     break;
                 default:
                     break;
             }
-            GridSyncDirector.markChunksChanged(Minecraft.getInstance().level, edge);
         });
+        GridSyncDirector.markChunksChanged(Minecraft.getInstance().level, edge);
         return true;
     }
 }

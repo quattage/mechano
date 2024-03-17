@@ -1,10 +1,6 @@
 package com.quattage.mechano.foundation.electricity.power.features;
 
-import java.util.List;
-import java.util.Set;
-
-import com.quattage.mechano.Mechano;
-import com.simibubi.create.foundation.utility.Pair;
+import java.util.Collection;
 
 public class GridPath {
 
@@ -16,19 +12,45 @@ public class GridPath {
         this.rate = rate;
     }
 
-    public GridPath(Set<GridVertex> members, int rate) {
+    public GridPath(Collection<GridVertex> members, int rate) {
         this.rate = rate;
         this.path = members.toArray(GridVertex[]::new);
     }
 
+    public int getRate() {
+        return rate;
+    }
 
+    public GridVertex getStart() {
+        return path[0];
+    }
 
-    public Pair<GridVertex, GridVertex> getEnds() {
-        return Pair.of(path[0], path[path.length - 1]);
+    public GridVertex getEnd() {
+        return path[path.length - 1];
     }
 
     public GIDPair getHashable() {
         return new GIDPair(path[0].getGID(), path[path.length - 1].getGID());
+    }
+
+    public GridVertex[] members() {
+        return path;
+    }
+
+    public int size() { 
+        return path.length;
+    }
+
+    public String toString() {
+        if(path.length == 0) return "Path {EMPTY}";
+        String out = "Path {";
+
+        int x = 0;
+        for(GridVertex vert : path) {
+            x++;
+            out += vert.posAsString() + (x < path.length ? " -> " : "}");
+        }
+        return out;
     }
 
     public boolean isEnd(GridVertex other) {

@@ -6,7 +6,6 @@ import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
-import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.helper.BlockMath;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;

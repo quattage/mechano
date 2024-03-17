@@ -33,6 +33,10 @@ public class GID {
         return new GID(new BlockPos(nbt.getInt("x"), nbt.getInt("y"), nbt.getInt("z")), nbt.getInt("i"));
     }
 
+    public static GID ofLinked(CompoundTag nbt) {
+        return of(nbt);
+    }
+
     public static boolean isValidTag(CompoundTag nbt) {
         if(nbt.isEmpty()) return false;
         return nbt.contains("x") && nbt.contains("y") && nbt.contains("z") && nbt.contains("i");

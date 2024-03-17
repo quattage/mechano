@@ -1,8 +1,6 @@
 package com.quattage.mechano.foundation.electricity.power;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
@@ -13,7 +11,6 @@ import com.quattage.mechano.foundation.electricity.power.features.GIDPair;
 import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.simibubi.create.foundation.utility.Pair;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -40,17 +37,17 @@ public class GlobalTransferGrid {
         this.world = world;
     }
 
-    public static GlobalTransferGrid get(Level world) {
+    public static GlobalTransferGrid of(Level world) {
         if(world == null) throw new NullPointerException("Error getting GlobalTransferGrid - World is null!");
         if(world.isClientSide()) return null;
-        LazyOptional<GlobalTransferGrid> network = world.getCapability(Mechano.NETWORK_CAPABILITY);
+        LazyOptional<GlobalTransferGrid> network = world.getCapability(Mechano.SERVER_GRID_CAPABILITY);
         if(!network.isPresent()) throw new RuntimeException("Error getting GlobalTransferGrid from " + world.dimension().location() 
             + " - No handler registered for this dimension!");
         GlobalTransferGrid realNetwork = network.orElseThrow(RuntimeException::new);
         return realNetwork;
     }
 
-    public void readFrom(CompoundTag in) {
+    protected void readFrom(CompoundTag in) {
         CompoundTag net = in.getCompound(getDimensionName());
 
         ListTag subs = net.getList("all", Tag.TAG_COMPOUND);
@@ -61,35 +58,21 @@ public class GlobalTransferGrid {
             CompoundTag subsystem = subs.getCompound(x);
             Mechano.LOGGER.info("Adding a LocalTransferGrid containing the following data:\n" + subsystem);
             LocalTransferGrid sysToAdd = new LocalTransferGrid(this, subsystem, world);
-
-            // systems may be missing members due to failed registration so deal with them conditionally
-            if(sysToAdd.size() != subsystem.getList("nt", Tag.TAG_COMPOUND).size()) {
-                subgrids.add(sysToAdd);
-                hadFailures = true; 
-            }
-            else if(sysToAdd.isEmpty()) 
-                hadFailures = true; 
-            else 
-                subgrids.add(sysToAdd); 
-        }
-        if(hadFailures) {
-            Mechano.LOGGER.warn("GlobalTransferGrid [" + getDimensionName() + "] detected that 1 or more LocalTransferGrids failed to register or registered with missing components! " + 
-                "Affected blocks' coordinates should be above this message. If you've recently experienced a crash, this might be why.");
-            declusterize();
+            if(!sysToAdd.isEmpty()) subgrids.add(sysToAdd); 
         }
     }
 
-    public CompoundTag writeTo(CompoundTag in) {
+    protected CompoundTag writeTo(CompoundTag in) {
         CompoundTag out = new CompoundTag();
         out.put("all", writeAllSubsystems());
         in.put(getDimensionName(), out);
         return in;
     }
 
-    public ListTag writeAllSubsystems() {
+    private ListTag writeAllSubsystems() {
         ListTag out = new ListTag();
-        for(LocalTransferGrid sys : subgrids)
-            out.add(sys.writeTo(new CompoundTag()));
+        for(LocalTransferGrid grid : subgrids)
+            out.add(grid.writeTo(new CompoundTag()));
         return out;
     }
 
@@ -124,9 +107,12 @@ public class GlobalTransferGrid {
         if(sysA == null && sysB == null) {
             LocalTransferGrid newSystem = new LocalTransferGrid(this);
 
-            newSystem.addVert(new GridVertex(wbeA, newSystem, idA.getPos(), idA.getSubIndex()));
-            newSystem.addVert(new GridVertex(wbeB, newSystem, idB.getPos(), idB.getSubIndex()));
-            newSystem.linkVerts(idA, idB, wireType);
+            GridVertex vA = new GridVertex(wbeA, newSystem, idA.getPos(), idA.getSubIndex());
+            GridVertex vB = new GridVertex(wbeB, newSystem, idB.getPos(), idB.getSubIndex());
+
+            newSystem.addVert(vA);
+            newSystem.addVert(vB);
+            newSystem.linkVerts(vA, vB, wireType);
             subgrids.add(newSystem);
 
         } else if(sysA != null && sysB == null) {
@@ -141,16 +127,17 @@ public class GlobalTransferGrid {
             sysA.getSecond().linkVerts(idA, idB, wireType);
 
         } else if(sysA.getFirst() != sysB.getFirst()) {
-            // comparison here ensures that grids get merged down rather than up
-            // so we don't end up with null grids in the array
+
             if(sysA.getFirst() < sysB.getFirst()) {
-                sysA.getSecond().mergeWith(sysB.getSecond());
+                LocalTransferGrid merged = sysA.getSecond().mergeWith(sysB.getSecond());
                 subgrids.remove(sysB.getSecond());
-                sysA.getSecond().linkVerts(idA, idB, wireType);
+                merged.linkVerts(idA, idB, wireType, false);
+                merged.findAllPaths(); 
             } else {
-                sysB.getSecond().mergeWith(sysA.getSecond());
+                LocalTransferGrid merged = sysB.getSecond().mergeWith(sysA.getSecond());
                 subgrids.remove(sysA.getSecond());
-                sysB.getSecond().linkVerts(idA, idB, wireType);
+                merged.linkVerts(idA, idB, wireType, false);
+                merged.findAllPaths();
             }
         }
 
@@ -182,27 +169,16 @@ public class GlobalTransferGrid {
 
     }
 
-    /***
-     * Removes the link between vertices at two given positions as long as they exist.
-     * @throws NullPointerException if no node could be found at either given BlockPos
-     * @param linkOne
-     * @param linkTwo
-     * @param clean (Defaults to true, reccomended) If true, the network
-     * will be declusterized at the end of the unlinking operation.
-     */ 
-    public void unlink(GID linkOne, GID linkTwo) {
-        unlink(linkOne, linkTwo, true);
+    public void findAndDestroyVertex(GID id, boolean shouldClean) {
+        boolean modified = false;
+        for(LocalTransferGrid grid : subgrids)
+            modified = grid.removeVert(id);
+        if(modified && shouldClean) declusterize();
     }
 
-    public void destroyVertex(GID id) {
-        boolean modified = false;
-        for(LocalTransferGrid sys : subgrids) {
-            if(sys.contains(id)) 
-                modified = sys.destroyVertsAt(id);
-        }
-        if(modified) {
-            declusterize();
-        }
+    public void destroyVertex(GridVertex vert, boolean shouldClean) {
+        if(vert.getParent().removeVert(vert.getGID()) && shouldClean)
+            declusterize(vert.getParent());
     }
 
     /***
@@ -210,51 +186,51 @@ public class GlobalTransferGrid {
      * Called automatically whenever a node is removed
      * from the system.
      */
-    public void declusterize() {
+    private void declusterize() {
         ArrayList<LocalTransferGrid> evaluated = new ArrayList<>();
-        for(LocalTransferGrid sys : subgrids) 
-            evaluated.addAll(sys.trySplit());
+        for(LocalTransferGrid grid : subgrids) 
+            evaluated.addAll(grid.trySplit());
         subgrids.clear();
         subgrids.addAll(evaluated);
     } 
 
+    /***
+     * Splits a given LocalTransferGrid by its discontinuities.
+     * @param grid Grid to split
+     */
+    private void declusterize(LocalTransferGrid grid) {
+        ArrayList<LocalTransferGrid> evaluated = new ArrayList<>();
+        evaluated.addAll(grid.trySplit());
+        subgrids.clear();
+        subgrids.addAll(evaluated);
+    }
 
-    // TODO Directed DFS for better optimization 
-    // store the index of the parent LocalTransferGrid in each vertex so we don't have to loop over all systems
-    // also, if the vertex has only one connection, it won't generate any discontinuities when broken, no DFS requried.
-
+    /***
+     * Gets the LocalTransferGrid that contains the given id, or null of one does not exist.
+     * @param id
+     * @return A pair, where the first member is the index of the LocalTransferGrid,
+     * and the second member is the LocalTransferGrid itself
+     */
     public Pair<Integer, LocalTransferGrid> getSystemContaining(GID id) {
         int x = 0;
-        for(LocalTransferGrid sys : subgrids) {
-            if(sys.getNode(id) != null) return Pair.of(x, sys);
+        for(LocalTransferGrid grid : subgrids) {
+            if(grid.getVert(id) != null) return Pair.of(x, grid);
             x++;
         }
         return null;
     }
 
-    /***
-     * Gets the GridVertex at this GID.
-     * @param pos
-     * @return Returns the GridVertex at this GID, or null if none exists.
-     */
-    public GridVertex getVertAt(GID id) {
-        for(LocalTransferGrid sys : subgrids) {
-            GridVertex node = sys.getNode(id);
+    private GridVertex getVertAt(GID id) {
+        for(LocalTransferGrid grid : subgrids) {
+            GridVertex node = grid.getVert(id);
             if(node != null) return node;
         }
         return null;
     }
 
-    public List<GridVertex> getAllVertsAt(BlockPos pos) {
-        ArrayList<GridVertex> out = new ArrayList<GridVertex>();
-        for(LocalTransferGrid sys : subgrids)
-            out.addAll(sys.getAllNodesAt(pos));
-        return out;
-    }
-
-    public boolean doesLinkExist(GID idA, GID idB) {
+    private boolean doesLinkExist(GID idA, GID idB) {
         for(LocalTransferGrid subgrid : subgrids) 
-            if(subgrid.getEdges().containsKey(new GIDPair(idA, idB))) return true;
+            if(subgrid.getEdgeMap().containsKey(new GIDPair(idA, idB))) return true;
         return false;
     }
 

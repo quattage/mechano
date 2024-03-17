@@ -154,11 +154,11 @@ public abstract class WireSpool extends Item {
 
         if(world.isClientSide()) {
             AnchorPoint present = WireAnchorBlockRenderer.getSelectedAnchor();
-            network = GlobalTransferGrid.get(world);
+            network = GlobalTransferGrid.of(world);
             MechanoPackets.sendToServer(new AnchorSelectC2SPacket(present));
             return InteractionResultHolder.pass(handStack);
         } else {
-            network = GlobalTransferGrid.get(world);
+            network = GlobalTransferGrid.of(world);
         }
 
         if(selectedAnchorID == null)

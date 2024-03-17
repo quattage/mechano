@@ -1,7 +1,6 @@
 package com.quattage.mechano.foundation.electricity.power.features;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 
 /***

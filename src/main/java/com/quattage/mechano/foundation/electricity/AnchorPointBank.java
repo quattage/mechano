@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.core.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.power.GlobalTransferGrid;
+import com.quattage.mechano.foundation.electricity.power.features.GridVertex;
 import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -144,6 +145,13 @@ public class AnchorPointBank<T extends BlockEntity> {
         return false;
     }
 
+    public void sync() {
+        for(AnchorPoint anchor : anchorPoints) {
+            GridVertex vert = anchor.getParticipant();
+            if(vert != null) vert.syncToHostBE();
+        }
+    }
+
     public int hashCode() {
         return target.getBlockPos().hashCode();
     }
@@ -159,12 +167,16 @@ public class AnchorPointBank<T extends BlockEntity> {
 
     public void destroy() {
         if(net == null) return;
-        for(AnchorPoint anchor : anchorPoints) 
-            net.destroyVertex(anchor.getID());
+        for(AnchorPoint anchor : anchorPoints) {
+            GridVertex part = anchor.getParticipant();
+            if(part == null) net.findAndDestroyVertex(anchor.getID(), true);
+            else net.destroyVertex(part, true);
+            anchor.nullifyParticipant();
+        }
     }
 
     public void initialize(Level world) {
-        this.net = GlobalTransferGrid.get(world);
+        this.net = GlobalTransferGrid.of(world);
     }
 
     public Level getWorld() {

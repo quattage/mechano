@@ -60,10 +60,10 @@ public abstract class WireAnchorBlockEntity extends ElectricBlockEntity {
         super.reOrient();
     }
 
-    public void refreshInGrid() {
+    public void syncInGrid() {
         if(batteryBank == null) return;
         if(anchors.isEmpty()) return;
-        // TODO impl
+        anchors.sync();
     }
 
     @Override

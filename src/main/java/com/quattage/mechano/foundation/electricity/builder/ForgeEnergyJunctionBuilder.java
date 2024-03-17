@@ -84,6 +84,7 @@ public class ForgeEnergyJunctionBuilder<T extends ElectricBlockEntity> {
         return base;
     }
 
+    @SuppressWarnings("unused")
     private class BlockListBuilder<R extends ElectricBlockEntity> {
 
         private final ForgeEnergyJunctionBuilder<R> base;

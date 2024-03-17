@@ -172,10 +172,12 @@ public class AnchorPoint {
 
     public void nullifyParticipant() {
         this.participant = null;
+        Mechano.log("PARTICIPANT NULLIFIED");
     }
 
     public void setParticipant(GridVertex participant) {
         this.participant = participant;
+        Mechano.log("PARTICIPANT: " + this.participant);
     }
 
     public GridVertex getParticipant() {

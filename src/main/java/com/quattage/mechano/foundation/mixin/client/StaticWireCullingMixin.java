@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.SectionPos;
@@ -27,7 +28,7 @@ public class StaticWireCullingMixin {
     @Inject(method = "applyFrustum(Lnet/minecraft/client/renderer/culling/Frustum;)V", at = {@At(value = "TAIL")}, cancellable = true)
     private void applyFrustum(Frustum pFrustum, CallbackInfo info) {
         for(LevelRenderer.RenderChunkInfo levelrenderer$renderchunkinfo : (this.renderChunkStorage.get()).renderChunks) {
-            if(GridClientCache.INSTANCE.containsPos(SectionPos.of(levelrenderer$renderchunkinfo.chunk.getOrigin())))
+            if(GridClientCache.getInstance().containsPos(SectionPos.of(levelrenderer$renderchunkinfo.chunk.getOrigin())))
                 renderChunksInFrustum.add(levelrenderer$renderchunkinfo);
         }
     }

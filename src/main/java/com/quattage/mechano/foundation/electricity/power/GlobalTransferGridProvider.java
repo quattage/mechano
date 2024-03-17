@@ -21,10 +21,10 @@ public class GlobalTransferGridProvider implements ICapabilityProvider, INBTSeri
     private final LazyOptional<GlobalTransferGrid> networkOptional;
 
     public GlobalTransferGridProvider(Level world) {
-        networkInstance = new GlobalTransferGrid(world);
+        this.networkInstance = new GlobalTransferGrid(world);
         LazyOptional<GlobalTransferGrid> networkConstant = LazyOptional.of(() -> Objects.requireNonNull(networkInstance));
         networkConstant.resolve();
-        networkOptional = networkConstant;
+        this.networkOptional = networkConstant;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class GlobalTransferGridProvider implements ICapabilityProvider, INBTSeri
 
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> capability, @Nullable Direction side) {
-        return Mechano.NETWORK_CAPABILITY.orEmpty(capability, networkOptional);
+        return Mechano.SERVER_GRID_CAPABILITY.orEmpty(capability, networkOptional);
     }
     
 }

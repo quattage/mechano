@@ -1,7 +1,5 @@
 package com.quattage.mechano.foundation.electricity.core;
 
-import java.util.ArrayList;
-
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;

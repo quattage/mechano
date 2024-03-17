@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.network;
 
 import java.util.function.Supplier;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.power.GridClientCache;
 import com.quattage.mechano.foundation.electricity.power.GridSyncDirector;
 
@@ -31,13 +32,15 @@ public class GridVertDestroySyncS2CPacket implements Packetable {
         buf.writeBlockPos(pos);
     }
 
+    @SuppressWarnings("resource")
     @Override
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             switch(type) {
                 case REMOVE:
-                    GridClientCache.INSTANCE.clearAllOccurancesOf(pos);
+                    GridClientCache.getInstance().clearAllOccurancesOf(pos);
+                    Mechano.log("RECIEVED PACKET AND DESTROYED VERTEX");
                     break;
                 default:
                     break;

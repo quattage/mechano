@@ -4,6 +4,7 @@ import com.quattage.mechano.foundation.network.Packetable;
 import com.quattage.mechano.foundation.network.AnchorSelectC2SPacket;
 import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
 import com.quattage.mechano.foundation.network.GridEdgeUpdateSyncS2CPacket;
+import com.quattage.mechano.foundation.network.GridPathUpdateS2CPacket;
 import com.quattage.mechano.foundation.network.GridVertDestroySyncS2CPacket;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -49,6 +50,12 @@ public class MechanoPackets {
             .decoder(GridEdgeUpdateSyncS2CPacket::new)
             .encoder(GridEdgeUpdateSyncS2CPacket::toBytes)
             .consumerMainThread(GridEdgeUpdateSyncS2CPacket::handle)
+            .add();
+
+        NETWORK.messageBuilder(GridPathUpdateS2CPacket.class, nextId(), NetworkDirection.PLAY_TO_CLIENT)
+            .decoder(GridPathUpdateS2CPacket::new)
+            .encoder(GridPathUpdateS2CPacket::toBytes)
+            .consumerMainThread(GridPathUpdateS2CPacket::handle)
             .add();
 
         //C2S

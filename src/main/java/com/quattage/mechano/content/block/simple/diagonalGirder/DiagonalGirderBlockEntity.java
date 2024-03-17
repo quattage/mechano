@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.jozufozu.flywheel.core.PartialModel;
-import com.quattage.mechano.MechanoModels;
+import com.quattage.mechano.MechanoPartials;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.DiagonalGirderModelType;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -51,40 +51,40 @@ public class DiagonalGirderBlockEntity extends SmartBlockEntity {
         DiagonalGirderModelType modelType = getBlockState().getValue(DiagonalGirderBlock.MODEL_TYPE);
         switch(modelType) {
             case LONG_DOUBLE:
-                if(showDownFlat) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_DOWN_FLAT);
-                if(showDownVert) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_DOWN_VERT);
-                if(showUpFlat) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_UP_FLAT);
-                if(showUpVert) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_UP_VERT);
+                if(showDownFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_DOWN_FLAT);
+                if(showDownVert) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_DOWN_VERT);
+                if(showUpFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_UP_FLAT);
+                if(showUpVert) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_UP_VERT);
                 break;
             case LONG_END_DOWN:
-                if(showDownFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
-                if(showDownVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
-                if(showUpFlat) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_UP_FLAT);
-                if(showUpVert) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_UP_VERT);
+                if(showDownFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
+                if(showDownVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
+                if(showUpFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_UP_FLAT);
+                if(showUpVert) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_UP_VERT);
                 break;
             case LONG_END_UP:
-                if(showDownFlat) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_DOWN_FLAT);
-                if(showDownVert) out.add(MechanoModels.DIAGONAL_GIRDER_LONG_DOWN_VERT);
-                if(showUpFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_FLAT);
-                if(showUpVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_VERT);
+                if(showDownFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_DOWN_FLAT);
+                if(showDownVert) out.add(MechanoPartials.DIAGONAL_GIRDER_LONG_DOWN_VERT);
+                if(showUpFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_FLAT);
+                if(showUpVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_VERT);
                 break;
             case MIDDLE:
                 break;
             case SHORT_DOUBLE:
-                if(showDownFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
-                if(showDownVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
-                if(showUpFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_FLAT);
-                if(showUpVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_VERT);
+                if(showDownFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
+                if(showDownVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
+                if(showUpFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_FLAT);
+                if(showUpVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_VERT);
                 break;
             case SHORT_END_DOWN:
                 if(showDownFlat) showDownFlat = false;
                 if(showDownVert) showDownVert = false;
-                if(showUpFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_FLAT);
-                if(showUpVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_UP_VERT);
+                if(showUpFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_FLAT);
+                if(showUpVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_UP_VERT);
                 break;
             case SHORT_END_UP:
-                if(showDownFlat) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
-                if(showDownVert) out.add(MechanoModels.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
+                if(showDownFlat) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_FLAT);
+                if(showDownVert) out.add(MechanoPartials.DIAGONAL_GIRDER_SHORT_DOWN_VERT);
                 if(showUpFlat) showUpFlat = false;
                 if(showUpVert) showUpVert = false;
                 break;

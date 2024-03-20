@@ -57,9 +57,8 @@ public class LocalEnergyStorage<T extends DirectionalEnergyStorable> extends Ene
     
     /***
      * Manually sets the internally stored energy of this EnergyStorage
-    * @param energy Energy to add
-    * @param updatee Optional (defaults to false) - Whether or not to call
-    onEnergyUpdated() if stored energy is changed.
+     * @param energy Energy to add
+     * onEnergyUpdated() if stored energy is changed.
      */
     public int setEnergyStored(int energy) {
         return setEnergyStored(energy, false);
@@ -96,7 +95,7 @@ public class LocalEnergyStorage<T extends DirectionalEnergyStorable> extends Ene
 
     @Override
     public int receiveEnergy(int maxReceive, boolean simulate) {
-        int energyReceived = super.receiveEnergy(maxExtract, simulate);
+        int energyReceived = super.receiveEnergy(maxReceive, simulate);
         if(energyReceived != 0) onEnergyUpdated();
         return energyReceived;
     }
@@ -113,7 +112,7 @@ public class LocalEnergyStorage<T extends DirectionalEnergyStorable> extends Ene
      * @param world World to operate within.
      * @param pos Position of the parent block.
      * @param side Side of the block to output energy towards.
-     * @param max Maximum fe/t to extract.
+     * @param maxExtract Maximum fe/t to extract.
      */
     public void outputTo(Level world, BlockPos pos, Direction side, int maxExtract) {
         BlockEntity sendParent = world.getBlockEntity(pos.relative(side));

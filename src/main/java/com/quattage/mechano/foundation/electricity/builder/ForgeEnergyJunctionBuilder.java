@@ -1,18 +1,18 @@
 package com.quattage.mechano.foundation.electricity.builder;
 
-import java.util.ArrayList;
-
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.block.orientation.relative.RelativeDirection;
-import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.electricity.IBatteryBank;
 import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
-
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import net.minecraft.world.level.block.Block;
+
+import java.util.ArrayList;
 
 /***
  * A fluent builder for ForgeEnergyJunctions
  */
-public class ForgeEnergyJunctionBuilder<T extends ElectricBlockEntity> {
+public class ForgeEnergyJunctionBuilder<T extends SmartBlockEntity & IBatteryBank> {
 
     private boolean isInput = true;
     private boolean isOutput = true;
@@ -85,7 +85,7 @@ public class ForgeEnergyJunctionBuilder<T extends ElectricBlockEntity> {
     }
 
     @SuppressWarnings("unused")
-    private class BlockListBuilder<R extends ElectricBlockEntity> {
+    private class BlockListBuilder<R extends SmartBlockEntity & IBatteryBank> {
 
         private final ForgeEnergyJunctionBuilder<R> base;
         private final ArrayList<Block> blocksList = new ArrayList<Block>();

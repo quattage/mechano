@@ -1,20 +1,18 @@
 package com.quattage.mechano.content.block.power.alternator.stator;
 
-import java.util.Locale;
-
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
+import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlockEntity;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.foundation.block.IBE;
-import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
+import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.placement.PlacementOffset;
 import com.simibubi.create.foundation.utility.VoxelShaper;
-
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -23,6 +21,8 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -34,8 +34,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.ItemStack;
+
+import java.util.Locale;
 
 public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockEntity> {
 
@@ -75,6 +75,32 @@ public class StatorBlock extends SimpleOrientedBlock implements IBE<StatorBlockE
             .setValue(MODEL_TYPE, StatorBlockModelType.BASE)
         );
     }
+
+    @Override
+    public void onPlace(BlockState pState, Level pLevel, BlockPos pPos, BlockState pOldState, boolean pIsMoving) {
+        updateRotorsAround(pLevel, pPos, pState);
+        super.onPlace(pState, pLevel, pPos, pOldState, pIsMoving);
+    }
+
+
+
+    @Override
+    public void onRemove(BlockState pState, Level pLevel, BlockPos pPos, BlockState pNewState, boolean pIsMoving) {
+        super.onRemove(pState, pLevel, pPos, pNewState, pIsMoving);
+        updateRotorsAround(pLevel, pPos,pState);
+    }
+
+    private void updateRotorsAround(Level pLevel, BlockPos pPos, BlockState pState) {
+        if(pLevel == null) return;
+        Axis axis = pState.getValue(ORIENTATION).getOrient();
+        BlockPos corner1 = pPos.offset(axis == Axis.Z ? 1 : 0,1, axis == Axis.X ? 1 : 0);
+        BlockPos corner2 =  pPos.offset(axis == Axis.Z ? -1 : 0,-1, axis == Axis.X ? -1 : 0);
+        BlockPos.betweenClosed(corner1, corner2).forEach(pos -> {
+            if (pLevel.getBlockEntity(pos) instanceof RotorBlockEntity rotor)
+                rotor.updateStatorCount();
+        });
+    }
+
 
     @Override
     public Class<StatorBlockEntity> getBlockEntityClass() {

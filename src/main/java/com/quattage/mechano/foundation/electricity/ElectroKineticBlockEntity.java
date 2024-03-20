@@ -1,8 +1,7 @@
 package com.quattage.mechano.foundation.electricity;
 
 import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
-import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
-import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -13,20 +12,19 @@ import net.minecraftforge.common.util.LazyOptional;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
-import java.util.List;
 
 /***
  * ElectricBlockEntity provides a basic ForgeEnergy implementation with no
  * bells & whistles.
 */
-public abstract class ElectricBlockEntity extends SmartBlockEntity implements IBatteryBank{
+public abstract class ElectroKineticBlockEntity extends KineticBlockEntity implements IBatteryBank{
 
-    public final BatteryBank<ElectricBlockEntity> batteryBank;
+    public final BatteryBank<ElectroKineticBlockEntity> batteryBank;
 
-    public ElectricBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    public ElectroKineticBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
 
-        BatteryBankBuilder<ElectricBlockEntity> init = new BatteryBankBuilder<ElectricBlockEntity>().at(this);
+        BatteryBankBuilder<ElectroKineticBlockEntity> init = new BatteryBankBuilder<ElectroKineticBlockEntity>().at(this);
         createBatteryBankDefinition(init);
         batteryBank = init.build();
     }
@@ -39,7 +37,14 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity implements IB
         batteryBank.reflectStateChange(this.getBlockState());
     }
     
+    /***
+     * Called whenever the Energy stored within this ElectricBlockEntity is
+     * changed in any way. Sending block updates and packets is handled by 
+     * the BatteryBank object, so you won't have to do that here.
+     */
+    public void onEnergyUpdated() {
 
+    }
 
     public boolean isConnectedExternally() {
         return batteryBank.isConnectedExternally();
@@ -51,9 +56,6 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity implements IB
         batteryBank.load();
         super.onLoad();
     }
-
-    @Override
-    public void addBehaviours(List<BlockEntityBehaviour> behaviours) {}
 
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {

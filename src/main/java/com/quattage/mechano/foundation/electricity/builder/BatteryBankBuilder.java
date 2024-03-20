@@ -1,16 +1,17 @@
 package com.quattage.mechano.foundation.electricity.builder;
 
-import java.util.ArrayList;
-
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
 import com.quattage.mechano.foundation.electricity.BatteryBank;
-import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.electricity.IBatteryBank;
 import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+
+import java.util.ArrayList;
 
 /***
  * A fluent builder for BatteryBanks
  */
-public class BatteryBankBuilder<T extends ElectricBlockEntity> {
+public class BatteryBankBuilder<T extends SmartBlockEntity & IBatteryBank> {
     
     private int capacity = 10000;
     private int maxInput = 5000;
@@ -69,7 +70,7 @@ public class BatteryBankBuilder<T extends ElectricBlockEntity> {
     /***
      * Sets the maximum output electricity (in FE per tick)
      * of this BatteryBank. <p> Defaults to 5000.
-     * @param maxInput FE per Tick
+     * @param maxOutput FE per Tick
      * @return This BatteryBankBuilder, modified to reflect this change.
      */
     public BatteryBankBuilder<T> maxOutput(int maxOutput) {

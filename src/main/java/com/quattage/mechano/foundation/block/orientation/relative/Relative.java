@@ -1,11 +1,10 @@
 package com.quattage.mechano.foundation.block.orientation.relative;
 
-import org.joml.Quaternionf;
 import com.simibubi.create.foundation.utility.Color;
-
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.nbt.CompoundTag;
+import org.joml.Quaternionf;
 
 /***
  * Represents a direction in the local space. Modifiable by global directions
@@ -77,5 +76,16 @@ public enum Relative {
 
     public String toString() {
         return name();
+    }
+
+    public static Relative from(Direction dir) {
+        return switch (dir) {
+            case NORTH -> FRONT;
+            case SOUTH -> BACK;
+            case WEST -> LEFT;
+            case EAST -> RIGHT;
+            case UP -> TOP;
+            case DOWN -> BOTTOM;
+        };
     }
 }

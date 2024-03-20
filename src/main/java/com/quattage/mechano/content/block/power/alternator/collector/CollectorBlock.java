@@ -1,14 +1,11 @@
 package com.quattage.mechano.content.block.power.alternator.collector;
 
-import java.util.Locale;
-
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.utility.VoxelShaper;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -27,6 +24,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+
+import java.util.Locale;
 
 public class CollectorBlock extends DirectionalKineticBlock implements IBE<CollectorBlockEntity> {
 
@@ -74,6 +73,13 @@ public class CollectorBlock extends DirectionalKineticBlock implements IBE<Colle
 				.isShiftKeyDown() ? nearestLookingDirection.getOpposite() : nearestLookingDirection);
 		}
 		return defaultBlockState().setValue(FACING, preferred);
+    }
+
+
+    @Override
+    public void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
+        withBlockEntityDo(level, pos, CollectorBlockEntity::updateRotorAndStatorCount);
+        super.onNeighborChange(state, level, pos, neighbor);
     }
 
     @Override

@@ -1,9 +1,5 @@
 package com.quattage.mechano.foundation.electricity;
 
-import javax.annotation.Nullable;
-
-import org.jetbrains.annotations.NotNull;
-
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -12,7 +8,7 @@ import com.quattage.mechano.foundation.electricity.core.DirectionalEnergyStorabl
 import com.quattage.mechano.foundation.electricity.core.ForgeEnergyJunction;
 import com.quattage.mechano.foundation.electricity.core.LocalEnergyStorage;
 import com.quattage.mechano.foundation.network.EnergySyncS2CPacket;
-
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
@@ -21,13 +17,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nullable;
 
 /***
  * The BatteryBank object stores a list of ForgeEnergyJunctions.
  * It manages sending, receiving, and storing ForgeEnergy and handles
  * its own capability implementation.
  */
-public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEnergyStorable {
+public class BatteryBank<T extends SmartBlockEntity & IBatteryBank> implements DirectionalEnergyStorable {
 
     
     @Nullable
@@ -91,6 +90,13 @@ public class BatteryBank<T extends ElectricBlockEntity> implements DirectionalEn
      */
     public boolean isEmpty() {
         return battery.getEnergyStored() > 0;
+    }
+
+    /***
+     * @return True if this BatteryBank is at max energy
+     */
+    public boolean isFull() {
+        return battery.getEnergyStored() >= battery.getMaxEnergyStored();
     }
 
     /***

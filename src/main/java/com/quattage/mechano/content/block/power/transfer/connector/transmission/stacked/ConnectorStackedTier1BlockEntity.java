@@ -1,11 +1,10 @@
 package com.quattage.mechano.content.block.power.transfer.connector.transmission.stacked;
 
-import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
 import com.quattage.mechano.foundation.block.orientation.relative.Relative;
-import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.electricity.IBatteryBank;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.builder.AnchorBankBuilder;
-
+import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -25,12 +24,12 @@ public class ConnectorStackedTier1BlockEntity extends WireAnchorBlockEntity {
 	}
 
 	@Override
-	public void createBatteryBankDefinition(BatteryBankBuilder<ElectricBlockEntity> builder) {
+	public void createBatteryBankDefinition(BatteryBankBuilder<? extends IBatteryBank> builder) {
 		builder
-            .capacity(5000)
-            .maxIO(2500)
-            .newInteraction(Relative.BOTTOM)
-            .buildInteraction()
-        .build();
+				.capacity(5000)
+				.maxIO(2500)
+				.newInteraction(Relative.BOTTOM)
+				.buildInteraction()
+				.build();
 	}
 }

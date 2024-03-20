@@ -13,6 +13,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
@@ -126,6 +127,15 @@ public class BatteryBank<T extends SmartBlockEntity & IBatteryBank> implements D
     @Override
     public void setEnergyStored(int energy) {
         battery.setEnergyStored(energy);
+    }
+
+    public int getEnergyStored() {
+        return battery.getEnergyStored();
+    }
+
+    public int sendEnergyTo(BlockEntity other) {
+        return 1;
+        // other.getCapability
     }
 
     @Override

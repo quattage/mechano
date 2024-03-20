@@ -112,19 +112,19 @@ public class GlobalTransferGrid {
 
             newSystem.addVert(vA);
             newSystem.addVert(vB);
-            newSystem.linkVerts(vA, vB, wireType);
+            newSystem.linkVerts(vA, vB, wireType, true);
             subgrids.add(newSystem);
 
         } else if(sysA != null && sysB == null) {
             sysA.getSecond().addVert(new GridVertex(wbeB, sysA.getSecond(), idB.getPos(), idB.getSubIndex()));
-            sysA.getSecond().linkVerts(idA, idB, wireType);
+            sysA.getSecond().linkVerts(idA, idB, wireType, true);
 
         } else if(sysA == null && sysB != null) {
             sysB.getSecond().addVert(new GridVertex(wbeA, sysB.getSecond(), idA.getPos(), idA.getSubIndex()));
-            sysB.getSecond().linkVerts(idA, idB, wireType);
+            sysB.getSecond().linkVerts(idA, idB, wireType, true);
 
         } else if(sysA.getFirst() == sysB.getFirst()) {
-            sysA.getSecond().linkVerts(idA, idB, wireType);
+            sysA.getSecond().linkVerts(idA, idB, wireType, true);
 
         } else if(sysA.getFirst() != sysB.getFirst()) {
 
@@ -243,8 +243,11 @@ public class GlobalTransferGrid {
         if(anchorPair == null) return false;
         AnchorPoint anchor = anchorPair.getFirst();
         if(anchor == null) return false;
+
         GridVertex vert = anchorPair.getFirst().getParticipant();
+        if(vert == null) vert = getVertAt(id);
         if(vert == null) return true;
+        
         if(anchor.getMaxConnections() > vert.links.size()) return true;
         return false;
     }

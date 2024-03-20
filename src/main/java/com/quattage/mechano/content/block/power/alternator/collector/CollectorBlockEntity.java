@@ -98,6 +98,6 @@ public class CollectorBlockEntity extends ElectroKineticBlockEntity {
     @Override
     public void createBatteryBankDefinition(BatteryBankBuilder<? extends IBatteryBank> builder) {
         builder.capacity(10000)
-                .newInteraction(Relative.from(getBlockState().getValue(CollectorBlock.FACING))).onlySendEnergy().buildInteraction();
+                .newInteraction(Relative.BOTTOM).onlySendEnergy().buildInteraction();
     }
 }

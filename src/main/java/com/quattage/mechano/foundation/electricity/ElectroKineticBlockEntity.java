@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.electricity;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.builder.BatteryBankBuilder;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -52,8 +53,8 @@ public abstract class ElectroKineticBlockEntity extends KineticBlockEntity imple
 
     @Override
     public void onLoad() {
-        reOrient();
         batteryBank.load();
+        reOrient();
         super.onLoad();
     }
 

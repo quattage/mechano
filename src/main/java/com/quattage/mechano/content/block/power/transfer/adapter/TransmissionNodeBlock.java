@@ -4,8 +4,8 @@ package com.quattage.mechano.content.block.power.transfer.adapter;
 import java.util.Locale;
 
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
+import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
-import com.quattage.mechano.foundation.helper.BlockMath;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -79,7 +79,7 @@ public class TransmissionNodeBlock extends SimpleOrientedBlock {
         Direction localForward = context.getHorizontalDirection().getOpposite();
 
         if(localUp.getAxis() == localForward.getAxis())
-            localForward = BlockMath.getClickedQuadrant(context, localUp, false);
+            localForward = CombinedOrientation.getClickedQuadrant(context, localUp, false);
 
         return this.defaultBlockState().setValue(ORIENTATION, SimpleOrientation.combine(localUp, localForward.getAxis()));
     }

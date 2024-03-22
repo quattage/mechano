@@ -15,4 +15,6 @@ public interface IBatteryBank {
 
     }
 
+    abstract void reOrient();
+
 }

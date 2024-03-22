@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.electricity.core;
 
 import com.quattage.mechano.foundation.electricity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.electricity.IBatteryBank;
 import com.quattage.mechano.foundation.electricity.WireAnchorBlockEntity;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
@@ -23,16 +24,9 @@ public interface IElectricWrenchable extends IWrenchable {
         if(be == null) return;
         if(be.getBlockState() == oldState) return;
 
-        if(be instanceof WireAnchorBlockEntity wbe) {
-            wbe.reOrient();
+        if(be instanceof IBatteryBank bb) {
+            bb.reOrient();
             playRotateSound(context.getLevel(), context.getClickedPos());
-            return;
-        }
-
-        if(be instanceof ElectricBlockEntity ebe) {
-            ebe.reOrient();
-            playRotateSound(context.getLevel(), context.getClickedPos());
-            return;
         }
     }
 }

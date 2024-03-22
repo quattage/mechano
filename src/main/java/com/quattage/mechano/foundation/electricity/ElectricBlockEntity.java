@@ -38,19 +38,6 @@ public abstract class ElectricBlockEntity extends SmartBlockEntity implements IB
     public void reOrient() {
         batteryBank.reflectStateChange(this.getBlockState());
     }
-    
-<<<<<<< Updated upstream
-
-=======
-    /***
-     * Called whenever the Energy stored within this ElectricBlockEntity is
-     * changed in any way. Sending block updates and packets is handled by 
-     * the BatteryBank object, so you won't have to do that here.
-     */
-    public void onEnergyUpdated() {
-        
-    }
->>>>>>> Stashed changes
 
     public boolean isConnectedExternally() {
         return batteryBank.isConnectedExternally();

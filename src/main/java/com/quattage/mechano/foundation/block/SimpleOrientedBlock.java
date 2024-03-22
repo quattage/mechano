@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation.block;
 
+import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
-import com.quattage.mechano.foundation.helper.BlockMath;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
@@ -50,7 +50,7 @@ public class SimpleOrientedBlock extends Block implements IWrenchable {
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction orientation = context.getClickedFace();
-        Direction followingDir = BlockMath.getClickedQuadrant(context, orientation, true);
+        Direction followingDir = CombinedOrientation.getClickedQuadrant(context, orientation, true);
 
         if(orientation == followingDir) followingDir = context.getHorizontalDirection();
         if(orientation.getAxis() == followingDir.getAxis()) followingDir = followingDir.getClockWise();

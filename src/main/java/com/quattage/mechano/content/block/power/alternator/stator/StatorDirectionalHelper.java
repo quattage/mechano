@@ -1,9 +1,13 @@
 package com.quattage.mechano.content.block.power.alternator.stator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import javax.annotation.Nullable;
 
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
 import com.quattage.mechano.MechanoBlocks;
@@ -11,7 +15,8 @@ import com.quattage.mechano.content.block.power.alternator.rotor.RotorBlock;
 import com.quattage.mechano.content.block.power.alternator.stator.StatorBlock.StatorBlockModelType;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
-import com.quattage.mechano.foundation.helper.BlockMath;
+import com.quattage.mechano.foundation.helper.shape.CircleGetter;
+import com.quattage.mechano.foundation.helper.shape.ShapeGetter;
 import com.simibubi.create.content.equipment.extendoGrip.ExtendoGripItem;
 import com.simibubi.create.foundation.placement.IPlacementHelper;
 import com.simibubi.create.foundation.placement.PlacementOffset;
@@ -100,37 +105,54 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 		Axis revolvingAxis = rotorState.getValue(RotorBlock.AXIS);
 		Direction initialDir = statorState.getValue(SimpleOrientedBlock.ORIENTATION).getCardinal();
 		Axis initialAxis = statorState.getValue(SimpleOrientedBlock.ORIENTATION).getOrient();
-		List<BlockPos> circleMembers = getCircle(statorPos, rotorPos, initialDir, revolvingAxis); 
-		//if(initialDir.getAxis() == Axis.X) reverseList(circleMembers);
-		if(initialDir.getAxis() == Axis.Y && initialAxis == Axis.Z) reverseList(circleMembers);    // i have no idea why this works but it does
-		int count = 0;
-		for(BlockPos pos : circleMembers) {
-			count++;
-			BlockState targetState = world.getBlockState(pos);
-			if(targetState.getBlock() == MechanoBlocks.STATOR.get()) continue;
-			if(!targetState.canBeReplaced()) return PlacementOffset.fail();
+
+
+		ShapeGetter circle = 
+			ShapeGetter.ofShape(CircleGetter.class)
+				.at(world, rotorPos)
+				.withRadius(1)
+				.onAxis(revolvingAxis).build();
+		
+		circle.compute();
+		
+		for(Map.Entry<BlockPos, BlockState> entry : circle.getBlocks()) {
 			
-			if(count % 2 == 0) {  // every other placement is a corner
-				straightPos = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
-				Direction dirToMiddle = BlockMath.getDirectionTo(world, pos, rotorPos, revolvingAxis);
-				return PlacementOffset.success(pos, s -> s.setValue(StatorBlock.ORIENTATION, SimpleOrientation.combine(dirToMiddle, revolvingAxis)));
-			}
-			else {
-				if(count == 1) {
-					straightPos = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
-					return PlacementOffset.success(pos, s -> s.setValue(StatorBlock.ORIENTATION, SimpleOrientation.combine(initialDir, revolvingAxis)).setValue(StatorBlock.MODEL_TYPE, StatorBlockModelType.CORNER));
-				}
-				else {
-					if(straightPos != null) {
-						Direction dirToMiddle = BlockMath.getDirectionTo(world, straightPos, rotorPos, revolvingAxis);
-						if(dirToMiddle != null) 
-							return PlacementOffset.success(pos, s -> s.setValue(StatorBlock.ORIENTATION, SimpleOrientation.combine(dirToMiddle, revolvingAxis)).setValue(StatorBlock.MODEL_TYPE, StatorBlockModelType.CORNER));
-					}
-				}
-			}  
 		}
+
 		return PlacementOffset.fail();
 	}
+
+    public Direction getDirectionTo(Level world, BlockPos fromPos, BlockPos centerPos, Axis rotationAxis) {
+        Direction[] directions = getAxisDirections(rotationAxis);
+		for (Direction dir : directions) {
+            BlockPos checkPos = fromPos.relative(dir);
+            if(checkPos.equals(centerPos)) return dir;
+        }
+        return null;
+    }
+
+    public static Direction[] getAxisDirections(Axis axis) {
+        Direction[] out = new Direction[4];
+        if(axis == Axis.Z) {
+            out[0] = Direction.DOWN;
+            out[1] = Direction.EAST;
+            out[2] = Direction.UP;
+            out[3] = Direction.WEST;
+        } else if(axis == Axis.Y) {
+            out[0] = Direction.NORTH;
+            out[1] = Direction.EAST;
+            out[2] = Direction.SOUTH;
+            out[3] = Direction.WEST;
+        } else {
+            out[0] = Direction.DOWN;
+            out[1] = Direction.NORTH;
+            out[2] = Direction.UP;
+            out[3] = Direction.SOUTH;
+        }
+        return out;
+    }
+
+
 
 	private PlacementOffset getFreehandOffset(Player player, Level world, BlockState strictState, BlockPos pos, BlockHitResult ray) {
 		List<Direction> directions = getDirectionsForPlacement(strictState, pos, ray);
@@ -156,41 +178,6 @@ public class StatorDirectionalHelper<T extends Comparable<T>> implements IPlacem
 
 	private List<Direction> getDirectionsForPlacement(BlockState state, BlockPos pos, BlockHitResult ray) {
 		return IPlacementHelper.orderedByDistance(pos, ray.getLocation(), state.getValue(SimpleOrientedBlock.ORIENTATION).getOrient());
-	}
-
-	private List<BlockPos> getCircle(BlockPos start, BlockPos center, Direction initialDir, Axis revolvingAxis) {
-		List<BlockPos> output = new ArrayList<BlockPos>();
-
-		double angleInc = 2 * Math.PI / 8;
-		double currentAngle = 0;
-
-		if(initialDir == Direction.NORTH || initialDir == Direction.WEST) currentAngle = Math.toRadians(45);
-		else if(initialDir == Direction.SOUTH || initialDir == Direction.EAST) currentAngle = Math.toRadians(225); 
-		else if(initialDir == Direction.UP) currentAngle = Math.toRadians(-45);
-		else if(initialDir == Direction.DOWN) currentAngle = Math.toRadians(135); 
-
-		double radius = BlockMath.getSimpleDistance(start, center);
-
-		int count = 0;
-		while(count < 7) {
-			Vec3 possy = new Vec3(0, 0, 0);
-			if(revolvingAxis == Axis.X) { 
-				double z = center.getZ() + radius * Math.cos(currentAngle);
-				double y = center.getY() + radius * Math.sin(currentAngle);
-
-				possy = new Vec3(start.getX(), y, z);
-			}
-			else if(revolvingAxis == Axis.Z) {
-				double x = center.getX() + radius * Math.cos(currentAngle);
-				double y = center.getY() + radius * Math.sin(currentAngle);
-				possy = new Vec3(x, y, start.getZ());
-			}
-			currentAngle += angleInc;
-			BlockPos out = new BlockPos((int)Math.round(possy.x), (int)Math.round(possy.y), (int)Math.round(possy.z));
-			output.add(out);
-			count++;
-		}
-		return output;
 	}
 
 	private static <T> void reverseList(List<T> list) {

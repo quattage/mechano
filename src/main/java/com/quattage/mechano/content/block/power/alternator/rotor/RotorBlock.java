@@ -25,6 +25,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -161,6 +162,11 @@ public class RotorBlock extends RotatedPillarKineticBlock implements IBE<RotorBl
     public BlockEntityType<? extends RotorBlockEntity> getBlockEntityType() {
         return MechanoBlockEntities.ROTOR.get();
     }    
+
+    @Override
+    public float getShadeBrightness(BlockState pState, BlockGetter pLevel, BlockPos pPos) {
+        return 1f;
+    }
 
     @MethodsReturnNonnullByDefault
 	private static class PlacementHelper extends PoleHelper<Direction.Axis> {

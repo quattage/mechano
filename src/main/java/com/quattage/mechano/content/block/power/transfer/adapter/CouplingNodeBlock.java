@@ -7,7 +7,6 @@ import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.collector.CollectorBlock;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.helper.BlockMath;
 import com.quattage.mechano.foundation.helper.ShapeBuilder;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -86,7 +85,7 @@ public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<Coup
         BlockState behindState = context.getLevel().getBlockState(context.getClickedPos().relative(localUp.getOpposite()));
         if(behindState.getBlock() != MechanoBlocks.COLLECTOR.get()) {
             if(localUp.getAxis() == localForward.getAxis())
-                localForward = BlockMath.getClickedQuadrant(context, localUp, false);
+                localForward = CombinedOrientation.getClickedQuadrant(context, localUp, false);
 
             if(context.getPlayer().isCrouching()) localForward = localForward.getOpposite();
             return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward.getOpposite()));
@@ -94,7 +93,7 @@ public class CouplingNodeBlock extends CombinedOrientedBlock implements IBE<Coup
 
         localForward = behindState.getValue(CollectorBlock.FACING);
         if(localForward.getAxis() == localUp.getAxis())
-            localForward = BlockMath.getClickedQuadrant(context, localUp, false);
+            localForward = CombinedOrientation.getClickedQuadrant(context, localUp, false);
         return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(localUp, localForward.getOpposite()));
     }
 

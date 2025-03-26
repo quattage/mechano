@@ -50,12 +50,14 @@ public class MechanoCapabilities {
         if(event.getObject() instanceof ClientLevel) {
             if (event.getCapabilities().containsKey(CLIENT_CACHE_CAPABILITY_ID)){
                 Mechano.LOGGER.info(event.getObject().dimension().location() + " has ClientGrid capability already attached");
+                return;
             }
             Mechano.LOGGER.info("Attaching ClientCache capability to " + event.getObject().dimension().location());
             event.addCapability(CLIENT_CACHE_CAPABILITY_ID, new GridClientCacheProvider((ClientLevel)event.getObject()));
         } else if (event.getObject() instanceof ServerLevel) {
             if (event.getCapabilities().containsKey(SERVER_GRID_CAPABILITY_ID)){
                 Mechano.LOGGER.info(event.getObject().dimension().location() + " has ServerGrid capability already attached");
+                return;
             }
             Mechano.LOGGER.info("Attaching ServerGrid capability to " + event.getObject().dimension().location());
             event.addCapability(SERVER_GRID_CAPABILITY_ID, new GlobalTransferGridDispatcher(event.getObject()));

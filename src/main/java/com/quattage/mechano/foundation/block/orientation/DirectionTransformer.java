@@ -4,15 +4,14 @@ import javax.annotation.Nullable;
 
 import org.joml.Vector3f;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.VerticallyOrientedBlock;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -219,11 +218,9 @@ public class DirectionTransformer {
     public static Vec3i getRotation(BlockState state) {
         if(state.getBlock() instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getStateRotation();
-
         Direction up = getUp(state);
         Direction forward = getForward(state);
         if(forward == up) return dir2Vec(up);
-
         return CombinedOrientation.combine(up, forward).getStateRotation();
     }
 
@@ -403,13 +400,8 @@ public class DirectionTransformer {
     }
 
     public static Axis fromDisplacement(Vector3f offset) {
-
-
         Vector3f disp = new Vector3f(Math.abs(0.5f - offset.x), Math.abs(0.5f - offset.y), Math.abs(0.5f - offset.z));
-    
-
         float greatest = VectorHelper.getGreatest(disp);
-
         if(greatest == disp.x) return Axis.X;
         if(greatest == disp.y) return Axis.Y;
         return Axis.Z;

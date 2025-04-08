@@ -6,7 +6,6 @@ bin
 .classpath
 .project
 
-
 # idea
 out
 *.ipr
@@ -19,9 +18,10 @@ build
 .gradle
 
 # other
+presskit
 eclipse
 run
-.vscode
+runs
+run-data
 
-# Files from Forge MDK
-forge*changelog.txt
+repo

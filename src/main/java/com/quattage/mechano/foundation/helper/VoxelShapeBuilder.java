@@ -2,8 +2,7 @@ package com.quattage.mechano.foundation.helper;
 
 import org.apache.commons.lang3.mutable.MutableObject;
 
-import com.simibubi.create.foundation.utility.VecHelper;
-
+import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.Block;

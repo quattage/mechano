@@ -12,12 +12,12 @@ import com.quattage.mechano.foundation.block.hitbox.RotatableHitboxShape.Default
 import com.tterrag.registrate.builders.BlockBuilder;
 import com.tterrag.registrate.util.nullness.NonNullUnaryOperator;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraftforge.registries.ForgeRegistries;
 
 public class HitboxCache {
 
@@ -32,12 +32,12 @@ public class HitboxCache {
         RotatableHitboxShape<?> check = null;
         if(type != null) {
             check = hitboxes.getOrDefault(
-                ForgeRegistries.BLOCKS.getKey(block).withSuffix("/" + type.getHitboxName()), 
+                BuiltInRegistries.BLOCK.getKey(block).withSuffix("/" + type.getHitboxName()), 
                 RotatableHitboxShape.ofMissingResource(group)
             );
         } else {
             check = hitboxes.getOrDefault(
-                ForgeRegistries.BLOCKS.getKey(block).withSuffix(DefaultModelType.DEFAULT.getHitboxName()),
+                BuiltInRegistries.BLOCK.getKey(block).withSuffix(DefaultModelType.DEFAULT.getHitboxName()),
                 RotatableHitboxShape.ofMissingResource(group)
             );
         }
@@ -49,7 +49,7 @@ public class HitboxCache {
     public<T extends Enum<T> & HitboxNameable & StringRepresentable, R extends Enum<R> & StringRepresentable> 
         Hitbox<R> collectAllOfType(Block block) {
 
-        final ResourceLocation loc = ForgeRegistries.BLOCKS.getKey(block);
+        final ResourceLocation loc = BuiltInRegistries.BLOCK.getKey(block);
         final Map<String, RotatableHitboxShape<R>> collected = new HashMap<>();
 
         for(Map.Entry<ResourceLocation, RotatableHitboxShape<?>> entry : hitboxes.entrySet()) {
@@ -71,8 +71,8 @@ public class HitboxCache {
                 UnbuiltHitbox<R> key = 
                     new UnbuiltHitbox<R>(
                         DefaultModelType.DEFAULT.getHitboxName(),
-                        new ResourceLocation(b.getOwner().getModid(), b.getName()), 
-                        LISTER.idToFile(new ResourceLocation( 
+                        ResourceLocation.fromNamespaceAndPath(b.getOwner().getModid(), b.getName()), 
+                        LISTER.idToFile(ResourceLocation.fromNamespaceAndPath( 
                             b.getOwner().getModid(), b.getName()).withPrefix("block" + (sub != null ? sub + "/" : "/")).withSuffix("/hitbox/" + 
                                 DefaultModelType.DEFAULT.getHitboxName())),
                         orientStates
@@ -91,8 +91,8 @@ public class HitboxCache {
                 UnbuiltHitbox<R> key = 
                     new UnbuiltHitbox<R>(
                         property.getHitboxName(),
-                        new ResourceLocation(b.getOwner().getModid(), b.getName()),
-                        LISTER.idToFile(new ResourceLocation( // ex. block/stator/hitbox/hitbox.json
+                        ResourceLocation.fromNamespaceAndPath(b.getOwner().getModid(), b.getName()),
+                        LISTER.idToFile(ResourceLocation.fromNamespaceAndPath( // ex. block/stator/hitbox/hitbox.json
                             b.getOwner().getModid(), b.getName()).withPrefix("block/"  + (sub != null ? sub + "/" : "/")).withSuffix("/hitbox/" + 
                                 property.getHitboxName())),
                         orientStates

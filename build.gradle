@@ -1,243 +1,139 @@
-
-// this stuff is just for gradle plugins - mod dependencies are below
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net' }
-        maven { url = 'https://maven.parchmentmc.org' }
-        maven { url = 'https://repo.spongepowered.org/repository/maven-public' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath "net.minecraftforge.gradle:ForgeGradle:${forgegradle_version}"
-        classpath "org.parchmentmc:librarian:${librarian_version}"
-        classpath "org.spongepowered:mixingradle:${mixingradle_version}"
-    }
+plugins {
+    id 'idea'
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.78'
 }
 
-// apply gradle plugins
-apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'org.parchmentmc.librarian.forgegradle'
-apply plugin: 'eclipse'
-apply plugin: 'maven-publish'
-apply plugin: 'org.spongepowered.mixin'
-// jarJar.enable()
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
 
+version = mod_version
+group = mod_group_id
 
-// 
-version = "${minecraft_version}-0.1"
-group = 'com.quattage.mechano'
-archivesBaseName = 'mechano'
+repositories {
+    mavenLocal()
+    maven { url = "https://maven.createmod.net/" } // create
+    maven { url = "https://mvn.devos.one/snapshots" } // registrate
+    maven { url = "https://maven.blamejared.com/" } // jei & vazkii's
+    maven { url = "https://maven.theillusivec4.top/" } // curios
+}
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+base {
+    archivesName = mod_id
+}
 
-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
-minecraft {
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-    mappings channel: 'parchment', version: "${parchment_version}-${minecraft_version}"
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.minecraft_version
+    }
+
     runs {
         client {
-            
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'info'
-            property 'forge.enabledGameTestNamespaces', 'mechano'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            property 'terminal.jline', 'true' // colors :)
-
-            mods {
-                mechano {
-                    source sourceSets.main
-                }
-            }
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         server {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES, CLASSDUMP'
-            property 'forge.logging.console.level', 'trace'
-            property 'forge.enabledGameTestNamespaces', 'mechano'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            property 'terminal.jline', 'true' // colors :)
-
-            mods {
-                mechano {
-                    source sourceSets.main
-                }
-            }
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         gameTestServer {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'forge.enabledGameTestNamespaces', 'mechano'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-
-            mods {
-                mechano {
-                    source sourceSets.main
-                }
-            }
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         data {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES,REGISTRYDUMP'
-            property 'forge.logging.console.level', 'info'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            property 'terminal.jline', 'true'
-            args '--mod', 'mechano', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/'), '--existing-mod', 'create'
+            data()
+            programArguments.addAll('--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath())        
+        }
 
-            mods {
-                mechano {
-                    source sourceSets.main
-                }
-            }
+        configureEach {
+            jvmArguments = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:+AllowEnhancedClassRedefinition"]
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'mixin.debug.verbose', 'true'
+            systemProperty 'mixin.debug.export', 'true'
+            systemProperty 'terminal.ansi', 'true'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
         }
     }
 }
 
-// include resources generated by datagen
-sourceSets.main.resources { 
-    srcDir 'src/generated/resources' 
-    exclude '.cache/'
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
 }
 
-mixin {
-    add sourceSets.main, "mechano.refmap.json"
-    config "mechano.mixins.json"
-    debug.export = true
-}
-
-eclipse {
-    synchronizationTasks processResources
-    classpath {
-        defaultOutputDir = file('$rootDir/bin/main')
-    }
-}
-
-// repos to look for mod dependencies in 
-repositories {
-    maven {
-		name = "blamejared"                            // new JEI place, vazkii's, & embedduim
-		url = "https://maven.blamejared.com/"
-	}
-	maven {
-		name = "modmaven"                                 // JEI Mirror, Mekanism
-		url = "https://modmaven.dev"
-	}
-    maven {
-        name = "tterrag"                           // Registrate/Flywheel/Create
-        url  = "https://maven.tterrag.com"
-    }
-    maven {
-        name = "cursemaven"
-        url  = "https://www.cursemaven.com"                  // Misc
-        content {
-            includeGroup "curse.maven"
-        }
-    }
-    maven {                                               // cloth config api
-        name = "shedaniel"
-        url = "https://maven.shedaniel.me/"
-    }
-
-    maven {
-        name "jitpack"
-        url "https://jitpack.io"
-    }
-}
-
-// the good shit
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
+    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false }
+    implementation("net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}") { transitive = false }
+    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+    implementation("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
 
-    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.3.2"))
-    implementation "io.github.llamalad7:mixinextras-forge:0.3.2"
-
-    // All of Create
-    implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_version}")
-    implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
-    implementation fg.deobf("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
-
-    // Embeddium
-    compileOnly fg.deobf("org.embeddedt:embeddium-1.20.1:0.2.11-git.23aedfb+mc1.20.1")
-
-    // JEI local runtime and API to compile against
-    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
-	compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
-
-    // cloth config
-    implementation fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
-
-    // BetterF3
-    if(Boolean.parseBoolean(project.use_betterf3)) {
-        runtimeOnly fg.deobf("curse.maven:betterf3-401648:${project.betterf3_version}")
-    }
-
-    if(Boolean.parseBoolean(project.use_mekanism)) {
-        runtimeOnly fg.deobf("mekanism:Mekanism:${minecraft_version}-${mekanism_version}")
-    }
+    compileOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}:api")
+    runtimeOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}")
 }
 
-jar {
-    manifest {
-        attributes([
-            "Specification-Title"     : "mechano",
-            "Specification-Vendor"    : "quattage",
-            "Specification-Version"   : "1", 
-            "Implementation-Title"    : project.name,
-            "Implementation-Version"  : project.jar.archiveVersion,
-            "Implementation-Vendor"   : "quattage",
-            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
-    }
-}
 
-// this is required in order to patch what I believe is a gradle-vscode bug when running in windows 11
-processResources {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-
-    var resourceTargets = [
-        'META-INF/mods.toml', 
-        'pack.mcmeta',
-        'logo.png',
-        'mechano.mixins.json'
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
     ]
-    var intoTargets = ["$rootDir/bin/main/"]
-    intoTargets.each { target ->
-        if (file(target).exists()) {
-            copy {
-                from(sourceSets.main.resources) {
-                    include resourceTargets
-                }
-                into target
-            }
-        }
-    }
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
 }
-
-jar.finalizedBy('reobfJar')
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
-            artifact jar
+        register('mavenJava', MavenPublication) {
+            from components.java
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/mcmodsrepo"
+            url "file://${project.projectDir}/repo"
         }
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
 }

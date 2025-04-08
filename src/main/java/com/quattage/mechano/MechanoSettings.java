@@ -1,6 +1,6 @@
 package com.quattage.mechano;
 
-import net.minecraftforge.eventbus.api.IEventBus;
+import net.neoforged.bus.api.IEventBus;
 
 public class MechanoSettings {
     

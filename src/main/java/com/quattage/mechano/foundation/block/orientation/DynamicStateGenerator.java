@@ -10,7 +10,7 @@ import com.tterrag.registrate.providers.RegistrateBlockstateProvider;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraftforge.client.model.generators.ModelFile;
+import net.neoforged.neoforge.client.model.generators.ModelFile;
 
 public class DynamicStateGenerator extends SpecialBlockStateGen {
 
@@ -39,12 +39,12 @@ public class DynamicStateGenerator extends SpecialBlockStateGen {
 
     @Override
     protected int getXRotation(BlockState state) {
-        return (int)DirectionTransformer.getRotation(state).getX();
+        return DirectionTransformer.getRotation(state).getX();
     }
 
     @Override
     protected int getYRotation(BlockState state) {
-        return (int)DirectionTransformer.getRotation(state).getY();
+        return DirectionTransformer.getRotation(state).getY();
     }
 
     @Override
@@ -53,6 +53,7 @@ public class DynamicStateGenerator extends SpecialBlockStateGen {
 
         String typeName = (typeDelegate == null) ? "base" : 
             state.getValue(typeDelegate).getSerializedName();
+        Mechano.LOGGER.info("Getting model " + typeName + " for state " + state);
 
         String orientSuffix = 
             (DirectionTransformer.isDistinctionRequired(state) &&

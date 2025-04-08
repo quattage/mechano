@@ -1,17 +1,10 @@
 package com.quattage.mechano;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import com.quattage.mechano.foundation.helper.CreativeTabExcludable;
+import com.quattage.mechano.foundation.helper.CreativeTabOverridable;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.util.entry.RegistryEntry;
 
-import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
+import it.unimi.dsi.fastutil.objects.ReferenceLinkedOpenHashSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
@@ -24,101 +17,70 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.item.CreativeModeTab.DisplayItemsGenerator;
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters;
 import net.minecraft.world.item.CreativeModeTab.Output;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 public class MechanoGroups {
-    
-    private static final DeferredRegister<CreativeModeTab> TAB_REGISTER =
-		DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Mechano.MOD_ID);
 
-    public static final RegistryObject<CreativeModeTab> MAIN_TAB = newTab(() -> MechanoBlocks.SMALL_STATOR.asStack(), "main");
+    private static final DeferredRegister<CreativeModeTab> TAB_REGISTRY = DeferredRegister.
+        create(Registries.CREATIVE_MODE_TAB, Mechano.ID);
 
-    public static RegistryObject<CreativeModeTab> newTab(Supplier<ItemStack> icon, String name) {
-        return TAB_REGISTER.register(name,
-        () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup." + Mechano.MOD_ID + "." + name))
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> BASE = 
+        TAB_REGISTRY.register("base", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup." + Mechano.ID + ".base"))
             .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
-            .icon(icon)
-            .displayItems(new ExclusionsGenerator(name))
+            .icon(() -> new ItemStack(MechanoBlocks.TEST_AXIS.asItem()))
+            .displayItems(new GroupExclusionsGenerator(MechanoGroups.BASE))
             .build()
-        );
+    );
+
+    public static void register(IEventBus modBus) {
+        TAB_REGISTRY.register(modBus);
+        Mechano.LOGGER.debug("registering groups");
     }
 
-    public static void register(IEventBus bus) {
-        Mechano.logReg("creative tabs");
-        TAB_REGISTER.register(bus);
-    }
+    private static class GroupExclusionsGenerator implements DisplayItemsGenerator {
 
+        private final DeferredHolder<CreativeModeTab, CreativeModeTab> tab;
+        private final ReferenceLinkedOpenHashSet<Item> collectedItems  = new ReferenceLinkedOpenHashSet<>();
 
-    public static class ExclusionsGenerator implements DisplayItemsGenerator {
-
-        private static RegistryObject<CreativeModeTab> tab;
-
-        public ExclusionsGenerator(String tabName) {
-            boolean found = false;
-            for(RegistryObject<CreativeModeTab> thisTab : TAB_REGISTER.getEntries()) {
-                if(Mechano.asResource(tabName).equals(thisTab.getId())) {
-                    found = true;
-                    tab = thisTab;
-                }
-            }
-
-            if(!found) throw new IllegalStateException("Failed to register DisplayItemsGenerator - '" + tabName + "' was not found in the registry.");
+        public GroupExclusionsGenerator(DeferredHolder<CreativeModeTab, CreativeModeTab> tab) {
+            this.tab = tab;
         }
 
         @Override
         public void accept(ItemDisplayParameters parameters, Output output) {
-            Function<Item, ItemStack> stackoWacko = newStackoWacko();
-
-            List<Item> inclusions = new LinkedList<>();
-            inclusions.addAll(getBlocks());
-            inclusions.addAll(getItems());
-            
-            apply(output, inclusions, stackoWacko);
-
+            collectedItems.clear();
+            collectBlocks();
+            collectItems();
+            for(Item item : collectedItems)
+                output.accept(new ItemStack(item));
+            collectedItems.clear();
         }
 
-        public static List<Item> getBlocks() {
-            List<Item> out  = new ReferenceArrayList<>();
-            for(RegistryEntry<Block> blockEntry : Mechano.REGISTRATE.getAll(Registries.BLOCK)) {
+        private ReferenceLinkedOpenHashSet<Item> collectBlocks() {
+            for(RegistryEntry<Block, Block> blockEntry : Mechano.REGISTRATE.getAll(Registries.BLOCK)) {
                 if(!CreateRegistrate.isInCreativeTab(blockEntry, tab)) continue;
-                if(blockEntry.get() instanceof CreativeTabExcludable) continue;
                 Item blockItem = blockEntry.get().asItem();
+                if(tab.get().contains(new ItemStack(blockItem))) continue;
+                if(!CreativeTabOverridable.belongsTo(blockItem, tab)) continue;
                 if(blockItem == Items.AIR) continue;
-                out.add(blockItem);
+                collectedItems.add(blockItem);
             }
-            return out;
+            return collectedItems;
         }
 
-        public static List<Item> getItems() {
-            List<Item> out = new ReferenceArrayList<>();
-            for(RegistryEntry<Item> itemEntry : Mechano.REGISTRATE.getAll(Registries.ITEM)) {
+        private ReferenceLinkedOpenHashSet<Item> collectItems() {
+            for(RegistryEntry<Item, Item> itemEntry : Mechano.REGISTRATE.getAll(Registries.ITEM)) {
                 if(!CreateRegistrate.isInCreativeTab(itemEntry, tab)) continue;
-                if(itemEntry.get() instanceof CreativeTabExcludable) continue;
                 Item item = itemEntry.get();
+                if(tab.get().contains(new ItemStack(item))) continue;
+                if(!CreativeTabOverridable.belongsTo(item, tab)) continue;
                 if(item instanceof BlockItem) continue;
-                out.add(item);
+                collectedItems.add(item);
             }
-            return out;
-        }
-
-        private static Function<Item, ItemStack> newStackoWacko() {
-			Map<Item, Function<Item, ItemStack>> functionBase = new Reference2ReferenceOpenHashMap<>();
-
-			return item -> {
-				Function<Item, ItemStack> functionOut = functionBase.get(item);
-				if (functionOut != null) 
-					return functionOut.apply(item);
-				return new ItemStack(item);
-			};
-		}
-
-        public static void apply(Output output, List<Item> allItems, Function<Item, ItemStack> stackoWacko) {
-            for(Item item : allItems) {
-                output.accept(stackoWacko.apply(item));
-            }
+            return collectedItems;
         }
     }
 }

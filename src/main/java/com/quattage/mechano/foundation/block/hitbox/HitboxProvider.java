@@ -24,19 +24,31 @@ import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.StringRepresentable;
 
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 
 import static com.quattage.mechano.Mechano.HITBOXES;
 
+@EventBusSubscriber
 public class HitboxProvider extends SimplePreparableReloadListener<ResourceLocation>{
+
+
+    private static final HitboxProvider INSTANCE = new HitboxProvider();
+    @SubscribeEvent
+    public static void addReloadListener(AddReloadListenerEvent event) {
+        event.addListener(INSTANCE);
+    }
+
 
     private final Gson GSON = new GsonBuilder().setLenient().create();
 
     @Override
-    
     protected ResourceLocation prepare(ResourceManager manager, ProfilerFiller profiler) {
         loadHitboxes(manager);
         return null;
     }
+
 
     /**
      * Load hitboxes using Minecraft's resource reload stuff

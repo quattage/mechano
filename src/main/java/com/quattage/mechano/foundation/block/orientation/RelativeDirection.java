@@ -4,8 +4,8 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 import com.quattage.mechano.Mechano;
-import com.simibubi.create.foundation.utility.Color;
 
+import net.createmod.catnip.theme.Color;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 

@@ -2,15 +2,13 @@ package com.quattage.mechano.content.block.simple.diagonalGirder;
 
 import java.util.List;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.outliner.Outliner;
+import net.createmod.catnip.theme.Color;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.GirderPartial;
 import com.quattage.mechano.foundation.behavior.ClientBehavior;
-import com.simibubi.create.AllItems;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Color;
-import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -43,11 +41,11 @@ public class DiagonalGirderWrenchBehavior extends ClientBehavior {
             BlockPos lookingBlockPos, double pTicks) {
         BlockState girderState = world.getBlockState(lookingBlockPos);
         DiagonalGirderBlock girderBlock = ((DiagonalGirderBlock)girderState.getBlock());
-        List<Pair<AABB, GirderPartial>> possibleShapes = girderBlock.getRelevantPartials(girderState);    
+        List<Pair<AABB, GirderPartial>> possibleShapes = girderBlock.getRelevantPartials(girderState);
         Pair<AABB, GirderPartial> shapeCheck = getClosest(lookingBlockPos, lookingPosition, possibleShapes);
 
         if(shapeCheck != null) {
-            CreateClient.OUTLINER.showAABB("diagonalGirderWrench", shapeCheck.getFirst().move(lookingBlockPos))
+            Outliner.getInstance().showAABB("diagonalGirderWrench", shapeCheck.getFirst().move(lookingBlockPos))
                 .lineWidth(1 / 32f)
                 .colored(new Color(127, 127, 127));
         }

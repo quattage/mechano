@@ -13,12 +13,13 @@ import com.quattage.mechano.foundation.helper.VoxelShapeBuilder;
 import com.quattage.mechano.foundation.block.hitbox.HitboxNameable;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
-import com.simibubi.create.foundation.placement.PlacementHelpers;
 import com.simibubi.create.foundation.block.IBE;
-import com.simibubi.create.foundation.placement.IPlacementHelper;
-import com.simibubi.create.foundation.placement.PlacementOffset;
-import com.simibubi.create.foundation.utility.VoxelShaper;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.math.VoxelShaper;
+import net.createmod.catnip.placement.IPlacementHelper;
+import net.createmod.catnip.placement.PlacementHelpers;
+import net.createmod.catnip.placement.PlacementOffset;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
@@ -44,14 +45,12 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import com.simibubi.create.foundation.utility.Pair;
-
 public class DiagonalGirderBlock extends DirectionalBlock implements IBE<DiagonalGirderBlockEntity> {
     public static final EnumProperty<DiagonalGirderModelType> MODEL_TYPE = EnumProperty.create("model", DiagonalGirderModelType.class);
     public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper());
     private static RotatableHitboxShape<Direction> hitbox;
     
-    public static final VoxelShaper BOX_LONG_DOWN_FLAT = 
+    public static final VoxelShaper BOX_LONG_DOWN_FLAT =
         VoxelShaper.forDirectional(VoxelShapeBuilder.newBox(3, -4.5, -5.75, 13.1, 0, 5.25), Direction.UP);
     public static final VoxelShaper BOX_LONG_DOWN_VERT = 
         VoxelShaper.forDirectional(VoxelShapeBuilder.newBox(3.1, -5.5, -4.85, 13.2, 5.5, -0.35), Direction.UP);
@@ -332,7 +331,7 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
 
 		@Override
 		public PlacementOffset getOffset(Player player, Level world, BlockState state, BlockPos pos,
-			BlockHitResult ray) {
+                                         BlockHitResult ray) {
 			PlacementOffset offset = super.getOffset(player, world, state, pos, ray);
 			if (offset.isSuccessful()) {
 				offset.withTransform(offset.getTransform());
@@ -363,4 +362,3 @@ public class DiagonalGirderBlock extends DirectionalBlock implements IBE<Diagona
         SHORT_UP_VERT;
     }
 }
-

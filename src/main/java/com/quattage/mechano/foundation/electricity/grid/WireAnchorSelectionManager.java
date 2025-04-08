@@ -7,7 +7,6 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.MechanoSettings;
@@ -20,9 +19,9 @@ import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRend
 import com.quattage.mechano.foundation.helper.TickingTimeTracker;
 import com.quattage.mechano.foundation.network.AnchorStatRequestC2SPacket;
 import com.simibubi.create.AllSpecialTextures;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Color;
 
+import net.createmod.catnip.outliner.Outliner;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -31,7 +30,6 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
 @OnlyIn(Dist.CLIENT)
@@ -148,7 +146,7 @@ public class WireAnchorSelectionManager {
             if(anchorBox != null) {
                 int size = (int)near.get().getSize();
                 if(size > 0) {
-                    CreateClient.OUTLINER.showAABB(near.hashCode(), anchorBox)
+                    Outliner.getInstance().showAABB(near.hashCode(), anchorBox)
                         .disableLineNormals()
                         .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
                         .colored(near.get().getColor())
@@ -200,7 +198,7 @@ public class WireAnchorSelectionManager {
         if(holdingSpool) return;
         AnchorPoint anchor = MechanoClient.ANCHOR_SELECTOR.getSelectedAnchor(instance.level);
         if(anchor == null) return;
-        CreateClient.OUTLINER.showAABB(anchor.hashCode(), anchor.getStaticHitbox())
+        Outliner.getInstance().showAABB(anchor.hashCode(), anchor.getStaticHitbox())
             .disableLineNormals()
             .colored(Color.TRANSPARENT_BLACK)
             .lineWidth(0.003f);

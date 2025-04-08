@@ -2,7 +2,6 @@ package com.quattage.mechano.content.block.power.alternator.slipRingShaft;
 
 import static com.quattage.mechano.Mechano.lang;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.MechanoSettings;
 import com.quattage.mechano.content.block.power.alternator.rotor.AbstractRotorBlockEntity;
@@ -13,18 +12,15 @@ import com.quattage.mechano.foundation.electricity.watt.WattSendSummary;
 import com.quattage.mechano.foundation.electricity.watt.unit.WattUnit;
 import com.quattage.mechano.foundation.electricity.watt.unit.WattUnitConversions;
 import com.quattage.mechano.foundation.helper.NullSortedArray;
-import com.quattage.mechano.foundation.helper.StupidWrapper;
-import com.simibubi.create.content.equipment.goggles.GogglesItem;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.IRotate.StressImpact;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
 import com.simibubi.create.foundation.item.TooltipHelper;
-import com.simibubi.create.foundation.utility.Lang;
-import com.simibubi.create.foundation.utility.LangBuilder;
 
+import com.simibubi.create.foundation.utility.CreateLang;
+import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -32,8 +28,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 
 import java.util.List;
 import javax.annotation.Nullable;
@@ -347,8 +341,8 @@ public class SlipRingShaftBlockEntity extends KineticBlockEntity implements Anon
     private boolean buildSimpleStatsTooltip(List<Component> tooltip, int len, int cScore, int pScore, float cStress, float mStress, SlipRingShaftStatus status, boolean detail, boolean isWearingGoggles) {
         lang().translate("gui.alternator.status.title").forGoggles(tooltip);
 
-        LangBuilder su = Lang.translate("generic.unit.stress").style(ChatFormatting.DARK_GRAY);
-        LangBuilder stress = Lang.number(cStress * Math.abs(getTheoreticalSpeed())).style(ChatFormatting.DARK_GRAY);
+        LangBuilder su = CreateLang.translate("generic.unit.stress").style(ChatFormatting.DARK_GRAY);
+        LangBuilder stress = CreateLang.number(cStress * Math.abs(getTheoreticalSpeed())).style(ChatFormatting.DARK_GRAY);
         LangBuilder watts = energyProduced.format(ChatFormatting.AQUA, ChatFormatting.AQUA);
 
         lang().translate("gui.generic.converting").style(ChatFormatting.GRAY).space().add(stress).add(su).forGoggles(tooltip);
@@ -420,15 +414,15 @@ public class SlipRingShaftBlockEntity extends KineticBlockEntity implements Anon
         float mWatts = maxEnergyProduced.getWatts();
         float wPercent = 1 - (cWatts / mWatts);
 
-        LangBuilder su = Lang.translate("generic.unit.stress").style(ChatFormatting.DARK_GRAY);
+        LangBuilder su = CreateLang.translate("generic.unit.stress").style(ChatFormatting.DARK_GRAY);
         ChatFormatting filledColor = (badCoverage || wPercent > 0.74 || WattUnit.hasNoPotential(cWatts)) ? ChatFormatting.RED : StressImpact.of(wPercent).getRelativeColor();
 
-        LangBuilder stress = Lang.number(rStress).style(filledColor).text(ChatFormatting.GRAY, " / ").add(Lang.number(mStress).style(ChatFormatting.DARK_GRAY));
+        LangBuilder stress = CreateLang.number(rStress).style(filledColor).text(ChatFormatting.GRAY, " / ").add(CreateLang.number(mStress).style(ChatFormatting.DARK_GRAY));
 
         LangBuilder w = lang().translate("generic.unit.watts").style(ChatFormatting.DARK_GRAY);
-        LangBuilder watts = Lang.number(cWatts).style(filledColor).text(ChatFormatting.GRAY, " / ").add(Lang.number(mWatts).style(ChatFormatting.DARK_GRAY));
+        LangBuilder watts = CreateLang.number(cWatts).style(filledColor).text(ChatFormatting.GRAY, " / ").add(CreateLang.number(mWatts).style(ChatFormatting.DARK_GRAY));
         LangBuilder pertick = lang().translate("generic.unit.pertick").style(ChatFormatting.DARK_GRAY);
-        LangBuilder headroom = Lang.number(Math.round(wPercent * 100)).text("%").style(filledColor);
+        LangBuilder headroom = CreateLang.number(Math.round(wPercent * 100)).text("%").style(filledColor);
 
         lang().translate("gui.alternator.status.headroom").style(ChatFormatting.GRAY).space().add(headroom).forGoggles(tooltip);
         lang().translate("gui.alternator.status.predictiveSubtitle").style(ChatFormatting.GRAY).forGoggles(tooltip);
@@ -459,5 +453,12 @@ public class SlipRingShaftBlockEntity extends KineticBlockEntity implements Anon
             this.canControl = canControl;
             this.hasComplementary = hasComplementary;
         }
+    }
+
+    @Override
+    public float calculateStressApplied() {
+        float impact = 4;
+        this.lastStressApplied = impact;
+        return impact;
     }
 }

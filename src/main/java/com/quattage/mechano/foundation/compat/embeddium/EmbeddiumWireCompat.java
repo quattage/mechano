@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.compat.embeddium;
 
 import java.util.List;
 
+import net.createmod.catnip.data.Pair;
 import org.embeddedt.embeddium.api.ChunkMeshEvent;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -17,7 +18,6 @@ import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.rendering.WirePipeline;
 import com.quattage.mechano.foundation.electricity.rendering.WirePipeline.BakedModelHashKey;
 import com.quattage.mechano.foundation.electricity.rendering.WireTextureProvider;
-import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -65,7 +65,7 @@ public class EmbeddiumWireCompat {
                 GridClientEdge edge = edges.get(x);
 
                 if(edge.getAge() > 0) continue;
-                Pair<AnchorPoint, WireAnchorBlockEntity> fromAnchor = 
+                Pair<AnchorPoint, WireAnchorBlockEntity> fromAnchor =
                     AnchorPoint.getAnchorAt(accessor, edge.getSideA());
                 if(fromAnchor == null || fromAnchor.getFirst() == null) 
                     continue;

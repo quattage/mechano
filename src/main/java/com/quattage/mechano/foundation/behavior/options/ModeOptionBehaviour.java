@@ -5,7 +5,6 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsBoard;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
-import com.simibubi.create.foundation.utility.Components;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -31,7 +30,7 @@ public class ModeOptionBehaviour<E extends Enum<E> & MechanoIconOptionable> exte
 
 	@Override
 	public ValueSettingsBoard createBoard(Player player, BlockHitResult hitResult) {
-		return new ValueSettingsBoard(label, max, 1, ImmutableList.of(Components.literal("Mode")),
+		return new ValueSettingsBoard(label, max, 1, ImmutableList.of(Component.literal("Mode")),
 			new ModeOptionSettingsFormatter(options));
 	}
 	

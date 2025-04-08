@@ -1,6 +1,6 @@
-
 package com.quattage.mechano.foundation.mixin.client;
 
+import net.createmod.catnip.data.Pair;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,7 +16,6 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GID;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.rendering.WireAnchorBlockRenderer;
 import com.quattage.mechano.foundation.electricity.rendering.WirePipeline;
-import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;

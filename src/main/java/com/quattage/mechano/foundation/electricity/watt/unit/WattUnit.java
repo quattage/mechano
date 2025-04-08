@@ -1,13 +1,11 @@
-
 package com.quattage.mechano.foundation.electricity.watt.unit;
 
 import static com.quattage.mechano.Mechano.lang;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoSettings;
-import com.simibubi.create.foundation.utility.Lang;
-import com.simibubi.create.foundation.utility.LangBuilder;
 
+import com.simibubi.create.foundation.utility.CreateLang;
+import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -317,11 +315,11 @@ public class WattUnit implements Comparable<WattUnit> {
         if(watts >= 10000000) {
             double converted = watts * 0.000000001d;
             if(converted > 0.5)
-                return Lang.number(watts * 0.000000001d).style(numberColor).add(lang().translate("generic.unit.gigawatthours").style(unitColor));
+                return CreateLang.number(watts * 0.000000001d).style(numberColor).add(lang().translate("generic.unit.gigawatthours").style(unitColor));
         }
         if(watts >= 1000)
-            return Lang.number(watts * 0.001d).style(numberColor).add(lang().translate("generic.unit.kilowatthours").style(unitColor));
-        return Lang.number(watts).style(numberColor).add(lang().translate("generic.unit.watthours").style(unitColor));
+            return CreateLang.number(watts * 0.001d).style(numberColor).add(lang().translate("generic.unit.kilowatthours").style(unitColor));
+        return CreateLang.number(watts).style(numberColor).add(lang().translate("generic.unit.watthours").style(unitColor));
     }
 
     /**
@@ -337,4 +335,3 @@ public class WattUnit implements Comparable<WattUnit> {
         return new WattUnit(vOut, cOut);
     }
 }
-

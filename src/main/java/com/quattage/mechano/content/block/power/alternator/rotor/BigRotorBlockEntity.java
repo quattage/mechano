@@ -29,4 +29,14 @@ public class BigRotorBlockEntity extends AbstractRotorBlockEntity {
     protected float getEfficiencyBonus() {
         return 1.3f;
     }
+
+    @Override
+    protected float getNoStatorImpact() {
+        return 2.0f;
+    }
+
+    @Override
+    protected float getStatorImpact() {
+        return 2.0f;
+    }
 }

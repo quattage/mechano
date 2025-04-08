@@ -20,9 +20,9 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GridVertex;
 import com.quattage.mechano.foundation.electricity.grid.network.GridSyncHelper;
 import com.quattage.mechano.foundation.electricity.grid.network.GridSyncPacketType;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.foundation.utility.Color;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

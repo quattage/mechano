@@ -46,7 +46,7 @@ public class SmallRotorBlock extends AbstractRotorBlock implements IBE<SmallRoto
     }
 
     @Override
-    boolean isRotor(Block block) {
+    public boolean isRotor(Block block) {
         return block == MechanoBlocks.SMALL_ROTOR.get();
     }
 

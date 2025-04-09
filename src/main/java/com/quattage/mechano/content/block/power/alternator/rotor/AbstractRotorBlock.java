@@ -74,7 +74,7 @@ public abstract class AbstractRotorBlock extends RotatedPillarKineticBlock imple
         return out;
     }
 
-    abstract boolean isRotor(Block block);
+    public abstract boolean isRotor(Block block);
 
     @Override
     public void neighborChanged(BlockState state, Level world, BlockPos pos, Block block, BlockPos fromPos, boolean isMoving) {

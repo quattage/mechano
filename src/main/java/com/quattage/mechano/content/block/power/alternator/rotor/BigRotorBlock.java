@@ -56,7 +56,7 @@ public class BigRotorBlock extends AbstractRotorBlock implements IBE<BigRotorBlo
     }
 
     @Override
-    boolean isRotor(Block block) {
+    public boolean isRotor(Block block) {
         return block instanceof BigRotorBlock;
     }
 

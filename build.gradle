@@ -18,7 +18,7 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 apply plugin: 'org.spongepowered.mixin'
 
-version = "${minecraft_version}-0.1"
+version = "${minecraft_version}-0.1.1"
 group = 'com.quattage.mechano'
 archivesBaseName = 'mechano'
 

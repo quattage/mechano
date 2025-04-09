@@ -1,4 +1,3 @@
-
 package com.quattage.mechano.foundation.electricity.grid;
 
 import java.util.ArrayList;
@@ -14,8 +13,8 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GridVertex;
 import com.quattage.mechano.foundation.electricity.grid.network.GridSyncHelper;
 import com.quattage.mechano.foundation.electricity.grid.network.GridSyncPacketType;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

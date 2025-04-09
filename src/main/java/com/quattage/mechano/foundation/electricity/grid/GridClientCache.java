@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import net.createmod.catnip.data.Pair;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -25,7 +26,6 @@ import com.quattage.mechano.foundation.electricity.rendering.WirePipeline;
 import com.quattage.mechano.foundation.electricity.rendering.WireTextureProvider;
 import com.quattage.mechano.foundation.electricity.rendering.WirePipeline.BakedModelHashKey;
 import com.quattage.mechano.foundation.mixin.client.RenderChunkInvoker;
-import com.simibubi.create.foundation.utility.Pair;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
@@ -182,7 +182,7 @@ public class GridClientCache {
 
                 // sanity checks
                 if(edge.getAge() > 0) continue;
-                Pair<AnchorPoint, WireAnchorBlockEntity> fromAnchor = 
+                Pair<AnchorPoint, WireAnchorBlockEntity> fromAnchor =
                     AnchorPoint.getAnchorAt(world, edge.getSideA());
                 if(fromAnchor == null || fromAnchor.getFirst() == null) 
                     continue;

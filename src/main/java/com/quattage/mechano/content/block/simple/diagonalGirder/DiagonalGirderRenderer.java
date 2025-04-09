@@ -1,13 +1,13 @@
 package com.quattage.mechano.content.block.simple.diagonalGirder;
 
-import com.jozufozu.flywheel.core.PartialModel;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.simibubi.create.foundation.blockEntity.renderer.SafeBlockEntityRenderer;
-import com.simibubi.create.foundation.render.CachedBufferer;
-import com.simibubi.create.foundation.render.SuperByteBuffer;
-import com.simibubi.create.foundation.utility.AngleHelper;
 
+import dev.engine_room.flywheel.lib.model.baked.PartialModel;
+import net.createmod.catnip.math.AngleHelper;
+import net.createmod.catnip.render.CachedBuffers;
+import net.createmod.catnip.render.SuperByteBuffer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -35,7 +35,7 @@ public class DiagonalGirderRenderer extends SafeBlockEntityRenderer<DiagonalGird
 
         
         for(PartialModel component : relevantPartials) {
-            SuperByteBuffer girderModel = CachedBufferer.partial(component, state);
+            SuperByteBuffer girderModel = CachedBuffers.partial(component, state);
 
             Direction facing = state.getValue(DirectionalBlock.FACING);
             rotateToFacing(girderModel, facing);
@@ -47,6 +47,6 @@ public class DiagonalGirderRenderer extends SafeBlockEntityRenderer<DiagonalGird
 
 
     private static void rotateToFacing(SuperByteBuffer buffer, Direction facing) {
-		buffer.centre().rotateY(AngleHelper.horizontalAngle(facing)).unCentre();
+		buffer.center().rotateY(AngleHelper.horizontalAngle(facing)).uncenter();
 	}
 }

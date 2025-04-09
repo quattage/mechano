@@ -1,18 +1,16 @@
 package com.quattage.mechano.foundation.electricity.grid.landmarks;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoSettings;
 import com.quattage.mechano.foundation.block.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-
 
 /***
  * A lightweight alternative to GridEdge <p>

@@ -2,13 +2,12 @@ package com.quattage.mechano;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.foundation.block.hitbox.HitboxCache;
-import com.quattage.mechano.foundation.block.hitbox.HitboxProvider;
 import com.quattage.mechano.foundation.block.upgradable.UpgradeCache;
 import com.quattage.mechano.foundation.electricity.grid.GlobalTransferGridDispatcher;
 import com.simibubi.create.foundation.data.CreateRegistrate;
-import com.simibubi.create.foundation.utility.LangBuilder;
 import com.tterrag.registrate.providers.DataGenContext;
 
+import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;

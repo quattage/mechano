@@ -34,4 +34,11 @@ public class SmallRotorBlockEntity extends AbstractRotorBlockEntity implements R
     public BlockState getRotorState() {
         return getBlockState();
     }
+
+    @Override
+    public float calculateStressApplied() {
+        float impact = 4;
+        this.lastStressApplied = impact;
+        return impact;
+    }
 }

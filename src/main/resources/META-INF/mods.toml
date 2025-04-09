@@ -13,6 +13,7 @@ logoFile="logo.png"
 credits='''
 Jake - Logos.
 happygill - Code assistance
+Mitake_Ameka - Port to Create 6
 Special thanks to the Create team!'''
 authors="quattage"
 description='''
@@ -35,6 +36,6 @@ Bringing Create polish to other mods.'''
 [[dependencies.mechano]]
     modId="create"
     mandatory=true
-    versionRange="[0.5.1.e,0.5.2)"
+    versionRange="[6.0.4,)"
     ordering="NONE"
     side="BOTH"

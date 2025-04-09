@@ -10,8 +10,7 @@ import com.quattage.mechano.content.block.power.alternator.slipRingShaft.SlipRin
 import com.quattage.mechano.content.block.power.alternator.stator.AbstractStatorBlock;
 import com.quattage.mechano.foundation.helper.shape.CircleGetter;
 import com.quattage.mechano.foundation.helper.shape.ShapeGetter;
-import com.quattage.mechano.foundation.mixin.KineticNetworkMixin.CustomStressable;
-import com.simibubi.create.content.kinetics.BlockStressValues;
+import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
@@ -181,7 +180,19 @@ public abstract class AbstractRotorBlockEntity extends KineticBlockEntity {
     }
 
     public float calculateStressWithStators() {
-        return getRampedStress((float) BlockStressValues.getImpact(getStressConfigKey()), false);
+        return getRampedStress(getBaseImpact(), false);
+    }
+
+    protected float getBaseImpact() {
+        return statorCount == 0 ? getNoStatorImpact() : getStatorImpact();
+    }
+
+    protected float getNoStatorImpact() {
+        return 1.0f;
+    }
+
+    protected float getStatorImpact() {
+        return 1.0f;
     }
 
     private float getRampedStress(float mul, boolean max) {

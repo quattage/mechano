@@ -8,10 +8,9 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.electricity.grid.GlobalTransferGridDispatcher;
 import com.quattage.mechano.foundation.electricity.watt.unit.WattUnit;
-import com.simibubi.create.foundation.utility.Pair;
+import net.createmod.catnip.data.Pair;
 
 /**
  * A GridPath is a wrapper for an array of GridEdges which represent "leaps" from a source to a destination.

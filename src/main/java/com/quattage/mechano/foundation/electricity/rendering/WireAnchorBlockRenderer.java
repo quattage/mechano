@@ -14,14 +14,13 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GridClientEdge
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity.ChevronTransform;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.foundation.render.CachedBufferer;
-import com.simibubi.create.foundation.render.SuperByteBuffer;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.render.CachedBuffers;
+import net.createmod.catnip.render.SuperByteBuffer;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 
 import net.minecraft.client.Minecraft;
@@ -197,8 +196,8 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
         if(!be.getWattBatteryHandler().getInteractionStatus().isInteracting()) return;
 
         CombinedOrientation orient = DirectionTransformer.extract(be.getBlockState());
-        SuperByteBuffer headBufferA = CachedBufferer.partial(MechanoClient.PART_CHEV_OVERLAY, be.getBlockState());
-        SuperByteBuffer headBufferB = CachedBufferer.partial(MechanoClient.PART_CHEV_OVERLAY_INV, be.getBlockState());
+        SuperByteBuffer headBufferA = CachedBuffers.partial(MechanoClient.PART_CHEV_OVERLAY, be.getBlockState());
+        SuperByteBuffer headBufferB = CachedBuffers.partial(MechanoClient.PART_CHEV_OVERLAY_INV, be.getBlockState());
         VertexConsumer buffer = bufferSource.getBuffer(RenderType.cutout());
 
         ChevronTransform[] chevrons = be.getChevronLocations();
@@ -216,13 +215,13 @@ public class WireAnchorBlockRenderer<T extends WireAnchorBlockEntity> implements
             if(arbitrary(transform.getDefault(), orient)) {
                 headBufferB
                     .translate(scaledOffset)
-                    .rotate(rotationAxis, (float) (Math.PI / 2 * progress))
+                    .rotate((float) (Math.PI / 2 * progress), rotationAxis)
                     .rotateToFace(orient.getLocalUp())
                     .renderInto(matrixStack, buffer);
             } else {
                 headBufferA
                     .translate(scaledOffset)
-                    .rotate(rotationAxis, (float) (Math.PI / 2 * progress))
+                    .rotate((float) (Math.PI / 2 * progress), rotationAxis)
                     .rotateToFace(orient.getLocalUp())
                     .renderInto(matrixStack, buffer);
             }

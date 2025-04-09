@@ -1,6 +1,5 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.BigRotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.SmallRotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.dummy.BigRotorDummyBlockEntity;
@@ -9,18 +8,12 @@ import com.quattage.mechano.content.block.power.transfer.connector.tiered.Tiered
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.ConnectorTier0BlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.ConnectorTier1BlockEntity;
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.ConnectorTier2BlockEntity;
-import com.quattage.mechano.content.block.power.transfer.test.TestBlockEntity;
-import com.quattage.mechano.content.block.power.transfer.test.TestBlockRenderer;
-import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlockEntity;
-import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlockEntity;
-import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderRenderer;
-import com.simibubi.create.content.kinetics.base.CutoutRotatingInstance;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntityRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import net.minecraftforge.eventbus.api.IEventBus;
 
-// This is where BlockEntities get regisrered.
+// This is where BlockEntities get registered.
 public class MechanoBlockEntities {
 
     // public static final BlockEntityEntry<ToolStationBlockEntity> TOOL_STATION = Mechano.REGISTRATE
@@ -30,14 +23,14 @@ public class MechanoBlockEntities {
 
     public static final BlockEntityEntry<SmallRotorBlockEntity> SMALL_ROTOR = Mechano.REGISTRATE
 		.blockEntity("small_rotor", SmallRotorBlockEntity::new)
-		.instance(() -> CutoutRotatingInstance::new, false)
+		.visual(MechanoDynamicResources::ofSmallRotor, false)
 		.validBlocks(MechanoBlocks.SMALL_ROTOR)
 		.renderer(() -> KineticBlockEntityRenderer::new)
 		.register();
 
 	public static final BlockEntityEntry<BigRotorBlockEntity> BIG_ROTOR = Mechano.REGISTRATE
 		.blockEntity("big_rotor", BigRotorBlockEntity::new)
-		.instance(() -> CutoutRotatingInstance::new, false)
+		.visual(MechanoDynamicResources::ofBigRotor, false)
 		.validBlocks(MechanoBlocks.BIG_ROTOR)
 		.renderer(() -> KineticBlockEntityRenderer::new)
 		.register();
@@ -49,7 +42,7 @@ public class MechanoBlockEntities {
 
     public static final BlockEntityEntry<SlipRingShaftBlockEntity> SLIP_RING_SHAFT = Mechano.REGISTRATE
 		.blockEntity("slip_ring_shaft", SlipRingShaftBlockEntity::new)
-		.instance(() -> CutoutRotatingInstance::new, false)
+		.visual(MechanoDynamicResources::ofSlipRingShaft, false)
 		.validBlocks(MechanoBlocks.SLIP_RING_SHAFT)
 		.renderer(() -> KineticBlockEntityRenderer::new)
 		.register();

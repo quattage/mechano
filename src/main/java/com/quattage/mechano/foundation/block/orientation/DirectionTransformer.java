@@ -2,16 +2,15 @@ package com.quattage.mechano.foundation.block.orientation;
 
 import javax.annotation.Nullable;
 
+import net.createmod.catnip.data.Pair;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.VerticallyOrientedBlock;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
-import com.simibubi.create.foundation.utility.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

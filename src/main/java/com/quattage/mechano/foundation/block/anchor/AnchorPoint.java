@@ -6,7 +6,6 @@ import javax.annotation.Nullable;
 
 import static com.quattage.mechano.Mechano.lang;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.MechanoSettings;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -16,9 +15,9 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GID;
 import com.quattage.mechano.foundation.electricity.grid.landmarks.GridVertex;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.simibubi.create.foundation.utility.Color;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;

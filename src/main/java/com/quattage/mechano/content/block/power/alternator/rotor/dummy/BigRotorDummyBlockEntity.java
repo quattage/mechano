@@ -2,19 +2,18 @@ package com.quattage.mechano.content.block.power.alternator.rotor.dummy;
 
 import java.util.List;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.rotor.AbstractRotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.BigRotorBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.BigRotorBlockEntity;
 import com.quattage.mechano.content.block.power.alternator.rotor.RotorReferable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;
-import com.simibubi.create.content.equipment.goggles.IHaveHoveringInformation;
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.nbt.CompoundTag;

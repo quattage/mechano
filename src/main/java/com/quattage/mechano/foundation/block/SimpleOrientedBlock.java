@@ -43,7 +43,7 @@ public class SimpleOrientedBlock extends Block implements IWrenchable {
                 context.getClickedPos()));
 
         if(world.getBlockState(context.getClickedPos()) != state)
-			playRotateSound(world, context.getClickedPos());
+			IWrenchable.playRotateSound(world, context.getClickedPos());
 
 		return InteractionResult.SUCCESS;
     }

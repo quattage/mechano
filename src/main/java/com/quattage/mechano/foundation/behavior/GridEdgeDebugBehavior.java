@@ -1,5 +1,7 @@
 package com.quattage.mechano.foundation.behavior;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.outliner.Outliner;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -32,8 +34,6 @@ import com.quattage.mechano.foundation.electricity.grid.landmarks.GIDPair;
 import com.quattage.mechano.foundation.electricity.impl.WireAnchorBlockEntity;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.quattage.mechano.foundation.network.GridPathViewMaskS2CPacket;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Pair;
 
 /**
  * Represents GridClientEdges received by the GridClientCache as in-world lines and boxes for debugging puroses
@@ -84,7 +84,8 @@ public class GridEdgeDebugBehavior extends ClientBehavior {
                 Vec3 from = pointA.getFirst().getPos();
                 Vec3 to = pointB.getFirst().getPos();
 
-                CreateClient.OUTLINER
+                Outliner
+                    .getInstance()
                     .showLine("edge-" + from + "-" + to, from, to)
                     .lineWidth(1/16f)
                     .disableCull()
@@ -135,4 +136,4 @@ public class GridEdgeDebugBehavior extends ClientBehavior {
     public double setTickIncrement() {
         return 1;
     }
-}   
+}

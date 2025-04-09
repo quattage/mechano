@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation.electricity.impl;
 import com.quattage.mechano.foundation.electricity.WattBatteryHandlable;
 import com.quattage.mechano.foundation.electricity.WattBatteryHandler;
 import com.quattage.mechano.foundation.helper.builder.WattBatteryHandlerBuilder;
-import com.simibubi.create.content.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.core.BlockPos;

@@ -1,14 +1,12 @@
-
 package com.quattage.mechano;
 
+import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
-import com.jozufozu.flywheel.core.PartialModel;
-import com.quattage.mechano.foundation.block.hitbox.HitboxProvider;
 import com.quattage.mechano.foundation.compat.embeddium.EmbeddiumWireCompat;
 import com.quattage.mechano.foundation.electricity.grid.WireAnchorSelectionManager;
 import com.quattage.mechano.foundation.electricity.rendering.WireTextureProvider;
@@ -22,7 +20,7 @@ public class MechanoClient {
     public static final WireAnchorSelectionManager ANCHOR_SELECTOR = new WireAnchorSelectionManager(Minecraft.getInstance());
     
 
-    public static final PartialModel 
+    public static final PartialModel
         PART_DIAGIRDER_SDF = newPartial("diagonal_girder/partials/short_down_flat"),
         PART_DIAGIRDER_SDV = newPartial("diagonal_girder/partials/short_down_vert"),
         PART_DIAGIRDER_SUF = newPartial("diagonal_girder/partials/short_up_flat"),
@@ -35,10 +33,11 @@ public class MechanoClient {
         PART_CHEV_OVERLAY_INV = newPartial("generic/chevron_cutout_2");
 
     private static PartialModel newPartial(String path) {
-        return new PartialModel(Mechano.asResource("block/" + path));
+        return PartialModel.of(Mechano.asResource("block/" + path));
 	}
 
     protected static void init(IEventBus modBus, IEventBus forgeBus) {
+        MechanoPartialModels.load();
         Mechano.logReg("client");
         if(ModList.get().isLoaded("embeddium") && FMLEnvironment.dist == Dist.CLIENT)
             EmbeddiumWireCompat.registerCompatModule(forgeBus);

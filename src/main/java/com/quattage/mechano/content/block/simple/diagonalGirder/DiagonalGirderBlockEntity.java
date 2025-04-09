@@ -3,12 +3,12 @@ package com.quattage.mechano.content.block.simple.diagonalGirder;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.jozufozu.flywheel.core.PartialModel;
 import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock.DiagonalGirderModelType;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 
+import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;

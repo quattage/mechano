@@ -6,18 +6,15 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.content.block.power.alternator.rotor.BlockRotorable;
-import com.quattage.mechano.content.block.power.alternator.rotor.SmallRotorBlock;
 import com.quattage.mechano.foundation.block.hitbox.Hitbox;
 import com.quattage.mechano.foundation.block.hitbox.HitboxNameable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
-import com.quattage.mechano.foundation.helper.VoxelShapeBuilder;
-import com.simibubi.create.foundation.placement.PlacementHelpers;
-import com.simibubi.create.foundation.placement.PlacementOffset;
 import com.tterrag.registrate.util.entry.BlockEntry;
 
+import net.createmod.catnip.placement.PlacementHelpers;
+import net.createmod.catnip.placement.PlacementOffset;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.Axis;
@@ -27,7 +24,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
@@ -37,7 +33,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class SmallStatorBlock extends AbstractStatorBlock<com.quattage.mechano.content.block.power.alternator.stator.SmallStatorBlock.SmallStatorModelType> {
 
     public static final EnumProperty<SmallStatorModelType> MODEL_TYPE = EnumProperty.create("model", SmallStatorModelType.class);
-    public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper(1));  
+    public static final int placementHelperId = PlacementHelpers.register(new PlacementHelper(1));
     private static Hitbox<SimpleOrientation> hitbox = new Hitbox<>();
 
     protected static enum SmallStatorModelType implements HitboxNameable, StringRepresentable, StatorTypeTransformable<SmallStatorModelType> {
@@ -226,7 +222,7 @@ public class SmallStatorBlock extends AbstractStatorBlock<com.quattage.mechano.c
 
 		@Override
 		public PlacementOffset getOffset(Player player, Level world, BlockState state, BlockPos pos,
-			BlockHitResult ray) {
+                                         BlockHitResult ray) {
 			PlacementOffset offset = super.getOffset(player, world, state, pos, ray);
 			if (offset.isSuccessful()) {
 				offset.withTransform(offset.getTransform());

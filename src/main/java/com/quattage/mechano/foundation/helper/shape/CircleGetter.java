@@ -2,8 +2,7 @@ package com.quattage.mechano.foundation.helper.shape;
 
 import java.util.function.Function;
 
-import com.simibubi.create.foundation.placement.PlacementOffset;
-
+import net.createmod.catnip.placement.PlacementOffset;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.Axis;
 

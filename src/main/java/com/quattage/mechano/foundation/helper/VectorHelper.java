@@ -1,12 +1,11 @@
-
 package com.quattage.mechano.foundation.helper;
 
+import net.createmod.catnip.outliner.Outliner;
+import net.createmod.catnip.theme.Color;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.simibubi.create.AllSpecialTextures;
-import com.simibubi.create.CreateClient;
-import com.simibubi.create.foundation.utility.Color;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -106,7 +105,7 @@ public class VectorHelper {
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos, Color color, String hash) {
-        CreateClient.OUTLINER.showAABB(hash, VectorHelper.toAABB(pos, 0.2f))
+        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, 0.2f))
             .disableLineNormals()
             .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
             .lineWidth(0.06f)

@@ -3,20 +3,18 @@ package com.quattage.mechano.content.block.power.alternator.rotor;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.mojang.blaze3d.MethodsReturnNonnullByDefault;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.content.block.power.alternator.rotor.dummy.BigRotorDummyBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.dummy.BigRotorDummyBlockEntity;
-import com.quattage.mechano.foundation.block.BlockChangeListenable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.simibubi.create.content.kinetics.simpleRelays.ShaftBlock;
 import com.simibubi.create.foundation.block.IBE;
-import com.simibubi.create.foundation.placement.PlacementHelpers;
-import com.simibubi.create.foundation.placement.PlacementOffset;
 import com.simibubi.create.foundation.placement.PoleHelper;
-import com.simibubi.create.foundation.utility.Pair;
 
+import net.createmod.catnip.data.Pair;
+import net.createmod.catnip.placement.PlacementHelpers;
+import net.createmod.catnip.placement.PlacementOffset;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -58,7 +56,7 @@ public class BigRotorBlock extends AbstractRotorBlock implements IBE<BigRotorBlo
     }
 
     @Override
-    boolean isRotor(Block block) {
+    public boolean isRotor(Block block) {
         return block instanceof BigRotorBlock;
     }
 
@@ -133,7 +131,7 @@ public class BigRotorBlock extends AbstractRotorBlock implements IBE<BigRotorBlo
 
 		@Override
 		public PlacementOffset getOffset(Player player, Level world, BlockState state, BlockPos pos,
-			BlockHitResult ray) {
+                                         BlockHitResult ray) {
 			PlacementOffset offset = super.getOffset(player, world, state, pos, ray);
 			if(offset.isSuccessful()) {
 				offset.withTransform(offset.getTransform()

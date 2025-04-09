@@ -1,4 +1,3 @@
-
 package com.quattage.mechano.content.block.power.alternator.stator;
 
 import java.util.Locale;
@@ -7,18 +6,16 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.MechanoClient;
 import com.quattage.mechano.content.block.power.alternator.rotor.BlockRotorable;
 import com.quattage.mechano.foundation.block.hitbox.Hitbox;
 import com.quattage.mechano.foundation.block.hitbox.HitboxNameable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.block.orientation.SimpleOrientation;
 import com.quattage.mechano.foundation.helper.CreativeTabExcludable;
-import com.quattage.mechano.foundation.helper.VoxelShapeBuilder;
-import com.simibubi.create.foundation.placement.PlacementHelpers;
-import com.simibubi.create.foundation.placement.PlacementOffset;
 import com.tterrag.registrate.util.entry.BlockEntry;
 
+import net.createmod.catnip.placement.PlacementHelpers;
+import net.createmod.catnip.placement.PlacementOffset;
 import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction.Axis;
@@ -220,7 +217,7 @@ public class BigStatorBlock extends AbstractStatorBlock<com.quattage.mechano.con
 
 		@Override
 		public PlacementOffset getOffset(Player player, Level world, BlockState state, BlockPos pos,
-			BlockHitResult ray) {
+                                         BlockHitResult ray) {
 			PlacementOffset offset = super.getOffset(player, world, state, pos, ray);
 			if(offset.isSuccessful()) {
 				offset.withTransform(offset.getTransform());
@@ -229,4 +226,3 @@ public class BigStatorBlock extends AbstractStatorBlock<com.quattage.mechano.con
 		}
 	}
 }
-

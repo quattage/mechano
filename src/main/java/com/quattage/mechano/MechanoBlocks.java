@@ -1,9 +1,6 @@
 
 package com.quattage.mechano;
 
-import com.quattage.mechano.content.block.integrated.toolStation.ToolStationBlock;
-import com.quattage.mechano.content.block.integrated.toolStation.ToolStationGenerator;
-import com.quattage.mechano.content.block.integrated.toolStation.UpgradeBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.AbstractRotorBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.BigRotorBlock;
 import com.quattage.mechano.content.block.power.alternator.rotor.SmallRotorBlock;
@@ -16,11 +13,7 @@ import com.quattage.mechano.content.block.power.transfer.connector.tiered.Connec
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.ConnectorTier1Block;
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.ConnectorTier2Block;
 import com.quattage.mechano.content.block.power.transfer.connector.tiered.AbstractConnectorBlock;
-import com.quattage.mechano.content.block.power.transfer.test.TestBlock;
-import com.quattage.mechano.content.block.power.transfer.voltometer.VoltometerBlock;
-import com.quattage.mechano.content.block.simple.diagonalGirder.DiagonalGirderBlock;
 import com.quattage.mechano.foundation.block.orientation.DynamicStateGenerator;
-import com.simibubi.create.content.kinetics.BlockStressDefaults;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -70,7 +63,6 @@ public class MechanoBlocks {
             .sound(SoundType.NETHERITE_BLOCK)
             .noOcclusion()
         )
-        .transform(BlockStressDefaults.setImpact(1))
         .transform(pickaxeOnly())
         .blockstate(new DynamicStateGenerator(AbstractRotorBlock.MODEL_TYPE).in("rotor")::generate)
         .item()
@@ -83,7 +75,6 @@ public class MechanoBlocks {
             .sound(SoundType.NETHERITE_BLOCK)
             .noOcclusion()
         )
-        .transform(BlockStressDefaults.setImpact(2))
         .transform(pickaxeOnly())
         .blockstate(new DynamicStateGenerator(AbstractRotorBlock.MODEL_TYPE).in("rotor")::generate)
         .item()
@@ -128,7 +119,6 @@ public class MechanoBlocks {
             .sound(SoundType.NETHERITE_BLOCK)
             .noOcclusion()
         )
-        .transform(BlockStressDefaults.setImpact(4.0))
         .transform(pickaxeOnly())
         .blockstate(new DynamicStateGenerator(SlipRingShaftBlock.MODEL_TYPE)::generate)
         .item()

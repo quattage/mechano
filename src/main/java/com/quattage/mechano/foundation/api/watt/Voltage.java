@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.watt.volt;
+package com.quattage.mechano.foundation.api.watt;
 
 import net.minecraft.nbt.CompoundTag;
 

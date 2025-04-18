@@ -24,9 +24,9 @@ public class MechanoBlocks {
         REGISTRATE.block("test_axis", TestAxisBlock::new)
             .initialProperties(SharedProperties::netheriteMetal)
             .properties(p -> p.noOcclusion())
-            .transform(HITBOXES.flag("", CombinedOrientedBlock.ORIENTATION))
+            .transform(HITBOXES.findExact("test_axis/base", CombinedOrientedBlock.ORIENTATION))
             .transform(pickaxeOnly())
-            .blockstate(new DynamicStateGenerator().in("test_axis")::generate)
+            .blockstate(new DynamicStateGenerator()::generate)
             .item()
             .transform(customItemModel("test_axis", "cube"))
             .register();

@@ -1,9 +1,7 @@
 
 package com.quattage.mechano.foundation.block.hitbox;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +38,6 @@ public class HitboxProvider extends SimplePreparableReloadListener<ResourceLocat
         event.addListener(INSTANCE);
     }
 
-
     private final Gson GSON = new GsonBuilder().setLenient().create();
 
     @Override
@@ -55,10 +52,8 @@ public class HitboxProvider extends SimplePreparableReloadListener<ResourceLocat
      * @param manager ResourceManager exposed by the ReloadListener or the MinecraftServer object
      */
     public void loadHitboxes(ResourceManager manager) {
-
         final Stopwatch timer = Stopwatch.createStarted();
         int count = 0;
-
         for(UnbuiltHitbox<? extends StringRepresentable> unbuilt : HITBOXES.getAllUnbuilt()) {
             manager.getResource(unbuilt.getResourceLocation()).ifPresentOrElse(resource -> {
                 Reader reader; 
@@ -79,30 +74,6 @@ public class HitboxProvider extends SimplePreparableReloadListener<ResourceLocat
         timer.stop();
     }
 
-    /**
-     * Load hitboxes in an arbitrary context by parsing the JSON directly
-     */
-    public void loadHitboxes() {
-
-        final Stopwatch timer = Stopwatch.createStarted();
-        int count = 0;
-
-        for(UnbuiltHitbox<? extends StringRepresentable> unbuilt : HITBOXES.getAllUnbuilt()) {
-            InputStream stream;
-            try {
-                stream = getClass().getClassLoader().getResourceAsStream(unbuilt.getRawPath());
-                if(stream == null) throw new FileNotFoundException("No hitbox at the provided ResourceLocation could be found!");
-                HITBOXES.putNew(unbuilt, assembleSingleHitbox(new InputStreamReader(stream)));
-            } catch (FileNotFoundException | ClassCastException e) {
-                Mechano.LOGGER.error("Exception loading hitbox at '" + unbuilt.getResourceLocation() + 
-                    "' - JSON parsing threw the following error: \n" + e.getMessage());
-            }
-            count++; 
-        }
-
-        Mechano.LOGGER.info("Loaded " + count + " hitboxes in " + timer.elapsed(TimeUnit.MILLISECONDS) + " ms");
-        timer.stop();
-    }
 
     @SuppressWarnings("unchecked")
     private List<List<Float>> assembleSingleHitbox(Reader reader) {

@@ -58,9 +58,9 @@ neoForge {
 
         configureEach {
             jvmArguments = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:+AllowEnhancedClassRedefinition"]
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            systemProperty 'mixin.debug.verbose', 'true'
-            systemProperty 'mixin.debug.export', 'true'
+            systemProperty 'forge.logging.markers', 'DEBUG'
+            // systemProperty 'mixin.debug.verbose', 'true'
+            // systemProperty 'mixin.debug.export', 'true'
             systemProperty 'terminal.ansi', 'true'
             logLevel = org.slf4j.event.Level.DEBUG
         }

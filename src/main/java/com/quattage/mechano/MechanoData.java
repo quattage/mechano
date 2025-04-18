@@ -6,6 +6,7 @@ import java.util.function.BiConsumer;
 import com.google.gson.JsonElement;
 import com.simibubi.create.foundation.utility.FilesHelper;
 import com.tterrag.registrate.providers.ProviderType;
+import com.tterrag.registrate.providers.RegistrateDataProvider;
 
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
@@ -15,6 +16,11 @@ public class MechanoData {
         Mechano.REGISTRATE.addDataGenerator(ProviderType.LANG, provider -> {
             mergeLang("ui", provider::add);
 		});
+        event.getGenerator().addProvider(true, 
+            Mechano.REGISTRATE.setDataProvider(
+                new RegistrateDataProvider(Mechano.REGISTRATE, Mechano.ID, event
+            )
+        ));
     }
 
     private static void mergeLang(String fileName, BiConsumer<String, String> consumer) {

@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.watt;
+package com.quattage.mechano.foundation.api.watt;
 
 /**
  * Joules are stored as a decomposed long and byte decimal.

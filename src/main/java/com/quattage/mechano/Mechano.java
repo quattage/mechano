@@ -33,6 +33,7 @@ public class Mechano {
         MechanoTags.register(modBus);
         MechanoSettings.init(modBus);
         MechanoGroups.register(modBus);
+        MechanoDataAttachments.register(modBus);
         modBus.addListener(EventPriority.LOWEST, MechanoData::collect);
     }
 
@@ -59,16 +60,17 @@ public class Mechano {
 
     public static ResourceLocation extend(DataGenContext<?, ?> ctx, String rootType, String[] in, String[] sub, String item) {
         String path = rootType;
-        if(in != null) {
+        if(in != null && in.length > 0) {
             for(String s : in) 
                 path += "/" + s;
+            path += "/" + ctx.getName();
         }
-        path += "/" + ctx.getName();
-        if(sub != null) {
+        
+        if(sub != null && sub.length > 0) {
             for(String s : sub) 
                 path += "/" + s;
+            path += "/" + item;
         }
-        path += "/" + item;
         return ResourceLocation.fromNamespaceAndPath(ctx.getId().getNamespace(), path);
     }
 }

@@ -25,6 +25,8 @@ public class DynamicStateGenerator extends SpecialBlockStateGen {
 
     public DynamicStateGenerator() {
         this.typeDelegate = null;
+        this.customIn = null;
+        this.customSub = null;
     }
 
     public DynamicStateGenerator in(String... customIn) {
@@ -60,6 +62,8 @@ public class DynamicStateGenerator extends SpecialBlockStateGen {
             DirectionTransformer.isHorizontal(state)) 
             ? "_side" : "";
 
+        if(customIn == null && customSub == null)
+            return provider.models().getExistingFile(Mechano.asResource("block/" + ctx.getName() + "/" + (typeName + orientSuffix)));
         return provider.models().getExistingFile(Mechano.extend(ctx, "block", customIn, customSub, typeName + orientSuffix));
     }
 }

@@ -1,6 +1,4 @@
-package com.quattage.mechano.foundation.watt;
-
-import com.quattage.mechano.foundation.watt.volt.VoltageReturnable;
+package com.quattage.mechano.foundation.api.watt;
 
 public interface WattStorable {
     

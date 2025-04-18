@@ -21,7 +21,7 @@ public class TestAxisBlock extends CombinedOrientedBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        if(hitbox == null) hitbox = Mechano.HITBOXES.get(ORIENTATION, null, this);
+        if(hitbox == null) hitbox = Mechano.HITBOXES.get(this, null, ORIENTATION);
         return hitbox.getRotated(state.getValue(ORIENTATION));
     }
 }

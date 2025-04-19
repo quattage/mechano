@@ -2,7 +2,7 @@ package com.quattage.mechano.foundation;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.grid.GridDispatcher;
+import com.quattage.mechano.foundation.api.grid.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.grid.TransferProtocolRepresentable;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridLink;
 
@@ -28,7 +28,7 @@ public abstract class SimpleTransferProtocol {
     public static SimpleTransferProtocol loadFrom(CompoundTag in) {
         if(!in.contains("id")) throw new IllegalArgumentException("Can't get a TransferProtocol from '" + in + "' - this CompoundTag does not contain relevent data!");
         int id = in.getInt("id");
-        SimpleTransferProtocol resultant = GridDispatcher.PROTOCOLS.get(id);
+        SimpleTransferProtocol resultant = GlobalServerGrid.PROTOCOLS.get(id);
         resultant.readFrom(in);
         return resultant;
     }

@@ -65,7 +65,6 @@ public class Mechano {
                 path += "/" + s;
             path += "/" + ctx.getName();
         }
-        
         if(sub != null && sub.length > 0) {
             for(String s : sub) 
                 path += "/" + s;

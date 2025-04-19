@@ -1,10 +1,14 @@
 package com.quattage.mechano.foundation.api.grid.landmarks;
 
-import com.quattage.mechano.foundation.api.grid.landmarks.GridNode.TrackedNode;
+import com.quattage.mechano.foundation.api.grid.landmarks.GridNode.Tracker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
+/**
+ * Barebones implementation template for hashables that need to reference
+ * a block position and (optionally) an index value. 
+ */
 public interface NodeIdentifiable<T> {
 
     public abstract T getValue();
@@ -14,7 +18,7 @@ public interface NodeIdentifiable<T> {
     public abstract CompoundTag writeTo(CompoundTag in);
     public abstract CompoundTag writeOnlyAddress(CompoundTag in);
 
-    public abstract TrackedNode makeTrackable();
+    public abstract Tracker makeTrackable();
 
     public default int getX() {
         return getPos().getX();

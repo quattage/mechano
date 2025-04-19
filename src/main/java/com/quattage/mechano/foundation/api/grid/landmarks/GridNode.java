@@ -16,6 +16,10 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+
+
+
+
 /**
  * A GridNode is a functional implementation of {@link NodeIdentifier} and provides 
  * access to the Y axis of an adjacency list defined by the {@link PowerGrid}.
@@ -72,12 +76,12 @@ public class GridNode extends NodeIdentifier<GridNode> {
     }
 
     /**
-     * Creates a new {@link TrackedNode} instance from this GridNode. TrackedNodes
+     * Creates a new {@link Tracker} instance from this GridNode. TrackedNodes
      * @return A new TrackedNode instance for hashing and pathfinding
      */
     @Override
-    public TrackedNode makeTrackable() {
-        return new TrackedNode(this);
+    public Tracker makeTrackable() {
+        return new Tracker(this);
     }
 
     public void forEachLink(Consumer<GridLink> cons) {
@@ -137,6 +141,35 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
      * A dummy implementation of {@link NodeIdentifier} useful as
      * a stand-in replacement for {@link GridNode} instances when
@@ -160,7 +193,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
             return this;
         }
 		@Override
-		public TrackedNode makeTrackable() {
+		public Tracker makeTrackable() {
 			throw new UnsupportedOperationException("Dummy addresses aren't trackable!");
 		}
 
@@ -194,16 +227,16 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
 
     /**
-     * An object that wraps {@link GridNode} instances.
+     * An object that wraps {@link GridNode} instances
      * while providing additional capabilities that
      * GridNodes only need intermittently.
      * 
      * A {@link PowerGrid} uses instances of this class
      * to maintain visitation history for pathing guidance.
-     * This ensures safe access, and elimites multiple transient
+     * This ensures safe access while eliminating multiple transient
      * variables from having to be declared in the GridNode itself.
      */
-    public static class TrackedNode implements NodeIdentifiable<GridNode>, Comparable<TrackedNode> {
+    public static class Tracker implements NodeIdentifiable<GridNode>, Comparable<Tracker> {
 
         private float f = 0;
         private float heur = 0;
@@ -215,7 +248,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
             return f;
         }
 
-        protected TrackedNode(GridNode node) {
+        protected Tracker(GridNode node) {
             this.node = node;
         }
 
@@ -225,7 +258,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * @param target 
          * @return This TrackedNode with modified guidance values
          */
-        public TrackedNode prime(NodeIdentifiable<?> target) {
+        public Tracker prime(NodeIdentifiable<?> target) {
             updateHeuristic(target);
             this.visited = true;
             this.cum = 0;
@@ -266,7 +299,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * @param neighbor The neighboring node to investigate. Should have the same address as the link's target
          * @return <code>TRUE</code> if this address is worth investigating while pathfinding
          */
-        public boolean investigateAcross(GridLink link, TrackedNode neighbor) {
+        public boolean investigateAcross(GridLink link, Tracker neighbor) {
             if(neighbor.visited) return false;
             if(!link.startsWith(this)) return false;
             if(!link.endsWith(neighbor)) return false;
@@ -305,7 +338,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * to the given TrackedNode
          */
         @Override
-        public int compareTo(TrackedNode that) {
+        public int compareTo(Tracker that) {
             if(this.f > that.f) return 1;
             if(this.f < that.f) return -1;
             return 0;
@@ -322,7 +355,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
         }
 
         @Override
-        public TrackedNode makeTrackable() {
+        public Tracker makeTrackable() {
             Mechano.LOGGER.warn("The node " + this + " was already a TrackedNode instance, but a call was made to makeTrackable()");
             return this;
         }

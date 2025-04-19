@@ -4,10 +4,18 @@ package com.quattage.mechano.foundation.api.grid.landmarks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
+/**
+ * Basic implementation of {@link NodeIdentifiable} that provides hashing, 
+ * equivalence, and serialization methods for a block position and an index value.
+ * This abstract class is used by {@link GridNode}, {@link GridNode.Address}, {@link GridNode.Tracker},
+ * and {@link com.quattage.mechano.foundation.api.grid.client.AnchorPoint AnchorPoint} - All of these classes
+ * share the same hashing, equivalence, and serialization methods, so they can all be used to query {@link  com.quattage.mechano.foundation.api.grid.PowerGrid PowerGrid}
+ * 
+ */
 public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
 
-    protected BlockPos pos;
-    protected byte index;
+    protected final BlockPos pos;
+    protected final byte index;
 
     public NodeIdentifier(BlockPos pos, int index) {
         this.pos = pos;
@@ -62,19 +70,14 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
     }
 
     public CompoundTag writeTo(CompoundTag in) {
-        CompoundTag output = new CompoundTag();
-        output.putInt("x", getX());
-        output.putInt("y", getY());
-        output.putInt("z", getZ());
-        output.putByte("i", index);
-        return output;
+        in.putInt("x", getX());
+        in.putInt("y", getY());
+        in.putInt("z", getZ());
+        in.putByte("i", index);
+        return in;
     }
 
-    public CompoundTag writeOnlyAddress(CompoundTag tag) {
-        tag.putInt("x", pos.getX());
-        tag.putInt("y", pos.getY());
-        tag.putInt("z", pos.getZ());
-        tag.putInt("i", index);
-        return tag;
+    public CompoundTag writeOnlyAddress(CompoundTag in) {
+        return writeTo(in);
     }
 }

@@ -14,7 +14,6 @@ import com.quattage.mechano.foundation.api.grid.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridPath;
 import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.grid.landmarks.NodeSet;
-import com.quattage.mechano.foundation.api.grid.landmarks.GridNode.TrackedNode;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.nbt.ListTag;
@@ -24,10 +23,10 @@ import net.minecraft.world.level.LevelReader;
 
 public class PowerGrid {
 
-    protected GridDispatcher dispatcher;
+    protected GlobalServerGrid global;
     public NodeSet nodes;
 
-    public static PowerGrid loadFrom(GridDispatcher dispatcher, LevelReader world, ListTag in) {
+    public static PowerGrid loadFrom(GlobalServerGrid dispatcher, LevelReader world, ListTag in) {
         PowerGrid freshInstance = new PowerGrid(dispatcher);
         ObjectOpenHashSet<NodeIdentifiable<GridNode>> deserialized = new ObjectOpenHashSet<>(in.size());
         for(int x = 0; x < in.size(); x++) {
@@ -38,14 +37,14 @@ public class PowerGrid {
         return freshInstance;
     }
 
-    private PowerGrid(GridDispatcher parent) {
+    private PowerGrid(GlobalServerGrid parent) {
         this.nodes = new NodeSet();
-        this.dispatcher = parent;
+        this.global = parent;
     }
 
     public PowerGrid(PowerGrid original, NodeSet newContents) {
         this.nodes = newContents;
-        this.dispatcher = original.dispatcher;
+        this.global = original.global;
     }
 
     /**
@@ -98,21 +97,21 @@ public class PowerGrid {
         if(!nodes.contains(destination)) return null;
         if(start.equals(destination)) return null;
 
-        final Queue<TrackedNode> open = new PriorityQueue<>(11);
+        final Queue<GridNode.Tracker> open = new PriorityQueue<>(11);
         open.add(start.makeTrackable().prime(destination));
 
         final GridPath output = GridPath.makeProvisional();
-        final ObjectOpenHashSet<TrackedNode> trackedNodes = new ObjectOpenHashSet<>();
+        final ObjectOpenHashSet<GridNode.Tracker> trackedNodes = new ObjectOpenHashSet<>();
     
         while(!open.isEmpty()) {
-            final TrackedNode local = open.poll();
+            final GridNode.Tracker local = open.poll();
             if(local.equals(destination))
                 return output;
             trackedNodes.add(local);
             local.markVisited();
             local.node.forEachLink(adjacentLink -> {
                 if(!adjacentLink.canTraverse()) return;
-                TrackedNode neighbor = trackedNodes.get(adjacentLink.getEnd());
+                GridNode.Tracker neighbor = trackedNodes.get(adjacentLink.getEnd());
                 if(neighbor == null) {
                     neighbor = adjacentLink.getEnd().makeTrackable();
                     trackedNodes.add(neighbor);
@@ -142,7 +141,7 @@ public class PowerGrid {
     }
 
     public ServerLevel getWorld() {
-        return dispatcher.getWorld();
+        return global.getWorld();
     }
 
     @Override

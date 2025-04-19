@@ -37,6 +37,4 @@ public class WireSpoolItem extends Item implements TransferProtocolRepresentable
     public Item get() {
         return this;
     }
-
-    
 }

@@ -13,6 +13,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.common.capabilities.CapabilityToken;
@@ -26,6 +28,7 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.event.lifecycle.FMLDedicatedServerSetupEvent;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 @EventBusSubscriber
 public class MechanoCapabilities {
@@ -46,21 +49,35 @@ public class MechanoCapabilities {
 
     @SuppressWarnings({"resource"})
     public void addWorldCapabilities(AttachCapabilitiesEvent<Level> event) {
-        if(event.getObject() instanceof ClientLevel) {
-            if (event.getCapabilities().containsKey(CLIENT_CACHE_CAPABILITY_ID)){
-                Mechano.LOGGER.info(event.getObject().dimension().location() + " has ClientGrid capability already attached");
-                return;
+        Level level = event.getObject();
+
+        if (level.isClientSide()) {
+            // 只在客户端执行
+            if (FMLEnvironment.dist.isClient()) {
+                attachClientCapabilities(event);
             }
-            Mechano.LOGGER.info("Attaching ClientCache capability to " + event.getObject().dimension().location());
-            event.addCapability(CLIENT_CACHE_CAPABILITY_ID, new GridClientCacheProvider((ClientLevel)event.getObject()));
-        } else if (event.getObject() instanceof ServerLevel) {
-            if (event.getCapabilities().containsKey(SERVER_GRID_CAPABILITY_ID)){
-                Mechano.LOGGER.info(event.getObject().dimension().location() + " has ServerGrid capability already attached");
-                return;
+        } else {
+            // 服务器端逻辑
+            if (level instanceof ServerLevel) {
+                if (event.getCapabilities().containsKey(SERVER_GRID_CAPABILITY_ID)) {
+                    Mechano.LOGGER.info(level.dimension().location() + " has ServerGrid capability already attached");
+                    return;
+                }
+                Mechano.LOGGER.info("Attaching ServerGrid capability to " + level.dimension().location());
+                event.addCapability(SERVER_GRID_CAPABILITY_ID, new GlobalTransferGridDispatcher(level));
             }
-            Mechano.LOGGER.info("Attaching ServerGrid capability to " + event.getObject().dimension().location());
-            event.addCapability(SERVER_GRID_CAPABILITY_ID, new GlobalTransferGridDispatcher(event.getObject()));
         }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private void attachClientCapabilities(AttachCapabilitiesEvent<Level> event) {
+        Level level = event.getObject();
+        if (event.getCapabilities().containsKey(CLIENT_CACHE_CAPABILITY_ID)) {
+            Mechano.LOGGER.info(level.dimension().location() + " has ClientGrid capability already attached");
+            return;
+        }
+        Mechano.LOGGER.info("Attaching ClientCache capability to " + level.dimension().location());
+        event.addCapability(CLIENT_CACHE_CAPABILITY_ID, new GridClientCacheProvider((ClientLevel) level));
     }
 
     @SubscribeEvent

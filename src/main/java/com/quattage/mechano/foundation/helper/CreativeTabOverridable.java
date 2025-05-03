@@ -27,7 +27,7 @@ public interface CreativeTabOverridable {
      * provided creative mode tab
      * @param item Item to check
      * @param tab Registry object containing a creative mode tab
-     * @return <code>TRUE</code> if the provided item belongs to the tab
+     * @return <code>true</code> if the provided item belongs to the tab
      */
     public static boolean belongsTo(Item item, DeferredHolder<CreativeModeTab, CreativeModeTab> tab) {
         if(!(item instanceof CreativeTabOverridable cto)) return true;

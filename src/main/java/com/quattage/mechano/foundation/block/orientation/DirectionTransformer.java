@@ -185,33 +185,26 @@ public class DirectionTransformer {
      */
     public static CombinedOrientation extract(BlockState state) {
 
+        // this code makes me happy :)
+        if(state == null) return CombinedOrientation.NORTH_UP;
         Block block = state.getBlock();
         if(block == null) return CombinedOrientation.NORTH_UP;
-
         if(block instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION);
-
         if(block instanceof SimpleOrientedBlock) 
             return convert(state.getValue(SimpleOrientedBlock.ORIENTATION));
-
         if(block instanceof VerticallyOrientedBlock)
             return convert(state.getValue(VerticallyOrientedBlock.ORIENTATION));
-
         if(block instanceof HorizontalDirectionalBlock)
             return convert(state.getValue(HorizontalDirectionalBlock.FACING));
-
         if(block instanceof DirectionalBlock)
             return convert(state.getValue(DirectionalBlock.FACING));
-
         if(block instanceof DirectionalKineticBlock)
             return convert(state.getValue(DirectionalKineticBlock.FACING));
-
         if(block instanceof RotatedPillarBlock)
             return convert(toDirection(state.getValue(RotatedPillarBlock.AXIS)));
-        
         if(block instanceof RotatedPillarKineticBlock)
             return convert(toDirection(state.getValue(RotatedPillarKineticBlock.AXIS)));
-
         return CombinedOrientation.NORTH_UP;
     }
 

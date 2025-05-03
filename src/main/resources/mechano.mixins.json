@@ -1,0 +1,18 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "priority": 1100,
+    "package": "com.quattage.mechano.foundation.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "refmap": "mechano.refmap.json",
+    "plugin": "com.quattage.mechano.foundation.mixin.MechanoMixins",
+    "mixins": [
+
+    ],
+    "client": [
+        "client.RenderBuffersAccessor"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

@@ -30,7 +30,7 @@ public class MechanoGroups {
         TAB_REGISTRY.register("base", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup." + Mechano.ID + ".base"))
             .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
-            .icon(() -> new ItemStack(MechanoBlocks.TEST_AXIS.asItem()))
+            .icon(() -> MechanoBlocks.TEST_AXIS.asStack())
             .displayItems(new GroupExclusionsGenerator(MechanoGroups.BASE))
             .build()
     );
@@ -57,12 +57,14 @@ public class MechanoGroups {
             for(Item item : collectedItems)
                 output.accept(new ItemStack(item));
             collectedItems.clear();
+            collectedItems.trim();
         }
 
         private ReferenceLinkedOpenHashSet<Item> collectBlocks() {
             for(RegistryEntry<Block, Block> blockEntry : Mechano.REGISTRATE.getAll(Registries.BLOCK)) {
                 if(!CreateRegistrate.isInCreativeTab(blockEntry, tab)) continue;
                 Item blockItem = blockEntry.get().asItem();
+                if(blockItem == Items.AIR) continue;
                 if(tab.get().contains(new ItemStack(blockItem))) continue;
                 if(!CreativeTabOverridable.belongsTo(blockItem, tab)) continue;
                 if(blockItem == Items.AIR) continue;
@@ -75,9 +77,10 @@ public class MechanoGroups {
             for(RegistryEntry<Item, Item> itemEntry : Mechano.REGISTRATE.getAll(Registries.ITEM)) {
                 if(!CreateRegistrate.isInCreativeTab(itemEntry, tab)) continue;
                 Item item = itemEntry.get();
+                if(item instanceof BlockItem) continue;
+                if(item == Items.AIR) continue;
                 if(tab.get().contains(new ItemStack(item))) continue;
                 if(!CreativeTabOverridable.belongsTo(item, tab)) continue;
-                if(item instanceof BlockItem) continue;
                 collectedItems.add(item);
             }
             return collectedItems;

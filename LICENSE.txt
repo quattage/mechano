@@ -1,0 +1,75 @@
+MIT No Attribution
+
+Copyright 2025, quatworks
+
+                                                                                                    
+              ..:^~~!!~~^:             ..:::........::........                                      
+          .^!77?JJYY5P55YYJ!^        7JJJJYYJJJJ5??Y5Y?!!7777777!!777!~^:                           
+         ^!7!~~~~~~!7?YP5YYYJ7^      7J7??7????JJJ?JJJJJY5P5YYYY55PPPPPPP7                          
+        ~!~^^^^^^^^^^^~JY55YYJJ7.    ~7!!~~~~~~~~!!!!77??JJJJYYYYY555YYYY!                          
+       :~~^^^^^^^^^^^^^^!JY?J??J?:    :!~~~~~~~~~~~~!!!!77777????JJYJYYJ?:                          
+       ^~~^^^^^^^^^^^^^^^~??7?JJ??~   .!~~~~~~~~~~~~!!!!777????JJYYYYYY5J                           
+       ^!~^^^^^~~~^^~!!!!!~77!7J7JJ~.::!!!~~~~~~~~~~!!!!77????JJJY5555YY!                           
+       ^!~^~~^~7!~~?YY?!~~^~JJ!!77!~!!~~~!~~~~~~~~~~~~~!!7?7???JJY5YYYYY!                           
+       .!7~~~~~!!~JPY!^^^^^^~J5J!~~~~^^~~!??7!~~!!!!!~!!77???JJJJ5GGYJYJ?:                          
+        :7?!~~~!!!YP7^^^^^^~~^7J?~~~~~~~!?J?7!!7777???7777???JYJJY55JYYJJJ!.                        
+         :7?!!!!!~!Y7~~~~~!!!~~~!!!~~!!!!7!!7!!777777?7777???JYY5YYYPGYJJY5Y7~:                     
+          :!JY?7!!!!~~^^~~7???7!!77!77777777777?777?77?7???JJY5P5YJJJ5YJJPPY5YJ?!^.                 
+           .!?JJ??7!~~~~!?JJ?7????JJJ???????????????????????JY55JJJJJYJJJJJJJJ??JJJ7^               
+             :~?YJ7!~!!7????77!!!77?JYYJYYYJ?????JJJJ??7777????JJJJY5PPPP55PP55YYJJYYJ~             
+               :7?!~!777!!~^~~~^~~~~!!777?JY55YJJJJJ????7777???JJJJJJYYYYYY5GGGGG5YYYYY?^           
+               .!!777~~~~~!?J7???777!~~~!!!7?JYYPJJJ??J?????J??77777????JJJJJY55P555YYJYY!          
+               :7!7!~~~~?YYPJ7??JJY55P5J?7!!7?7??JJJJJJ?J???7777777??JJ5GPP55PPYYJJJY555557         
+               :7!!~~~!7JJ?77777?JJY5PGPGBP7!!!7????JYGP55J??7???JJJJJY555P5Y5PY55YJY555P557        
+               ~777!~777?7!~~^^^^!?JY5P5PPG5??77???JYPGP5PG5J?J????JJJJJJY55Y5PP5Y55JYP5PB55?       
+              :777~!77!7?J??7!!7?J??JYJJ??????77?JJYY555YPGPJJJ?77?JJJ5J77!!775G555PG5B55GG5G^      
+              7J!!7?YYY?!~~~~!!7??777?JJ?777777??JYYYYGBPYG#G55J777???Y55JJ55PBG5YYY5B#G5PP5P?      
+             ^J?!!7??YYJ?7777??7?JJJJJJ???7777JJJJYYYPGGP5G#PYYY55YJJJJJJYYYYYPPPP55PPPP55555Y:     
+             7?J?7JYJ??777777???????????????7?5JJYY55GP55PPB55YYY5GB#BGP55555PGGGGPGP55P555555!     
+            :??J?7????J?7777777777??7????7JJ?JYJJYY55G555GPGPPGBPPGGBBBBGPPPPPGBBGGPPPPPP5555P?     
+            ^J??7!77J?7777777?77777777??77JJY5JJYY5PPP555G5G###BG5555555555PPG##BGPPPPPPP5555PY.    
+            ~Y??777!!!!!!!!!77777777777??YJYPPJJY5#GPPPPPBGBGP555555555GGGPPPG#&#BPPPPPPP5555PY.    
+            ^J?77!!!~~~~!!~~~!!77!7?J?JYYYJ5PYJY5B#GPPPPBBBGP5PGP5Y5YYYPGP55G##BGPPPPPPPP55P5P5.    
+            :J?77!~~~~!~~~~~~!~!!~7J555GP55YJJY5PB#GPGPGGPPPPPPPGG5YYYY55YYY5GGPPPGPPPPPPPPPPP5.    
+            :??77!!~~~~~~^^^^~~!~~!7?JYYY5YYJJY5PGGBBBBGPGB&#GGPGB5JYYYYYYJYY55PPPPPPPPGPPPPPGY     
+            .?7!!7!~~~~~~~~~~~~~~~~!7????J5JJJY5PPGB&###BGPBBBBPPP5J?JJ??J?JJJY5PPPPPPPPPPGGPP?     
+             !7!!!!!!!~~~~~~~~~~~~~~!!7777?7?JYYYPGG##GBGGPPGBGPP5?7?????????JJ?JY55PPPPPPGPPP~     
+             ^?!!!!!!~~~~~~~~~~~^^^^~~!!!!!!7???Y55PGPPP555Y555YJ??????????J???????JYY5PPPGPP5:     
+             .?!!!~~~~~~~~~~~~~^~~~^^^~~~!!!!!77?YY5555YYYJ????JJJJJYYYYYYY5YJYYJJJ???JY5PPPPJ      
+              ~?!!~~~~~~~~~~~~~~~~~~^^^~^~~!~!!!7?JJJYY5PYJJJJJJJYY55PP55PGBBBGGP555J?7J55PP5~      
+               77!!!~~~!!~~^^^~~~~~~~~~~~~~~~~!!!7???JJYPY5555555555PPGGGGBBG555GGGPY?7?YYPP?       
+               :7!!!~~!~~~~^:^~!~~~~~~~~~~~~~~~!!!~!!!?J555555PPPPPPB####BGGP?!!?YP55Y?JYY5Y:       
+                ^7!!!~~~~~~^^^^~~~~~~~~~~~~~~!77!!!~!!?YP5PPPPPPPPGB##&#BGPP5Y7!!?5Y55YJY55~        
+                 ^7!!~~~~~~^^~~~~~~~~~~~~~~~~!?J?77!!7?JPGPP555555555PGP5YYY5G5?!?Y5Y55Y55!         
+                  ~!!~~~~~~~~~~~~~~~~~~~~~~~~~!7??7777?JYYYYYYJJJJJJY5P55555PG5J?JYYYY555!          
+                   ^!~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!!!77??????????JJY5P55YYYY55YYYJJY5YYY~           
+                    ^!~~~~~~~~~~~~~~~~~~~~~~~!!!!!!!!!7?????JYYYY5555YYYJJYYYYYJYY55Y5Y^            
+                     ^!~~~~~~~~~~~~~~~~~~~~~~~!!!77777??JJYY555555YYJJJJJJYYYYJY555YYJ:             
+                      ^~~~~~~~~~!!~~~~~~~~~~~~~~~!!!!7777????JJJJJ?JJJYYYYYYYJY5555Y!               
+                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~!!!!!!77777???JJY555YYYYYYJJY5YJ^                
+                       :!~~~~~~~~~~~!~~~~~~~~~~~~!~~~~!!7777??JJYYYYYYYYJJJJJJJYYJ:                 
+                        !!~~~~~~~~~~~~~~~~~~~~!!77!!77777?JJJJYY5555YYYJJJ???JJYY~                  
+                        ^7~~~~~~~^~~~~~~~~~~~~!!!777??JJJJYYYYYY55YYJ????????JJYY.                  
+                         ^7!~^~~~~~^~~~~~~~~~!!!!!77??JJJJYYYYJYYJJJ???????J?JYY^                   
+                          ^!!~~^^~~^^^^~~~~!!!!!!!!!777?JJJJJJJYYJ?????????JY5J:                    
+                           .^~!~~~~~~~~~~~~~~!!!!!!!!77??JJJJJJJ??????????JYJ~                      
+                              :^~~!!~~~~~~~~~~~~~~!!!!!777??7777777????????~.                       
+                                 .:^~~!!!!!~~!!~~~~~!!!!!!!7777777??JJ?7!^.                         
+                                    ..:^~~~~!!!!!!!!!!!77777777???77!^:.                            
+                                          ..::^^^^~~~~~~~~~~~^^::..    
+
+
+                            Give unto god what belongs to god.                             
+                                                                                                    
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

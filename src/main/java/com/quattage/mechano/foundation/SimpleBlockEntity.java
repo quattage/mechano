@@ -1,13 +1,18 @@
 package com.quattage.mechano.foundation;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.simibubi.create.api.schematic.nbt.PartialSafeNBT;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.blockEntity.CachedRenderBBBlockEntity;
 
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -17,15 +22,20 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implements PartialSafeNBT {
 
-    private boolean hasInit = false;
-
     public SimpleBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 
-    public abstract void onBlockPlaced(Level world, BlockPos pos, BlockState oldState, BlockState newState);
-    public abstract void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState);
-    public abstract void onBlockStateChanged(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState);
+    public abstract void onBlockBroken(Level world, BlockPos pos, BlockState newState);
+
+    /**
+     * Called by {@link BERefreshable} whenever this BE's cooresponding block is placed or updated in any way
+     * @param world World to operate within (A LevelReader - the world cannot be modified within the scope of this method)
+     * @param pos The position of the modified block
+     * @param oldState The state that existed before this call was made
+     * @param newState The state that exists now
+     */
+    public abstract void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState);
 
     /**
      * Save up-to-date information and variables pertaining to 
@@ -71,17 +81,7 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         loadFrom(tag, registries);
     }
 
-    /**
-     * Initializer method called once after onLoad()
-     */
-    protected abstract void onFirstTick();
-
-    public void tick() {
-		if (!hasInit && hasLevel()) {
-			onFirstTick();
-			hasInit = true;
-        }
-    }
+    public abstract void tick();
 
     private static class SimpleBlockEntityTicker<T extends BlockEntity> implements BlockEntityTicker<T> {
         @Override
@@ -94,9 +94,9 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
 
     /**
      * An overridden implementation of Create's IBE designed to accomodate the slightly lighter weight
-     * SimpleBlockEntity implementation.
+     * SimpleBlockEntities and AnchorPoint refreshing
      */
-    public static interface SBE<B extends SimpleBlockEntity> extends IBE<B> {
+    public static interface BERefreshable<B extends SimpleBlockEntity> extends IBE<B> {
 
         @Override
         default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_,
@@ -104,26 +104,30 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
             return new SimpleBlockEntityTicker<>();
         }
 
-        default void onBlockPlaced(BlockState oldState, Level world, BlockPos pos, BlockState newState) {
-            if(!newState.hasBlockEntity() || oldState.is(newState.getBlock())) return;
+        default void onBlockBroken(@Nullable BlockState oldState, Level world, BlockPos pos, BlockState newState) {
+            if(oldState != null && (!oldState.hasBlockEntity() || oldState.is(newState.getBlock()))) return;
+            if(!world.isClientSide)
+                CatnipServices.NETWORK.sendToClientsTrackingChunk((ServerLevel)world, new ChunkPos(pos), new SBESyncPacket(pos, (byte)1));
             BlockEntity be = world.getBlockEntity(pos);
             if(be instanceof SimpleBlockEntity sbe)
-                sbe.onBlockPlaced(world, pos, oldState, newState);
-        }
-
-        default void onBlockBroken(BlockState oldState, Level world, BlockPos pos, BlockState newState) {
-            if(!oldState.hasBlockEntity() || oldState.is(newState.getBlock())) return;
-            BlockEntity be = world.getBlockEntity(pos);
-            if(be instanceof SimpleBlockEntity sbe)
-                sbe.onBlockBroken(world, pos, oldState, newState);
+                sbe.onBlockBroken(world, pos, newState);
             world.removeBlockEntity(pos);
         }
 
-        default void onBlockStateChanged(BlockState oldState, LevelReader world, BlockPos pos, BlockState newState) {
-            if(!newState.hasBlockEntity() || oldState.is(newState.getBlock())) return;
+        /**
+         * Call this method whenever this block has changed state in any way that should be carried over to the block entity. 
+         * This method is called interanally when the block is wrenched, but your block must call it manually if you want state changes to
+         * update any data in your BE.
+         * @param oldState The state that existed before this call was made
+         * @param world The world to operate within (A LevelReader - we cannot modify the world within the scope of this method)
+         * @param pos The position of the block that was modified
+         * @param newState The state that exists at the time of calling this method
+         */
+        default void refreshBE(@Nullable BlockState oldState, LevelReader world, BlockPos pos, BlockState newState) {
+            if(oldState != null && (!newState.hasBlockEntity() || oldState.is(newState.getBlock()))) return;
             BlockEntity be = world.getBlockEntity(pos);
             if(be instanceof SimpleBlockEntity sbe)
-                sbe.onBlockStateChanged(world, pos, oldState, newState);
+                sbe.onRefresh(world, pos, oldState, newState);
         }
     }
 }

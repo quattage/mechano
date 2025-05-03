@@ -5,7 +5,6 @@ import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.simibubi.create.AllSpecialTextures;
-import com.simibubi.create.CreateClient;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
@@ -290,27 +289,29 @@ public class VectorHelper {
     /***
      * Gets the HitResult for the given player.
      * @param player Player to use
-     * @return HitResult describing the player's absolute look position.
-     */
-    public static HitResult getLookingRay(Player player) {
-        return getLookingRay(player, 20);
-    }
-
-    /***
-     * Gets the HitResult for the given player.
-     * @param player Player to use
      * @param dist How far the ray should go before terminating
      * @return HitResult describing the player's absolute look position.
      */
-    public static HitResult getLookingRay(Player player, float dist) {
-        Vec3 viewDir = player.getViewVector(1f);
-    
-        Vec3 start = player.getEyePosition(1f);
+    public static VectorHelper.Ray getLookingRay(Player player, float pTicks, float dist) {
+        Vec3 viewDir = player.getViewVector(pTicks);
+        Vec3 start = player.getEyePosition(pTicks);
         Vec3 end = start.add(viewDir.x * dist, viewDir.y * dist, viewDir.z * dist);
+        return new Ray(start, player.getCommandSenderWorld().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)), viewDir);
+    }
 
-        return player.getCommandSenderWorld().clip(
-            new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)
-        );
+    public static double[] toArray(Vec3 vec) {
+        return new double[] {vec.x, vec.y, vec.z};
+    }
+
+    public static class Ray {
+        public final Vec3 start;
+        public final Vec3 end;
+        public final Vec3 normal;
+        public Ray(Vec3 start, HitResult hit, Vec3 normal) { 
+            this.start = start; 
+            this.end = hit.getLocation();
+            this.normal = normal;
+        }
     }
 
     // this is basically a 3d transformation matrix but in the worst way possible.

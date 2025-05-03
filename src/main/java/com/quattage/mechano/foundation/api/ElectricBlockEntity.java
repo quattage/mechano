@@ -17,24 +17,19 @@ public class ElectricBlockEntity extends SimpleBlockEntity {
     }
 
     @Override
-    protected void onFirstTick() {
+    public void onBlockBroken(Level world, BlockPos pos, BlockState newState) {
+
+    }   
+
+    @Override
+    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
+
+    }   
+
+    @Override
+    public void tick() {
         
     }
-
-    @Override
-    public void onBlockPlaced(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
-        
-    }   
-
-    @Override
-    public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
-
-    }   
-
-    @Override
-    public void onBlockStateChanged(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-
-    }   
 
     @Override
     protected void saveTo(CompoundTag tag, Provider registries) {

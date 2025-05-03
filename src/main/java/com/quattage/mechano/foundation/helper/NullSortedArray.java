@@ -120,8 +120,8 @@ public class NullSortedArray<T> implements Collection<T> {
     /**
      * Removes objects by equivalence with a predicate.
      * @param o Object to remove
-     * @param equivalence Predicate for comparison. If it returns <code>TRUE</code>, the object will be removed.
-     * @param bailout if <code>TRUE</code>, iteration will be stopped at the first object found.
+     * @param equivalence Predicate for comparison. If it returns <code>true</code>, the object will be removed.
+     * @param bailout if <code>true</code>, iteration will be stopped at the first object found.
      * @return
      */
     public <R> boolean removeBy(R o, BiPredicate<T, R> equivalence, boolean bailout) {

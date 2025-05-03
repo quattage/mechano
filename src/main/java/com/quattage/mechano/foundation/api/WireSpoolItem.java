@@ -1,13 +1,13 @@
 package com.quattage.mechano.foundation.api;
 
-import com.quattage.mechano.foundation.api.grid.TransferProtocolRepresentable;
+import com.quattage.mechano.foundation.api.grid.ProtocolTransferable;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridLink;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 
-public class WireSpoolItem extends Item implements TransferProtocolRepresentable {
+public class WireSpoolItem extends Item implements ProtocolTransferable {
 
     public WireSpoolItem(Properties properties) {
         super(properties);

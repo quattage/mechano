@@ -1,7 +1,5 @@
 package com.quattage.mechano.foundation.api.grid.landmarks;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.foundation.api.grid.PowerGrid;
@@ -19,7 +17,6 @@ import net.minecraft.nbt.ListTag;
  * the x axis of an adjacency list of {@link GridNode GridNodes}, but it may find use as a more
  * generic wrapper for a hash set. As such, all matrix-related implementation, such as
  * searching and pathfinding, are located in the {@link PowerGrid} class. <br></br>
- * 
  * This class is backed by an {@link it.unimi.dsi.fastutil.objects.ObjectOpenHashSet ObjectOpenHashSet},
  * where nodes are treated simultaneously as the key and the value. 
  * The {@link NodeSet#get get} method can be used with any subclass of {@link NodeIdentifiable} 
@@ -53,11 +50,11 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     }
 
     /**
-     * Remove a Node from this NodeMatrix. Nodes can be removed by supplying
+     * Remove a Node from this NodeSet. Nodes can be removed by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param o Any subclass of {@link NodeIdentifiable} with compatable hashing
-     * @return <code>TRUE</code> if this matrix was modified as a result of this call
+     * @return <code>true</code> if this matrix was modified as a result of this call
      */
     @Override
     public boolean remove(Object o) {
@@ -65,26 +62,26 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     }
 
     /**
-     * Remove a Node from this NodeMatrix. Nodes can be removed by supplying
+     * Remove a Node from this NodeSet. Nodes can be removed by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param pos block position in the minecraft world to look for
      * @param index index at the given BlockPos
-     * @return <code>TRUE</code> if this matrix was modified as a result of this call
+     * @return <code>true</code> if this matrix was modified as a result of this call
      */
     public boolean remove(BlockPos pos, int index) {
         return set.remove(new GridNode.Address(pos, index));
     }
 
     /**
-     * Remove a Node from this NodeMatrix. Nodes can be removed by supplying
+     * Remove a Node from this NodeSet. Nodes can be removed by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param x X coordinate
      * @param y Y coordinate
      * @param z Z coordinate
      * @param index index at the given XYZ to search for
-     * @return <code>TRUE</code> if this matrix was modified as a result of this call
+     * @return <code>true</code> if this matrix was modified as a result of this call
      */
     public boolean remove(int x, int y, int z, int index) {
         return set.remove(new GridNode.Address(new BlockPos(x, y, z), index));
@@ -96,7 +93,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     }
 
     /**
-     * Retrieve a Node from this NodeMatrix. Nodes can be acquired by supplying
+     * Retrieve a Node from this NodeSet. Nodes can be acquired by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param o Any subclass of {@link NodeIdentifiable} with compatable hashing
@@ -109,7 +106,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     }
 
     /**
-     * Retrieve a Node from this NodeMatrix. Nodes can be acquired by supplying
+     * Retrieve a Node from this NodeSet. Nodes can be acquired by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param pos block position in the minecraft world to look for
@@ -123,7 +120,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     }
 
     /**
-     * Retrieve a Node from this NodeMatrix. Nodes can be acquired by supplying
+     * Retrieve a Node from this NodeSet. Nodes can be acquired by supplying
      * a {@link GridNode GridNode} instance, any instance of {@link NodeIdentifiable},
      * or by specifying the exact location directly. 
      * @param x X coordinate
@@ -137,34 +134,6 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
         if(ni == null) return null;
         return ni.getValue();
     }
-
-    /**
-     * Retrieve every node in this NodeMatrix belonging to the given
-     * BlockPos, regardless of index
-     * @param pos block position in the minecraft world to look for
-     * @return A list of all GridNode objects belonging to the given BlockPos
-     */
-    public List<GridNode> getAllOccurancesOf(BlockPos pos) {
-        List<GridNode> output = new ArrayList<>();
-        for(int x = 0; x < 8; x++) {
-            GridNode link = get(new GridNode.Address(pos, x));
-            if(link == null) break;
-            output.add(link);
-        }
-        return output;
-    }
-
-
-    /**
-     * Retrieve every node in this NodeMatrix belonging to the given
-     * BlockPos, regardless of index
-     * @param pos block position in the minecraft world to look for
-     * @return A list of all GridNode objects belonging to the given BlockPos
-     */
-    public List<GridNode> getAllOccurancesOf(int x, int y, int z) {
-        return getAllOccurancesOf(new BlockPos(x, y, z));
-    }
-
 
     /**
      * Since GridNodes in the underlying hash set are wrapped in {@link NodeIdentifiable} objects,

@@ -57,7 +57,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * or level loading issue that should be addressed. If all is working,
      * this check is entirely unncessary, as GridNode instances should
      * never be allowed to enter a state where calls to this method return false.
-     * @return <code>TRUE</code> if this GridNode is valid.
+     * @return <code>true</code> if this GridNode is valid.
      */
     public boolean isValid() {
         if(links.isEmpty()) {
@@ -112,7 +112,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * Differs from {@link NodeIdentifier#equals equals} in that this method compares
      * more than just its internally-hashed address.
      * @param other Node to compare
-     * @return <code>TRUE</code> if the given node shares the same position, parent, and links as the given node.
+     * @return <code>true</code> if the given node shares the same position, parent, and links as the given node.
      */
     public boolean isExactMatch(GridNode other) {
         if(other == this) return true;
@@ -297,7 +297,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * addressed. 
          * @param link The link across which the investigation is occuring
          * @param neighbor The neighboring node to investigate. Should have the same address as the link's target
-         * @return <code>TRUE</code> if this address is worth investigating while pathfinding
+         * @return <code>true</code> if this address is worth investigating while pathfinding
          */
         public boolean investigateAcross(GridLink link, Tracker neighbor) {
             if(neighbor.visited) return false;
@@ -370,13 +370,13 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
         @Override
         public CompoundTag writeTo(CompoundTag in) {
-            Mechano.LOGGER.error(this + " was serialized to NBT. This indicates bad access and a potential memory leak.");
+            Mechano.LOGGER.error("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
             return node.writeTo(in);
         }
 
         @Override
         public CompoundTag writeOnlyAddress(CompoundTag in) {
-            Mechano.LOGGER.error(this + " was serialized to NBT. This indicates bad access and a potential memory leak.");
+            Mechano.LOGGER.error("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
             return node.writeOnlyAddress(in);
         }
     }

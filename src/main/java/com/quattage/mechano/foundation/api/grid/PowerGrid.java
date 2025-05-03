@@ -13,9 +13,11 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridPath;
 import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.api.grid.landmarks.NodeSet;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
@@ -124,6 +126,32 @@ public class PowerGrid {
             });
         }
         return null;
+    }
+
+    /**
+     * Retrieve every node in this PowerGrid belonging to the given
+     * BlockPos, regardless of index
+     * @param pos block position in the minecraft world to look for
+     * @return A list of all GridNode objects belonging to the given BlockPos
+     */
+    public List<GridNode> getAllOccurancesOf(BlockPos pos) {
+        List<GridNode> output = new ArrayList<>();
+        for(int x = 0; x < NodeIdentifier.MAX_OCCUPANCY; x++) {
+            GridNode link = nodes.get(new GridNode.Address(pos, x));
+            if(link == null) break;
+            output.add(link);
+        }
+        return output;
+    }
+
+    /**
+     * Retrieve every node in this PowerGrid belonging to the given
+     * BlockPos, regardless of index
+     * @param pos block position in the minecraft world to look for
+     * @return A list of all GridNode objects belonging to the given BlockPos
+     */
+    public List<GridNode> getAllOccurancesOf(int x, int y, int z) {
+        return getAllOccurancesOf(new BlockPos(x, y, z));
     }
 
     /**

@@ -1,5 +1,7 @@
+
 modLoader="javafml"
 loaderVersion="${loader_version_range}"
+issueTrackerURL="https://github.com/quattage/mechano/issues"
 license="${mod_license}"
 
 [[mods]]
@@ -13,9 +15,13 @@ credits=""
 authors="${mod_authors}"
 description='''${mod_description}'''
 
-#[[mixins]]
-#config="${mod_id}.mixins.json"
+[[mixins]]
+    config="${mod_id}.mixins.json"
 
+
+
+
+# base dependencies
 [[dependencies.${mod_id}]]
     modId="create"
     type="required"

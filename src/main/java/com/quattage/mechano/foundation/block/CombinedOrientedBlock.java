@@ -1,9 +1,10 @@
 package com.quattage.mechano.foundation.block;
 
+import com.quattage.mechano.foundation.SimpleBlockEntity;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
-import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.world.InteractionResult;
@@ -11,6 +12,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
@@ -32,20 +34,28 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
+        
         Level world = context.getLevel();
-
         Axis intendedRotation = context.getClickedFace().getAxis();
         CombinedOrientation strictCD;
+        BlockPos pos = context.getClickedPos();
+
         if(intendedRotation == state.getValue(ORIENTATION).getLocalUp().getAxis())
             strictCD = CombinedOrientation.cycleLocalForward(state.getValue(ORIENTATION));
-        else
-            strictCD = CombinedOrientation.cycle(state.getValue(ORIENTATION));
-        BlockState rotated = state.setValue(ORIENTATION, strictCD);
+        else strictCD = CombinedOrientation.cycle(state.getValue(ORIENTATION));
 
-        if(!rotated.canSurvive(world, context.getClickedPos()))
+        BlockState rotated = state.setValue(ORIENTATION, strictCD);
+        if(!rotated.canSurvive(world, pos))
 			return InteractionResult.PASS;
-        
-        KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
+        world.setBlock(pos, updateAfterWrenched(rotated, context), 3);
+
+        BlockState postState = world.getBlockState(pos);
+        if(postState != state) {
+            BlockEntity be = world.getBlockEntity(pos);
+            if(be instanceof SimpleBlockEntity sbe)
+                sbe.onRefresh(world, pos, state, postState);
+            IWrenchable.playRotateSound(world, pos);           
+        }
 
 		return InteractionResult.SUCCESS;
     }

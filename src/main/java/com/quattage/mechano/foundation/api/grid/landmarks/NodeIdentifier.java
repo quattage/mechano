@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.api.grid.landmarks;
 
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
@@ -14,26 +13,31 @@ import net.minecraft.nbt.CompoundTag;
  */
 public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
 
+    /**
+     * The maximum amount of nodes that can occupy the same single block space
+     */
+    public static final int MAX_OCCUPANCY = 8; 
+
     protected final BlockPos pos;
     protected final byte index;
 
     public NodeIdentifier(BlockPos pos, int index) {
         this.pos = pos;
-        this.index = (byte)(index < 0 ? 0 : (index > 7 ? 7 : index));
+        this.index = (byte)(index < 0 ? 0 : (index >= NodeIdentifier.MAX_OCCUPANCY ? NodeIdentifier.MAX_OCCUPANCY - 1 : index));
     }
 
     public NodeIdentifier(int x, int y, int z, int index) {
         this.pos = new BlockPos(x, y, z);
-        this.index = (byte)(index < 0 ? 0 : (index > 7 ? 7 : index));
+        this.index = (byte)(index < 0 ? 0 : (index >= NodeIdentifier.MAX_OCCUPANCY ? NodeIdentifier.MAX_OCCUPANCY - 1 : index));
     }
 
     @Override
     public BlockPos getPos() {
-        return pos;
+        return this.pos;
     }
 
     public String toString() {
-        return "(" + getX() + "," + getY() + "," + getZ() + "," + getIndex() + ")";
+        return "(" + getX() + "," + getY() + "," + getZ() + ", " + getIndex() + " / " + NodeIdentifier.MAX_OCCUPANCY + ")";
     }
 
     @Override

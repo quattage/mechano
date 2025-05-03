@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.api.grid;
 
+
 import com.quattage.mechano.foundation.SimpleTransferProtocol;
 
 import net.minecraft.nbt.CompoundTag;
@@ -9,7 +10,11 @@ public class TransferProtocolRegistry {
     private SimpleTransferProtocol[] protocols;
     private boolean loaded = false;
 
-    private static final EmptyProtocol EMPTY_PROTOCOL = new EmptyProtocol();
+    public TransferProtocolRegistry() {
+        protocols = new SimpleTransferProtocol[] {
+            new EmptyProtocol()
+        };
+    }
 
     protected void markLoaded() {
         this.loaded = true;
@@ -17,10 +22,12 @@ public class TransferProtocolRegistry {
 
     public void registerProtocol(SimpleTransferProtocol protocol) {
         if(loaded) throw new IllegalStateException("Couldn't register TransferProtocol '" + protocol.getName() + " - The registry has already finished loading!");
+        if(protocols.length == 32)
+            throw new IllegalStateException("Couldn't register TransferProtocol - '" + protocol.getName() + " - The registry is full!");
         SimpleTransferProtocol[] copy = new SimpleTransferProtocol[protocols.length + 1];
         System.arraycopy(protocols, 0, copy, 0, protocols.length);
         copy[protocols.length] = protocol;
-        protocol.index = protocols.length;
+        protocol.setID(protocols.length);
         this.protocols = copy;
     }
 
@@ -32,7 +39,7 @@ public class TransferProtocolRegistry {
     public SimpleTransferProtocol get(int index) {
         if(protocols.length == 0) 
             throw new IllegalStateException("Couldn't retrieve transfer protocol at index " + index + " - the registry hasn't finished loading!");
-        if(index < 0) return TransferProtocolRegistry.EMPTY_PROTOCOL;
+        if(index < 0) return protocols[0];
         if(index >= protocols.length) 
             throw new IndexOutOfBoundsException("Couldn't retrieve transfer protocol at index " + index + " - There are only " + protocols.length + " protocols in the registry!");
         return protocols[index];
@@ -56,7 +63,7 @@ public class TransferProtocolRegistry {
             if(protocols[x] != null && protocols[x].getName().equals(name))
                 return protocols[x];
         }
-        return TransferProtocolRegistry.EMPTY_PROTOCOL;
+        return protocols[0];
     }
 
     private static class EmptyProtocol extends SimpleTransferProtocol {
@@ -82,4 +89,5 @@ public class TransferProtocolRegistry {
         }
         
     }
+
 }

@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.grid.GlobalServerGrid;
-import com.quattage.mechano.foundation.api.grid.TransferProtocolRepresentable;
+import com.quattage.mechano.foundation.api.grid.ProtocolTransferable;
 import com.quattage.mechano.foundation.api.grid.landmarks.GridLink;
 
 import net.minecraft.nbt.CompoundTag;
@@ -14,9 +14,9 @@ public abstract class SimpleTransferProtocol {
 
     // public static EmptyProtocol EMPTY = new EmptyProtocol();
 
-    public int index = -1;
+    private int index = -1;
     protected boolean enabled = true;
-    private final @Nullable TransferProtocolRepresentable backer;
+    private final @Nullable ProtocolTransferable backer;
 
     /**
      * Create a new TransferProtocol from the data contained within a
@@ -33,7 +33,7 @@ public abstract class SimpleTransferProtocol {
         return resultant;
     }
 
-    public SimpleTransferProtocol(TransferProtocolRepresentable backer) {
+    public SimpleTransferProtocol(ProtocolTransferable backer) {
         this.backer = backer;
     }
 
@@ -43,9 +43,9 @@ public abstract class SimpleTransferProtocol {
 
     /**
      * By default, this method defers its implementation to its internal
-     * {@link TransferProtocolRepresentable} instance.
-     * @see TransferProtocolRepresentable#onConnectionCreated
-     * @see TransferProtocolRepresentable#onConnectionCreatedAnonymous
+     * {@link ProtocolTransferable} instance.
+     * @see ProtocolTransferable#onConnectionCreated
+     * @see ProtocolTransferable#onConnectionCreatedAnonymous
      */
     public boolean onConnectionCreated(Level world, @Nullable Player creator, GridLink connection) {
         if(backer == null) return true;
@@ -56,9 +56,9 @@ public abstract class SimpleTransferProtocol {
 
     /**
      * By default, this method defers its implementation to its internal
-     * {@link TransferProtocolRepresentable} instance.
-     * @see TransferProtocolRepresentable#onConnectionDestroyed
-     * @see TransferProtocolRepresentable#onConnectionDestroyedAnonymous
+     * {@link ProtocolTransferable} instance.
+     * @see ProtocolTransferable#onConnectionDestroyed
+     * @see ProtocolTransferable#onConnectionDestroyedAnonymous
      */
     public boolean onConnectionDestroyed(Level world, @Nullable Player destroyer, GridLink connection) {
         if(backer == null) return true;
@@ -98,9 +98,16 @@ public abstract class SimpleTransferProtocol {
     }
 
     /**
+     * To be called only by registry systems
+     */
+    public void setID(int id) {
+        this.index = id;
+    }
+
+    /**
      * An arbitrary switch to turn this protocol on/off.
      * Used by path indexing to determine 
-     * @return <code>TRUE</code> if this TransferProtocol is enabled
+     * @return <code>true</code> if this TransferProtocol is enabled
      */
     public boolean canTransfer() {
         return enabled;

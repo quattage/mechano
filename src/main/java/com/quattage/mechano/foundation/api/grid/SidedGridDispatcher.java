@@ -1,5 +1,7 @@
 package com.quattage.mechano.foundation.api.grid;
 
+import java.lang.ref.WeakReference;
+
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -21,10 +23,29 @@ public abstract class SidedGridDispatcher {
     public static final SidedGridDispatcher.Serializer SERIALIZER = new SidedGridDispatcher.Serializer();
     public static final TransferProtocolRegistry PROTOCOLS = new TransferProtocolRegistry();
 
-    private final Level world;
+    private static @Nullable WorldlyReference<GlobalServerGrid> weakServerGrid;
+    private static @Nullable WorldlyReference<GlobalClientGrid> weakClientGrid;
 
-    public static SidedGridDispatcher get(Level world) {
-        return world.getData(MechanoDataAttachments.GRID_DATA.get());
+    protected final Level world;
+
+    public static GlobalServerGrid getServerGrid(LevelReader world) {
+        if(!(world instanceof ServerLevel sl)) return null;
+        if(weakServerGrid != null && (!weakServerGrid.refersTo(null)) && weakServerGrid.is(sl))
+            return weakServerGrid.get();
+        SidedGridDispatcher attachment = sl.getData(MechanoDataAttachments.GRID_DATA.get());
+        if(attachment == null) return null;
+        weakServerGrid = new WorldlyReference<GlobalServerGrid>(attachment.asServer());
+        return weakServerGrid.get();
+    }
+
+    public static GlobalClientGrid getClientGrid(LevelReader world) {
+        if(!(world instanceof ClientLevel cl)) return null;
+        if(weakClientGrid != null && (!weakClientGrid.refersTo(null)) && weakClientGrid.is(cl))
+            return weakClientGrid.get();
+        SidedGridDispatcher attachment = cl.getData(MechanoDataAttachments.GRID_DATA.get());
+        if(attachment == null) return null;
+        weakClientGrid = new WorldlyReference<GlobalClientGrid>(attachment.asClient());
+        return weakClientGrid.get();
     }
 
     public static SidedGridDispatcher createNew(IAttachmentHolder holder) {
@@ -89,6 +110,18 @@ public abstract class SidedGridDispatcher {
         @Override
         public ListTag write(SidedGridDispatcher attachment, Provider provider) {
             return attachment.writeAll();
+        }
+    }
+
+
+    protected static class WorldlyReference<T extends SidedGridDispatcher> extends WeakReference<T> {
+
+        public WorldlyReference(T referent) {
+            super(referent);
+        }
+
+        protected boolean is(Level world) {
+            return (world.isClientSide == get().world.isClientSide) && world.dimension().compareTo(get().world.dimension()) == 0;
         }
     }
 }

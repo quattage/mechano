@@ -3,10 +3,12 @@ package com.quattage.mechano;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry;
 import com.quattage.mechano.foundation.block.hitbox.HitboxCache;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
+import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -34,6 +36,7 @@ public class Mechano {
         MechanoSettings.init(modBus);
         MechanoGroups.register(modBus);
         MechanoDataAttachments.register(modBus);
+        MechanoTransmissionTypes.register(modBus);
         modBus.addListener(EventPriority.LOWEST, MechanoData::collect);
     }
 
@@ -71,5 +74,9 @@ public class Mechano {
             path += "/" + item;
         }
         return ResourceLocation.fromNamespaceAndPath(ctx.getId().getNamespace(), path);
+    }
+
+    public static LangBuilder lang() {
+        return new LangBuilder(ID);
     }
 }

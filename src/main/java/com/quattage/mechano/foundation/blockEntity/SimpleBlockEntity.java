@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation;
+package com.quattage.mechano.foundation.blockEntity;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -6,13 +6,10 @@ import com.simibubi.create.api.schematic.nbt.PartialSafeNBT;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.blockEntity.CachedRenderBBBlockEntity;
 
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -102,16 +99,6 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_,
                 BlockEntityType<S> p_153214_) {
             return new SimpleBlockEntityTicker<>();
-        }
-
-        default void onBlockBroken(@Nullable BlockState oldState, Level world, BlockPos pos, BlockState newState) {
-            if(oldState != null && (!oldState.hasBlockEntity() || oldState.is(newState.getBlock()))) return;
-            if(!world.isClientSide)
-                CatnipServices.NETWORK.sendToClientsTrackingChunk((ServerLevel)world, new ChunkPos(pos), new SBESyncPacket(pos, (byte)1));
-            BlockEntity be = world.getBlockEntity(pos);
-            if(be instanceof SimpleBlockEntity sbe)
-                sbe.onBlockBroken(world, pos, newState);
-            world.removeBlockEntity(pos);
         }
 
         /**

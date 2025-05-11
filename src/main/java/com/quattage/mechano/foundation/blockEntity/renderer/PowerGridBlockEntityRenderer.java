@@ -1,9 +1,9 @@
-package com.quattage.mechano.foundation;
+package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoints;
+import com.quattage.mechano.foundation.api.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.client.AnchorSelector;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -32,7 +32,7 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
      * <li>BERs have built-in frustum culling</li>
      * <li>This code is executed at the framerate of the game rather than a fixed rate</li>
      * </ul>
-     * The visibility and interaction status of each anchor is evaluated in the {@link AnchorPoints.Selector Anchor Selector}
+     * The visibility and interaction status of each anchor is evaluated in the {@link AnchorSelector.INSTANCE Anchor Selector}
      * @param be
      */
     public void tickAnchors(T be) {
@@ -41,7 +41,7 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
         be.anchors.forEach(anchor -> {
             float distance = (float)player.getEyePosition().distanceTo(anchor.getRealPosition());
             if(distance > AnchorPoint.VIS_RANGE) return;
-            AnchorPoints.SELECTOR.track(be, anchor, distance);
+            AnchorSelector.INSTANCE.track(be, anchor, distance);
         });
     }
 }

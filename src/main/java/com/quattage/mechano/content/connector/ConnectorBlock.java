@@ -1,9 +1,9 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.foundation.SimpleBlockEntity;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;

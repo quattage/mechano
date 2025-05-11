@@ -1,31 +1,37 @@
-package com.quattage.mechano.foundation.api.grid.client;
+package com.quattage.mechano.foundation.api.client;
 
-import javax.annotation.Nullable;
+import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoDataAttachments;
+import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.transmission.Transmitable;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.grid.ProtocolTransferable;
-import com.quattage.mechano.foundation.api.grid.landmarks.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
+import static com.quattage.mechano.Mechano.lang;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.Shapes;
-import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * An AnchorPoint is the client-sided mirror implementation of the
- * {@link com.quattage.mechano.foundation.api.grid.landmarks.GridNode GridNode},
+ * {@link com.quattage.mechano.foundation.api.landmarks.GridNode GridNode},
  * built specifically to store transformation data. 
  * 
  * <p> The AnchorPoint
@@ -37,15 +43,11 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
 
     private byte[] data;
 
-    // the visual cube and hitbox may be null for a brief moment during chunk/world loading before updateOrientation is called
-    public @Nullable AABB hitbox;
-    public @Nullable VoxelShape shape;
-
     private boolean enabled;
     private Vector3f offset;
 
     /**
-     * A bitmask for determining what connections this anchor can interact with
+     * A bitmask for determining what types of connections this anchor can support
      */
     public final int bitmask;
 
@@ -64,11 +66,32 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         bitmask = 0xFFFFFFFF;
     }
 
-    /** 
-     * @return <code>true</code> if this AnchorPoint can currently accept more connections
+    /**
+     * Gets an AnchorPoint at the given address
+     * @param world World to operate within
+     * @param address Address to find
+     * @return AnchorPoint at the given address, or <code>null</code> if one couldn't be found.
      */
-    public boolean hasRoom() {
-        return (data[4] + 128) < (data[5] + 128);
+    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable NodeIdentifiable<?> address) {
+        if(address == null) return null;
+        if(!world.isClientSide()) {
+            Mechano.LOGGER.error("Attempted to retrieve AnchorPoint " + address + " from non-permissible server context!");
+            return null;
+        }
+        PowerGridBlockEntity pgbe = address.getHost(world);
+        return pgbe == null ? null : pgbe.anchors.getByIndex(address.getIndex());
+    }
+
+
+    /**
+     * Gets an AnchorPoint at the given address
+     * @param world World to operate within
+     * @param stack ItemStack to extract the address from. Expected to be stored as a {@link com.quattage.mechano.MechanoDataAttachments#ADDRESS_COMPONENT data attachment}
+     * @return AnchorPoint at the given address, or <code>null</code> if one couldn't be found.
+     */
+    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable ItemStack stack) {
+        if(stack == null) return null;
+        return retrieve(world, stack.get(MechanoDataAttachments.ADDRESS_COMPONENT));
     }
 
     /**
@@ -99,18 +122,46 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
     }
 
     /**
-     * This method is used to determine whether or not the provided transfer protocol
+     * This method is used to determine whether or not the provided transfer transmitter
      * can be used with this AnchorPoint. Useful for enforcing tiers or types
      * of wires/connectors that should coorespond with one another.
-     * @param tfp TransferProtocol to compare
+     * @param tfp Transmitter to compare
      * @return <code>true</code> if the provided TFP can interact with this AnchorPoint
      */
-    public boolean isCompatableWith(ProtocolTransferable tfp) {
-        return (bitmask & tfp.bitmask()) != 0;
+    public boolean isCompatableWith(TransmitterType<?> type) {
+        return (bitmask & type.bitmask()) != 0;
     }
 
     private Vector3f getRaw() {
         return new Vector3f(unpackMeasurement(data[0]) / 16f, unpackMeasurement(data[1]) / 16f, unpackMeasurement(data[2]) / 16f);
+    }
+
+    public float getSize() {
+        return unpackMeasurement(data[3]) / 16f;
+    }
+
+    /** 
+     * Check whether or not this AnchorPoint can support more connections
+     * @return <code>true</code> if <code>current connections < max connections</code>
+     * @see {@link AnchorPoint#getCurrentConnections()}
+     * @see {@link AnchorPoint#getMaxConnections()}
+     */
+    public boolean hasRoom() {
+        return getCurrentConnections() < getMaxConnections();
+    }
+
+    /**
+     * @return The amount of connections that this AnchorPoint is currently hosting
+     */
+    public int getCurrentConnections() {
+        return data[4] + 128;
+    }
+
+    /**
+     * @return The maximum possible amount of connections that this AnchorPoint could host
+     */
+    public int getMaxConnections() {
+        return data[5] + 128;
     }
 
     /**
@@ -120,15 +171,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
      */
     public void updateOrientation(BlockState state) {
         offset = VectorHelper.rotate(getRaw(), DirectionTransformer.extract(state));
-        float size = unpackMeasurement(data[3]) / 16f;
-        hitbox = new AABB(
-            (getX() + offset.x) - size,
-            (getY() + offset.y) - size,
-            (getZ() + offset.z) - size,
-            (getX() + offset.x) + size,
-            (getY() + offset.y) + size,
-            (getZ() + offset.z) + size
-        );
     }
 
     /**
@@ -139,35 +181,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
      */
     public void updateOrientation(CombinedOrientation dir) {
         offset = VectorHelper.rotate(getRaw(), dir);
-        float size = unpackMeasurement(data[3]) / 16f;
-        hitbox = new AABB(
-            (getX() + offset.x) - size,
-            (getY() + offset.y) - size,
-            (getZ() + offset.z) - size,
-            (getX() + offset.x) + size,
-            (getY() + offset.y) + size,
-            (getZ() + offset.z) + size
-        );
-        shape = Shapes.create(-size, -size, -size, size, size, size);
-    }
-
-    /**
-     * Rebuild the AABB for this AnchorPoint, which is necessary
-     * to reflect a change in orientation or position.
-     * @return the AABB that was rebuilt
-     */
-    public AABB rebuildHitbox() {
-        float size = unpackMeasurement(data[3]) / 16f;
-        hitbox = new AABB(
-            (getX() + offset.x) - size,
-            (getY() + offset.y) - size,
-            (getZ() + offset.z) - size,
-            (getX() + offset.x) + size,
-            (getY() + offset.y) + size,
-            (getZ() + offset.z) + size
-        );
-        shape = Shapes.create(-size, -size, -size, size, size, size);
-        return hitbox;
     }
 
     private static float unpackMeasurement(byte in) {
@@ -179,14 +192,24 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
     }
 
     /**
-     * Gets this AnchorPoint's hitbox. Note that
-     * a call to {@link AnchorPoint#rebuildHitbox rebuildHitbox()}
-     * must be made at least once to initially populate the hitbox,
-     * otherwise this method will return <code>null</code>
-     * @return the AABB held by this AnchorPoint
+     * Builds a new AABB based on this hitbox's current offset 
+     * and size. <p>
+     * Note that this hitbox may be out of date if the AnchorPoint has moved.
+     * To ensure that this is not the case, a call to {@link AnchorPoint#updateOrientation}
+     * should be made at some point to reflect the change to this AnchorPoint's position.
+     * @param useSize if <code>false<code>, the returned AABB will have a size of 0.
+     * @return A new AABB describing this AnchorPoint's hitbox
      */
-    public @Nullable AABB getHitbox() {
-        return this.hitbox;
+    public AABB makeHitbox(boolean useSize) {
+        float size = useSize ? getSize() : 0;
+        return new AABB(
+            (getX() + offset.x) - size,
+            (getY() + offset.y) - size,
+            (getZ() + offset.z) - size,
+            (getX() + offset.x) + size,
+            (getY() + offset.y) + size,
+            (getZ() + offset.z) + size
+        );
     }
 
 
@@ -199,12 +222,37 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         return this.enabled;
     }
 
+    /**
+     * Enables this AnchorPoint, which allows it to be seen
+     * and interacted with by the player.
+     * This method, along with {@link AnchorPoint#disable}, can
+     * be used to reflect BlockState or BlockEntity changes that
+     * may visually or functionally obscure AnchorPoints. 
+     */
     public void enable() {
         this.enabled = true;
     }
 
+    /**
+     * Disables this AnchorPoint, which hides it from the world
+     * and prevents all player interaction with it. 
+     * This method, along with {@link AnchorPoint#enable}, can
+     * be used to reflect BlockState or BlockEntity changes that
+     * may visually or functionally obscure AnchorPoints. 
+     * Do note that calls to {@link AnchorPoint#disable} will <strong>not</strong>
+     * break wires or sever connections to/from this AnchorPoint.
+     */
     public void disable() {
         this.enabled = false;
+    }
+
+    /**
+     * Writes information stored in this AnchorPoint to a tooltip string
+     * for display to the player
+     * @param tooltip
+     */
+    public void writeInfoToTooltip(List<Component> tooltip) {
+        lang().text(getCurrentConnections() + "/" + getMaxConnections()).forGoggles(tooltip);;
     }
 
     /**
@@ -215,24 +263,7 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
      * @return <code>true</code> if <code>ray</code> is intersecting this AnchorPoint
      */
     public boolean isIntersecting(VectorHelper.Ray ray) {
-        return hitbox.clip(ray.start, ray.end).isPresent();
-
-        // manual intersection test is faster (i think) but doesn't clip on blocks
-        // if(ray == null) return false;
-        // double tMin = Double.NEGATIVE_INFINITY, tMax = Double.POSITIVE_INFINITY;
-        // double tx1 = (hitbox.minX - ray.start().x) / ray.dir().x;
-        // double tx2 = (hitbox.maxX - ray.start().x) / ray.dir().x;
-        // tMin = Math.max(tMin, Math.min(tx1, tx2));
-        // tMax = Math.min(tMax, Math.max(tx1, tx2));
-        // double ty1 = (hitbox.minY - ray.start().y) / ray.dir().y;
-        // double ty2 = (hitbox.maxY - ray.start().y) / ray.dir().y;
-        // tMin = Math.max(tMin, Math.min(ty1, ty2));
-        // tMax = Math.min(tMax, Math.max(ty1, ty2));
-        // double tz1 = (hitbox.minZ - ray.start().z) / ray.dir().z;
-        // double tz2 = (hitbox.maxZ - ray.start().z) / ray.dir().z;
-        // tMin = Math.max(tMin, Math.min(tz1, tz2));
-        // tMax = Math.min(tMax, Math.max(tz1, tz2));
-        // return tMax >= tMin;
+        return makeHitbox(true).clip(ray.start, ray.end).isPresent();
     }
 
     @Override
@@ -266,6 +297,17 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
     /**
      * A fluent-ish builder for instantiating AnchorPoints in BlockEntities
      */
@@ -277,9 +319,9 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         private float size = 2;
         private boolean enabled;
         private int max = 2;
-        private final AnchorPoints.Builder prev;
+        private final AnchorArray.Builder prev;
 
-        public Builder(AnchorPoints.Builder prev) {
+        public Builder(AnchorArray.Builder prev) {
             this.prev = prev;
             this.enabled = true;
         }
@@ -341,7 +383,7 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
             return this;
         }
 
-        public AnchorPoints.Builder make() {
+        public AnchorArray.Builder make() {
             prev.add(this);
             return prev;
         }

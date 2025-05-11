@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.grid;
+package com.quattage.mechano.foundation.api;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.ListTag;

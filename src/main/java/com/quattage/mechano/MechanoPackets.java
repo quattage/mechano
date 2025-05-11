@@ -2,24 +2,27 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.foundation.SBESyncPacket;
+import com.quattage.mechano.foundation.api.network.DispatchSyncClientBoundPacket;
+import com.quattage.mechano.foundation.api.network.DispatchSyncServerBoundPacket;
+import com.quattage.mechano.foundation.api.network.LinkRequestPacket;
 
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload.Type;
 import net.neoforged.bus.api.IEventBus;
 
 public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     
-    SBE_SYNC(SBESyncPacket.class, SBESyncPacket.CODEC)
+    LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
+    DISPATCH_SYNC_C2S(DispatchSyncClientBoundPacket.class, DispatchSyncClientBoundPacket.STREAM_CODEC),
+    DISPATCH_SYNC_S2C(DispatchSyncServerBoundPacket.class, DispatchSyncServerBoundPacket.STREAM_CODEC)
     ;
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends CustomPacketPayload> Type<T> getType() {
+    public <T extends CustomPacketPayload> CustomPacketPayload.Type<T> getType() {
         return (CustomPacketPayload.Type<T>) this.type.type();
     }
 

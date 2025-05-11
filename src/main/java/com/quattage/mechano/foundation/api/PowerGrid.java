@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.grid;
+package com.quattage.mechano.foundation.api;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -10,17 +10,15 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.grid.landmarks.GridNode;
-import com.quattage.mechano.foundation.api.grid.landmarks.GridPath;
-import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.grid.landmarks.NodeIdentifier;
-import com.quattage.mechano.foundation.api.grid.landmarks.NodeSet;
+import com.quattage.mechano.foundation.api.landmarks.GridNode;
+import com.quattage.mechano.foundation.api.landmarks.GridPath;
+import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmarks.NodeSet;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.LevelReader;
 
 
 public class PowerGrid {
@@ -28,19 +26,8 @@ public class PowerGrid {
     protected GlobalServerGrid global;
     public NodeSet nodes;
 
-    public static PowerGrid loadFrom(GlobalServerGrid dispatcher, LevelReader world, ListTag in) {
-        PowerGrid freshInstance = new PowerGrid(dispatcher);
-        ObjectOpenHashSet<NodeIdentifiable<GridNode>> deserialized = new ObjectOpenHashSet<>(in.size());
-        for(int x = 0; x < in.size(); x++) {
-            GridNode newNode = GridNode.loadFrom(freshInstance, world, in.getCompound(x));
-            deserialized.add(newNode);
-        }
-        freshInstance.nodes = new NodeSet(deserialized);
-        return freshInstance;
-    }
-
-    private PowerGrid(GlobalServerGrid parent) {
-        this.nodes = new NodeSet();
+    protected PowerGrid(GlobalServerGrid parent, int preload) {
+        this.nodes = new NodeSet(new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(preload));
         this.global = parent;
     }
 
@@ -50,13 +37,36 @@ public class PowerGrid {
     }
 
     /**
+     * Gets the node at the give address, or creates a new one if
+     * no node at this address exists. This method is mainly designed
+     * to be used during the loading process defined in {@link GlobalServerGrid#makeProvisionalNodeAndLinks}
+     * <p>
+     * Note that, if the returned GridNode is newly created, it will be blank. 
+     * Blank GridNodes that have no links should not persist in the PowerGrid 
+     * for long, since they represent dead ends.
+     * @param address Address to get or add (Compatable with any type outlined by {@link NodeSet#get})
+     * @return The GridNode at this address, or a new one. Will never be <code>null</code>.
+     * 
+     * @throws IllegalStateException If <code>address</code> does not point to a valid BlockEntity, or the BlockEntity isn't able to host a GridNode at the address - See {@link NodeIdentifiable#getHost}
+     */
+    public GridNode getOrCreateProvisional(NodeIdentifiable<?> address) {
+        NodeIdentifiable<GridNode> preexisting = nodes.get(address);
+        if(preexisting != null) return preexisting.getValue();
+        PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
+        if(pgbe == null) throw new IllegalStateException("Cannot instantiate a Provisional GridNode at " + address + " - there is no valod host BlockEntity at this location!");
+        preexisting = new GridNode(this, pgbe, address.getPos(), address.getIndex());
+        nodes.add(preexisting.getValue());
+        return preexisting.getValue();
+    }
+
+    /**
      * Performs a Flood-Fill to locate discontinuities in this PowerGrid's
      * underlying matrix. (https://en.wikipedia.org/wiki/Flood_fill) <p>
      * 
      * Calls to this method will <strong>not</strong> modify this PowerGrid
      * in-place. Instead, a list of PowerGrids is formed as a result of the 
      * discontinuities contained within this one.
-     * @return List of new PowerGrid instances. Returns <code>null</code> if this PowerGrid contains no discontinuities.
+     * @return List of new PowerGrid instances. The list will be empty if this PowerGrid contains no discontinuities.
      */
     public @Nullable List<PowerGrid> splitDiscontinuities() {
         final Set<NodeIdentifiable<?>> visited = new HashSet<>();
@@ -68,7 +78,6 @@ public class PowerGrid {
             if(!cluster.set.isEmpty())
                 output.add(new PowerGrid(this, cluster));
         });
-        if(output.size() <= 1) return null;
         return output;
     }
 
@@ -137,7 +146,7 @@ public class PowerGrid {
     public List<GridNode> getAllOccurancesOf(BlockPos pos) {
         List<GridNode> output = new ArrayList<>();
         for(int x = 0; x < NodeIdentifier.MAX_OCCUPANCY; x++) {
-            GridNode link = nodes.get(new GridNode.Address(pos, x));
+            GridNode link = nodes.get(new NodeIdentifier.Key(pos, x));
             if(link == null) break;
             output.add(link);
         }
@@ -162,7 +171,7 @@ public class PowerGrid {
         Iterator<NodeIdentifiable<GridNode>> it = nodes.set.iterator();
         while (it.hasNext()) {
             GridNode node = it.next().getValue();
-            node.wipeLinks();
+            node.wipeLinks(true);
             it.remove();
         }
         nodes.set.trim(4);

@@ -1,21 +1,19 @@
-package com.quattage.mechano.foundation.api.grid.landmarks;
+package com.quattage.mechano.foundation.api.landmarks;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.grid.PowerGrid;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
-
 
 
 
@@ -29,23 +27,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  */
 public class GridNode extends NodeIdentifier<GridNode> {
 
-    private final PowerGrid owner;
-    private final PowerGridBlockEntity host;
-    private final List<GridLink> links = new ObjectArrayList<>();
-
-    public static GridNode loadFrom(PowerGrid owner, LevelReader world, CompoundTag tag) {
-        if(!(tag.contains("x") && tag.contains("y") && tag.contains("z") && tag.contains("i"))) 
-            throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode from compound '" + tag + "' - this CompoundTag is missing the required data!");
-        BlockPos pos = new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
-        BlockEntity be = world.getBlockEntity(pos);
-        if(be == null) throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode at " + pos + " - there is no BlockEntity at this location!");
-        if(!(be instanceof PowerGridBlockEntity pgbe))
-        throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode at " + pos + " - the BlockEntity at this location is not an instance of PowerGridBlockEntity!");
-        return new GridNode(owner, pgbe, pos, tag.getByte("i"));
-    }
+    public final PowerGrid owner;
+    public final PowerGridBlockEntity host;
+    public final List<GridLink> links = new ObjectArrayList<>();
 
     public GridNode(PowerGrid owner, PowerGridBlockEntity host, BlockPos pos, int index) {
         super(pos, index);
+        Objects.requireNonNull(owner);
+        Objects.requireNonNull(host);
         this.owner = owner;
         this.host = host;
     }
@@ -60,18 +49,17 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * @return <code>true</code> if this GridNode is valid.
      */
     public boolean isValid() {
+
         if(links.isEmpty()) {
-            Mechano.LOGGER.error(this + " was found to have no links and failed validity checks.");
+            Mechano.LOGGER.warn(this + " was found to have no links and failed validity checks.");
             return false;
         }
-        if(host == null) {
-            Mechano.LOGGER.error(this + " was found to have a null host and failed validity checks.");
-            return false;
-        }
+
         if(!host.getBlockPos().equals(getPos())) {
-            Mechano.LOGGER.error(this + " This node doesn't match its provided host at (" + host.getBlockPos() + "), validity checks failed.");
+            Mechano.LOGGER.warn(this + " This node doesn't match its provided host at (" + host.getBlockPos() + "), validity checks failed.");
             return false;
         }
+
         return true;
     }
 
@@ -94,17 +82,23 @@ public class GridNode extends NodeIdentifier<GridNode> {
         return this;
     }
 
-    public void wipeLinks() {
+    public void wipeLinks(boolean notify) {
         Iterator<GridLink> it = links.iterator();
         while(it.hasNext()) {
             GridLink thisLink = it.next();
             it.remove();
-            thisLink.getConnection().onConnectionDestroyed(owner.getWorld(), null, thisLink);
+            if(!notify) continue;
+            thisLink.transmitter.onConnectionDestroyed(owner.getWorld(), null, thisLink);
+            host.onConnectionBroken(owner.getWorld(), thisLink);
         }
     }
 
     public String toString() {
         return "GridNode " + super.toString();
+    }
+
+    public boolean hasLinks() {
+        return links.size() > 0;
     }
 
     /**
@@ -136,79 +130,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
         in.put("links", serializedLinks);
         return in;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /**
-     * A dummy implementation of {@link NodeIdentifier} useful as
-     * a stand-in replacement for {@link GridNode} instances when
-     * retrieving them from the {@link com.quattage.mechano.foundation.api.grid.PowerGrid PowerGrid}.
-     */
-    public static class Address extends NodeIdentifier<Address> {
-
-        public static Address loadFrom(CompoundTag tag) {
-            if(tag == null) throw new NullPointerException("Cannot instantiate a Provisional GridNode from a null CompoundTag!");
-            if(!(tag.contains("x") && tag.contains("y") && tag.contains("z") && tag.contains("i"))) 
-                throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode from compound '" + tag + "' - this CompoundTag is missing the required data!");
-            BlockPos pos = new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
-            return new Address(pos, tag.getByte("i"));
-        }
-
-        public Address(BlockPos pos, int index) {
-            super(pos, index);
-        }
-        @Override
-        public Address getValue() {
-            return this;
-        }
-		@Override
-		public Tracker makeTrackable() {
-			throw new UnsupportedOperationException("Dummy addresses aren't trackable!");
-		}
-
-        public String toString() {
-            return "Node (" + getX() + "," + getY() + "," + getZ() + "," + getIndex() + ")";
-        }
-    }
-
-
-
-
-
-
-
-
 
 
 
@@ -370,13 +291,13 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
         @Override
         public CompoundTag writeTo(CompoundTag in) {
-            Mechano.LOGGER.error("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
+            Mechano.LOGGER.warn("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
             return node.writeTo(in);
         }
 
         @Override
         public CompoundTag writeOnlyAddress(CompoundTag in) {
-            Mechano.LOGGER.error("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
+            Mechano.LOGGER.warn("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
             return node.writeOnlyAddress(in);
         }
     }

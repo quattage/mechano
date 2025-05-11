@@ -2,10 +2,10 @@ package com.quattage.mechano.content.test;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlockEntities;
-import com.quattage.mechano.foundation.SimpleBlockEntity.BERefreshable;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.hitbox.RotatableHitboxShape;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;

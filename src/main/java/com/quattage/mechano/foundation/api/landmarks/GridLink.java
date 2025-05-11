@@ -1,10 +1,11 @@
-package com.quattage.mechano.foundation.api.grid.landmarks;
+package com.quattage.mechano.foundation.api.landmarks;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.SimpleTransferProtocol;
+import com.quattage.mechano.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.grid.PowerGrid;
+import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -13,26 +14,27 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class GridLink {
 
-    private final NodeIdentifiable<GridNode> sideA;
-    private @Nullable NodeIdentifiable<GridNode> sideB;
+    private final GridNode sideA;
+    private @Nullable GridNode sideB;
     private float length;
-    private SimpleTransferProtocol protocol;
+    public final Transmitter transmitter;
 
-    public GridLink(NodeIdentifiable<GridNode> sideA, NodeIdentifiable<GridNode> sideB, SimpleTransferProtocol protocol) {
+    public GridLink(GridNode sideA, GridNode sideB, Transmitter transmitter) {
         this.sideA = sideA;
         this.sideB = sideB;
         this.length = Math.round(getEuclideanDistance(sideA, sideB));
+        this.transmitter = transmitter;
     }
 
-    private GridLink(NodeIdentifiable<GridNode> sideA, NodeIdentifiable<GridNode> sideB, SimpleTransferProtocol protocol, float length) {
+    private GridLink(GridNode sideA, GridNode sideB, Transmitter transmitter, float length) {
         this.sideA = sideA;
         this.sideB = sideB;
         this.length = length;
-        this.protocol = protocol;
+        this.transmitter = transmitter;
     }
 
 
-    public static GridLink loadFrom(LevelReader world, CompoundTag in, NodeIdentifiable<GridNode> caller, PowerGrid instantiator) {
+    public static GridLink loadFrom(LevelReader world, CompoundTag in, GridNode caller, PowerGrid instantiator) {
         if(!(in.contains("x") && in.contains("y") && in.contains("z") && in.contains("i")))
             throw new IllegalArgumentException("Can't deserialize GridLink from " + caller + " - The provided tag (" + in + ") doesn't contain the required data!");
         BlockPos destinationPos = new BlockPos(in.getInt("x"), in.getInt("y"), in.getInt("z"));
@@ -46,7 +48,7 @@ public class GridLink {
             destination = new GridNode(instantiator, pgbe, destinationPos, index);
             instantiator.nodes.add(destination);
         }
-        return new GridLink(caller, destination, SimpleTransferProtocol.loadFrom(in));
+        return new GridLink(caller, destination, MechanoTransmissionTypes.REGISTRY.get(in));
     }
 
     public static float getEuclideanDistance(NodeIdentifiable<?> a, NodeIdentifiable<?> b) {
@@ -58,7 +60,7 @@ public class GridLink {
     }
 
     public GridLink inverseCopy() {
-        return new GridLink(sideB, sideA, this.protocol, length);
+        return new GridLink(sideB, sideA, this.transmitter, length);
     }
 
     public boolean startsWith(NodeIdentifiable<?> address) {
@@ -84,14 +86,14 @@ public class GridLink {
     }
 
     public boolean canTraverse() {
-        return sideB != null;
+        return sideB != null && transmitter.isEnabled();
     }
 
     public float calculateTraversalCost() {
         // TODO traversal cost should vary depending on whether or not
         // the pathfinding gets closer or further away from the target
         if(sideB == null) return Float.MAX_VALUE;
-        return Math.max(0, length + protocol.getCost());
+        return Math.max(0, length + transmitter.getCost());
     }
 
     public boolean equals(Object other) {
@@ -107,14 +109,18 @@ public class GridLink {
         return sideA + " -> " + sideB;
     }
 
-    public SimpleTransferProtocol getConnection() {
-        return protocol;
+    public Transmitter getConnection() {
+        return transmitter;
     }
 
     public CompoundTag writeTo(CompoundTag in) {
         sideB.writeOnlyAddress(in);
-        in.putByte("id", (byte)(protocol.getID() - 128));
-        protocol.writeTo(in);
+        in.putByte("id", transmitter.packedIndex);
+        if(transmitter.needsSerialization()) {
+            CompoundTag extras = new CompoundTag();
+            transmitter.writeTo(extras);
+            in.put("data", extras);
+        }
         return in;
     }
 }

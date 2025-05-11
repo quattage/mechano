@@ -1,6 +1,7 @@
-package com.quattage.mechano.foundation;
+package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity;
 
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;

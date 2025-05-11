@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.connector;
 
 import com.quattage.mechano.MechanoBlockEntities;
-import com.quattage.mechano.foundation.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LevelReader;

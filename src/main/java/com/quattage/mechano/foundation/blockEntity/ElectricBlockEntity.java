@@ -1,6 +1,4 @@
-package com.quattage.mechano.foundation.api;
-
-import com.quattage.mechano.foundation.SimpleBlockEntity;
+package com.quattage.mechano.foundation.blockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;

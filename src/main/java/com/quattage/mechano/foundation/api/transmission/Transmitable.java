@@ -1,98 +1,40 @@
 
-package com.quattage.mechano.foundation.api.grid;
+package com.quattage.mechano.foundation.api.transmission;
 
 import java.util.List;
 
 import javax.annotation.Nullable;
 
+import static com.quattage.mechano.Mechano.lang;
+
+import com.quattage.mechano.MechanoDataAttachments;
+import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoints;
-import com.quattage.mechano.foundation.api.grid.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.LevelReader;
 
 /**
- * Provides a set of callbacks for interfacing with the {@link com.quattage.mechano.foundation.api.grid.PowerGrid PowerGrid}
- * in-game. Implementations of this interface should subclass {@link net.minecraft.world.level.ItemLike ItemLike}.
+ * Provides the skeleton implementation required for clients to interface with
+ * the {@link com.quattage.mechano.foundation.api.PowerGrid PowerGrid}. 
+ * Implementations of this interface usually subclass {@link net.minecraft.world.level.ItemLike ItemLike}.
  */
-public interface ProtocolTransferable {
-
-    /**
-     * A callback for when connections are made,
-     * which can be useful for sequencing server-sided
-     * events related to this item. <p>
-     * 
-     * Note: You may return <code>FALSE</code> to cancel 
-     * the creation of this connection. Keep in mind that if you do this,
-     * the provided GridLink instance becomes stale, and should not be stored. <p>
-     * 
-     * Only called on the server.
-     * 
-     * @param world World to operate within
-     * @param creator The player that created the connection
-     * @param conection The connection that was made
-     * @return <code>true</code> if this connection should proceed.
-     */
-    abstract boolean onConnectionCreated(Level world, Player creator, GridLink connection); // TODO LivingEntity instead of player?
-
-    /**
-     * A callback for when connections are made. 
-     * Identical to {@link ProtocolTransferable#onConnectionCreated onConnectionCreated}
-     * but this callback doesn't receive a player. <p>
-     * 
-     * Only called on the server.
-     * 
-     * @param world World to operate within
-     * @param connection The connection that was made
-     * @return <code>true</code> if this connection should proceed
-     */
-    abstract boolean onConnectionCreatedAnonymous(Level world, GridLink connection);
-
-    /**
-     * A callback for when a connection is destroyed. 
-     * Useful for defining item drops for a destroyed wire. <p>
-     * Note: This method is called right *before* the connection is destroyed.
-     * This means that you don't have access to the PowerGrid in its new state
-     * after the link is destroyed. <p>
-     * Additionally, you may return <code>FALSE</code> to cancel the 
-     * destruction of the provided GridLink instance. <p>
-     * 
-     * Only called on the server.
-     * 
-     * @param world World to operate within
-     * @param destroyer The player that destroyed the connection
-     * @param connection The connection about to be destroyed. 
-     * @return <code>true</code> if removing the connection should proceed
-     */
-    abstract boolean onConnectionDestroyed(Level world, Player destroyer, GridLink connection);
-
-    /**
-     * A callback for when a connection is destroyed. 
-     * Identical to {@link ProtocolTransferable#onConnectionDestroyed onConnectionDestroyed}
-     * but this callback doesn't receive a player. <p>
-     * 
-     * Only called on the server.
-     * 
-     * @param world World to operate within
-     * @param connection The connection about to be destroyed. 
-     */
-    abstract boolean onConnectionDestroyedAnonymous(Level world, GridLink connection);
+public interface Transmitable<T extends Transmitter> {
 
     /**
      * Called continuously on the client while the player is looking at an {@link AnchorPoint} while the player is
-     * holding the item associated with this protocol.
-     * Can be overridden to define custom tooltip behaviour for individual protocols. This method is responsible
+     * holding the item associated with this transmitter.
+     * Can be overridden to define custom tooltip behaviour for individual transmitters. This method is responsible
      * for both evaluating the validity of the given AnchorPoint as an interactable target, and for appending
      * tooltip elements to the provided list if applicable.
      * @param world World to operate within
@@ -103,90 +45,101 @@ public interface ProtocolTransferable {
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
     default AnchorResponse collectTooltipInfoAndResponse(LevelReader world, List<Component> tooltip, PowerGridBlockEntity be, AnchorPoint target, HoldingSummary held) {
-        if(!target.isCompatableWith(this)) return AnchorResponse.INCOMPATABLE;
+        lang().text("hi >:)").forGoggles(tooltip);
+        AnchorPoint prev = AnchorPoint.retrieve(world, held.stack.get(MechanoDataAttachments.ADDRESS_COMPONENT));
+        if(target.equals(prev)) return AnchorResponse.INCOMPATABLE.andHideAnchor();
+        if(!target.isCompatableWith(getTransmitterType())) return AnchorResponse.INCOMPATABLE;
         if(!target.hasRoom()) return AnchorResponse.FULL;
         return AnchorResponse.GOOD;
     }
 
     /**
-     * @return The ResourceLocation of the implementing item, or <code>null</code> if this protocol is not being implemented by an item.
-     */
-    public default @Nullable ResourceLocation getID() {
-        Item item = get();
-        if(item == null) return null;
-        return BuiltInRegistries.ITEM.getKey(get());
-    }
-
-    /**
-     * Gets the object associated with this protocol.
-     * Associated objects are usually ItemLike instances. For example,
-     * A "copper wire" transfer protocol would have its associated
-     * object be a "copper wire spool" item
-     * @return The item/object associated with this TransferProtocol.
-     */
-    public abstract @Nullable Item get();
-
-    /**
      * Ticked at the framerate of the client. By default, this method is called continuously while the player
-     * is holding the item associated with this protocol. If this protocol has no item, this method may be called in some custom
+     * is holding the item associated with this transmitter. If this transmitter has no item, this method may be called in some custom
      * context or event handler as you see fit. This is not intended for pushing vertices anything, you can do that in a custom
-     * renderer if that's necessary - This method's intended use is for cancelling the {@link AnchorPoints.Selector}
+     * renderer if that's necessary - This method's intended use is for cancelling the {@link AnchorSelector.INSTANCE}
      * ticking process early, if such a thing is ever necessary.
      * <p><strong>Note - overriding this method is not required, and this method has no implementation by default</strong>
      * @param world World to operate within
-     * @param held Container for information about the player, their held item stack, and the {@link ProtocolTransferable}
-     * @return <code>true</code> if the {@link AnchorPoints.Selector} should carry on ticking.
+     * @param held Container for information about the player, their held item stack, and the {@link Transmitable}
+     * @return <code>true</code> if the {@link AnchorSelector.INSTANCE} should carry on ticking.
      */
     public default boolean onRenderTick(LevelReader world, HoldingSummary held, DeltaTracker delta) {
         return true;
     }
 
-    /**
-     * Gets an arbitrary integer associated with this protocol. 
-     * Similar in utility to {@link ProtocolTransferable#getID getID}
-     * but for situations where numerical comparisons (like the index of an array)
-     * are useful. 
-     */
-    public default int getNumericalID() {
-        if(get() != null)
-            return get().hashCode();
-        return -1;
-    }
+    public abstract TransmitterType<T> getTransmitterType();
 
-    public default int bitmask() {
-        return 1 << getNumericalID();
-    }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     /**
-     * Wraps information about the LocalPlayer and the item in that player's main and off hand. The player, the stack, and the TransferProtocolRepresentable 
-     * are all stored in this wrapped object if applicable. Use {@link ProtocolTransferable#getHolding} to construct
+     * Wraps information about the LocalPlayer and the item in that player's main and off hand. The player, the stack, and the TransmitterRepresentable 
+     * are all stored in this wrapped object if applicable. Use {@link Transmitable#getHolding} to construct
      * this object.
      */
-    public static record HoldingSummary(LocalPlayer player, InteractionHand hand, ItemStack stack, ProtocolTransferable protocol) {
-        public boolean isHoldingReleventItem() { return player != null && hand != null && protocol != null; }
-        public int bitmask() { return protocol == null ? 0 : protocol.bitmask(); }
+    public static record HoldingSummary(Player player, InteractionHand hand, ItemStack stack, Transmitable<? extends ItemLike> implementingItem) {
+        public boolean isHoldingReleventItem() { return player != null && hand != null && implementingItem != null; }
+        public int bitmask() { return implementingItem == null ? 0 : implementingItem.getTransmitterType().bitmask(); }
         @Override
         public final String toString() {
-            return "(" + player.getName() + " is holding " + protocol.getID() + " in their " + hand + ")";
+            return "'" + player.getName().getString() + "'' is holding '" + implementingItem + "' in their (" + hand + ")";
         }
     }
 
+    
     /**
      * Collects info about the player's current in-hand items and returns a container object
      * summarizing that information
      * @param player
      * @return {@link HoldingSummary} 
      */
-    public static HoldingSummary getHolding(LocalPlayer player) {
+    @SuppressWarnings("unchecked")
+    public static HoldingSummary getHolding(Player player) {
         if(player == null) throw new NullPointerException("Couldn't instantiate a HoldingSummary - Player is null!");
         ItemStack stack = player.getMainHandItem();
-        if(stack.getItem() instanceof ProtocolTransferable protocolItem)
-            return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, protocolItem);
+        if(stack.getItem() instanceof Transmitable transmitterItem)
+            return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, transmitterItem);
         ItemStack offStack = player.getOffhandItem();
-        if(offStack.getItem() instanceof ProtocolTransferable protocolItem)
-            return new HoldingSummary(player, InteractionHand.OFF_HAND, offStack, protocolItem);
+        if(offStack.getItem() instanceof Transmitable transmitterItem)
+            return new HoldingSummary(player, InteractionHand.OFF_HAND, offStack, transmitterItem);
         return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, null);
     }
+
 
 
     /**
@@ -218,9 +171,12 @@ public interface ProtocolTransferable {
         }
 
         /**
-         * If this method is called, this response will hide the
-         * targeted anchor from the user. Sometimes this may be desirable,
-         * but it can obscure information from the player (they may wonder why they can't 
+         * A call to this method before this AnchorResponse instance
+         * is returned will cause the {@Link com.quattage.mechano.foundation.api.client.AnchorSelector AnchorSelector}
+         * to skip rendering its currently selected anchor and associated tooltip.
+         * <p> This may be desirable for situations where the player is denied a specific interaction,
+         * but immediate feedback is not necessary.
+         * Note that this may obscure information from the player (they may wonder why they can't 
          * connect a wire in a specific circumstance, and hiding the anchor will hide that information from them)
          * @return this AnchorResponse
          */

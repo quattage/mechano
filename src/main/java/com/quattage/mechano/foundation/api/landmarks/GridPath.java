@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.grid.landmarks;
+package com.quattage.mechano.foundation.api.landmarks;
 
 public class GridPath {
     

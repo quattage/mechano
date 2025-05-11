@@ -1,8 +1,8 @@
-package com.quattage.mechano.foundation.api.grid.landmarks;
+package com.quattage.mechano.foundation.api.landmarks;
 
 import java.util.function.Consumer;
 
-import com.quattage.mechano.foundation.api.grid.PowerGrid;
+import com.quattage.mechano.foundation.api.PowerGrid;
 
 import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
@@ -70,7 +70,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return <code>true</code> if this matrix was modified as a result of this call
      */
     public boolean remove(BlockPos pos, int index) {
-        return set.remove(new GridNode.Address(pos, index));
+        return set.remove(new NodeIdentifier.Key(pos, index));
     }
 
     /**
@@ -84,7 +84,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return <code>true</code> if this matrix was modified as a result of this call
      */
     public boolean remove(int x, int y, int z, int index) {
-        return set.remove(new GridNode.Address(new BlockPos(x, y, z), index));
+        return set.remove(new NodeIdentifier.Key(new BlockPos(x, y, z), index));
     }
 
     @Override
@@ -114,7 +114,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return The GridNode object at the given address, or <code>null</code> if none could be found.
      */
     public GridNode get(BlockPos pos, int index) {
-        NodeIdentifiable<GridNode> ni = set.get(new GridNode.Address(pos, index));
+        NodeIdentifiable<GridNode> ni = set.get(new NodeIdentifier.Key(pos, index));
         if(ni == null) return null;
         return ni.getValue();
     }
@@ -130,10 +130,11 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return The GridNode object at the given address, or <code>null</code> if none could be found.
      */
     public GridNode get(int x, int y, int z, int index) {
-        NodeIdentifiable<GridNode> ni = set.get(new GridNode.Address(new BlockPos(x, y, z), index));
+        NodeIdentifiable<GridNode> ni = set.get(new NodeIdentifier.Key(new BlockPos(x, y, z), index));
         if(ni == null) return null;
         return ni.getValue();
     }
+
 
     /**
      * Since GridNodes in the underlying hash set are wrapped in {@link NodeIdentifiable} objects,

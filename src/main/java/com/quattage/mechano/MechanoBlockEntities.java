@@ -2,7 +2,7 @@ package com.quattage.mechano;
 
 import com.quattage.mechano.content.connector.SingleConnectorBlockEntity;
 import com.quattage.mechano.content.test.TestAxisBlockEntity;
-import com.quattage.mechano.foundation.PowerGridBlockEntityRenderer;
+import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import net.neoforged.bus.api.IEventBus;

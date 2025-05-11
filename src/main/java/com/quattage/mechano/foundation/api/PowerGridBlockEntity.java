@@ -2,14 +2,13 @@ package com.quattage.mechano.foundation.api;
 
 import java.util.List;
 
+import com.quattage.mechano.foundation.api.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.client.AnchorArray;
+import com.quattage.mechano.foundation.api.landmarks.DispatchedNode;
+import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.transmission.Transmitable;
+import com.quattage.mechano.foundation.blockEntity.ElectricBlockEntity;
 
-import com.quattage.mechano.foundation.api.grid.PowerGrid;
-import com.quattage.mechano.foundation.api.grid.ProtocolTransferable;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.grid.client.AnchorPoints;
-import com.quattage.mechano.foundation.api.grid.landmarks.GridLink;
-
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
@@ -19,30 +18,34 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
 
-    public AnchorPoints anchors = AnchorPoints.EMPTY;
+    // always empty on the server
+    public AnchorArray anchors = AnchorArray.EMPTY;
+    // always null on the client
+    public final DispatchedNode surrogate = new DispatchedNode(this);
 
     public PowerGridBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
-        AnchorPoints.Builder unbuiltAnchors = AnchorPoints.begin(this);
-        addAnchors(unbuiltAnchors);
+        AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
+        construct(unbuiltAnchors);
         this.anchors = unbuiltAnchors.confirm(getBlockPos());
     }
 
-    protected abstract void addAnchors(AnchorPoints.Builder anchors);
+    protected abstract void construct(AnchorArray.Builder anchors);
 
     /**
      * Called continuously on the client while the player is looking at an {@link AnchorPoint} belonging to this PGBE.
      * Can be overridden to define custom tooltip behaviour for individual block entities. 
      * @param tooltip The list of text components that will be appended to the displayed tooltip.
      * @param target The AnchorPoint that the player is looking at
-     * @param held Container for information about the player, their held item stack, and the {@link ProtocolTransferable} - 
+     * @param held Container for information about the player, their held item stack, and the {@link Transmitable} - 
      *  Note that the contents of this HoldingSummary will be empty if the player is not holding a relevent item.
-     * @return <code>true</code> if the player is allowed to target this AnchorPoint.
+     * @return <code>true</code> (Reccomended) If you'd like to also include tooltip submitted by {@link Transmitable#collectTooltipInfoAndResponse}
      */
-    public void collectTooltipInfo(List<Component> tooltip, AnchorPoint target, ProtocolTransferable.HoldingSummary held) {
-        if(target == null) return;
-        if(!anchors.contains(getBlockPos(), target)) return;
-        return;
+    public boolean collectTooltipInfo(List<Component> tooltip, AnchorPoint target, Transmitable.HoldingSummary held) {
+        if(target == null) return true;
+        if(!target.belongsTo(this)) return true;
+        target.writeInfoToTooltip(tooltip);
+        return true;
     }
 
     @Override
@@ -61,8 +64,9 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
         // the anchorpoint holder is set to empty on the server despite
         // being initially populated on both sides, this is stupid and dumb!!
         // who wrote this!?? (me, i did)
-        if(!level.isClientSide)
-            this.anchors = AnchorPoints.EMPTY;
+        if(!level.isClientSide) {
+            this.anchors = AnchorArray.EMPTY;
+        }
         super.onLoad();
         anchors.updateOrientation(getBlockState());
     }

@@ -20,7 +20,6 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
 
     // always empty on the server
     public AnchorArray anchors = AnchorArray.EMPTY;
-    // always null on the client
     public final DispatchedNode surrogate = new DispatchedNode(this);
 
     public PowerGridBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {

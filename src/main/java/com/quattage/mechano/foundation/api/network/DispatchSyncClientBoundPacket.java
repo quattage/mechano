@@ -43,7 +43,7 @@ public record DispatchSyncClientBoundPacket(BlockPos pos, DispatchedNode.SyncTas
         }
         switch(task) {
             case SYNC:
-                pgbe.surrogate.sync(world, false);
+                pgbe.surrogate.sync(false);
                 break;
             case UNSYNC:
                 pgbe.surrogate.forget(false);

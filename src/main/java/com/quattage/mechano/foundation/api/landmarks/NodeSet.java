@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.api.landmarks;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.foundation.api.PowerGrid;
@@ -27,7 +28,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
     public final ObjectOpenHashSet<NodeIdentifiable<GridNode>> set;
 
     public NodeSet() {
-        this.set = new ObjectOpenHashSet<NodeIdentifiable<GridNode>>();
+        this.set = new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(2);
     }
 
     public NodeSet(ObjectOpenHashSet<NodeIdentifiable<GridNode>> set) {

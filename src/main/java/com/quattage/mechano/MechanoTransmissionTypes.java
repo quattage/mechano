@@ -17,6 +17,8 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_conductor"), () -> Transmitter
             .builder(PerfectConductor::new)
             .writesToNetwork(null)
+            .maximumSpannedDistance(Integer.MAX_VALUE)
+            .supportsSameBlockConnections()
             .build()
     );
 
@@ -24,6 +26,8 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_insulator"), () -> Transmitter
             .builder(PerfectInsulator::new)
             .writesToNetwork(null)
+            .maximumSpannedDistance(Integer.MAX_VALUE)
+            .supportsSameBlockConnections()
             .build()
     );
 
@@ -31,6 +35,7 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("hookup"), () -> Transmitter
             .builder(HookupTransmitter::new)
             .writesToNetwork(null)
+            .maximumSpannedDistance(16)
             .build()
     );
 

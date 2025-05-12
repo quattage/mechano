@@ -31,8 +31,8 @@ public class GridNode extends NodeIdentifier<GridNode> {
     public final PowerGridBlockEntity host;
     public final List<GridLink> links = new ObjectArrayList<>();
 
-    public GridNode(PowerGrid owner, PowerGridBlockEntity host, BlockPos pos, int index) {
-        super(pos, index);
+    public GridNode(PowerGrid owner, PowerGridBlockEntity host, int index) {
+        super(host.getBlockPos(), index);
         Objects.requireNonNull(owner);
         Objects.requireNonNull(host);
         this.owner = owner;
@@ -179,7 +179,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * @param target 
          * @return This TrackedNode with modified guidance values
          */
-        public Tracker prime(NodeIdentifiable<?> target) {
+        public Tracker estimateCostTo(NodeIdentifiable<?> target) {
             updateHeuristic(target);
             this.visited = true;
             this.cum = 0;

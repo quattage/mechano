@@ -219,7 +219,6 @@ public abstract class SidedGridDispatcher {
     }
 
     protected abstract @Nullable ListTag writeAll();
-
     protected abstract String getDistPrefix();
 
     public static class Serializer implements IAttachmentSerializer<ListTag, SidedGridDispatcher> {

@@ -1,11 +1,8 @@
 package com.quattage.mechano.foundation.api;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.client.AnchorSelector;
-import com.quattage.mechano.foundation.api.network.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.transmission.Transmitable;
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
@@ -45,10 +42,13 @@ public abstract class WireSpoolItem<T extends Transmitter> extends Item implemen
         AnchorPoint previous = AnchorPoint.retrieve(level, stack);
         if(previous == null || AnchorSelector.INSTANCE.isSelected(previous))
             return InteractionResultHolder.pass(stack);
-        stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
 
-        LinkRequestPacket.send(previous, AnchorSelector.INSTANCE.selected.getValue(), getTransmitterType().make());
-        return InteractionResultHolder.success(stack);
+        GlobalClientGrid client = SidedGridDispatcher.client(player);
+        LinkResponse result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.getValue(), getTransmitterType());
+        if(result.shouldBail()) stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+
+        if(result.isSuccessful()) return InteractionResultHolder.success(stack);
+        return InteractionResultHolder.fail(stack);
     }
 
 

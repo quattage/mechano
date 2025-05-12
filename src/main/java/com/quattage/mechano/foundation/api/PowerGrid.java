@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -24,20 +25,23 @@ import net.minecraft.server.level.ServerLevel;
 public class PowerGrid {
 
     protected GlobalServerGrid global;
+    public int gridIndex = -1;
     public NodeSet nodes;
 
     protected PowerGrid(GlobalServerGrid parent, int preload) {
+        Objects.requireNonNull(parent);
         this.nodes = new NodeSet(new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(preload));
         this.global = parent;
     }
 
-    public PowerGrid(PowerGrid original, NodeSet newContents) {
-        this.nodes = newContents;
+    public PowerGrid(PowerGrid original, @Nullable NodeSet newContents) {
+        Objects.requireNonNull(original);
         this.global = original.global;
+        this.nodes = newContents == null ? new NodeSet() : newContents;
     }
 
     /**
-     * Gets the node at the give address, or creates a new one if
+     * Gets the node at the given address, or create a new one if
      * no node at this address exists. This method is mainly designed
      * to be used during the loading process defined in {@link GlobalServerGrid#makeProvisionalNodeAndLinks}
      * <p>
@@ -46,15 +50,15 @@ public class PowerGrid {
      * for long, since they represent dead ends.
      * @param address Address to get or add (Compatable with any type outlined by {@link NodeSet#get})
      * @return The GridNode at this address, or a new one. Will never be <code>null</code>.
-     * 
      * @throws IllegalStateException If <code>address</code> does not point to a valid BlockEntity, or the BlockEntity isn't able to host a GridNode at the address - See {@link NodeIdentifiable#getHost}
      */
     public GridNode getOrCreateProvisional(NodeIdentifiable<?> address) {
+        assertNotDestroyed();
         NodeIdentifiable<GridNode> preexisting = nodes.get(address);
         if(preexisting != null) return preexisting.getValue();
         PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
         if(pgbe == null) throw new IllegalStateException("Cannot instantiate a Provisional GridNode at " + address + " - there is no valod host BlockEntity at this location!");
-        preexisting = new GridNode(this, pgbe, address.getPos(), address.getIndex());
+        preexisting = new GridNode(this, pgbe, address.getIndex());
         nodes.add(preexisting.getValue());
         return preexisting.getValue();
     }
@@ -69,6 +73,7 @@ public class PowerGrid {
      * @return List of new PowerGrid instances. The list will be empty if this PowerGrid contains no discontinuities.
      */
     public @Nullable List<PowerGrid> splitDiscontinuities() {
+        assertNotDestroyed();
         final Set<NodeIdentifiable<?>> visited = new HashSet<>();
         final List<PowerGrid> output = new ArrayList<>();
         nodes.forEach(node -> {
@@ -83,6 +88,7 @@ public class PowerGrid {
 
     // recursive implementation for the method ^^ up there
     private void floodFillRecurse(NodeIdentifiable<?> start, Set<NodeIdentifiable<?>> visited, NodeSet clusterResult) {
+        assertNotDestroyed();
         GridNode iteration = nodes.get(start);
         visited.add(start);
         if(!iteration.isValid()) return;
@@ -93,40 +99,43 @@ public class PowerGrid {
         });
     }
 
-
     /**
-     * Performs a path traversal to create a {@link GridPath} connecting <code>start</code>
-     * and <code>end</code>. <p>
+     * Performs a path traversal to create a {@link GridPath} 
+     * connecting <code>start</code> and <code>end</code>. <p>
      * Uses the A* pathfinding algorithm:
      * https://en.wikipedia.org/wiki/A*_search_algorithm
      * @param start Address to begin searching from
-     * @param destination Address to search for. If this address does not point to a valid target in this PowerGrid, the search is terminated immediately.
+     * @param end Address to search for
      * @return The resulting {@link GridPath} or null if no path could be found
      */
-    public @Nullable GridPath findPathBetween(NodeIdentifiable<?> start, NodeIdentifiable<?> destination) {
+    public @Nullable GridPath findPathBetween(NodeIdentifiable<?> start, NodeIdentifiable<?> end) {
+        assertNotDestroyed();
 
-        if(!nodes.contains(destination)) return null;
-        if(start.equals(destination)) return null;
+        if(start == null || !nodes.contains(start)) return null;
+        if(end == null || !nodes.contains(end)) return null;
+        if(start.equals(end)) return null;
 
         final Queue<GridNode.Tracker> open = new PriorityQueue<>(11);
-        open.add(start.makeTrackable().prime(destination));
-
         final GridPath output = GridPath.makeProvisional();
         final ObjectOpenHashSet<GridNode.Tracker> trackedNodes = new ObjectOpenHashSet<>();
-    
+        open.add(start.makeTrackable().estimateCostTo(end));
+
         while(!open.isEmpty()) {
             final GridNode.Tracker local = open.poll();
-            if(local.equals(destination))
-                return output;
+            if(local.equals(end)) return output;
+
             trackedNodes.add(local);
             local.markVisited();
+
             local.node.forEachLink(adjacentLink -> {
                 if(!adjacentLink.canTraverse()) return;
+
                 GridNode.Tracker neighbor = trackedNodes.get(adjacentLink.getEnd());
                 if(neighbor == null) {
                     neighbor = adjacentLink.getEnd().makeTrackable();
                     trackedNodes.add(neighbor);
                 }
+
                 if(local.investigateAcross(adjacentLink, neighbor)) {
                     output.add(adjacentLink);
                     if(!open.contains(neighbor))
@@ -144,6 +153,7 @@ public class PowerGrid {
      * @return A list of all GridNode objects belonging to the given BlockPos
      */
     public List<GridNode> getAllOccurancesOf(BlockPos pos) {
+        assertNotDestroyed();
         List<GridNode> output = new ArrayList<>();
         for(int x = 0; x < NodeIdentifier.MAX_OCCUPANCY; x++) {
             GridNode link = nodes.get(new NodeIdentifier.Key(pos, x));
@@ -164,10 +174,23 @@ public class PowerGrid {
     }
 
     /**
+     * Merges the contents of the provided {@link NodeSet}
+     * into this PowerGrid.
+     * @param otherNodes Nodes to add
+     * @return <code>true</code> if this PowerGrid was modified.
+     */
+    public boolean addAll(NodeSet otherNodes) {
+        assertNotDestroyed();
+        if(otherNodes.isEmpty()) return false;
+        return this.nodes.addAll(otherNodes);
+    }
+
+    /**
      * Clears this PowerGrid, erasing its matrix and resizing its hash table.
      * Broadcasts updates as a result.
      */
     public void clear() {
+        assertNotDestroyed();
         Iterator<NodeIdentifiable<GridNode>> it = nodes.set.iterator();
         while (it.hasNext()) {
             GridNode node = it.next().getValue();
@@ -177,12 +200,34 @@ public class PowerGrid {
         nodes.set.trim(4);
     }
 
+    /**
+     * Nullifies references in this PowerGrid for when it is removed.<p>
+     * Note that this method does <strong>NOT</strong> broadcast
+     * changes or do any syncing - This method is specifically
+     * to mark grids as stale so they aren't used anymore.
+     * <p>
+     * If this method is called on a PowerGrid that's actively being
+     * used, all hell will break lose.
+     */
+    public void destroy() {
+        gridIndex = -1;
+        nodes = null;
+        global = null;
+    }
+
+    private void assertNotDestroyed() {
+        if(global == null) 
+            throw new IllegalStateException("Some operation attempted to run on a PowerGrid that has already been destroyed. (A PowerGrid was probably leaked!)");
+    }
+
     public ServerLevel getWorld() {
+        assertNotDestroyed();
         return global.getWorld();
     }
 
     @Override
     public boolean equals(Object obj) {
+        assertNotDestroyed();
         if(!(obj instanceof PowerGrid that)) return false;
         return this.nodes.equals(that.nodes);
     }

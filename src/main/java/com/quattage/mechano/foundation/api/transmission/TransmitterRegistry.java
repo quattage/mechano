@@ -106,11 +106,17 @@ public class TransmitterRegistry {
 
     public static class TransmitterType<T extends Transmitter> { 
 
+        private static final float minimumDistance = 0.16f;
+
         private byte packedIndex = -1;
         private final Function<Byte, T> defaultConstructor;
         @Nullable private final StreamCodec<ByteBuf, T> streamCodec;
 
-        public static final StreamCodec<ByteBuf, Transmitter> STREAM_CODEC = new StreamCodec<>() {
+        private final boolean canSameBlock;
+        private final boolean ignoresLimits;
+        private final int maxDistance;
+
+        public static final StreamCodec<ByteBuf, Transmitter> STREAM_CODEC_DYNAMIC = new StreamCodec<>() {
             @Override
             public Transmitter decode(ByteBuf buffer) {
                 TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
@@ -125,11 +131,64 @@ public class TransmitterRegistry {
                     ((StreamCodec<ByteBuf, Transmitter>)type.streamCodec).encode(buffer, value);
             }
         };
+
+        public static final StreamCodec<ByteBuf, TransmitterType<?>> STREAM_CODEC = new StreamCodec<>() {
+            @Override
+            public TransmitterType<?> decode(ByteBuf buffer) {
+                return MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
+            }
+            @Override 
+            public void encode(ByteBuf buffer, TransmitterType<?> value) {
+                buffer.writeByte(value.packedIndex);
+            }
+        };
     
 
-        protected TransmitterType(Function<Byte, T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec) {
+        protected TransmitterType(Function<Byte, T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, boolean canSameBlock, boolean ignoresLimits, int maxDistance) {
             this.defaultConstructor = defaultConstructor;
             this.streamCodec = streamCodec;
+            this.canSameBlock = canSameBlock;
+            this.ignoresLimits = ignoresLimits;
+            this.maxDistance = maxDistance;
+        }
+
+        /**
+         * @return <code>true</code> if this TransmitterType supports
+         * making connections between different anchors within the same
+         * block.
+         */
+        public boolean supportsSameBlockConnections() {
+            return canSameBlock;
+        }
+
+        /**
+         * @return the maximum distance (in meters) that 
+         * a single wire of this type can span
+         */
+        public int getMaxDistance() {
+            return maxDistance;
+        }
+
+
+        /**
+         * If this TransmitterType ignores limits, connections
+         * made with it will not increment the connection count
+         * on client-sided anchors, and will not fail if the anchor doesn't have room.
+         * @return <code>true</code> if this TransmitterType doesn't care about 
+         * anchor connector limits.
+         */
+        public boolean ignoresLimits() {
+            return this.ignoresLimits;
+        }
+
+        /**
+         * @return the minimum distance (in meters) that 
+         * a single wire of this type can span. For now,
+         * minimum distance is just a constant <code>(0.16)</code>
+         * (or 16 centimeters)
+         */
+        public float getMinDistance() {
+            return supportsSameBlockConnections() ? 0 : TransmitterType.minimumDistance;
         }
 
         public byte getRegistryIndex() {
@@ -171,17 +230,63 @@ public class TransmitterRegistry {
         @Nullable private StreamCodec<ByteBuf, T> streamCodec = null;
         private final Function<Byte, T> defaultCtor;
 
+        private int maxDistance = 16;
+        private boolean canSameBlock = false;
+        private boolean ignoresLimits = false;
+
         public TransmitterTypeBuilder(Function<Byte, T> defaultCtor) {
             this.defaultCtor = defaultCtor;
         } 
 
-        public TransmitterTypeBuilder<T> writesToNetwork(StreamCodec<ByteBuf, T> streamCodec) {
+        /**
+         * Call this method while constructing your TransmitterType if you want this
+         * particular type to serlaize additional data to a codec. You supply the codec - 
+         * it would traditionally be located somewhere in your Transmitter subclass
+         * and serialize data pertaining to it. This allows additional data
+         * to be sent via packets, should such a thing be necessary. If you
+         * don't want this, either don't call this method, or just supply <code>null</code>.
+         * @param streamCodec 
+         */
+        public TransmitterTypeBuilder<T> writesToNetwork(@Nullable StreamCodec<ByteBuf, T> streamCodec) {
             this.streamCodec = streamCodec;
             return this;
         }
 
+        /**
+         * Call this method if this TransmitterType should
+         * be able to connect between different anchors within
+         * the same block. Traditionally, this isn't allowed,
+         * since it would be mostly useless for the player
+         * to be able to do this. But some internal 
+         * TransmitterTypes require this functionality.
+         */
+        public TransmitterTypeBuilder<T> supportsSameBlockConnections() {
+            this.canSameBlock = true;
+            return this;
+        }
+
+        /**
+         * Call this method to adjust the maximum distance
+         * (in meters) that individual wires of this type
+         * are permitted to span when placed by the player.
+         */
+        public TransmitterTypeBuilder<T> maximumSpannedDistance(int maxDistance) {
+            this.maxDistance = Math.max(2, maxDistance);
+            return this;
+        }
+
+        /**
+         * Call this method to make this TransmitterType ignore all restrictions
+         * placed on connections. If this method is called, this TransmitterType
+         * can be placed on anything, regardless of compatability or max connection count.
+         */
+        public TransmitterTypeBuilder<T> ignoreConnectionLimits() {
+            this.ignoresLimits = true;
+            return this;
+        }
+
         public TransmitterType<T> build() {
-            return new TransmitterType<T>(defaultCtor, streamCodec);
+            return new TransmitterType<T>(defaultCtor, streamCodec, canSameBlock, ignoresLimits, maxDistance);
         }
     }
 }

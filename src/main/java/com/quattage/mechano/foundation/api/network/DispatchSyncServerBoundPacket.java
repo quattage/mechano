@@ -8,14 +8,17 @@ import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
-public record DispatchSyncServerBoundPacket(NodeIdentifier.Key address, DispatchedNode.SyncTask task) implements ServerboundPacketPayload {
+public record DispatchSyncServerBoundPacket(BlockPos pos,DispatchedNode.SyncTask task) implements ServerboundPacketPayload {
 
     public static final StreamCodec<ByteBuf, DispatchSyncServerBoundPacket> STREAM_CODEC = StreamCodec.composite(
-        NodeIdentifier.Key.STREAM_CODEC, DispatchSyncServerBoundPacket::address,
+        BlockPos.STREAM_CODEC, DispatchSyncServerBoundPacket::pos,
         DispatchedNode.SyncTask.STREAM_CODEC, DispatchSyncServerBoundPacket::task,
         DispatchSyncServerBoundPacket::new
     );
@@ -26,17 +29,21 @@ public record DispatchSyncServerBoundPacket(NodeIdentifier.Key address, Dispatch
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
         LevelReader world = player.level();
         if(world == null) return;
+
+        NodeIdentifier.Key address = new NodeIdentifier.Key(pos);
         PowerGridBlockEntity pgbe = address.getHost(player.level());
+
         if(pgbe == null) {
             Mechano.LOGGER.warn("Failed to handle dispatch status sync at " + address + " - The BlockEntity at this address was not found.");
             return;
         }
         switch(task) {
             case SYNC:
-                pgbe.surrogate.sync(world, false);
+                pgbe.surrogate.sync(false);
                 break;
             case UNSYNC:
                 pgbe.surrogate.forget(false);

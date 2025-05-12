@@ -24,6 +24,14 @@ import net.minecraft.world.level.Level;
  */
 public abstract class Transmitter {
 
+    /**
+     * This method is the entrypoint for building TransmitterTypes for the {@link TransmitterRegistry}. 
+     * This allows transmitters to attach, serialize, and stream arbitrary data via packets.
+     * @param <T>
+     * @param defaultCtor The constructor for your transmitter. It is expected to take a singular Byte value,
+     * which is supplied internally to store the transmitter's index so that its associated type can be looked up later.
+     * @return
+     */
     public static <T extends Transmitter> TransmitterTypeBuilder<T> builder(Function<Byte, T> defaultCtor) {
         return new TransmitterTypeBuilder<T>(defaultCtor);
     }

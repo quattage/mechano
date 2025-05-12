@@ -20,6 +20,7 @@ public class HookupTransmitter extends Transmitter {
     }
 
     @Override
+    
     public boolean needsSerialization() {
         return false;
     }

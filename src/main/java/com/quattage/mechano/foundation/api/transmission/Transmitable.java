@@ -3,23 +3,18 @@ package com.quattage.mechano.foundation.api.transmission;
 
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 import static com.quattage.mechano.Mechano.lang;
 
 import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.client.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
 import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.LevelReader;
@@ -223,7 +218,9 @@ public interface Transmitable<T extends Transmitter> {
         public static final LinkResponse FAIL_DUPLICATE = new LinkResponse((byte)4);
         public static final LinkResponse FAIL_TOO_CLOSE = new LinkResponse((byte)5);
         public static final LinkResponse FAIL_TOO_FAR = new LinkResponse((byte)6);
-        public static final LinkResponse FAIL_GENERIC = new LinkResponse((byte)7);
+        public static final LinkResponse FAIL_DIMENSION_MISMATCH = new LinkResponse((byte)7);
+        public static final LinkResponse FAIL_SYNC_OUTDATED = new LinkResponse((byte)8);
+        public static final LinkResponse FAIL_GENERIC = new LinkResponse((byte)9);
 
         private LinkResponse(byte responseCode) {
             this.responseCode = responseCode;

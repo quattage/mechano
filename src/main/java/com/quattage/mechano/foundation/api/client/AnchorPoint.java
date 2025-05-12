@@ -8,7 +8,6 @@ import org.joml.Vector3f;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
 import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.transmission.Transmitable;
 import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
@@ -165,6 +164,35 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
     }
 
     /**
+     * Adds 1 to the current number of connections hosted by this
+     * AnchorPoint. Note that this number can be incremented PAST
+     * the maximum rated connections, if you don't want that to happen,
+     * checking must be performed seperately.
+     */
+    public void incrementCurrentConnections() {
+        byte inc = (byte)(data[4] + 1);
+        data[4] = ((data[4] ^ 1) >= 0 && (data[4] ^ inc) < 0) ? Byte.MAX_VALUE : inc;
+    }
+
+
+    /**
+     * Subtracts 1 to the current number of connections hosted by this
+     * AnchorPoint.
+     */
+    public void decrementCurrentConnections() {
+        byte dec = (byte)(data[4] - 1);
+        data[4] = ((data[4] ^ 1) >= 0 && (data[4] ^ dec) < 0) ? Byte.MIN_VALUE : dec;
+    }
+
+    /**
+     * Sets the current number of connections hosted by this
+     * AnchorPoint to zero.
+     */
+    public void resetCurrentConnections() {
+        data[4] = Byte.MIN_VALUE;
+    }
+
+    /**
      * Updates the location and hitbox of this AnchorPoint
      * to reflect the data contained within the given BlockState
      * @param state state to extract orientation data
@@ -220,6 +248,11 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
 
     public boolean isEnabled() {
         return this.enabled;
+    }
+
+
+    public float distanceTo(AnchorPoint other) {
+        return (float)getRealPosition().distanceTo(other.getRealPosition());
     }
 
     /**

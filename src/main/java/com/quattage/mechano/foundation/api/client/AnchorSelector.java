@@ -115,6 +115,7 @@ public class AnchorSelector {
             reset(); 
             return; 
         }
+
         updateForCurrentFrame(player, deltas);
         if(trackedEntries.isEmpty()) {
             reset();

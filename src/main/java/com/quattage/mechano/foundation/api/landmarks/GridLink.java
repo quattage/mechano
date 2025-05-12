@@ -33,7 +33,6 @@ public class GridLink {
         this.transmitter = transmitter;
     }
 
-
     public static GridLink loadFrom(LevelReader world, CompoundTag in, GridNode caller, PowerGrid instantiator) {
         if(!(in.contains("x") && in.contains("y") && in.contains("z") && in.contains("i")))
             throw new IllegalArgumentException("Can't deserialize GridLink from " + caller + " - The provided tag (" + in + ") doesn't contain the required data!");
@@ -45,7 +44,7 @@ public class GridLink {
             if(be == null) throw new NullPointerException("Error instaitiating transitive GridLink destination node - No BlockEntity could be found at " + destinationPos);
             if(!(be instanceof PowerGridBlockEntity pgbe))
                 throw new IllegalArgumentException("Error instaitiating transitive GridLink destination node - BlockEntity at " + destinationPos + " is not an instance of PowerGridBlockEntity!");
-            destination = new GridNode(instantiator, pgbe, destinationPos, index);
+            destination = new GridNode(instantiator, pgbe, index);
             instantiator.nodes.add(destination);
         }
         return new GridLink(caller, destination, MechanoTransmissionTypes.REGISTRY.get(in));

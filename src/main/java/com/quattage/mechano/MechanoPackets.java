@@ -2,9 +2,12 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.foundation.api.network.DispatchSyncClientBoundPacket;
-import com.quattage.mechano.foundation.api.network.DispatchSyncServerBoundPacket;
-import com.quattage.mechano.foundation.api.network.LinkRequestPacket;
+import com.quattage.mechano.foundation.api.switchboard.ManifestRequestPacket;
+import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
+import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
+import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.ManifestResponsePacket;
 
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;
@@ -16,8 +19,11 @@ import net.neoforged.bus.api.IEventBus;
 public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     
     LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
-    DISPATCH_SYNC_C2S(DispatchSyncClientBoundPacket.class, DispatchSyncClientBoundPacket.STREAM_CODEC),
-    DISPATCH_SYNC_S2C(DispatchSyncServerBoundPacket.class, DispatchSyncServerBoundPacket.STREAM_CODEC)
+    LINK_S2C(LinkResponsePacket.class, LinkResponsePacket.STREAM_CODEC),
+    DISPATCH_SYNC_C2S(DispatchSyncPacket.class, DispatchSyncPacket.STREAM_CODEC),
+    MANIFEST_S2C(ManifestRequestPacket.class, ManifestRequestPacket.STREAM_CODEC),
+    MANIFEST_C2S(ManifestResponsePacket.class, ManifestResponsePacket.STREAM_CODEC),
+    ANCHOR_SYNC_S2C(AnchorPointSyncPacket.class, AnchorPointSyncPacket.STREAM_CODEC),
     ;
 
     @Override
@@ -25,6 +31,7 @@ public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     public <T extends CustomPacketPayload> CustomPacketPayload.Type<T> getType() {
         return (CustomPacketPayload.Type<T>) this.type.type();
     }
+
 
     private final CatnipPacketRegistry.PacketType<?> type;
     <T extends BasePacketPayload> MechanoPackets(Class<T> cl, StreamCodec<? super RegistryFriendlyByteBuf, T> codec) {

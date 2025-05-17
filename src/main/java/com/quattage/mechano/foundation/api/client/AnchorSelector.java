@@ -13,10 +13,10 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
 import com.quattage.mechano.foundation.api.transmission.Transmitable;
-import com.quattage.mechano.foundation.api.transmission.Transmitable.AnchorResponse;
 import com.quattage.mechano.foundation.api.transmission.Transmitable.HoldingSummary;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.quattage.mechano.foundation.mixin.client.RenderBuffersAccessor;
 
@@ -134,7 +134,7 @@ public class AnchorSelector {
         } else {
             findTargetAndRun(deltas, (pgbe, sel, distance) -> {
                 pgbe.collectTooltipInfo(currentTooltip, sel.anchor, playerHands);
-                sel.response = AnchorResponse.NONE; 
+                sel.response = Response.Anchor.NONE;
             });
         }
 
@@ -147,8 +147,8 @@ public class AnchorSelector {
     protected void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
 
         if(hasSelection() && lookedThisFrame) {
-            if(!(selected.isDisabled() || selected.response.hidesAnchor())) {
-                if(AnchorResponse.indicatesSpecialDrawing(selected.response)) {
+            if(!(selected.isDisabled() || Response.hidesAnchor(selected.response))) {
+                if(Response.isHighlighted(selected.response)) {
                     if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
                     selectedTicks = Math.min(1, selectedTicks);
                     selected.renderComplexAABB(selectedTicks, false);
@@ -160,7 +160,7 @@ public class AnchorSelector {
                     selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
                     selectedTicks = 0;
                 }
-            } else if(AnchorResponse.indicatesSpecialDrawing(selected.response) && selectedTicks > 0) {
+            } else if(Response.isHighlighted(selected.response) && selectedTicks > 0) {
                 selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
                 selectedTicks = Math.max(0, selectedTicks);
                 selected.renderComplexAABB(selectedTicks, false);
@@ -169,9 +169,9 @@ public class AnchorSelector {
 
         if(!playerHands.isHoldingReleventItem()) return;
         for(Active anchor : trackedEntries) {
-            if(anchor == null || anchor.equals(selected) || anchor.isInvalid() || anchor.isDisabled() || anchor.response.hidesAnchor()) 
+            if(anchor == null || anchor.equals(selected) || anchor.isInvalid() || anchor.isDisabled() || Response.hidesAnchor(anchor.response))
                 continue;
-            if(AnchorResponse.indicatesSpecialDrawing(anchor.response)) anchor.renderComplexAABB(1, false);
+            if(Response.isHighlighted(anchor.response)) anchor.renderComplexAABB(1, false);
             else anchor.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
         }
     }
@@ -291,14 +291,14 @@ public class AnchorSelector {
         public final PowerGridBlockEntity be; 
         private final AnchorPoint anchor;
         public final float distance;
-        public AnchorResponse response;
+        public Response<?> response;
         private VoxelShape highlightShape;
 
         public Active(PowerGridBlockEntity be, AnchorPoint anchor, float distance) {
             this.be = be;
             this.anchor = anchor;
             this.distance = distance;
-            this.response = AnchorResponse.NONE;
+            this.response = Response.Anchor.NONE;
             float size = anchor.getSize();
             highlightShape = Shapes.create(-size, -size, -size, size, size, size);
         }

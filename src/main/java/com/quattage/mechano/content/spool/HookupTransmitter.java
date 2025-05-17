@@ -3,15 +3,22 @@
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
-public class HookupTransmitter extends Transmitter {
+public class HookupTransmitter extends Transmitter<HookupTransmitter> {
 
-    public HookupTransmitter(byte registryIndex) {
-        super(registryIndex);
+    public HookupTransmitter() {
+    
+    }
+
+    @Override
+    public TransmitterType<HookupTransmitter> getType() {
+        return MechanoTransmissionTypes.HOOKUP;
     }
 
     @Override

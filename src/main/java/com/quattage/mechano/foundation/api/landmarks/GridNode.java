@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.jetbrains.annotations.ApiStatus;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGrid;
@@ -29,7 +30,16 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
     public final PowerGrid owner;
     public final PowerGridBlockEntity host;
+
+    /**
+     * A list of links to other nodes.
+     * This should never be modified directly.
+     * Make any changes you need through the 
+     * {@link com.quattage.mechano.foundation.api.GlobalServerGrid GlobalServerGrid}
+     */
+    @ApiStatus.Internal
     public final List<GridLink> links = new ObjectArrayList<>();
+
 
     public GridNode(PowerGrid owner, PowerGridBlockEntity host, int index) {
         super(host.getBlockPos(), index);
@@ -37,7 +47,9 @@ public class GridNode extends NodeIdentifier<GridNode> {
         Objects.requireNonNull(host);
         this.owner = owner;
         this.host = host;
+        owner.nodes.add(this);
     }
+
 
     /**
      * Tests the integrity of the data contained within this GridNode
@@ -49,17 +61,18 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * @return <code>true</code> if this GridNode is valid.
      */
     public boolean isValid() {
-
         if(links.isEmpty()) {
-            Mechano.LOGGER.warn(this + " was found to have no links and failed validity checks.");
+            Mechano.LOGGER.warn("GridNode at " + this + " was found to have no links and failed validity checks.");
             return false;
         }
-
+        if(host == null) {
+            Mechano.LOGGER.warn("GridNode at " + this + " doesn't have a host and failed validity checks.");
+            return false;
+        }
         if(!host.getBlockPos().equals(getPos())) {
-            Mechano.LOGGER.warn(this + " This node doesn't match its provided host at (" + host.getBlockPos() + "), validity checks failed.");
+            Mechano.LOGGER.warn("GridNode at " + this + " node doesn't match its provided host at (" + host.getBlockPos() + "), validity checks failed.");
             return false;
         }
-
         return true;
     }
 
@@ -91,10 +104,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
             thisLink.transmitter.onConnectionDestroyed(owner.getWorld(), null, thisLink);
             host.onConnectionBroken(owner.getWorld(), thisLink);
         }
-    }
-
-    public String toString() {
-        return "GridNode " + super.toString();
     }
 
     public boolean hasLinks() {

@@ -5,10 +5,13 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
+import com.quattage.mechano.foundation.api.switchboard.GridManifestGenerator;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -18,17 +21,34 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-public abstract class SidedGridDispatcher {
+/**
+ * This class represents the link between the Minecraft world and the grid.
+ * The Client and Server grids are instantiated as Data Attachments that belong
+ * to the level.
+ */
+@EventBusSubscriber
+public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, GlobalServerGrid {
+// these words aren't in the bible
 
     protected static final Logger LOGGER = LogUtils.getLogger();
     public static final SidedGridDispatcher.Serializer SERIALIZER = new SidedGridDispatcher.Serializer();
+    public static final GridManifestGenerator MANIFEST = new GridManifestGenerator();
 
     // these will be GCd immediately if they aren't actively reachable
     private static WorldlyReference<GlobalServerGrid> weakServerGrid = new WorldlyReference<>(null);
     private static WorldlyReference<GlobalClientGrid> weakClientGrid = new WorldlyReference<>(null);
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post evt) {
+        MANIFEST.tick();
+    }
+
 
     protected final Level world;
 
@@ -38,6 +58,7 @@ public abstract class SidedGridDispatcher {
      * @return The sided dispatcher instance that was attached
      * @throws IllegalArgumentException if the provided holder isn't compatable (for now, grids can only be attached to levels)
      */
+    @ApiStatus.Internal
     public static SidedGridDispatcher createNew(IAttachmentHolder holder) {
         SidedGridDispatcher freshInstance = null;
         if(holder instanceof ClientLevel cl)
@@ -80,13 +101,18 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalServerGrid attached to the provided world
      * @param world World to get data from
      * @param cons Consumer to run with the GlobalServerGrid instance
+     * @throws NullPointerException if any of the provied fields are null
      * @throws IllegalArgumentException if the provided world is not server-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnServer(Level world, Consumer<GlobalServerGrid> cons) {
         GlobalServerGrid grid = SidedGridDispatcher.server(world);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
 
@@ -94,13 +120,19 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalServerGrid attached to the provided world
      * @param world World to get data from
      * @param cons Consumer to run with the GlobalServerGrid instance
+     * @throws NullPointerException if any of the provied fields are null
      * @throws IllegalArgumentException if the provided world is not server-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnServer(LevelReader world, Consumer<GlobalServerGrid> cons) {
+        Objects.requireNonNull(cons);
         GlobalServerGrid grid = SidedGridDispatcher.server(world);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
 
@@ -108,13 +140,19 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalServerGrid attached to the provided world
      * @param player Player whose world will be used to look up the data attachment
      * @param cons Consumer to run with the GlobalServerGrid instance
-     * @throws IllegalArgumentException if the provided player's level is not server-sided
+     * @throws NullPointerException if any of the provied fields are null
+     * @throws IllegalArgumentException if the provided world is not server-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnServer(Player player, Consumer<GlobalServerGrid> cons) {
+        Objects.requireNonNull(cons);
         GlobalServerGrid grid = SidedGridDispatcher.server(player);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
 
@@ -139,8 +177,7 @@ public abstract class SidedGridDispatcher {
      * Gets the sided grid data attachment from the provided level or player
      * @param player Player whose world will be used to look up the data attachment
      * @return The GlobalClientGrid attached to the provided level
-     * @throws IllegalArgumentException if the provided world is not client-sided
-     * @throws IllegalStateException if for whatever reason the data attachment's builder fails
+     * @throws IllegalArgumentException if the provided player's world is not client-sided
      */
     public static @Nullable GlobalClientGrid client(Player player) {
         return player == null ? null : client(player.level());
@@ -150,13 +187,19 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalClientGrid attached to the provided world
      * @param player Player whose world will be used to look up the data attachment
      * @param cons Consumer to run with the GlobalClientGrid instance
-     * @throws IllegalArgumentException if the provided player's level is not client-sided
+     * @throws NullPointerException if any of the provied fields are null
+     * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnClient(Level world, Consumer<GlobalClientGrid> cons) {
+        Objects.requireNonNull(cons);
         GlobalClientGrid grid = client(world);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
 
@@ -164,13 +207,19 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalClientGrid attached to the provided world
      * @param player Player whose world will be used to look up the data attachment
      * @param cons Consumer to run with the GlobalClientGrid instance
-     * @throws IllegalArgumentException if the provided player's level is not client-sided
+     * @throws NullPointerException if any of the provied fields are null
+     * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnClient(LevelReader world, Consumer<GlobalClientGrid> cons) {
+        Objects.requireNonNull(cons);
         GlobalClientGrid grid = client(world);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
     
@@ -178,13 +227,19 @@ public abstract class SidedGridDispatcher {
      * Runs the provided consumer on the GlobalClientGrid attached to the provided world
      * @param world World to get data from
      * @param cons Consumer to run with the GlobalClientGrid instance
+     * @throws NullPointerException if any of the provied fields are null
      * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
     public static boolean runOnClient(Player player, Consumer<GlobalClientGrid> cons) {
+        Objects.requireNonNull(cons);
         GlobalClientGrid grid = client(player);
         if(grid == null) return false;
-        cons.accept(grid);
+        try { cons.accept(grid); }
+        catch(Exception e) {
+            Mechano.LOGGER.error("" + e);
+            return false;
+        }
         return true;
     }
 

@@ -2,9 +2,9 @@ package com.quattage.mechano.foundation.api.landmarks;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
 import net.minecraft.core.BlockPos;
@@ -14,38 +14,40 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class GridLink {
 
-    private final GridNode sideA;
-    private @Nullable GridNode sideB;
+    private final GridNode start;
+    private @Nullable GridNode end;
     private float length;
-    public final Transmitter transmitter;
+    public final Transmitter<?> transmitter;
 
-    public GridLink(GridNode sideA, GridNode sideB, Transmitter transmitter) {
-        this.sideA = sideA;
-        this.sideB = sideB;
-        this.length = Math.round(getEuclideanDistance(sideA, sideB));
+    public GridLink(GridNode start, GridNode end, Transmitter<?> transmitter) {
+        this.start = start;
+        this.end = end;
+        this.length = Math.round(getEuclideanDistance(start, end));
         this.transmitter = transmitter;
     }
 
-    private GridLink(GridNode sideA, GridNode sideB, Transmitter transmitter, float length) {
-        this.sideA = sideA;
-        this.sideB = sideB;
+    private GridLink(GridNode start, GridNode end, Transmitter<?> transmitter, float length) {
+        this.start = start;
+        this.end = end;
         this.length = length;
         this.transmitter = transmitter;
     }
 
-    public static GridLink loadFrom(LevelReader world, CompoundTag in, GridNode caller, PowerGrid instantiator) {
+    // REWRITE THIS LLMAOOO
+    public static GridLink loadFrom(LevelReader world, CompoundTag in, GridNode caller) {
         if(!(in.contains("x") && in.contains("y") && in.contains("z") && in.contains("i")))
-            throw new IllegalArgumentException("Can't deserialize GridLink from " + caller + " - The provided tag (" + in + ") doesn't contain the required data!");
+            throw new IllegalArgumentException("Can't deserialize GridLink from " + caller 
+                + " - The provided tag (" + in + ") doesn't contain the required data!");
         BlockPos destinationPos = new BlockPos(in.getInt("x"), in.getInt("y"), in.getInt("z"));
         int index = in.getByte("i");
-        GridNode destination = instantiator.nodes.get(destinationPos, index);
+        GridNode destination = caller.owner.nodes.get(destinationPos, index);
         if(destination == null) {
             BlockEntity be = world.getBlockEntity(destinationPos);
             if(be == null) throw new NullPointerException("Error instaitiating transitive GridLink destination node - No BlockEntity could be found at " + destinationPos);
             if(!(be instanceof PowerGridBlockEntity pgbe))
                 throw new IllegalArgumentException("Error instaitiating transitive GridLink destination node - BlockEntity at " + destinationPos + " is not an instance of PowerGridBlockEntity!");
-            destination = new GridNode(instantiator, pgbe, index);
-            instantiator.nodes.add(destination);
+            destination = new GridNode(caller.owner, pgbe, index);
+            caller.owner.nodes.add(destination);
         }
         return new GridLink(caller, destination, MechanoTransmissionTypes.REGISTRY.get(in));
     }
@@ -58,16 +60,16 @@ public class GridLink {
         );
     }
 
-    public GridLink inverseCopy() {
-        return new GridLink(sideB, sideA, this.transmitter, length);
+    public GridLink copyAndFlip() {
+        return new GridLink(end, start, this.transmitter, length);
     }
 
     public boolean startsWith(NodeIdentifiable<?> address) {
-        return sideA.equals(address);
+        return start.equals(address);
     }
 
     public boolean endsWith(NodeIdentifiable<?> address) {
-        return address.equals(sideB);
+        return address.equals(end);
     }
 
     public boolean involves(NodeIdentifiable<?> address) {
@@ -75,46 +77,46 @@ public class GridLink {
     }
 
     public GridNode getStart() {
-        if(sideA == null) return null;
-        return sideA.getValue();
+        if(start == null) return null;
+        return start.getValue();
     }
 
     public GridNode getEnd() {
-        if(sideB == null) return null;
-        return sideB.getValue();
+        if(end == null) return null;
+        return end.getValue();
     }
 
     public boolean canTraverse() {
-        return sideB != null && transmitter.isEnabled();
+        return end != null && transmitter.isEnabled();
     }
 
     public float calculateTraversalCost() {
         // TODO traversal cost should vary depending on whether or not
         // the pathfinding gets closer or further away from the target
-        if(sideB == null) return Float.MAX_VALUE;
+        if(end == null) return Float.MAX_VALUE;
         return Math.max(0, length + transmitter.getCost());
     }
 
     public boolean equals(Object other) {
         if(!(other instanceof GridLink that)) return false;
-        return this.sideA.equals(that.sideA) && this.sideB.equals(that.sideB);
+        return this.start.equals(that.start) && this.end.equals(that.end);
     }
 
     public int hashCode() {
-        return sideA.hashCode() * 31 + sideB.hashCode();
+        return start.hashCode() * 31 + end.hashCode();
     }
 
     public String toString() {
-        return sideA + " -> " + sideB;
+        return start + " -> " + end;
     }
 
-    public Transmitter getConnection() {
+    public Transmitter<?> getConnection() {
         return transmitter;
     }
 
     public CompoundTag writeTo(CompoundTag in) {
-        sideB.writeOnlyAddress(in);
-        in.putByte("id", transmitter.packedIndex);
+        end.writeOnlyAddress(in);
+        transmitter.getType().writeTo(in);
         if(transmitter.needsSerialization()) {
             CompoundTag extras = new CompoundTag();
             transmitter.writeTo(extras);

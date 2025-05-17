@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.simibubi.create.foundation.gui.RemovedGuiUtils;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.simibubi.create.infrastructure.config.CClient;
@@ -114,7 +115,7 @@ public class AnchorGuiLayer {
 		if(MechanoClientEvents.shouldRenderOverlay(mc) 
 			&& AnchorSelector.INSTANCE.hasSelection()
 			&& AnchorSelector.INSTANCE.hasTooltip() 
-			&& !AnchorSelector.INSTANCE.selected.response.hidesAnchor()
+			&& !Response.hidesAnchor(AnchorSelector.INSTANCE.selected.response)
 			&& AnchorSelector.INSTANCE.lookedThisFrame)
 				return true;
 

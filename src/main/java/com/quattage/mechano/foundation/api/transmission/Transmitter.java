@@ -1,6 +1,6 @@
 package com.quattage.mechano.foundation.api.transmission;
 
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -22,7 +22,20 @@ import net.minecraft.world.level.Level;
  * the {@link PowerGrid}, as well as an open-ended way to implement your own
  * transport paradigms. (like energy, redstone signals, items, etc.)
  */
-public abstract class Transmitter {
+public abstract class Transmitter<T extends Transmitter<?>> {
+
+    // public static final StreamCodec<ByteBuf, Transmitter<?>> STREAM_CODEC = new StreamCodec<>() {
+    //         @Override
+    //         public Transmitter<?> decode(ByteBuf buffer) {
+    //             TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
+    //             if(type.streamCodec != null) type.streamCodec.decode(buffer);
+    //             return type;
+    //         }
+    //         @Override 
+    //         public void encode(ByteBuf buffer, Transmitter<?> value) {
+    //             buffer.writeByte(value.packedIndex);
+    //         }
+    //     };
 
     /**
      * This method is the entrypoint for building TransmitterTypes for the {@link TransmitterRegistry}. 
@@ -32,19 +45,17 @@ public abstract class Transmitter {
      * which is supplied internally to store the transmitter's index so that its associated type can be looked up later.
      * @return
      */
-    public static <T extends Transmitter> TransmitterTypeBuilder<T> builder(Function<Byte, T> defaultCtor) {
+    public static <T extends Transmitter<?>> TransmitterTypeBuilder<T> builder(Supplier<T> defaultCtor) {
         return new TransmitterTypeBuilder<T>(defaultCtor);
     }
 
-    public final byte packedIndex;
     protected boolean enabled = true;
-
-    public Transmitter(byte registryIndex) {
-        this.packedIndex = registryIndex;
-    }
 
     public void writeTo(CompoundTag in) {}
     public void loadFrom(CompoundTag in) {}
+
+
+    public abstract TransmitterType<T> getType();
 
     /**
      * Tells internal systems whether or not this Transmitter serializes any extraneous data.
@@ -115,7 +126,7 @@ public abstract class Transmitter {
      * @param other
      * @return
      */
-    public Transmitter compareTo(Transmitter other) {
+    public Transmitter<?> compareTo(Transmitter<?> other) {
         if(this.enabled && !other.enabled) return this;
         if(!this.enabled  && other.enabled) return other;
         if(other.getCost() > this.getCost()) return other;
@@ -136,15 +147,14 @@ public abstract class Transmitter {
     public boolean equals(Object obj) {
         if(this == obj) return true;
         if(!(obj instanceof Transmitter that)) return false;
-        return this.packedIndex == that.packedIndex;
+        return this.getType().equals(that.getType());
     }
 
     public boolean is(TransmitterType<?> type) {
         return this.hashCode() == type.hashCode();
     }
 
-    @Override
     public int hashCode() {
-        return packedIndex;
+        return getType().hashCode();
     }
 }

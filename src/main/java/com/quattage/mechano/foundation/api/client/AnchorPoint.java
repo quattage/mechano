@@ -65,6 +65,7 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         bitmask = 0xFFFFFFFF;
     }
 
+
     /**
      * Gets an AnchorPoint at the given address
      * @param world World to operate within
@@ -80,7 +81,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         PowerGridBlockEntity pgbe = address.getHost(world);
         return pgbe == null ? null : pgbe.anchors.getByIndex(address.getIndex());
     }
-
 
     /**
      * Gets an AnchorPoint at the given address
@@ -109,6 +109,29 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         return pgbe.anchors != null && index < pgbe.anchors.size();
     }
 
+    public void handleSync(byte connections, boolean enabled, @Nullable LevelReader refresher) {
+        sync(connections, refresher);
+        this.enabled = enabled;
+    }
+
+    public void sync(byte connections, @Nullable LevelReader refresher) {
+        this.data[4] = connections;
+        if(refresher != null) {
+            PowerGridBlockEntity pgbe = getHost(refresher);
+            if(pgbe == null) {
+                Mechano.LOGGER.warn("Failed to refresh AnchorPoint status at " + this.strip() 
+                    + " - No PGBE could be found at this address!");
+                return;
+            }
+            if(getCurrentConnections() > 0)
+                pgbe.surrogate.sync(refresher, null);
+            else pgbe.surrogate.forget(refresher);
+            BlockState state = pgbe.getBlockState();
+            if(state == null) return;
+            updateOrientation(state);
+        }
+    }
+
     /**
      * @return The actual Vec3 position of this AnchorPoint with its offset applied
      */
@@ -128,6 +151,7 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
      * @return <code>true</code> if the provided TFP can interact with this AnchorPoint
      */
     public boolean isCompatableWith(TransmitterType<?> type) {
+        if(type.ignoresLimits()) return true;
         return (bitmask & type.bitmask()) != 0;
     }
 
@@ -319,8 +343,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         String mask = Integer.toBinaryString(bitmask);
         return "(" + x + "," + y + "," + z + ", " + index + " / " + NodeIdentifier.MAX_OCCUPANCY + "), " + mask;
     }
-
-
 
 
 

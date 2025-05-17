@@ -3,7 +3,7 @@ package com.quattage.mechano;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry;
+import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.block.hitbox.HitboxCache;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;

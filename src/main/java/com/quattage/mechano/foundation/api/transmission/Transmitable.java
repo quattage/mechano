@@ -9,6 +9,7 @@ import com.quattage.mechano.MechanoDataAttachments;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
@@ -39,13 +40,13 @@ public interface Transmitable<T extends Transmitter> {
      * @param held Container for information about the player and their held item stack
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
-    default AnchorResponse collectTooltipInfoAndResponse(LevelReader world, List<Component> tooltip, PowerGridBlockEntity be, AnchorPoint target, HoldingSummary held) {
+    default Response<?> collectTooltipInfoAndResponse(LevelReader world, List<Component> tooltip, PowerGridBlockEntity be, AnchorPoint target, HoldingSummary held) {
         lang().text("hi >:)").forGoggles(tooltip);
         AnchorPoint prev = AnchorPoint.retrieve(world, held.stack.get(MechanoDataAttachments.ADDRESS_COMPONENT));
-        if(target.equals(prev)) return AnchorResponse.INCOMPATABLE.andHideAnchor();
-        if(!target.isCompatableWith(getTransmitterType())) return AnchorResponse.INCOMPATABLE;
-        if(!target.hasRoom()) return AnchorResponse.FULL;
-        return AnchorResponse.GOOD;
+        if(target.equals(prev)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
+        if(!target.isCompatableWith(getTransmitterType())) return Response.Anchor.INCOMPATABLE;
+        if(!target.hasRoom()) return Response.Anchor.FULL;
+        return Response.SUCCESS;
     }
 
     /**
@@ -133,128 +134,5 @@ public interface Transmitable<T extends Transmitter> {
         if(offStack.getItem() instanceof Transmitable transmitterItem)
             return new HoldingSummary(player, InteractionHand.OFF_HAND, offStack, transmitterItem);
         return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, null);
-    }
-
-
-
-    /**
-     * An enum-like class that describes multiple response states that can arise 
-     * when the player looks at and/or right-clicks an {@link AnchorPoint} in the world.
-     */
-    public static class AnchorResponse {
-
-        private final byte code;
-        private boolean hide = false;
-
-        public static final AnchorResponse GOOD = new AnchorResponse((byte)0);
-        public static final AnchorResponse NONE = new AnchorResponse((byte)1);
-        public static final AnchorResponse INCOMPATABLE = new AnchorResponse((byte)2);
-        public static final AnchorResponse FULL = new AnchorResponse((byte)3);
-        public static final AnchorResponse GENERIC = new AnchorResponse((byte)4);
-
-        public static boolean indicatesSpecialDrawing(AnchorResponse response) {
-            if(response == null) return false;
-            return (response.code != NONE.code) && (!response.hide);
-        }
-
-        private AnchorResponse(byte responseCode) {
-            this.code = responseCode;
-        }
-
-        public boolean hidesAnchor() {
-            return hide;
-        }
-
-        /**
-         * A call to this method before this AnchorResponse instance
-         * is returned will cause the {@Link com.quattage.mechano.foundation.api.client.AnchorSelector AnchorSelector}
-         * to skip rendering its currently selected anchor and associated tooltip.
-         * <p> This may be desirable for situations where the player is denied a specific interaction,
-         * but immediate feedback is not necessary.
-         * Note that this may obscure information from the player (they may wonder why they can't 
-         * connect a wire in a specific circumstance, and hiding the anchor will hide that information from them)
-         * @return this AnchorResponse
-         */
-        public AnchorResponse andHideAnchor() {
-            this.hide = true;
-            return this;
-        }
-
-        public boolean isSuccessful() {
-            return code <= 0;
-        }
-
-        public boolean is(AnchorResponse other) {
-            return this.code == other.code;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if(!(obj instanceof AnchorResponse that)) return false;
-            return this.is(that);
-        }
-
-        @Override
-        public String toString() {
-            return "(" + code + ")";
-        }
-    }
-
-
-
-    /**
-     * An enum-like class that describes multiple response states that can arise as a result of forming a link between
-     * two {@link AnchorPoint AnchorPoints} - Used on the client for reacting to user input and providing feedback.
-     */
-    public static class LinkResponse {
-
-        private final byte responseCode;
-        private boolean failHard;
-
-        public static final LinkResponse SUCCESS = new LinkResponse((byte)0);
-        public static final LinkResponse FAIL_DESTINATION_UNSUPPORTED = new LinkResponse((byte)1);
-        public static final LinkResponse FAIL_DESTINATION_FULL = new LinkResponse((byte)2);
-        public static final LinkResponse FAIL_USER_CANCEL = new LinkResponse((byte)3);
-        public static final LinkResponse FAIL_DUPLICATE = new LinkResponse((byte)4);
-        public static final LinkResponse FAIL_TOO_CLOSE = new LinkResponse((byte)5);
-        public static final LinkResponse FAIL_TOO_FAR = new LinkResponse((byte)6);
-        public static final LinkResponse FAIL_DIMENSION_MISMATCH = new LinkResponse((byte)7);
-        public static final LinkResponse FAIL_SYNC_OUTDATED = new LinkResponse((byte)8);
-        public static final LinkResponse FAIL_GENERIC = new LinkResponse((byte)9);
-
-        private LinkResponse(byte responseCode) {
-            this.responseCode = responseCode;
-        }
-
-
-        /**
-         * If this method is called, this response will cause the 
-         * connection that the player is currently making to immediately cancel
-         * itself and return to its passive state. 
-         * @return this ConnectionResponse
-         */
-        public LinkResponse andBailout() {
-            this.failHard = true;
-            return this;
-        }
-
-        public boolean isSuccessful() {
-            return responseCode <= 0;
-        }
-
-        public boolean is(LinkResponse other) {
-            return this.responseCode == other.responseCode;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if(!(obj instanceof LinkResponse that)) return false;
-            return this.is(that);
-        }
-
-        public boolean shouldBail() {
-            return failHard;
-        }
-
     }
 }

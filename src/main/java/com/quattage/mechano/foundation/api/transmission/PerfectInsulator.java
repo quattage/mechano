@@ -3,14 +3,20 @@ package com.quattage.mechano.foundation.api.transmission;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
-public class PerfectInsulator extends Transmitter {
+public class PerfectInsulator extends Transmitter<PerfectInsulator> {
 
-    public PerfectInsulator(byte registryIndex) {
-        super(registryIndex);
+    public PerfectInsulator() {
+
+    }
+
+    @Override
+    public TransmitterType<PerfectInsulator> getType() {
+        return MechanoTransmissionTypes.PERFECT_INSULATOR;
     }
 
     @Override

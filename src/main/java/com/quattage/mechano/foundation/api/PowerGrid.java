@@ -28,16 +28,28 @@ public class PowerGrid {
     public int gridIndex = -1;
     public NodeSet nodes;
 
-    protected PowerGrid(GlobalServerGrid parent, int preload) {
-        Objects.requireNonNull(parent);
-        this.nodes = new NodeSet(new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(preload));
-        this.global = parent;
-    }
-
     public PowerGrid(PowerGrid original, @Nullable NodeSet newContents) {
         Objects.requireNonNull(original);
         this.global = original.global;
+        this.gridIndex = original.gridIndex;
         this.nodes = newContents == null ? new NodeSet() : newContents;
+        this.global.subgrids.set(gridIndex, this);
+    }
+
+    public PowerGrid(GlobalServerGrid parent, @Nullable NodeSet newContents) {
+        Objects.requireNonNull(parent);
+        this.gridIndex = parent.subgrids.size();
+        this.global = parent;
+        this.nodes = newContents == null ? new NodeSet() : newContents;
+        this.global.subgrids.add(this);
+    }
+
+    protected PowerGrid(GlobalServerGrid parent, int preload) {
+        Objects.requireNonNull(parent);
+        this.gridIndex = parent.subgrids.size();
+        this.nodes = new NodeSet(new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(preload));
+        this.global = parent;
+        this.global.subgrids.add(this);
     }
 
     /**
@@ -49,28 +61,32 @@ public class PowerGrid {
      * Blank GridNodes that have no links should not persist in the PowerGrid 
      * for long, since they represent dead ends.
      * @param address Address to get or add (Compatable with any type outlined by {@link NodeSet#get})
-     * @return The GridNode at this address, or a new one. Will never be <code>null</code>.
-     * @throws IllegalStateException If <code>address</code> does not point to a valid BlockEntity, or the BlockEntity isn't able to host a GridNode at the address - See {@link NodeIdentifiable#getHost}
+     * @return The GridNode at this address, or the new one that was created at the specified address. Will never be <code>null</code>.
+     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
+     * @throws IllegalArgumentException If <code>address</code> does not point to a valid BlockEntity, 
+     * or the BlockEntity isn't able to host a GridNode at the address - See {@link NodeIdentifiable#getHost}
      */
     public GridNode getOrCreateProvisional(NodeIdentifiable<?> address) {
         assertNotDestroyed();
         NodeIdentifiable<GridNode> preexisting = nodes.get(address);
         if(preexisting != null) return preexisting.getValue();
         PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
-        if(pgbe == null) throw new IllegalStateException("Cannot instantiate a Provisional GridNode at " + address + " - there is no valod host BlockEntity at this location!");
+        if(pgbe == null) throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode at " + address + " - there is no valod host BlockEntity at this location!");
         preexisting = new GridNode(this, pgbe, address.getIndex());
-        nodes.add(preexisting.getValue());
+        pgbe.surrogate.owner = this;
         return preexisting.getValue();
     }
 
     /**
      * Performs a Flood-Fill to locate discontinuities in this PowerGrid's
-     * underlying matrix. (https://en.wikipedia.org/wiki/Flood_fill) <p>
-     * 
+     * underlying matrix. (https://en.wikipedia.org/wiki/Flood_fill) 
+     * <p>
      * Calls to this method will <strong>not</strong> modify this PowerGrid
      * in-place. Instead, a list of PowerGrids is formed as a result of the 
      * discontinuities contained within this one.
-     * @return List of new PowerGrid instances. The list will be empty if this PowerGrid contains no discontinuities.
+     * @return List of new PowerGrid instances. The list will be empty if this 
+     * PowerGrid contains no discontinuities.
+     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
     public @Nullable List<PowerGrid> splitDiscontinuities() {
         assertNotDestroyed();
@@ -88,7 +104,6 @@ public class PowerGrid {
 
     // recursive implementation for the method ^^ up there
     private void floodFillRecurse(NodeIdentifiable<?> start, Set<NodeIdentifiable<?>> visited, NodeSet clusterResult) {
-        assertNotDestroyed();
         GridNode iteration = nodes.get(start);
         visited.add(start);
         if(!iteration.isValid()) return;
@@ -107,6 +122,7 @@ public class PowerGrid {
      * @param start Address to begin searching from
      * @param end Address to search for
      * @return The resulting {@link GridPath} or null if no path could be found
+     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
     public @Nullable GridPath findPathBetween(NodeIdentifiable<?> start, NodeIdentifiable<?> end) {
         assertNotDestroyed();
@@ -151,6 +167,7 @@ public class PowerGrid {
      * BlockPos, regardless of index
      * @param pos block position in the minecraft world to look for
      * @return A list of all GridNode objects belonging to the given BlockPos
+     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
     public List<GridNode> getAllOccurancesOf(BlockPos pos) {
         assertNotDestroyed();

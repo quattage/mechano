@@ -171,8 +171,12 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
 
     public ListTag write() {
         ListTag output = new ListTag();
-        for(NodeIdentifiable<?> address : set)
-            output.add(address.writeTo(new CompoundTag()));
+        for(NodeIdentifiable<GridNode> addr : set) {
+            if(addr == null) continue;
+            GridNode node = addr.getValue();
+            if(node == null || !node.isValid()) continue;
+            output.add(node.writeTo(new CompoundTag()));
+        }
         return output;
     }
 }

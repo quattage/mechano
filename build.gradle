@@ -3,25 +3,18 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.78'
+    id "dev.ithundxr.silk" version "0.11.15"
+    id "net.kyori.blossom" version "2.1.0"
 }
 
 tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
-group = mod_group_id
-
-repositories {
-    mavenLocal()
-    maven { url = "https://maven.createmod.net/" } // create
-    maven { url = "https://mvn.devos.one/snapshots" } // registrate
-    maven { url = "https://maven.blamejared.com/" } // jei & vazkii's
-    maven { url = "https://maven.theillusivec4.top/" } // curios
-}
-
 base {
-    archivesName = mod_id
+    archivesName = "$mod_id-$minecraft_version"
+    group = mod_group_id
+    version = mod_version
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -32,6 +25,12 @@ neoForge {
     parchment {
         mappingsVersion = project.parchment_mappings_version
         minecraftVersion = project.minecraft_version
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
     }
 
     runs {
@@ -57,26 +56,37 @@ neoForge {
         }
 
         configureEach {
-            jvmArguments = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:+AllowEnhancedClassRedefinition"]
             systemProperty 'forge.logging.markers', 'DEBUG'
+            jvmArguments = ["-XX:+IgnoreUnrecognizedVMOptions", "-XX:+AllowEnhancedClassRedefinition"]
             // systemProperty 'mixin.debug.verbose', 'true'
             // systemProperty 'mixin.debug.export', 'true'
             systemProperty 'terminal.ansi', 'true'
             logLevel = org.slf4j.event.Level.DEBUG
         }
     }
+}
 
-    mods {
-        "${mod_id}" {
-            sourceSet(sourceSets.main)
-        }
+sourceSets.main{
+    resources {
+        srcDir 'src/generated/resources'
+        exclude '.cache/'
+    }
+
+    blossom.javaSources {
+        property("version", mod_version)
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+}
+
+repositories {
+    mavenLocal()
+    maven { url = "https://maven.createmod.net/" } // create
+    maven { url = "https://mvn.devos.one/snapshots" } // registrate
+    maven { url = "https://maven.blamejared.com/" } // jei & vazkii's
+    maven { url = "https://maven.theillusivec4.top/" } // curios
 }
 
 dependencies {
@@ -86,7 +96,6 @@ dependencies {
     implementation("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
-
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}:api")
     runtimeOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}")
 }
@@ -111,6 +120,15 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
     from "src/main/templates"
     into "build/generated/sources/modMetadata"
 }
+
+processResources {
+    def buildProps = project.properties.clone()
+    buildProps.put('file', [jarVersion: project.version])
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand buildProps
+    }
+}
+
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
 

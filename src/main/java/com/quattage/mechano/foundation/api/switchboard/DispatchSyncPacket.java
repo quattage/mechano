@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.network;
+package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
@@ -15,12 +15,12 @@ import net.minecraft.world.level.LevelReader;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public record DispatchSyncClientBoundPacket(BlockPos pos, DispatchedNode.SyncTask task) implements ClientboundPacketPayload {
+public record DispatchSyncPacket(BlockPos pos, DispatchedNode.SidedTask task) implements ClientboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, DispatchSyncClientBoundPacket> STREAM_CODEC = StreamCodec.composite(
-        BlockPos.STREAM_CODEC, DispatchSyncClientBoundPacket::pos,
-        DispatchedNode.SyncTask.STREAM_CODEC, DispatchSyncClientBoundPacket::task,
-        DispatchSyncClientBoundPacket::new
+    public static final StreamCodec<ByteBuf, DispatchSyncPacket> STREAM_CODEC = StreamCodec.composite(
+        BlockPos.STREAM_CODEC, DispatchSyncPacket::pos,
+        DispatchedNode.SidedTask.STREAM_CODEC, DispatchSyncPacket::task,
+        DispatchSyncPacket::new
     );
 
     @Override
@@ -43,10 +43,10 @@ public record DispatchSyncClientBoundPacket(BlockPos pos, DispatchedNode.SyncTas
         }
         switch(task) {
             case SYNC:
-                pgbe.surrogate.sync(false);
+                pgbe.surrogate.sync(world, null);
                 break;
             case UNSYNC:
-                pgbe.surrogate.forget(false);
+                pgbe.surrogate.forget(world);
                 break;
             default:
                 break;

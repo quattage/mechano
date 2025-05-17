@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.gametest;
+package com.quattage.mechano.infrastructure.gametest;
 
 import java.io.File;
 import java.io.PrintWriter;

@@ -35,8 +35,10 @@ public interface NodeIdentifiable<T> {
      * @return <code>true<code> if this BlockEntity hosts this NodeIdentifiable
      */
     public default boolean belongsTo(PowerGridBlockEntity pgbe) {
-        return getIndex() > -1 && getIndex() < pgbe.anchors.size() && pgbe.getBlockPos().equals(getPos());
+        return getIndex() >= 0 && getIndex() < pgbe.anchors.size() && pgbe.getBlockPos().equals(getPos());
     }
+
+    
 
     /**
      * Gets the {@link PowerGridBlockEntity} that this NodeIdentifiable points to
@@ -49,7 +51,9 @@ public interface NodeIdentifiable<T> {
     public default @Nullable PowerGridBlockEntity getHost(LevelReader world) {
         BlockEntity be = world.getBlockEntity(getPos());
         if(!(be instanceof PowerGridBlockEntity pgbe)) return null;
-        return (getIndex() >= 0 && getIndex() < pgbe.anchors.size()) ? pgbe : null;
+        if(world.isClientSide())
+            return (getIndex() >= 0) && getIndex() < pgbe.anchors.size() ? pgbe : null;
+        return getIndex() >= 0 ? pgbe : null;
     }
 
     /**

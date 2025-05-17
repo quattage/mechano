@@ -1,13 +1,11 @@
 package com.quattage.mechano.foundation.api.transmission;
 
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoTransmissionTypes;
 
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -22,23 +20,34 @@ public class TransmitterRegistry {
     private ResourceLocation[] keys = new ResourceLocation[0];
     private final Object2ObjectOpenHashMap<ResourceLocation, TransmitterType<?>> contents = new Object2ObjectOpenHashMap<>(1);
 
-    public Transmitter get(int id) {
+    public Transmitter<?> get(int id) {
         TransmitterType<?> type = getRaw(id);
         return type.make();
     }
 
-    private TransmitterType<? extends Transmitter> getRaw(int id) {
+    public ResourceLocation getKey(TransmitterType<?> type) {
+        if(!isLoaded) throw new IllegalStateException("Attempted to access TransmitterRegistry before it has finished loading!");
+        Objects.requireNonNull(type);
+        int index = type.getIndex();
+        if(index < 0 || index >= contents.size())
+            throw new IndexOutOfBoundsException("Index " + index + " is out of bounds for a TransmitterRegistry of size " + contents.size() + "!");
+        ResourceLocation key = keys[index];
+        if(key == null) throw new IllegalStateException("Index " + index + " isn't mapped to a valid TransmitterType key!"); 
+        return key;
+    }
+
+    public TransmitterType<? extends Transmitter<?>> getRaw(int id) {
         if(!isLoaded) throw new IllegalStateException("Attempted to access TransmitterRegistry before it has finished loading!");
         if(id < 0 || id >= keys.length)
             throw new IndexOutOfBoundsException("Index " + id + " is out of bounds for a TransmitterRegistry of size " + contents.size() + "!");
         ResourceLocation key = keys[id];
-        if(key == null) throw new IllegalStateException("Index " + id + " couldn't find a valid TransmitterType key!"); 
+        if(key == null) throw new IllegalStateException("Index " + id + " isn't mapped to a valid TransmitterType key!"); 
         TransmitterType<?> type = contents.get(key);
         if(type == null) throw new IllegalStateException("The key '" + key + "' mapped to index " + id + " does not exist in this registry! (This indicates a registry error, and should be reported to the Mechano devs)");
         return type;
     }
 
-    public Transmitter get(ResourceLocation id) {
+    public Transmitter<?> get(ResourceLocation id) {
         if(!isLoaded) throw new IllegalStateException("Attempted to access TransmitterRegistry before it has finished loading!");
         Objects.requireNonNull(id);
         TransmitterType<?> type = contents.get(id);
@@ -46,17 +55,17 @@ public class TransmitterRegistry {
         return type.make();
     }
 
-    public Transmitter get(CompoundTag tag) {
+    public Transmitter<?> get(CompoundTag tag) {
         if(!isLoaded) throw new IllegalStateException("Attempted to access TransmitterRegistry before it has finished loading!");
         Objects.requireNonNull(tag);
         if(!tag.contains("id")) throw new IllegalArgumentException("Couldn't find TransmitterType from tag " + tag + " - This tag doesn't contain a transmitter id!");
-        Transmitter out = get(tag.getByte("id") + 128);
+        Transmitter<?> out = get(tag.getByte("id") + 128);
         if(out.needsSerialization() && tag.contains("data"))
             out.loadFrom(tag.getCompound("data"));
         return out;
     }
 
-    public <T extends Transmitter> TransmitterType<T> register(ResourceLocation key, Supplier<? extends TransmitterType<T>> func) {
+    public <T extends Transmitter<?>> TransmitterType<T> register(ResourceLocation key, Supplier<? extends TransmitterType<T>> func) {
         
         if(isLoaded) throw new IllegalStateException("Cannot register new entries to a TransmitterRegistry that has already been loaded!");
         Objects.requireNonNull(key);
@@ -78,7 +87,7 @@ public class TransmitterRegistry {
 
     public void register(IEventBus modBus) {
         if(keys.length != contents.size()) 
-            throw new IllegalStateException("An error occured when building this Transmitter registry - The key array does not match the size of the contents set! (" + keys.length + " != " + contents.size());
+            throw new IllegalStateException("An error occured when building this Transmitter<?> registry - The key array does not match the size of the contents set! (" + keys.length + " != " + contents.size());
         isLoaded = true;
         contents.trim();
 
@@ -104,38 +113,26 @@ public class TransmitterRegistry {
 
 
 
-    public static class TransmitterType<T extends Transmitter> { 
+    public static class TransmitterType<T extends Transmitter<?>> { 
 
         private static final float minimumDistance = 0.16f;
 
         private byte packedIndex = -1;
-        private final Function<Byte, T> defaultConstructor;
-        @Nullable private final StreamCodec<ByteBuf, T> streamCodec;
+
+        private final Supplier<T> defaultConstructor;
+        public final @Nullable StreamCodec<ByteBuf, T> streamCodec;
 
         private final boolean canSameBlock;
         private final boolean ignoresLimits;
         private final int maxDistance;
 
-        public static final StreamCodec<ByteBuf, Transmitter> STREAM_CODEC_DYNAMIC = new StreamCodec<>() {
-            @Override
-            public Transmitter decode(ByteBuf buffer) {
-                TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
-                return type.streamCodec == null ? type.make() : type.streamCodec.decode(buffer);
-            }
-            @Override 
-            @SuppressWarnings("unchecked")
-            public void encode(ByteBuf buffer, Transmitter value) {
-                buffer.writeByte(value.packedIndex);
-                TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(value.packedIndex + 128);
-                if(type.streamCodec != null)
-                    ((StreamCodec<ByteBuf, Transmitter>)type.streamCodec).encode(buffer, value);
-            }
-        };
 
         public static final StreamCodec<ByteBuf, TransmitterType<?>> STREAM_CODEC = new StreamCodec<>() {
             @Override
             public TransmitterType<?> decode(ByteBuf buffer) {
-                return MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
+                TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
+                if(type.streamCodec != null) type.streamCodec.decode(buffer);
+                return type;
             }
             @Override 
             public void encode(ByteBuf buffer, TransmitterType<?> value) {
@@ -144,7 +141,7 @@ public class TransmitterRegistry {
         };
     
 
-        protected TransmitterType(Function<Byte, T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, boolean canSameBlock, boolean ignoresLimits, int maxDistance) {
+        protected TransmitterType(Supplier<T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, boolean canSameBlock, boolean ignoresLimits, int maxDistance) {
             this.defaultConstructor = defaultConstructor;
             this.streamCodec = streamCodec;
             this.canSameBlock = canSameBlock;
@@ -159,6 +156,10 @@ public class TransmitterRegistry {
          */
         public boolean supportsSameBlockConnections() {
             return canSameBlock;
+        }
+
+        public int getIndex() {
+            return packedIndex + 128;
         }
 
         /**
@@ -208,7 +209,7 @@ public class TransmitterRegistry {
         }
 
         public T make() {
-            return defaultConstructor.apply(packedIndex);
+            return defaultConstructor.get();
         }
 
         /**
@@ -222,26 +223,32 @@ public class TransmitterRegistry {
         public int bitmask() {
             return 1 << packedIndex;
         }
+
+
+        public CompoundTag writeTo(CompoundTag in) {
+            in.putByte("id", packedIndex);
+            return in;
+        }
     }
 
 
-    public static class TransmitterTypeBuilder<T extends Transmitter> {
+    public static class TransmitterTypeBuilder<T extends Transmitter<?>> {
 
         @Nullable private StreamCodec<ByteBuf, T> streamCodec = null;
-        private final Function<Byte, T> defaultCtor;
+        private final Supplier<T> defaultCtor;
 
         private int maxDistance = 16;
         private boolean canSameBlock = false;
         private boolean ignoresLimits = false;
 
-        public TransmitterTypeBuilder(Function<Byte, T> defaultCtor) {
+        public TransmitterTypeBuilder(Supplier<T> defaultCtor) {
             this.defaultCtor = defaultCtor;
         } 
 
         /**
          * Call this method while constructing your TransmitterType if you want this
          * particular type to serlaize additional data to a codec. You supply the codec - 
-         * it would traditionally be located somewhere in your Transmitter subclass
+         * it would traditionally be located somewhere in your Transmitter<?> subclass
          * and serialize data pertaining to it. This allows additional data
          * to be sent via packets, should such a thing be necessary. If you
          * don't want this, either don't call this method, or just supply <code>null</code>.

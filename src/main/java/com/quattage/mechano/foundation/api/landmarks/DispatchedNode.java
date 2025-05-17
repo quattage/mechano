@@ -4,19 +4,18 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.network.DispatchSyncClientBoundPacket;
-import com.quattage.mechano.foundation.api.network.DispatchSyncServerBoundPacket;
+import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
 
 import io.netty.buffer.ByteBuf;
-import net.createmod.catnip.data.Pair;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 
 /**
  * A side-agnostic addressable NodeIdentifiable whose index is always 0.
@@ -25,11 +24,25 @@ import net.minecraft.world.level.Level;
  * Storing the GridNode at the BE level simplifies the amount of work
  * that has to be done when changes to the {@link GlobalServerGrid} are made.
  */
-public class DispatchedNode implements NodeIdentifiable<GridNode> {
+public final class DispatchedNode implements NodeIdentifiable<GridNode> {
 
+    /**
+     * The owner is always null on the client, and sometimes null
+     * on the server. A DispatchedNode with a null owner indicates
+     * that this instance does not belong to a PowerGrid. 
+     */
     public @Nullable PowerGrid owner;
 
-    private boolean isSyncedAsClient = false;
+    /**
+     * A client-sided hint so that we can tell if this DispatchedNode
+     * has an owner without having to send a packet to do so.
+     */
+    private boolean belongsToNetwork = false;
+
+    /**
+     * Never null, immutable - The host of this DispatchedNode
+     * in the world. Used for getting BlockPos and level.
+     */
     private final PowerGridBlockEntity pgbe;
 
     public DispatchedNode(PowerGridBlockEntity pgbe) {
@@ -42,69 +55,34 @@ public class DispatchedNode implements NodeIdentifiable<GridNode> {
      * to a server-sided {@link GridNode} instance
      */
     public boolean isSynced() {
-        return (owner != null) || isSyncedAsClient;
+        return (owner != null) || belongsToNetwork;
     }
 
-    /**
-     * Syncs this DispatchedNode so that it refers to a server-sided
-     * {@link GridNode} instance.  
-     * @param networked If <code>true</code>, a packet will be sent to
-     * call this method on the opposite side - If this is called on the 
-     * client, a packet will be sent to the server. (and vice-versa)
-     */
-    public void sync(boolean networked) {
-
-        Level world = getLevel();
-        if(world == null) 
-            throw new IllegalStateException("Cannot sync " + this + " - The world couldn't be obtained!");
-
-        if(world.isClientSide()) {
-            isSyncedAsClient = true;
-            this.owner = null;
-            if(networked)
-                CatnipServices.NETWORK.sendToServer(new DispatchSyncServerBoundPacket(pgbe.getBlockPos(), SyncTask.SYNC));
+    public void sync(LevelReader world, @Nullable PowerGrid newOwner) {
+        if(!world.isClientSide()) {
+            belongsToNetwork = true;
+            this.owner = newOwner;
+            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getPos(), SidedTask.SYNC));
             return;
         }
-
-        SidedGridDispatcher.runOnServer(world, (grid) -> {
-            Pair<PowerGrid, GridNode> lookup = grid.lookup(new NodeIdentifier.Key(getPos()));
-            if(lookup == null) return;
-            owner = lookup.getFirst();
-        });
-
-        if(networked) 
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncClientBoundPacket(pgbe.getBlockPos(), SyncTask.SYNC));
-    }
-
-
-    /**
-     * Nullifies all synced references that are stored within this 
-     * DispatchedNode. This is useful to prevent passive BlockEntities 
-     * (ones that aren't connected to anything) from storing references 
-     * to irrelevent or potentially stale PowerGrids.
-     * @param networked If <code>true</code>, a packet will be sent to
-     * call this method on the opposite side - If this is called on the 
-     * client, a packet will be sent to the server. (and vice-versa)
-     */
-    public void forget(boolean networked) {
-
-        Level world = getLevel();
-        if(world == null) 
-            throw new IllegalStateException("Cannot forget " + this + " - The world couldn't be obtained!");
-
-        if(world.isClientSide()) {
-            this.isSyncedAsClient = false;
-            this.owner = null;
-            if(networked)
-                CatnipServices.NETWORK.sendToServer(new DispatchSyncServerBoundPacket(pgbe.getBlockPos(), SyncTask.UNSYNC));
-            return;
-        }
-
+        belongsToNetwork = true;
         this.owner = null;
-
-        if(networked) 
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncClientBoundPacket(pgbe.getBlockPos(), SyncTask.UNSYNC));
+        return;
     }
+
+
+    public void forget(LevelReader world) {
+        if(!world.isClientSide()) {
+            belongsToNetwork = false;
+            this.owner = null;
+            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getPos(), SidedTask.UNSYNC));
+            return;
+        }
+        belongsToNetwork = false;
+        this.owner = null;
+        return;
+    }
+
 
     @Override
     public @Nullable GridNode getValue() {
@@ -165,19 +143,19 @@ public class DispatchedNode implements NodeIdentifiable<GridNode> {
 
 
 
-    public static enum SyncTask {
+    public static enum SidedTask {
 
         RESYNC,
         SYNC,
         UNSYNC;
 
-        public static final StreamCodec<ByteBuf, SyncTask> STREAM_CODEC = new StreamCodec<>() {
+        public static final StreamCodec<ByteBuf, SidedTask> STREAM_CODEC = new StreamCodec<>() {
             @Override
-            public SyncTask decode(ByteBuf buffer) {
-                return SyncTask.values()[buffer.readByte()];
+            public SidedTask decode(ByteBuf buffer) {
+                return SidedTask.values()[buffer.readByte()];
             }
             @Override
-            public void encode(ByteBuf buffer, SyncTask value) {
+            public void encode(ByteBuf buffer, SidedTask value) {
                 buffer.writeByte(value.ordinal());
             }
         };

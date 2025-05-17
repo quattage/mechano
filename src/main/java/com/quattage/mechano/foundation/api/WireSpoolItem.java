@@ -3,6 +3,7 @@ package com.quattage.mechano.foundation.api;
 import com.quattage.mechano.MechanoDataAttachments;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmission.Transmitable;
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
@@ -31,7 +32,7 @@ public abstract class WireSpoolItem<T extends Transmitter> extends Item implemen
         AnchorSelector.Active sel = AnchorSelector.INSTANCE.selected;
 
         if(!stack.has(MechanoDataAttachments.ADDRESS_COMPONENT)) {
-            if(!AnchorSelector.INSTANCE.selected.response.isSuccessful()) {
+            if(!AnchorSelector.INSTANCE.selected.response.indicatesSuccess()) {
                 // TODO send initial fail message to selector and GuiLayer
                 return InteractionResultHolder.fail(stack);
             }
@@ -44,10 +45,9 @@ public abstract class WireSpoolItem<T extends Transmitter> extends Item implemen
             return InteractionResultHolder.pass(stack);
 
         GlobalClientGrid client = SidedGridDispatcher.client(player);
-        LinkResponse result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.getValue(), getTransmitterType());
-        if(result.shouldBail()) stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
-
-        if(result.isSuccessful()) return InteractionResultHolder.success(stack);
+        Response<?> result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.getValue(), getTransmitterType());
+        if(Response.shouldBail(result)) stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+        if(result.indicatesSuccess()) return InteractionResultHolder.success(stack);
         return InteractionResultHolder.fail(stack);
     }
 

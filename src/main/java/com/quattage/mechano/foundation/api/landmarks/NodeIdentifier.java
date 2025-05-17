@@ -50,7 +50,7 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
     }
 
     public String toString() {
-        return "(" + getX() + "," + getY() + "," + getZ() + ", " + getIndex() + " / " + NodeIdentifier.MAX_OCCUPANCY + ")";
+        return "Address [" + getX() + ", " + getY() + ", " + getZ() + ", " + getIndex() + "]";
     }
 
     @Override

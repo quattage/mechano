@@ -3,14 +3,20 @@ package com.quattage.mechano.foundation.api.transmission;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
-public class PerfectConductor extends Transmitter {
+public class PerfectConductor extends Transmitter<PerfectConductor> {
 
-    public PerfectConductor(byte registryIndex) {
-        super(registryIndex);
+    public PerfectConductor() {
+    
+    }
+
+    @Override
+    public TransmitterType<PerfectConductor> getType() {
+        return MechanoTransmissionTypes.PERFECT_CONDUCTOR;
     }
 
     @Override
@@ -32,4 +38,6 @@ public class PerfectConductor extends Transmitter {
     public void onConnectionDestroyed(Level world, @Nullable Player destroyer, GridLink connection) {
 
     }
+
+    
 }

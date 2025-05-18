@@ -20,7 +20,6 @@ import com.quattage.mechano.foundation.api.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -89,7 +88,7 @@ public class GridManifestGenerator {
                 }
                 manifest += "\n--\n";
             }
-            manifest += "▙▛▖▖■      Processed " + count + " nodes";
+            manifest += "▙▛▖▖■        Processed " + count + " nodes";
             return manifest;
         }).orTimeout(30L, TimeUnit.SECONDS).whenComplete((result, ex) -> {
             if(ex != null) {
@@ -104,13 +103,16 @@ public class GridManifestGenerator {
                 unload();
                 return;
             }
+
             requester.sendSystemMessage(Component.literal(""), true);
             requester.sendSystemMessage(Component.literal("Manifest saved!")
                 .withStyle(ChatFormatting.GREEN), false);
             float elapsed = (System.currentTimeMillis() - this.requestTime) / 1000;
-            result += " in " + elapsed + " seconds.      ■▗▗▜▟";
+            result += " in " + elapsed + " seconds.         ■▗▗▜▟";
             unload();
-            Mechano.LOGGER.info("\n\n\n" + result);
+
+            CatnipServices.NETWORK.sendToClient(requester, new ManifestResultPacket("\n" + result));
+            active.log("\n\n\n" + result);
         });
         return true;
     }

@@ -2,7 +2,6 @@ package com.quattage.mechano.foundation.api;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;

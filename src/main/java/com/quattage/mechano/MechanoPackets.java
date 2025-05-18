@@ -1,3 +1,4 @@
+
 package com.quattage.mechano;
 
 import java.util.Locale;
@@ -8,6 +9,7 @@ import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
 import com.quattage.mechano.foundation.api.switchboard.ManifestResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.ManifestResultPacket;
 
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;
@@ -23,6 +25,7 @@ public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     DISPATCH_SYNC_C2S(DispatchSyncPacket.class, DispatchSyncPacket.STREAM_CODEC),
     MANIFEST_S2C(ManifestRequestPacket.class, ManifestRequestPacket.STREAM_CODEC),
     MANIFEST_C2S(ManifestResponsePacket.class, ManifestResponsePacket.STREAM_CODEC),
+    MANIFEST_RESULT_S2C(ManifestResultPacket.class, ManifestResultPacket.STREAM_CODEC),
     ANCHOR_SYNC_S2C(AnchorPointSyncPacket.class, AnchorPointSyncPacket.STREAM_CODEC),
     ;
 

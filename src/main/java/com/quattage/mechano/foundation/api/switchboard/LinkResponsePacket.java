@@ -33,9 +33,12 @@ public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key en
     // TODO Response.Task is unused for now, but may be necessary in the future
     @Override
     public void handle(LocalPlayer player) {
+
         LevelReader world = player.level();
+
         PowerGridBlockEntity startBE = start.getHost(world);
         PowerGridBlockEntity endBE = end.getHost(world);
+
         if(startBE == null) {
             Mechano.LOGGER.error("Couldn't handle LinkResponse from " + start + " to " + end + " - No valid PGBE could be found at the starting address!");
             return;
@@ -43,6 +46,7 @@ public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key en
             Mechano.LOGGER.error("Couldn't handle LinkResponse from " + start + " to " + end + " - No valid PGBE could be found at the ending address!");
             return;
         }
+
         startBE.surrogate.sync(world, null);
         startBE.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
         endBE.surrogate.sync(world, null);

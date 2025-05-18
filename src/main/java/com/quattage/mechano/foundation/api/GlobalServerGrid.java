@@ -1,7 +1,9 @@
 
 package com.quattage.mechano.foundation.api;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
@@ -10,7 +12,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
 import com.quattage.mechano.foundation.api.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier.Key;
+import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
@@ -34,7 +36,7 @@ import net.minecraft.world.level.LevelReader;
 public final class GlobalServerGrid extends SidedGridDispatcher {
 
     public ObjectArrayList<PowerGrid> subgrids;
-    public Object2ObjectOpenHashMap<ChunkPos, GridLink> linksByChunk = new Object2ObjectOpenHashMap<>();
+    public Object2ObjectOpenHashMap<ChunkPos, List<GridLink>> linksByChunk = new Object2ObjectOpenHashMap<>();
 
     /**
      * Loads a GlobalServerGrid from a serialized list of {@link PowerGrid PowerGrids}. 
@@ -45,20 +47,20 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * @return a new GlobalServerGrid with data primed from the provided list of grids.
      */
     public static GlobalServerGrid loadFrom(ListTag subgrids, ServerLevel world) {
-        GlobalServerGrid freshInstance = new GlobalServerGrid(world,  new ObjectArrayList<>(subgrids.size()));
+        GlobalServerGrid freshGlobal = new GlobalServerGrid(world,  new ObjectArrayList<>(subgrids.size()));
         for(int x = 0; x < subgrids.size(); x++) {
             ListTag writtens = subgrids.getList(x);
-            PowerGrid freshGrid = new PowerGrid(freshInstance, writtens.size());
+            PowerGrid freshLocal = new PowerGrid(freshGlobal, writtens.size());
             for(int y = 0; y < writtens.size(); y++) {
                 CompoundTag node = writtens.getCompound(x);
-                createNodeAndMakeProvisionalLinks(freshGrid, Key.loadFrom(node), node.getList("links", Tag.TAG_COMPOUND));
+                createNodeAndMakeProvisionalLinks(freshGlobal, freshLocal, NodeIdentifier.Key.loadFrom(node), node.getList("links", Tag.TAG_COMPOUND));
             }
         }
-        return freshInstance;
+        return freshGlobal;
     }
 
     /**
-     * A breakout method for making the above method easier to read - 
+     * A breakout method for making {@link GlobalServerGrid#loadFrom} easier to read - 
      * This method is responsible for de-serializing the GridNode and its links <p>
      * getOrCreate is used here to ensure that only one canonical reference to each GridNode exists after
      * the GlobalServerGrid is loaded. GridNodes may have already been created as links by previous calls
@@ -66,20 +68,21 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * 
      * TODO A recursive approach may reduce iteration count slightly if links are created depth-first rather than re-addressing provisional links
      */
-    private static void createNodeAndMakeProvisionalLinks(PowerGrid instantiator, Key address, @Nullable ListTag links) {
+    private static void createNodeAndMakeProvisionalLinks(GlobalServerGrid grid, PowerGrid instantiator, NodeIdentifier.Key address, @Nullable ListTag links) {
         GridNode freshOrigin = instantiator.getOrCreateProvisional(address);
         if(freshOrigin.hasLinks() || links == null) return;
         for(int x = 0; x < links.size(); x++) {
             CompoundTag link = links.getCompound(x);
-            Key provisionalLink = Key.loadFrom(link);
+            NodeIdentifier.Key provisionalLink = NodeIdentifier.Key.loadFrom(link);
             GridNode provisionalTarget = instantiator.getOrCreateProvisional(provisionalLink);
-            GridLink freshLink = new GridLink(freshOrigin, provisionalTarget, MechanoTransmissionTypes.REGISTRY.get(link));
-            freshOrigin.links.add(freshLink);
+            Transmitter<?> trns = MechanoTransmissionTypes.REGISTRY.get(link);
+            grid.linkUnsafe(freshOrigin, provisionalTarget, trns);
         }
     }
 
     /**
-     * Creates a new GlobalServerGrid with a predefined list of subgrids
+     * Creates a new GlobalServerGrid with a predefined list of subgrids.
+     * Used internally by the {@link SidedGridDispatcher#SERIALIZER}
      * @param world ServerLevel that owns this grid
      * @param subgrids Subgrids to instantiate the new GlobalServerGrid with
      */
@@ -254,16 +257,13 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * @return The GridLink that was created
      */
     public GridLink linkUnsafe(GridNode start, GridNode end, Transmitter<?> trns) {
-        Objects.requireNonNull(start);
-        Objects.requireNonNull(end);
-        Objects.requireNonNull(trns);
-        GridLink newLink = new GridLink(start, end, trns);
-        start.links.add(newLink);
-        linksByChunk.put(new ChunkPos(newLink.getStart().getPos()), newLink);
-        GridLink inverse = newLink.copyAndFlip();
+        GridLink link = new GridLink(start, end, trns);
+        start.links.add(link);
+        trackLink(link);
+        GridLink inverse = link.copyAndFlip();
         end.links.add(inverse);
-        linksByChunk.put(new ChunkPos(inverse.getStart().getPos()), inverse);
-        return newLink;
+        trackLink(inverse);
+        return link;
     }
 
 
@@ -278,17 +278,37 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * @return The GridLink provided
      */
     public GridLink linkUnsafe(GridLink link, Transmitter<?> trns) {
-        Objects.requireNonNull(link);
-        Objects.requireNonNull(trns);
         link.getStart().links.add(link);
-        linksByChunk.put(new ChunkPos(link.getStart().getPos()), link);
+        trackLink(link);
         GridLink inverse = link.copyAndFlip();
         inverse.getStart().links.add(inverse);
-        linksByChunk.put(new ChunkPos(inverse.getStart().getPos()), inverse);
+        trackLink(inverse);
         return link;
     }
 
 
+    /**
+     * Adds the provied GridLink to this GlobalServerGrid's 
+     * tracked links set.
+     * @param link Link to add
+     */
+    public void trackLink(GridLink link) {
+        List<GridLink> links = linksByChunk.get(link.getStart());
+        if(links == null) {
+            links = new ArrayList<>();
+            links.add(link);
+            linksByChunk.put(new ChunkPos(link.getStart().getPos()), links);
+            return;
+        }
+        links.add(link);
+    }
+
+    public void untrackLink(GridLink link) {
+        List<GridLink> links = linksByChunk.get(link.getStart());
+        if(links == null) return;
+        links.remove(link);
+        if(links.isEmpty()) linksByChunk.remove(link.getStart());
+    }
 
 
     /**

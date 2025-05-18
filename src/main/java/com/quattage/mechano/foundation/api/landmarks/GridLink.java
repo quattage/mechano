@@ -2,15 +2,9 @@ package com.quattage.mechano.foundation.api.landmarks;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class GridLink {
 
@@ -33,24 +27,7 @@ public class GridLink {
         this.transmitter = transmitter;
     }
 
-    // REWRITE THIS LLMAOOO
-    public static GridLink loadFrom(LevelReader world, CompoundTag in, GridNode caller) {
-        if(!(in.contains("x") && in.contains("y") && in.contains("z") && in.contains("i")))
-            throw new IllegalArgumentException("Can't deserialize GridLink from " + caller 
-                + " - The provided tag (" + in + ") doesn't contain the required data!");
-        BlockPos destinationPos = new BlockPos(in.getInt("x"), in.getInt("y"), in.getInt("z"));
-        int index = in.getByte("i");
-        GridNode destination = caller.owner.nodes.get(destinationPos, index);
-        if(destination == null) {
-            BlockEntity be = world.getBlockEntity(destinationPos);
-            if(be == null) throw new NullPointerException("Error instaitiating transitive GridLink destination node - No BlockEntity could be found at " + destinationPos);
-            if(!(be instanceof PowerGridBlockEntity pgbe))
-                throw new IllegalArgumentException("Error instaitiating transitive GridLink destination node - BlockEntity at " + destinationPos + " is not an instance of PowerGridBlockEntity!");
-            destination = new GridNode(caller.owner, pgbe, index);
-            caller.owner.nodes.add(destination);
-        }
-        return new GridLink(caller, destination, MechanoTransmissionTypes.REGISTRY.get(in));
-    }
+    
 
     public static float getEuclideanDistance(NodeIdentifiable<?> a, NodeIdentifiable<?> b) {
         return (float)Math.sqrt(

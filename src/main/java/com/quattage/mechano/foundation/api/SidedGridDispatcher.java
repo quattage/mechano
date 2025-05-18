@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.api;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -11,9 +12,15 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
+import com.quattage.mechano.foundation.api.landmarks.GridLink;
+import com.quattage.mechano.foundation.api.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.switchboard.GridManifestGenerator;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.ListTag;
@@ -25,6 +32,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -43,12 +51,6 @@ public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, Globa
     // these will be GCd immediately if they aren't actively reachable
     private static WorldlyReference<GlobalServerGrid> weakServerGrid = new WorldlyReference<>(null);
     private static WorldlyReference<GlobalClientGrid> weakClientGrid = new WorldlyReference<>(null);
-
-    @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post evt) {
-        MANIFEST.tick();
-    }
-
 
     protected final Level world;
 
@@ -241,6 +243,42 @@ public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, Globa
             return false;
         }
         return true;
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post evt) { MANIFEST.tick(); }
+
+    @SubscribeEvent
+    public static void onChunkWatch(ChunkWatchEvent.Sent evt) {
+
+        GlobalServerGrid grid = server(evt.getLevel());
+        if(grid.linksByChunk.isEmpty()) return;
+        List<GridLink> links = grid.linksByChunk.get(evt.getPos());
+        if(links == null || links.isEmpty()) return;
+
+        for(int x = 0; x < links.size(); x++) {
+            GridLink link = links.get(x);
+            GridNode start = link.getStart();
+            GridNode end = link.getEnd();
+            LinkResponseHolder lrh = LinkResponseHolder.of(start, end, Response.SUCCESS);
+            CatnipServices.NETWORK.sendToClient(
+                evt.getPlayer(), 
+                new LinkResponsePacket(
+                    start.strip(), end.strip(), 
+                    lrh, link.getConnection().getType(), 
+                    Response.Task.RESYNC
+                )
+            );
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChunkUnWatch(ChunkWatchEvent.UnWatch evt) {
+        GlobalServerGrid grid = server(evt.getLevel());
+        if(grid.linksByChunk.isEmpty()) return;
+        List<GridLink> links = grid.linksByChunk.get(evt);
+        if(links == null || links.isEmpty()) return;
+
     }
 
     protected SidedGridDispatcher(Level world) {

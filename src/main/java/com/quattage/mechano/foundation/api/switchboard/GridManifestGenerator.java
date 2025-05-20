@@ -17,7 +17,6 @@ import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
 import com.quattage.mechano.foundation.api.landmarks.GridNode;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
 import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
 
@@ -82,9 +81,9 @@ public class GridManifestGenerator {
                 if(grid.nodes.isEmpty()) {
                     manifest += "\t▸ Error (subgrid unpopulated)\n";
                 }
-                for(NodeIdentifiable<GridNode> node : grid.nodes.set) {
+                for(GridNode node : grid.nodes.set) {
                     count++;
-                    manifest += collectNodeInfo(active.getLevelReader(), node.getValue()) + "\t└┄┄┄┄\n";
+                    manifest += collectNodeInfo(active.getLevelReader(), node) + "\t└┄┄┄┄\n";
                 }
                 manifest += "\n--\n";
             }
@@ -112,7 +111,7 @@ public class GridManifestGenerator {
             unload();
 
             CatnipServices.NETWORK.sendToClient(requester, new ManifestResultPacket("\n" + result));
-            active.log("\n\n\n" + result);
+            Mechano.LOGGER.info("\n\n\n" + result);
         });
         return true;
     }

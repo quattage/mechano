@@ -22,7 +22,7 @@ import net.minecraft.network.codec.StreamCodec;
  * and {@link com.quattage.mechano.foundation.api.client.AnchorPoint AnchorPoint} - All of these classes
  * share the same hashing, equivalence, and serialization methods, so they can all be used to query {@link  com.quattage.mechano.foundation.api.PowerGrid PowerGrid}
  */
-public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
+public abstract class NodeIdentifier implements NodeIdentifiable {
 
 
     /**
@@ -58,8 +58,6 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
         return index;
     }
 
-    public abstract T getValue();
-
     public boolean isLocatedAt(BlockPos pos) {
         return this.pos.equals(pos);
     }
@@ -76,11 +74,10 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
         return this.index == index;
     }
 
-
     public boolean equals(Object other) {
         if(this == other) return true;
-        if(!(other instanceof NodeIdentifier that)) return false;
-        return this.pos.equals(that.pos) && this.index == that.index;
+        if(!(other instanceof NodeIdentifiable that)) return false;
+        return this.pos.equals(that.getPos()) && this.index == that.getIndex();
     }
 
     public int hashCode() {
@@ -100,7 +97,7 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
      * retrieving them from the {@link com.quattage.mechano.foundation.api.PowerGrid PowerGrid}
      * or when sending packets.
      */
-    public static class Key extends NodeIdentifier<Key> {
+    public static class Key extends NodeIdentifier {
 
         public static final Codec<Key> CODEC = Codec.INT_STREAM.comapFlatMap(
             read -> Util.fixedSize(read, 4).map(data -> new Key(data[0], data[1], data[2], data[3])),
@@ -146,18 +143,9 @@ public abstract class NodeIdentifier<T> implements NodeIdentifiable<T> {
             this.index = (byte)(index < 0 ? 0 : (index >= NodeIdentifier.MAX_OCCUPANCY ? NodeIdentifier.MAX_OCCUPANCY - 1 : index));
         }
 
-        @Override
-        public Key getValue() {
-            return this;
-        }
-
 		@Override
 		public Tracker makeTrackable() {
 			throw new UnsupportedOperationException("Dummy addresses aren't trackable!");
 		}
-
-        public String toString() {
-            return "Node (" + getX() + "," + getY() + "," + getZ() + "," + getIndex() + ")";
-        }
     }
 }

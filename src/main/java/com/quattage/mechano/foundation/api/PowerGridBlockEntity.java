@@ -71,21 +71,13 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
     }
 
     /**
-     * Called whenever this PGBE is registered within a {@link PowerGrid}
+     * Called when this PGBE is initially registered within a {@link PowerGrid}.
+     * 
      * @param world World to operate within
      * @param grid The grid that this PGBE was added to
      */
     public void onAddedToGrid(Level world, PowerGrid grid) {
         
-    }
-
-    /**
-     * Called whenever this PGBE is removed from a {@link PowerGrid}
-     * @param world World to operate within
-     * @param grid The grid that this PGBE was removed from
-     */
-    public void onRemovedFromGrid(Level world, PowerGrid grid) {
-
     }
 
     /**
@@ -103,6 +95,6 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
      * @param connection The connection that was destroyed. Note that this method is called AFTER the GridLink is removed from the network, so this connection's reference is stale and should't be stored.
      */
     public void onConnectionBroken(Level world, GridLink connection) {
-
+        
     }
 }

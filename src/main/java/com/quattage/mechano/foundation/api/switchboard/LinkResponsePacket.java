@@ -30,20 +30,32 @@ public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key en
     }
 
 
-    // TODO Response.Task is unused for now, but may be necessary in the future
     @Override
     public void handle(LocalPlayer player) {
-
         LevelReader world = player.level();
-
         PowerGridBlockEntity startBE = start.getHost(world);
         PowerGridBlockEntity endBE = end.getHost(world);
-
-        if(startBE == null) {
-            Mechano.LOGGER.error("Couldn't handle LinkResponse from " + start + " to " + end + " - No valid PGBE could be found at the starting address!");
+        if(task == Response.Task.CHUNK_LOAD) {
+            handleAsymmetric(world, startBE);
             return;
-        } else if(endBE == null) {
-            Mechano.LOGGER.error("Couldn't handle LinkResponse from " + start + " to " + end + " - No valid PGBE could be found at the ending address!");
+        }
+        handleDoubleSided(world, startBE, endBE);
+    }
+
+
+    private void handleDoubleSided(LevelReader world, PowerGridBlockEntity startBE, PowerGridBlockEntity endBE) {
+        if(endBE == null && startBE != null) {
+            startBE.surrogate.sync(world, null);
+            startBE.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
+            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the ending address, got " + startBE);
+            return;
+        } else if(startBE == null && endBE != null) {
+            endBE.surrogate.sync(world, null);
+            endBE.anchors.getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
+            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address, got " + endBE);
+            return;
+        } else if(endBE == null && startBE == null) {
+            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at either address!");
             return;
         }
 
@@ -51,6 +63,12 @@ public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key en
         startBE.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
         endBE.surrogate.sync(world, null);
         endBE.anchors.getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
-        // throw new UnsupportedOperationException("Unsupported packet handler task '" + task + "'");
+    }
+
+    private void handleAsymmetric(LevelReader world, PowerGridBlockEntity be) {
+        if(be == null)
+            throw new NullPointerException("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address");
+        be.surrogate.sync(world, null);
+        be.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
     }
 }

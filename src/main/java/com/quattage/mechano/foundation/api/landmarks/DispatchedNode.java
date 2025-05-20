@@ -24,7 +24,7 @@ import net.minecraft.world.level.LevelReader;
  * Storing the GridNode at the BE level simplifies the amount of work
  * that has to be done when changes to the {@link GlobalServerGrid} are made.
  */
-public final class DispatchedNode implements NodeIdentifiable<GridNode> {
+public final class DispatchedNode implements NodeIdentifiable {
 
     /**
      * The owner is always null on the client, and sometimes null
@@ -84,7 +84,6 @@ public final class DispatchedNode implements NodeIdentifiable<GridNode> {
     }
 
 
-    @Override
     public @Nullable GridNode getValue() {
         if(!isSynced()) return null;
         return owner.nodes.get(pgbe.getBlockPos(), 0);

@@ -35,7 +35,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class AnchorGuiLayer {
 
 	private static int hoverTicks = 0;
-	private static @Nullable NodeIdentifiable<?> lastTarget = null;
+	private static @Nullable NodeIdentifiable lastTarget = null;
 
 
 	public static void renderOverlay(GuiGraphics graphics, DeltaTracker deltas) {
@@ -44,7 +44,7 @@ public class AnchorGuiLayer {
 		if(!shouldRenderOverlay(mc)) return;
 
 		if(!AnchorSelector.INSTANCE.isSelected(lastTarget)) { 
-			lastTarget = AnchorSelector.INSTANCE.selected.getValue();
+			lastTarget = AnchorSelector.INSTANCE.selected;
 			hoverTicks = 0; 
 		}
 

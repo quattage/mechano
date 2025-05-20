@@ -271,7 +271,7 @@ public class AnchorSelector {
         return !currentTooltip.isEmpty();
     }
 
-    public boolean isSelected(NodeIdentifiable<?> id) {
+    public boolean isSelected(NodeIdentifiable id) {
         if(!hasSelection()) return false;
         return selected.anchor.equals(id);
     }
@@ -286,10 +286,10 @@ public class AnchorSelector {
      * An {@link AnchorPoint} container for comparing based on distance to the LocalPlayer
      * and sorting in a PriorityQueue
      */
-    public static class Active implements Comparable<Active>, NodeIdentifiable<AnchorPoint> {
+    public static class Active implements Comparable<Active>, NodeIdentifiable {
 
         public final PowerGridBlockEntity be; 
-        private final AnchorPoint anchor;
+        public final AnchorPoint anchor;
         public final float distance;
         public Response<?> response;
         private VoxelShape highlightShape;
@@ -378,15 +378,9 @@ public class AnchorSelector {
                 .lineWidth(0.010f * ticks);
         }
 
-
         @Override
         public String toString() {
             return "[" + be.getBlockPos() + ", " + anchor + ", " +  response + "]";
-        }
-
-        @Override
-        public AnchorPoint getValue() {
-            return anchor;
         }
 
         @Override

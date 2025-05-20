@@ -3,6 +3,7 @@ package com.quattage.mechano.foundation.api.switchboard;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmarks.GridLink;
 import com.quattage.mechano.foundation.api.landmarks.GridNode;
 
@@ -223,6 +224,7 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
             });
         }
         public static LinkResponseHolder of(@Nullable GridNode start, @Nullable GridNode end, Response<?> response) {
+            Mechano.LOGGER.info("START: " + (start == null? "NONE" : start.links.size()) + " END: " + (end == null ? "NONE" : end.links.size()));
             return new LinkResponseHolder(response, new byte[] {
                 start == null ? Byte.MIN_VALUE : (byte)(start.links.size() - 128),
                 end == null ? Byte.MIN_VALUE : (byte)(end.links.size() - 128)
@@ -256,6 +258,7 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         CREATE,
         DESTROY,
         RESYNC,
+        CHUNK_LOAD
         ;
 
         public static final StreamCodec<ByteBuf, Task> STREAM_CODEC = new StreamCodec<>() {

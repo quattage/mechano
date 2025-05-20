@@ -14,9 +14,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * Barebones implementation template for hashables that need to reference
  * a block position and (optionally) an index value. 
  */
-public interface NodeIdentifiable<T> {
+public interface NodeIdentifiable {
 
-    public abstract T getValue();
     public abstract BlockPos getPos();
 
     /**

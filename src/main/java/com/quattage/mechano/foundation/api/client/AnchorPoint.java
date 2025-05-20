@@ -36,7 +36,7 @@ import net.minecraft.world.phys.Vec3;
  * <p> The AnchorPoint
  * occupies physical space, where the GridNode does not.
  */
-public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
+public class AnchorPoint extends NodeIdentifier {
 
     public static final int VIS_RANGE = 15;
 
@@ -72,7 +72,7 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
      * @param address Address to find
      * @return AnchorPoint at the given address, or <code>null</code> if one couldn't be found.
      */
-    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable NodeIdentifiable<?> address) {
+    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable NodeIdentifiable address) {
         if(address == null) return null;
         if(!world.isClientSide()) {
             Mechano.LOGGER.error("Attempted to retrieve AnchorPoint " + address + " from non-permissible server context!");
@@ -107,11 +107,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         if(be == null) return false;
         if(!(be instanceof PowerGridBlockEntity pgbe)) return false;
         return pgbe.anchors != null && index < pgbe.anchors.size();
-    }
-
-    public void handleSync(byte connections, boolean enabled, @Nullable LevelReader refresher) {
-        sync(connections, refresher);
-        this.enabled = enabled;
     }
 
     public void sync(byte connections, @Nullable LevelReader refresher) {
@@ -188,27 +183,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
     }
 
     /**
-     * Adds 1 to the current number of connections hosted by this
-     * AnchorPoint. Note that this number can be incremented PAST
-     * the maximum rated connections, if you don't want that to happen,
-     * checking must be performed seperately.
-     */
-    public void incrementCurrentConnections() {
-        byte inc = (byte)(data[4] + 1);
-        data[4] = ((data[4] ^ 1) >= 0 && (data[4] ^ inc) < 0) ? Byte.MAX_VALUE : inc;
-    }
-
-
-    /**
-     * Subtracts 1 to the current number of connections hosted by this
-     * AnchorPoint.
-     */
-    public void decrementCurrentConnections() {
-        byte dec = (byte)(data[4] - 1);
-        data[4] = ((data[4] ^ 1) >= 0 && (data[4] ^ dec) < 0) ? Byte.MIN_VALUE : dec;
-    }
-
-    /**
      * Sets the current number of connections hosted by this
      * AnchorPoint to zero.
      */
@@ -264,11 +238,6 @@ public class AnchorPoint extends NodeIdentifier<AnchorPoint> {
         );
     }
 
-
-    @Override
-    public AnchorPoint getValue() {
-        return this;
-    }
 
     public boolean isEnabled() {
         return this.enabled;

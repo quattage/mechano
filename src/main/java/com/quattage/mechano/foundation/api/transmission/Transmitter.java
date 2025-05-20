@@ -91,10 +91,8 @@ public abstract class Transmitter<T extends Transmitter<?>> {
      * @param world World to operate within
      * @param creator The player that created the connection
      * @param conection The connection that was made
-     * @return <code>true</code> if this connection should proceed. If this method returns false, 
-     * the connection will be cancelled internally.
      */
-    public abstract boolean onConnectionCreated(Level world, @Nullable Player creator, GridLink connection); // TODO LivingEntity instead of player?
+    public abstract void onConnectionCreated(Level world, GridLink connection); 
 
     /**
      * Called just after a connection is removed from its associated {@link PowerGrid}.

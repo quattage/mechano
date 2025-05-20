@@ -15,7 +15,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-public abstract class WireSpoolItem<T extends Transmitter> extends Item implements Transmitable<T> {
+public abstract class WireSpoolItem<T extends Transmitter<?>> extends Item implements Transmitable<T> {
 
     public WireSpoolItem(Properties properties) {
         super(properties);
@@ -45,7 +45,7 @@ public abstract class WireSpoolItem<T extends Transmitter> extends Item implemen
             return InteractionResultHolder.pass(stack);
 
         GlobalClientGrid client = SidedGridDispatcher.client(player);
-        Response<?> result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.getValue(), getTransmitterType());
+        Response<?> result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.anchor, getTransmitterType());
         if(Response.shouldBail(result)) stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
         if(result.indicatesSuccess()) return InteractionResultHolder.success(stack);
         return InteractionResultHolder.fail(stack);

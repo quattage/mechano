@@ -32,6 +32,6 @@ public record AnchorPointSyncPacket(NodeIdentifier.Key address, byte connections
             Mechano.LOGGER.error("Couldn't retrieve anchor for syncing at " + address);
             return;
         }
-        anchor.handleSync(connections, enabled, null);
+        anchor.sync(connections, null);
     }
 }

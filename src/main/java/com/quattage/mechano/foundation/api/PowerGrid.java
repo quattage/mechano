@@ -47,7 +47,7 @@ public class PowerGrid {
     protected PowerGrid(GlobalServerGrid parent, int preload) {
         Objects.requireNonNull(parent);
         this.gridIndex = parent.subgrids.size();
-        this.nodes = new NodeSet(new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(preload));
+        this.nodes = new NodeSet(new ObjectOpenHashSet<GridNode>(preload));
         this.global = parent;
         this.global.subgrids.add(this);
     }
@@ -61,20 +61,22 @@ public class PowerGrid {
      * Blank GridNodes that have no links should not persist in the PowerGrid 
      * for long, since they represent dead ends.
      * @param address Address to get or add (Compatable with any type outlined by {@link NodeSet#get})
-     * @return The GridNode at this address, or the new one that was created at the specified address. Will never be <code>null</code>.
+     * @return The GridNode at this address, or the new one that was created at the specified address. Will be null if there is no PGBE at the address.
      * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
-     * @throws IllegalArgumentException If <code>address</code> does not point to a valid BlockEntity, 
-     * or the BlockEntity isn't able to host a GridNode at the address - See {@link NodeIdentifiable#getHost}
      */
-    public GridNode getOrCreateProvisional(NodeIdentifiable<?> address) {
+    public @Nullable GridNode getOrCreateProvisional(NodeIdentifiable address) {
         assertNotDestroyed();
-        NodeIdentifiable<GridNode> preexisting = nodes.get(address);
-        if(preexisting != null) return preexisting.getValue();
+        GridNode node = nodes.get(address);
+        if(node != null) return node;
+
         PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
-        if(pgbe == null) throw new IllegalArgumentException("Cannot instantiate a Provisional GridNode at " + address + " - there is no valod host BlockEntity at this location!");
-        preexisting = new GridNode(this, pgbe, address.getIndex());
+        if(pgbe == null) return null;
+
+        node = new GridNode(this, pgbe, address.getIndex());
         pgbe.surrogate.owner = this;
-        return preexisting.getValue();
+        this.nodes.add(node);
+
+        return node;
     }
 
     /**
@@ -90,7 +92,7 @@ public class PowerGrid {
      */
     public @Nullable List<PowerGrid> splitDiscontinuities() {
         assertNotDestroyed();
-        final Set<NodeIdentifiable<?>> visited = new HashSet<>();
+        final Set<NodeIdentifiable> visited = new HashSet<>();
         final List<PowerGrid> output = new ArrayList<>();
         nodes.forEach(node -> {
             if(visited.contains(node)) return;
@@ -103,7 +105,7 @@ public class PowerGrid {
     }
 
     // recursive implementation for the method ^^ up there
-    private void floodFillRecurse(NodeIdentifiable<?> start, Set<NodeIdentifiable<?>> visited, NodeSet clusterResult) {
+    private void floodFillRecurse(NodeIdentifiable start, Set<NodeIdentifiable> visited, NodeSet clusterResult) {
         GridNode iteration = nodes.get(start);
         visited.add(start);
         if(!iteration.isValid()) return;
@@ -124,7 +126,7 @@ public class PowerGrid {
      * @return The resulting {@link GridPath} or null if no path could be found
      * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
-    public @Nullable GridPath findPathBetween(NodeIdentifiable<?> start, NodeIdentifiable<?> end) {
+    public @Nullable GridPath findPathBetween(NodeIdentifiable start, NodeIdentifiable end) {
         assertNotDestroyed();
 
         if(start == null || !nodes.contains(start)) return null;
@@ -199,7 +201,12 @@ public class PowerGrid {
     public boolean addAll(NodeSet otherNodes) {
         assertNotDestroyed();
         if(otherNodes.isEmpty()) return false;
-        return this.nodes.addAll(otherNodes);
+        int oldSize = this.nodes.set.size();
+        this.nodes.set.ensureCapacity(oldSize + otherNodes.set.size());
+        otherNodes.forEach(node -> {
+            this.nodes.set.add(node);
+        });
+        return oldSize != this.nodes.set.size();
     }
 
     /**
@@ -208,9 +215,9 @@ public class PowerGrid {
      */
     public void clear() {
         assertNotDestroyed();
-        Iterator<NodeIdentifiable<GridNode>> it = nodes.set.iterator();
+        Iterator<GridNode> it = nodes.set.iterator();
         while (it.hasNext()) {
-            GridNode node = it.next().getValue();
+            GridNode node = it.next();
             node.wipeLinks(true);
             it.remove();
         }

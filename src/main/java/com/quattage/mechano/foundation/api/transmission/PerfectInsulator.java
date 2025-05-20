@@ -30,8 +30,8 @@ public class PerfectInsulator extends Transmitter<PerfectInsulator> {
     }
 
     @Override
-    public boolean onConnectionCreated(Level world, @Nullable Player creator, GridLink connection) {
-        return true;
+    public void onConnectionCreated(Level world, GridLink connection) {
+
     }
 
     @Override

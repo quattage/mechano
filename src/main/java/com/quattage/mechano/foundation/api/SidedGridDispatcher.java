@@ -32,7 +32,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.level.ChunkWatchEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -266,11 +268,12 @@ public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, Globa
                 new LinkResponsePacket(
                     start.strip(), end.strip(), 
                     lrh, link.getConnection().getType(), 
-                    Response.Task.RESYNC
+                    Response.Task.CHUNK_LOAD
                 )
             );
         }
     }
+
 
     @SubscribeEvent
     public static void onChunkUnWatch(ChunkWatchEvent.UnWatch evt) {
@@ -278,7 +281,16 @@ public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, Globa
         if(grid.linksByChunk.isEmpty()) return;
         List<GridLink> links = grid.linksByChunk.get(evt);
         if(links == null || links.isEmpty()) return;
+    }
 
+    @SubscribeEvent
+    public static void onWorldUnload(ServerStoppingEvent evt) {
+        weakServerGrid = new WorldlyReference<GlobalServerGrid>(null);
+    }
+
+    @SubscribeEvent
+    public static void onClientUnload(ClientPlayerNetworkEvent.LoggingOut evt) {
+        weakClientGrid = new WorldlyReference<GlobalClientGrid>(null);
     }
 
     protected SidedGridDispatcher(Level world) {

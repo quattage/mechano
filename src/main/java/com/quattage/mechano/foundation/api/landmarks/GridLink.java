@@ -29,7 +29,7 @@ public class GridLink {
 
     
 
-    public static float getEuclideanDistance(NodeIdentifiable<?> a, NodeIdentifiable<?> b) {
+    public static float getEuclideanDistance(NodeIdentifiable a, NodeIdentifiable b) {
         return (float)Math.sqrt(
             Math.pow(a.getX() - b.getX(), 2) +
             Math.pow(a.getY() - b.getY(), 2) +
@@ -38,29 +38,27 @@ public class GridLink {
     }
 
     public GridLink copyAndFlip() {
-        return new GridLink(end, start, this.transmitter, length);
+        return new GridLink(end, start, transmitter, length);
     }
 
-    public boolean startsWith(NodeIdentifiable<?> address) {
+    public boolean startsWith(NodeIdentifiable address) {
         return start.equals(address);
     }
 
-    public boolean endsWith(NodeIdentifiable<?> address) {
+    public boolean endsWith(NodeIdentifiable address) {
         return address.equals(end);
     }
 
-    public boolean involves(NodeIdentifiable<?> address) {
+    public boolean involves(NodeIdentifiable address) {
         return startsWith(address) || endsWith(address);
     }
 
     public GridNode getStart() {
-        if(start == null) return null;
-        return start.getValue();
+        return start;
     }
 
     public GridNode getEnd() {
-        if(end == null) return null;
-        return end.getValue();
+        return end;
     }
 
     public boolean canTraverse() {

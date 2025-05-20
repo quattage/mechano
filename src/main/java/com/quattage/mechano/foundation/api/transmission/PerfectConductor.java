@@ -30,8 +30,8 @@ public class PerfectConductor extends Transmitter<PerfectConductor> {
     }
 
     @Override
-    public boolean onConnectionCreated(Level world, @Nullable Player creator, GridLink connection) {
-        return true;
+    public void onConnectionCreated(Level world, GridLink connection) {
+        
     }
 
     @Override

@@ -33,8 +33,8 @@ public class HookupTransmitter extends Transmitter<HookupTransmitter> {
     }
 
 	@Override
-	public boolean onConnectionCreated(Level world, @Nullable Player creator, GridLink connection) {
-        return true;
+	public void onConnectionCreated(Level world, GridLink connection) {
+
     }
 
 	@Override

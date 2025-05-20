@@ -1,7 +1,6 @@
 package com.quattage.mechano.foundation.api.landmarks;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -26,7 +25,7 @@ import net.minecraft.nbt.ListTag;
  * position in the world, and <code>I</code> is the index of the node at that block 
  * position. Multiple nodes may occupy the same block.
  */
-public class GridNode extends NodeIdentifier<GridNode> {
+public class GridNode extends NodeIdentifier {
 
     public final PowerGrid owner;
     public final PowerGridBlockEntity host;
@@ -38,7 +37,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * {@link com.quattage.mechano.foundation.api.GlobalServerGrid GlobalServerGrid}
      */
     @ApiStatus.Internal
-    public final List<GridLink> links = new ObjectArrayList<>();
+    public final ObjectArrayList<GridLink> links = new ObjectArrayList<>();
 
 
     public GridNode(PowerGrid owner, PowerGridBlockEntity host, int index) {
@@ -47,7 +46,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
         Objects.requireNonNull(host);
         this.owner = owner;
         this.host = host;
-        owner.nodes.add(this);
     }
 
 
@@ -89,10 +87,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
         for(int x = 0; x < links.size(); x++) {
             cons.accept(links.get(x));
         }
-    }
-
-    public GridNode getValue() {
-        return this;
     }
 
     public void wipeLinks(boolean notify) {
@@ -154,8 +148,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
 
 
 
-
-
     /**
      * An object that wraps {@link GridNode} instances
      * while providing additional capabilities that
@@ -166,7 +158,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
      * This ensures safe access while eliminating multiple transient
      * variables from having to be declared in the GridNode itself.
      */
-    public static class Tracker implements NodeIdentifiable<GridNode>, Comparable<Tracker> {
+    public static class Tracker implements NodeIdentifiable, Comparable<Tracker> {
 
         private float f = 0;
         private float heur = 0;
@@ -188,7 +180,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * @param target 
          * @return This TrackedNode with modified guidance values
          */
-        public Tracker estimateCostTo(NodeIdentifiable<?> target) {
+        public Tracker estimateCostTo(NodeIdentifiable target) {
             updateHeuristic(target);
             this.visited = true;
             this.cum = 0;
@@ -202,7 +194,7 @@ public class GridNode extends NodeIdentifier<GridNode> {
          * @param target 
          * @return The updated heuristic value
          */
-        public float updateHeuristic(NodeIdentifiable<?> target) {
+        public float updateHeuristic(NodeIdentifiable target) {
             this.heur = GridLink.getEuclideanDistance(this, target);
             this.f = cum + heur;
             return heur;
@@ -252,15 +244,6 @@ public class GridNode extends NodeIdentifier<GridNode> {
             this.heur = 0;
             this.cum = Float.MAX_VALUE;
             this.visited = false;
-        }
-
-        /**
-         * Gets the {@link GridNode} instance wrapped
-         * by this TrackedNode
-         */
-        @Override
-        public GridNode getValue() {
-            return node;
         }
 
         /**

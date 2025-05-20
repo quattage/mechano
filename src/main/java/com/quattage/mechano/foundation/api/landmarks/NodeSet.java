@@ -1,8 +1,5 @@
 package com.quattage.mechano.foundation.api.landmarks;
 
-import java.util.Collection;
-import java.util.function.Consumer;
-
 import com.quattage.mechano.foundation.api.PowerGrid;
 
 import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
@@ -25,13 +22,13 @@ import net.minecraft.nbt.ListTag;
  */
 public class NodeSet extends AbstractObjectSet<GridNode> {
 
-    public final ObjectOpenHashSet<NodeIdentifiable<GridNode>> set;
+    public final ObjectOpenHashSet<GridNode> set;
 
     public NodeSet() {
-        this.set = new ObjectOpenHashSet<NodeIdentifiable<GridNode>>(2);
+        this.set = new ObjectOpenHashSet<GridNode>(2);
     }
 
-    public NodeSet(ObjectOpenHashSet<NodeIdentifiable<GridNode>> set) {
+    public NodeSet(ObjectOpenHashSet<GridNode> set) {
         this.set = set;
     }
 
@@ -70,6 +67,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @param index index at the given BlockPos
      * @return <code>true</code> if this matrix was modified as a result of this call
      */
+    @SuppressWarnings("unlikely-arg-type")
     public boolean remove(BlockPos pos, int index) {
         return set.remove(new NodeIdentifier.Key(pos, index));
     }
@@ -84,6 +82,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @param index index at the given XYZ to search for
      * @return <code>true</code> if this matrix was modified as a result of this call
      */
+    @SuppressWarnings("unlikely-arg-type")
     public boolean remove(int x, int y, int z, int index) {
         return set.remove(new NodeIdentifier.Key(new BlockPos(x, y, z), index));
     }
@@ -101,9 +100,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return The GridNode object at the given address, or <code>null</code> if none could be found.
      */
     public GridNode get(Object o) {
-        NodeIdentifiable<GridNode> ni = set.get(o);
-        if(ni == null) return null;
-        return ni.getValue();
+        return set.get(o);
     }
 
     /**
@@ -115,9 +112,8 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return The GridNode object at the given address, or <code>null</code> if none could be found.
      */
     public GridNode get(BlockPos pos, int index) {
-        NodeIdentifiable<GridNode> ni = set.get(new NodeIdentifier.Key(pos, index));
-        if(ni == null) return null;
-        return ni.getValue();
+        GridNode node = set.get(new NodeIdentifier.Key(pos, index));
+        return node;
     }
 
     /**
@@ -131,9 +127,8 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      * @return The GridNode object at the given address, or <code>null</code> if none could be found.
      */
     public GridNode get(int x, int y, int z, int index) {
-        NodeIdentifiable<GridNode> ni = set.get(new NodeIdentifier.Key(new BlockPos(x, y, z), index));
-        if(ni == null) return null;
-        return ni.getValue();
+        GridNode node = set.get(new NodeIdentifier.Key(new BlockPos(x, y, z), index));
+        return node;
     }
 
 
@@ -143,14 +138,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
      */
     @Override
     public ObjectIterator<GridNode> iterator() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void forEach(Consumer<? super GridNode> action) {
-        set.forEach(ni -> {
-            action.accept(ni.getValue());
-        });
+        return set.iterator();
     }
 
     /***
@@ -162,7 +150,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
         if(o == this) return true;
         if(!(o instanceof NodeSet that)) return false;
         if(this.size() != that.size()) return false;
-        for(NodeIdentifiable<?> node : set) {
+        for(GridNode node : set) {
             if(!that.contains(node)) 
                 return false;
         }
@@ -171,9 +159,7 @@ public class NodeSet extends AbstractObjectSet<GridNode> {
 
     public ListTag write() {
         ListTag output = new ListTag();
-        for(NodeIdentifiable<GridNode> addr : set) {
-            if(addr == null) continue;
-            GridNode node = addr.getValue();
+        for(GridNode node : set) {
             if(node == null || !node.isValid()) continue;
             output.add(node.writeTo(new CompoundTag()));
         }

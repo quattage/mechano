@@ -1,10 +1,9 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.io.File;
+import java.io.PrintWriter;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 
 import io.netty.buffer.ByteBuf;
@@ -27,25 +26,14 @@ public record ManifestResultPacket(String message) implements ClientboundPacketP
 
     @Override
     public void handle(LocalPlayer player) {
-        Path directory = Minecraft.getInstance().gameDirectory.toPath().resolve("logs");
-        if(!Files.exists(directory)) {
-            try {
-                Files.createDirectories(directory);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        directory = directory.resolve("mechano_grid_dump.log");
-        if(!Files.exists(directory)) {
-            try {
-                Files.createFile(directory);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            Files.writeString(directory, message, StandardOpenOption.CREATE);
-        } catch (IOException e) {
+        String directory = Minecraft.getInstance().gameDirectory.getAbsolutePath();
+        directory += "/logs/mechano_grid_dump.log";
+        File output = new File(directory);
+        try(PrintWriter pw = new PrintWriter(output)) {
+            pw.print(message);
+            pw.close();
+        } catch(Exception e) {
+            Mechano.LOGGER.error("Failed to write mechano grid dump!");
             e.printStackTrace();
         }
     }

@@ -27,6 +27,7 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
         AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
         construct(unbuiltAnchors);
         this.anchors = unbuiltAnchors.confirm(getBlockPos());
+        this.surrogate.nodeCount = this.anchors.size();
     }
 
     protected abstract void construct(AnchorArray.Builder anchors);
@@ -96,5 +97,11 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
      */
     public void onConnectionBroken(Level world, GridLink connection) {
         
+    }
+
+    @Override
+    public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
+        super.onBlockBroken(world, pos, oldState, newState);
+        surrogate.severAndForget();
     }
 }

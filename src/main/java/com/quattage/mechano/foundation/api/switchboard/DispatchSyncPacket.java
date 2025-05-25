@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.landmarks.DispatchedNode;
@@ -37,10 +36,9 @@ public record DispatchSyncPacket(BlockPos pos, DispatchedNode.SidedTask task) im
         NodeIdentifier.Key address = new NodeIdentifier.Key(pos);
         PowerGridBlockEntity pgbe = address.getHost(player.level());
 
-        if(pgbe == null) {
-            Mechano.LOGGER.warn("Failed to handle dispatch status sync at " + address + " - The BlockEntity at this address was not found.");
+        if(pgbe == null)
             return;
-        }
+
         switch(task) {
             case SYNC:
                 pgbe.surrogate.sync(world, null);

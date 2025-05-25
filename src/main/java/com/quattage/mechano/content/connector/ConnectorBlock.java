@@ -1,9 +1,11 @@
 package com.quattage.mechano.content.connector;
 
+import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity;
+import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;
@@ -19,7 +21,7 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public abstract class ConnectorBlock extends CombinedOrientedBlock implements ConnectorHostOverridable {
+public abstract class ConnectorBlock<T extends PowerGridBlockEntity> extends CombinedOrientedBlock implements ConnectorHostOverridable, BERefreshable<T> {
 
     protected static final VoxelShape ROOT_X = Block.box(0, 7, 7, 10, 9, 9);
     protected static final VoxelShape ROOT_Y = Block.box(7, 7, 0, 9, 9, 10);
@@ -95,5 +97,17 @@ public abstract class ConnectorBlock extends CombinedOrientedBlock implements Co
     public boolean isConnectorAllowed(LevelReader world, BlockPos connectorPos, BlockState connectorState,
             BlockPos thisPos, BlockState thisState) {
         return false;
+    }
+
+    @Override
+    public void onBlockStateChange(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
+        super.onBlockStateChange(world, pos, oldState, newState);
+        refreshBE(oldState, world, pos, newState);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level world, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        breakBE(state, world, pos, newState);
+        super.onRemove(state, world, pos, newState, movedByPiston);
     }
 }

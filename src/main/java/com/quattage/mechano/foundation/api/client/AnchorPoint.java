@@ -113,11 +113,7 @@ public class AnchorPoint extends NodeIdentifier {
         this.data[4] = connections;
         if(refresher != null) {
             PowerGridBlockEntity pgbe = getHost(refresher);
-            if(pgbe == null) {
-                Mechano.LOGGER.warn("Failed to refresh AnchorPoint status at " + this.strip() 
-                    + " - No PGBE could be found at this address!");
-                return;
-            }
+            if(pgbe == null) return;
             if(getCurrentConnections() > 0)
                 pgbe.surrogate.sync(refresher, null);
             else pgbe.surrogate.forget(refresher);

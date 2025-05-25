@@ -111,12 +111,15 @@ public class AnchorArray {
         public AnchorArray confirm(BlockPos pos) {
             anchors.trim();
             if(anchors.isEmpty()) {
-                Mechano.LOGGER.error("Error building AnchorPoints for " + parent + " - The resulting AnchorPoints is empty!");
+                Mechano.LOGGER.warn("AnchorPoint array for " + parent + " - was built with no members!");
                 return AnchorArray.EMPTY;
             }
             AnchorPoint[] builtAnchors = new AnchorPoint[anchors.size()];
             for(int x = 0; x < builtAnchors.length; x++) {
-                if(x >= NodeIdentifier.MAX_OCCUPANCY) break;
+                if(x >= NodeIdentifier.MAX_OCCUPANCY) {
+                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + parent + " - Max anchor occupancy (" + NodeIdentifier.MAX_OCCUPANCY + ") has been reached!");
+                    break;
+                }
                 builtAnchors[x] = anchors.get(x).instantiate(pos, x);
             }
             return new AnchorArray(builtAnchors);

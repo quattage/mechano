@@ -218,16 +218,12 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         );
         public static LinkResponseHolder of(@Nullable GridLink link, Response<?> response) {
             if(link == null) return new LinkResponseHolder(response, new byte[] {Byte.MIN_VALUE, Byte.MIN_VALUE});
-            return new LinkResponseHolder(response, new byte[] {
-                (byte)(link.getStart().links.size() - 128),
-                (byte)(link.getEnd().links.size() - 128)
-            });
+            return LinkResponseHolder.of(link.getStart(), link.getEnd(), response);
         }
         public static LinkResponseHolder of(@Nullable GridNode start, @Nullable GridNode end, Response<?> response) {
-            Mechano.LOGGER.info("START: " + (start == null? "NONE" : start.links.size()) + " END: " + (end == null ? "NONE" : end.links.size()));
             return new LinkResponseHolder(response, new byte[] {
-                start == null ? Byte.MIN_VALUE : (byte)(start.links.size() - 128),
-                end == null ? Byte.MIN_VALUE : (byte)(end.links.size() - 128)
+                start == null ? Byte.MIN_VALUE : start.links == null ? Byte.MIN_VALUE : (byte)(start.links.size() - 128),
+                end == null ? Byte.MIN_VALUE : end.links == null ? Byte.MIN_VALUE : (byte)(end.links.size() - 128)
             });
         }
     }

@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.foundation.api.landmarks.GridLink;
 import com.quattage.mechano.foundation.api.landmarks.GridNode;
 import com.quattage.mechano.foundation.api.landmarks.GridPath;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
@@ -68,15 +69,56 @@ public class PowerGrid {
         assertNotDestroyed();
         GridNode node = nodes.get(address);
         if(node != null) return node;
-
         PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
         if(pgbe == null) return null;
-
         node = new GridNode(this, pgbe, address.getIndex());
         pgbe.surrogate.owner = this;
         this.nodes.add(node);
-
         return node;
+    }
+
+    /**
+     * Splits discontinuities and removes empty or stale {@link GridNode}
+     * instances from this PowerGrid. The instance that this is run on will be stale,
+     * and a new list of instnaces will be added to the {@link GlobalTransferGrid}
+     * that this local belongs to.
+     */
+    public void cleanup(boolean deepClean) {
+        if(global == null) {
+            if(nodes == null) return;
+            if(deepClean) {
+                for(GridNode node : nodes) {
+                    node.links.clear();
+                    node.notifyHost();
+                    node.nullify();
+                }
+            }
+            this.nullify();
+            return;
+        }
+
+        if(nodes == null || nodes.isEmpty()) {
+            global.destroyGrid(this);
+            return;
+        }
+
+        if(nodes.size() < 2) {
+            for(GridNode node : nodes) {
+                node.links.clear();
+                node.notifyHost();
+                node.nullify();
+            }
+            global.destroyGrid(this);
+            return;
+        }
+
+        if(this.nodes.size() > 3) {
+            List<PowerGrid> clusters = splitDiscontinuities();
+            if(clusters.size() > 1) {
+                global.destroyGrid(this);
+                global.addAll(clusters);
+            }
+        }
     }
 
     /**
@@ -98,7 +140,7 @@ public class PowerGrid {
             if(visited.contains(node)) return;
             NodeSet cluster = new NodeSet();
             floodFillRecurse(node, visited, cluster);
-            if(!cluster.set.isEmpty())
+            if(cluster.size() > 1)
                 output.add(new PowerGrid(this, cluster));
         });
         return output;
@@ -108,11 +150,12 @@ public class PowerGrid {
     private void floodFillRecurse(NodeIdentifiable start, Set<NodeIdentifiable> visited, NodeSet clusterResult) {
         GridNode iteration = nodes.get(start);
         visited.add(start);
-        if(!iteration.isValid()) return;
+        if(iteration == null || iteration.links.isEmpty()) return;
         clusterResult.add(iteration);
         iteration.forEachLink(link -> {
-            if(!visited.contains(link.getEnd()))
-                floodFillRecurse(iteration, visited, clusterResult);
+            GridNode adjacent = link.getEnd();
+            if(!visited.contains(adjacent))
+                floodFillRecurse(adjacent, visited, clusterResult);
         });
     }
 
@@ -173,7 +216,7 @@ public class PowerGrid {
      */
     public List<GridNode> getAllOccurancesOf(BlockPos pos) {
         assertNotDestroyed();
-        List<GridNode> output = new ArrayList<>();
+        List<GridNode> output = new ArrayList<>(NodeIdentifier.MAX_OCCUPANCY);
         for(int x = 0; x < NodeIdentifier.MAX_OCCUPANCY; x++) {
             GridNode link = nodes.get(new NodeIdentifier.Key(pos, x));
             if(link == null) break;
@@ -219,9 +262,67 @@ public class PowerGrid {
         while (it.hasNext()) {
             GridNode node = it.next();
             node.wipeLinks(true);
+            node.nullify();
             it.remove();
         }
         nodes.set.trim(4);
+        nullify();
+    }
+
+    /**
+     * Removes the node at the given address from this PowerGrid.
+     * If this PowerGrid is empty as a result of this call, this
+     * method will also remove and destroy this PowerGrid.
+     * @param address
+     * @return <code>true</code> if this PowerGrid was modified as a result
+     * of this call.
+     */
+    public boolean removeNode(NodeIdentifiable address) {
+        assertNotDestroyed();        
+
+        // remove the node in question
+        GridNode removed = nodes.get(address);
+        if(address == null) return false;
+        nodes.remove(removed);
+        if(removed.links.isEmpty()) {
+            if(nodes != null && nodes.isEmpty())
+                global.destroyGrid(this);
+            removed.nullify();
+            return true;
+        }
+
+        final Set<GridNode> altered = new HashSet<>();
+
+        // remove links symmetrically while tracking changes
+        removed.forEachLink(link -> {
+            if(link == null) return;
+            GridNode endNode = link.getEnd();
+            Iterator<GridLink> linksIter = endNode.links.iterator();
+            while(linksIter.hasNext()) {
+                GridLink linkToRemove = linksIter.next();
+                if(linkToRemove.endsWith(address)) {
+                    linksIter.remove();
+                    altered.add(linkToRemove.getStart());
+                    altered.add(linkToRemove.getEnd());
+                }
+            }
+        });
+
+        // notify adjacent nodes of the removal
+        for(GridNode node : altered) {
+            node.notifyHost();
+            if(node.links.isEmpty()) {
+                node.host.surrogate.forget(getWorld());
+                nodes.remove(node);
+                if(node.owner.nodes.isEmpty())
+                    global.destroyGrid(node.owner);
+                node.nullify();
+            }
+        }
+
+        cleanup(true);
+        removed.nullify();
+        return true;
     }
 
     /**
@@ -233,15 +334,14 @@ public class PowerGrid {
      * If this method is called on a PowerGrid that's actively being
      * used, all hell will break lose.
      */
-    public void destroy() {
+    public void nullify() {
         gridIndex = -1;
         nodes = null;
-        global = null;
     }
 
     private void assertNotDestroyed() {
-        if(global == null) 
-            throw new IllegalStateException("Some operation attempted to run on a PowerGrid that has already been destroyed. (A PowerGrid was probably leaked!)");
+        if(nodes == null || global == null) 
+            throw new IllegalStateException("An operation attempted to run on a PowerGrid that has already been destroyed. (A PowerGrid was probably leaked!)");
     }
 
     public ServerLevel getWorld() {
@@ -251,8 +351,7 @@ public class PowerGrid {
 
     @Override
     public boolean equals(Object obj) {
-        assertNotDestroyed();
         if(!(obj instanceof PowerGrid that)) return false;
-        return this.nodes.equals(that.nodes);
+        return this.gridIndex == that.gridIndex;
     }
 }

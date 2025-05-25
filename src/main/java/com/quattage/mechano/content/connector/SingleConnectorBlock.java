@@ -1,22 +1,13 @@
 package com.quattage.mechano.content.connector;
 
 import com.quattage.mechano.MechanoBlockEntities;
-import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
 
-public class SingleConnectorBlock extends ConnectorBlock implements BERefreshable<SingleConnectorBlockEntity>{
+public class SingleConnectorBlock extends ConnectorBlock<SingleConnectorBlockEntity> {
 
     public SingleConnectorBlock(Properties pProperties) {
         super(pProperties);
-    }
-
-    @Override
-    public void onBlockStateChange(LevelReader level, BlockPos pos, BlockState oldState, BlockState newState) {
-        refreshBE(oldState, level, pos, newState);
     }
 
     @Override

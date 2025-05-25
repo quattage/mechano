@@ -4,12 +4,13 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.block.hitbox.HitboxCache;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.createmod.catnip.lang.LangBuilder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.CreativeModeTab;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -21,9 +22,9 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 public class Mechano {
 
     public static final String ID = "mechano";
-    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(ID);
+    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(ID)
+        .defaultCreativeTab((ResourceKey<CreativeModeTab>) null);
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static final HitboxCache HITBOXES = new HitboxCache();
 
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();

@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.blockEntity;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.simibubi.create.api.schematic.nbt.PartialSafeNBT;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.blockEntity.CachedRenderBBBlockEntity;
@@ -23,7 +24,7 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         super(type, pos, state);
     }
 
-    public abstract void onBlockBroken(Level world, BlockPos pos, BlockState newState);
+    public abstract void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState);
 
     /**
      * Called by {@link BERefreshable} whenever this BE's cooresponding block is placed or updated in any way
@@ -104,9 +105,10 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         /**
          * Call this method whenever this block has changed state in any way that should be carried over to the block entity. 
          * This method is called interanally when the block is wrenched, but your block must call it manually if you want state changes to
-         * update any data in your BE.
+         * update any data in your BE. <p> Node - You only get a LevelReader within the scope of this method because the world shouldn't be
+         * modified here. This is to prevent neighbour updates from recursively calling this method and stack overflowing.
          * @param oldState The state that existed before this call was made
-         * @param world The world to operate within (A LevelReader - we cannot modify the world within the scope of this method)
+         * @param world The world to operate within 
          * @param pos The position of the block that was modified
          * @param newState The state that exists at the time of calling this method
          */
@@ -115,6 +117,20 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
             BlockEntity be = world.getBlockEntity(pos);
             if(be instanceof SimpleBlockEntity sbe)
                 sbe.onRefresh(world, pos, oldState, newState);
+        }
+
+        /**
+         * Call this method whenever this block should signal that it is about to be broken. 
+         * @param oldState The state that exists at the time of calling this method
+         * @param world The world to operate within
+         * @param pos The position of the block that was modified
+         * @param newState The state that will exist after this call (usually air)
+         */
+        default void breakBE(@Nullable BlockState oldState, Level world, BlockPos pos, BlockState newState) {
+            if(oldState == null || !oldState.hasBlockEntity()) return;
+            BlockEntity be = world.getBlockEntity(pos);
+            if(be instanceof SimpleBlockEntity sbe)
+                sbe.onBlockBroken(world, pos, oldState, newState);
         }
     }
 }

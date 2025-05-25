@@ -41,7 +41,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * Loads a GlobalServerGrid from a serialized list of {@link PowerGrid PowerGrids}. 
      * All PowerGrids, their {@link GridNode GridNodes}, and their {@link GridLink GridLinks}
      * are loaded from here. This method is called by the {@link com.quattage.mechano.foundation.api.SidedGridDisptacher.Serializer serializer}
-     * @param subgrids ListTag of {@link CompoundTag CompoundTags}, where each one is 
+     * @param subgrids A two-dimensional {@link ListTag} - A list of subgrids, where each subgrid is a list of {@link CompoundTag CompoundTags}
      * @param world World that the resulting GlobalServerGrid uses to look up {@link PowerGridBlockEntity PGBEs}
      * @return a new GlobalServerGrid with data primed from the provided list of grids.
      */
@@ -61,7 +61,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
             if(freshLocal.nodes.isEmpty()) {
                 if(freshLocal.gridIndex < 0 || freshLocal.gridIndex >= subgrids.size() || freshGlobal.subgrids.remove(freshLocal.gridIndex) == null)
                     freshGlobal.subgrids.remove(freshLocal);
-                freshLocal.destroy();
+                freshLocal.nullify();
             }
         }
         return freshGlobal;
@@ -96,7 +96,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
             if(newLink.getConnection().needsSerialization()) {
                 CompoundTag data = serializedLink.getCompound("data");
-                if(data != null) newLink.getConnection().loadFrom(data);
+                if(!data.isEmpty()) newLink.getConnection().loadFrom(data);
             }
 
             newStart.links.add(newLink);
@@ -264,7 +264,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
             grid1.gridIndex = index1;
             PowerGrid grid2 = subgrids.remove(index2);
             grid1.addAll(grid2.nodes);
-            grid2.destroy();
+            grid2.nullify();
             updateGridIndices(index1);
             return grid1;
         }
@@ -275,7 +275,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
             grid2.gridIndex = index2;
             PowerGrid grid1 = subgrids.remove(index1);
             grid2.addAll(grid1.nodes);
-            grid1.destroy();
+            grid1.nullify();
             updateGridIndices(index2);
             return grid2;
         }
@@ -410,15 +410,67 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
      * @return <code>true</code> if this GlobalServerGrid was modified as a result of this call
      */
     public boolean destroyGridAt(int index) {
-        if(index < 0 || index >= subgrids.size()) 
+        if(index < 0 || index >= subgrids.size())
             return false;
         PowerGrid grid = subgrids.remove(index);
-        grid.destroy();
+        if(grid == null) return false;
+        grid.nullify();
+
+        if(subgrids.isEmpty()) {
+            subgrids.trim();
+            return true;
+        }
+
         updateGridIndices(index);
         return true;
     }
 
 
+    /**
+     * Destroys the grid at the given index, or does nothing
+     * if the index doesn't exist in this GlobalServerGrid.
+     * @param grid PowerGrid to destroy
+     * @return <code>true</code> if this GlobalServerGrid was modified as a result of this call
+     */
+    public boolean destroyGrid(PowerGrid grid) {
+        int index = grid.gridIndex;
+        if(grid.gridIndex < 0 || grid.gridIndex >= subgrids.size())
+            index = subgrids.indexOf(grid);
+        if(index < 0) {
+            grid.nullify();
+            return false;
+        }
+        subgrids.remove(index);
+        grid.nullify();
+
+        if(subgrids.isEmpty()) {
+            subgrids.trim();
+            return true;
+        }
+
+        updateGridIndices(index);
+        return true;
+    }
+
+    /**
+     * Adds every member of the supplied list to this GlobalServerGrid's 
+     * subgrids list and updates their indices.
+     * @param grids Grids to add
+     */
+    public void addAll(List<PowerGrid> grids) {
+        if(grids.isEmpty()) return;
+        subgrids.ensureCapacity(subgrids.size() + grids.size());
+        for(int x = 0; x < grids.size(); x++) {
+            PowerGrid grid = grids.get(x);
+            if(grid.nodes.isEmpty()) {
+                grid.nullify();
+                continue;
+            }
+            subgrids.add(grid);
+            grid.gridIndex = subgrids.size() - 1;
+        }
+        subgrids.trim();
+    }
 
 
     /**
@@ -445,9 +497,6 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
                 continue;
             output.add(grid.nodes.write());
         }
-
-        Mechano.LOGGER.info("WRITING: " + output);
-
         return output;
     }
 

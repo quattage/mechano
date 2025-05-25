@@ -1,6 +1,6 @@
 package com.quattage.mechano.foundation.api.landmarks;
 
-import org.jetbrains.annotations.Nullable;
+import java.util.Objects;
 
 import com.quattage.mechano.foundation.api.transmission.Transmitter;
 
@@ -9,11 +9,14 @@ import net.minecraft.nbt.CompoundTag;
 public class GridLink {
 
     private final GridNode start;
-    private @Nullable GridNode end;
+    private GridNode end;
     private float length;
     public final Transmitter<?> transmitter;
 
     public GridLink(GridNode start, GridNode end, Transmitter<?> transmitter) {
+        Objects.requireNonNull(start);
+        Objects.requireNonNull(end);
+        Objects.requireNonNull(transmitter);
         this.start = start;
         this.end = end;
         this.length = Math.round(getEuclideanDistance(start, end));

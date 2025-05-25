@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
@@ -28,10 +27,8 @@ public record AnchorPointSyncPacket(NodeIdentifier.Key address, byte connections
     @Override
     public void handle(LocalPlayer player) {
         AnchorPoint anchor = AnchorPoint.retrieve(player.level(), address);
-        if(anchor == null) {
-            Mechano.LOGGER.error("Couldn't retrieve anchor for syncing at " + address);
+        if(anchor == null)
             return;
-        }
         anchor.sync(connections, null);
     }
 }

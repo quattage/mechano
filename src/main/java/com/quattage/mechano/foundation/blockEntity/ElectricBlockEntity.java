@@ -8,21 +8,21 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class ElectricBlockEntity extends SimpleBlockEntity {
+public abstract class ElectricBlockEntity extends SimpleBlockEntity {
 
     public ElectricBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 
     @Override
-    public void onBlockBroken(Level world, BlockPos pos, BlockState newState) {
+    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
 
     }   
 
     @Override
-    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-
-    }   
+    public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
+        
+    }
 
     @Override
     public void tick() {

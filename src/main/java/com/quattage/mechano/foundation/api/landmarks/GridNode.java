@@ -4,13 +4,17 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import javax.annotation.Nullable;
+
 import org.jetbrains.annotations.ApiStatus;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -27,8 +31,9 @@ import net.minecraft.nbt.ListTag;
  */
 public class GridNode extends NodeIdentifier {
 
-    public final PowerGrid owner;
-    public final PowerGridBlockEntity host;
+    // all fields are null if this GridNode has been destroyed
+    public @Nullable PowerGrid owner;
+    public @Nullable PowerGridBlockEntity host;
 
     /**
      * A list of links to other nodes.
@@ -37,7 +42,7 @@ public class GridNode extends NodeIdentifier {
      * {@link com.quattage.mechano.foundation.api.GlobalServerGrid GlobalServerGrid}
      */
     @ApiStatus.Internal
-    public final ObjectArrayList<GridLink> links = new ObjectArrayList<>();
+    public @Nullable ObjectArrayList<GridLink> links = new ObjectArrayList<>();
 
 
     public GridNode(PowerGrid owner, PowerGridBlockEntity host, int index) {
@@ -80,16 +85,36 @@ public class GridNode extends NodeIdentifier {
      */
     @Override
     public Tracker makeTrackable() {
+        assertNotDestroyed();
         return new Tracker(this);
     }
 
     public void forEachLink(Consumer<GridLink> cons) {
+        assertNotDestroyed();
         for(int x = 0; x < links.size(); x++) {
             cons.accept(links.get(x));
         }
     }
 
+    /**
+     * Removes all links from this GridNode that point to the given
+     * ending address
+     * @param address
+     */
+    public void removeLinksInvolving(NodeIdentifiable address) {
+        assertNotDestroyed();
+        Iterator<GridLink> linksIterator = links.iterator();
+        while(linksIterator.hasNext()) {
+            GridLink link = linksIterator.next();
+            if(link.endsWith(address))
+                linksIterator.remove();
+        }
+        if(links.isEmpty())
+            this.host.surrogate.severAndForget();
+    }
+
     public void wipeLinks(boolean notify) {
+        assertNotDestroyed();
         Iterator<GridLink> it = links.iterator();
         while(it.hasNext()) {
             GridLink thisLink = it.next();
@@ -112,6 +137,7 @@ public class GridNode extends NodeIdentifier {
      * @return <code>true</code> if the given node shares the same position, parent, and links as the given node.
      */
     public boolean isExactMatch(GridNode other) {
+        assertNotDestroyed();
         if(other == this) return true;
         if(!this.equals(other)) return false;
         if(!this.host.equals(other.host)) return false;
@@ -125,6 +151,7 @@ public class GridNode extends NodeIdentifier {
 
     @Override
     public CompoundTag writeTo(CompoundTag in) {
+        assertNotDestroyed();
         super.writeTo(in);
         ListTag serializedLinks = new ListTag();
         for(GridLink link : links) {
@@ -134,11 +161,21 @@ public class GridNode extends NodeIdentifier {
         return in;
     }
 
+    private void assertNotDestroyed() {
+        if(owner == null || host == null || links == null)
+            throw new IllegalStateException("An operation attempted to run on a GridNode that has already been destroyed. (This Node has potentially leaked!)");
+    }
 
+    public void nullify() {
+        this.owner = null;
+        this.host = null;
+        this.links = null;
+    }
 
-
-
-
+    public void notifyHost() {
+        if(host != null && !host.isRemoved())
+                CatnipServices.NETWORK.sendToAllClients(new AnchorPointSyncPacket(strip(), (byte)(links.size() - 128), true));
+    }
 
 
 

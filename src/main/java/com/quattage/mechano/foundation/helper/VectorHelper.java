@@ -4,6 +4,7 @@ package com.quattage.mechano.foundation.helper;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.foundation.helper.shape.ShapeGetter;
 import com.simibubi.create.AllSpecialTextures;
 
 import net.createmod.catnip.outliner.Outliner;
@@ -314,8 +315,11 @@ public class VectorHelper {
         }
     }
 
-    // this is basically a 3d transformation matrix but in the worst way possible.
-    // i cannot be bothered to refactor this.
+
+
+
+
+    // i dont care
     public static Vector3f rotate(Vector3f vec, CombinedOrientation dir) {
         switch(dir) {
             case DOWN_EAST:
@@ -486,6 +490,14 @@ public class VectorHelper {
         return vec;
     }
 
+
+
+
+
+
+
+
+    // still dont care
     public static Vec3 rotate(Vec3 vec, CombinedOrientation dir) {
         switch(dir) {
             case DOWN_EAST:

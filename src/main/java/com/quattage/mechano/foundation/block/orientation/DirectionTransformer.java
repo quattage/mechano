@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.phys.Vec3;
 
 /***
  * This class is designed to deal with all of the differing (and sometimes conflicting) 
@@ -33,7 +34,7 @@ import net.minecraft.world.level.block.state.properties.Property;
  */
 public class DirectionTransformer {
 
-    private static final Vec3i MIDDLE = new Vec3i(8, 8, 8);
+    public static Vec3 MIDDLE = new Vec3(8, 8, 8);
     
     /***
      * Pulls the forwards facing direction from the given BlockState and returns it.
@@ -208,7 +209,16 @@ public class DirectionTransformer {
         return CombinedOrientation.NORTH_UP;
     }
 
-    public static Vec3i getRotation(BlockState state) {
+    public static Vec3i getAbsoluteRotation(BlockState state) {
+        if(state.getBlock() instanceof CombinedOrientedBlock)
+            return state.getValue(CombinedOrientedBlock.ORIENTATION).getAbsoluteRotation();
+        Direction up = getUp(state);
+        Direction forward = getForward(state);
+        if(forward == up) return dir2Vec(up);
+        return CombinedOrientation.combine(up, forward).getAbsoluteRotation();
+    }
+
+    public static Vec3i getStateRotation(BlockState state) {
         if(state.getBlock() instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getStateRotation();
         Direction up = getUp(state);
@@ -217,26 +227,13 @@ public class DirectionTransformer {
         return CombinedOrientation.combine(up, forward).getStateRotation();
     }
 
-    public static  <R extends Enum<R> & StringRepresentable> Vec3i getRotation(Property<R> group, R prop) {
-        
-        if(prop instanceof CombinedOrientation orient)
-            return orient.getAbsoluteRotation();
-
-        Direction up = getUp(group, prop);
-        Direction forward = getForward(group, prop);
-
-        if(forward == up) return dir2Vec(up);
-        
-        return CombinedOrientation.combine(up, forward).getAbsoluteRotation();
-    }
-
     private static Vec3i dir2Vec(Direction dir) {
-        if(dir == Direction.DOWN) return new Vec3i(180, 0, 0);
-        if(dir == Direction.EAST) return new Vec3i(90, 90, 0);
-        if(dir == Direction.NORTH) return new Vec3i(90, 0, 0);
-        if(dir == Direction.SOUTH) return new Vec3i(270, 0, 0);
         if(dir == Direction.UP) return new Vec3i(0, 0, 0);
-        return new Vec3i(270, 90, 0);
+        if(dir == Direction.NORTH) return new Vec3i(90, 0, 0);
+        if(dir == Direction.EAST) return new Vec3i(90, 90, 0);
+        if(dir == Direction.SOUTH) return new Vec3i(270, 0, 0);
+        if(dir == Direction.WEST) return new Vec3i(270, 90, 0);
+        return new Vec3i(180, 0, 0);
     }
 
     public static boolean sharesLocalUp(BlockState first, BlockState second) {

@@ -1,10 +1,12 @@
-package com.quattage.mechano.infrastructure.hitbox;
+
+package com.quattage.mechano.foundation.block.hitbox;
 
 import java.util.Arrays;
 
+import net.minecraft.world.level.ClipContext.ShapeGetter;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public interface HitboxRepresentable {
+public interface HitboxRepresentable extends ShapeGetter {
     public VoxelShape get(Object... tokens);
 
     public VoxelShape get();

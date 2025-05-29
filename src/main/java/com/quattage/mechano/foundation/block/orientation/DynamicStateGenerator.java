@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.foundation.block.orientation;
 
 import javax.annotation.Nullable;
@@ -41,12 +42,12 @@ public class DynamicStateGenerator extends SpecialBlockStateGen {
 
     @Override
     protected int getXRotation(BlockState state) {
-        return DirectionTransformer.getRotation(state).getX();
+        return DirectionTransformer.getStateRotation(state).getX();
     }
 
     @Override
     protected int getYRotation(BlockState state) {
-        return DirectionTransformer.getRotation(state).getY();
+        return DirectionTransformer.getStateRotation(state).getY();
     }
 
     @Override

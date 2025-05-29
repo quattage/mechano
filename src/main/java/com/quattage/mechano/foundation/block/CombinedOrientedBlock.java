@@ -34,7 +34,7 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
-        
+
         Level world = context.getLevel();
         Axis intendedRotation = context.getClickedFace().getAxis();
         CombinedOrientation strictCD;

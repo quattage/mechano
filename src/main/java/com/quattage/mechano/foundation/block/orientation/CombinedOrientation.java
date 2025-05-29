@@ -18,39 +18,39 @@ import net.minecraft.world.item.context.BlockPlaceContext;
  * block in Minecraft.
  */
 public enum CombinedOrientation implements StringRepresentable {
-    DOWN_NORTH(new Vec3i(180, 180, 0), new Vec3i(2, 2, 0),  Direction.DOWN, Direction.NORTH),      // 0
-    DOWN_EAST(new Vec3i(180, 270, 0), new Vec3i(2, 1, 0), Direction.DOWN, Direction.EAST),
-    DOWN_SOUTH(new Vec3i(180, 0, 0), new Vec3i(2, 0, 0), Direction.DOWN, Direction.SOUTH),
-    DOWN_WEST(new Vec3i(180, 90, 0), new Vec3i(2, -1, 0), Direction.DOWN, Direction.WEST),
+
+    DOWN_NORTH(new Vec3i(180, 180, 0), new Vec3i(0, 0, 180), Direction.DOWN, Direction.NORTH),      // 0
+    DOWN_EAST(new Vec3i(180, 270, 0), new Vec3i(0, 90, 180), Direction.DOWN, Direction.EAST),
+    DOWN_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 180), Direction.DOWN, Direction.SOUTH),
+    DOWN_WEST(new Vec3i(180, 90, 0), new Vec3i(0, 270, 180), Direction.DOWN, Direction.WEST),
 
     UP_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 0), Direction.UP, Direction.NORTH),             // 4
-    UP_WEST(new Vec3i(0, 270, 0), new Vec3i(0, 1, 0), Direction.UP, Direction.WEST),
-    UP_SOUTH(new Vec3i(0, 180, 0), new Vec3i(0, 2, 0), Direction.UP, Direction.SOUTH),
-    UP_EAST(new Vec3i(0, 90, 0), new Vec3i(0, -1, 0), Direction.UP, Direction.EAST),
+    UP_WEST(new Vec3i(0, 270, 0), new Vec3i(0, 90, 0), Direction.UP, Direction.WEST),
+    UP_SOUTH(new Vec3i(0, 180, 0), new Vec3i(0, 180, 0), Direction.UP, Direction.SOUTH),
+    UP_EAST(new Vec3i(0, 90, 0), new Vec3i(0, 270, 0), Direction.UP, Direction.EAST),
 
-    NORTH_UP(new Vec3i(270, 270, 0), new Vec3i(0, 0, 0), Direction.NORTH, Direction.UP),             // 8
-    NORTH_EAST(new Vec3i(180, 270, 0), new Vec3i(0, 0, 0), Direction.NORTH, Direction.EAST),
-    NORTH_DOWN(new Vec3i(90, 270, 0), new Vec3i(-1, 0, 0), Direction.NORTH, Direction.DOWN),
-    NORTH_WEST(new Vec3i(0, 270, 90), new Vec3i(-1, 0, -1), Direction.NORTH, Direction.WEST),
+    NORTH_UP(new Vec3i(270, 270, 0), new Vec3i(270, 0, 180), Direction.NORTH, Direction.UP),             // 8
+    NORTH_EAST(new Vec3i(180, 270, 0), new Vec3i(270, 0, 90), Direction.NORTH, Direction.EAST),
+    NORTH_DOWN(new Vec3i(90, 270, 0), new Vec3i(270, 0, 0), Direction.NORTH, Direction.DOWN),
+    NORTH_WEST(new Vec3i(0, 270, 90), new Vec3i(270, 0, 270), Direction.NORTH, Direction.WEST),
 
-    EAST_UP(new Vec3i(270, 0, 0), new Vec3i(1, 1, 0), Direction.EAST, Direction.UP),                // 12
-    EAST_SOUTH(new Vec3i(180, 0, 0), new Vec3i(2, 0, 1), Direction.EAST, Direction.SOUTH),
-    EAST_DOWN(new Vec3i(90, 0, 90), new Vec3i(-1, -1, 0), Direction.EAST, Direction.DOWN),
-    EAST_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 1), Direction.EAST, Direction.NORTH),
+    EAST_UP(new Vec3i(270, 0, 0), new Vec3i(0, 90, 270), Direction.EAST, Direction.UP),                // 12
+    EAST_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 270), Direction.EAST, Direction.SOUTH),
+    EAST_DOWN(new Vec3i(90, 0, 90), new Vec3i(0, 270, 270), Direction.EAST, Direction.DOWN),
+    EAST_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 270), Direction.EAST, Direction.NORTH),
 
-    SOUTH_UP(new Vec3i(270, 90, 0), new Vec3i(1, 0, 0), Direction.SOUTH, Direction.UP),             // 16
-    SOUTH_WEST(new Vec3i(180, 90, 0), new Vec3i(1, 0, 1), Direction.SOUTH, Direction.WEST),
-    SOUTH_DOWN(new Vec3i(90, 90, 0), new Vec3i(1, 0, 2), Direction.SOUTH, Direction.DOWN),
-    SOUTH_EAST(new Vec3i(0, 90, 0), new Vec3i(0, 0, 0), Direction.SOUTH, Direction.EAST),
+    SOUTH_UP(new Vec3i(270, 90, 0), new Vec3i(90, 0, 0), Direction.SOUTH, Direction.UP),             // 16
+    SOUTH_WEST(new Vec3i(180, 90, 0), new Vec3i(90, 0, 90), Direction.SOUTH, Direction.WEST),
+    SOUTH_DOWN(new Vec3i(90, 90, 0), new Vec3i(90, 0, 180), Direction.SOUTH, Direction.DOWN),
+    SOUTH_EAST(new Vec3i(0, 90, 0), new Vec3i(90, 0, 270), Direction.SOUTH, Direction.EAST),
 
-    WEST_UP(new Vec3i(270, 180, 0), new Vec3i(1, -1, 0), Direction.WEST, Direction.UP),               // 20
-    WEST_NORTH(new Vec3i(180, 180, 0), new Vec3i(0, 0, -1), Direction.WEST, Direction.NORTH),
-    WEST_DOWN(new Vec3i(90, 180, 0), new Vec3i(-1, 1, 0), Direction.WEST, Direction.DOWN),
-    WEST_SOUTH(new Vec3i(0, 180, 0), new Vec3i(0, 2, 1), Direction.WEST, Direction.SOUTH);
+    WEST_UP(new Vec3i(270, 180, 0), new Vec3i(0, 270, 90), Direction.WEST, Direction.UP),               // 20
+    WEST_NORTH(new Vec3i(180, 180, 0), new Vec3i(0, 0, 90), Direction.WEST, Direction.NORTH),
+    WEST_DOWN(new Vec3i(90, 180, 0), new Vec3i(0, 90, 90), Direction.WEST, Direction.DOWN),
+    WEST_SOUTH(new Vec3i(0, 180, 0), new Vec3i(0, 180, 90), Direction.WEST, Direction.SOUTH);
 
     private final Direction localUp;
     private final Direction localForward;
-
 
     private final Vec3i stateRotation;
     private final Vec3i absRotation;
@@ -61,11 +61,11 @@ public enum CombinedOrientation implements StringRepresentable {
         }
     });
 
-    private CombinedOrientation(Vec3i stateRotation, Vec3i normal, Direction localUp, Direction localForward) {
+    private CombinedOrientation(Vec3i stateRotation, Vec3i absRotation, Direction localUp, Direction localForward) {
         this.localUp = localUp;
         this.localForward = localForward;
         this.stateRotation = stateRotation;
-        this.absRotation = normal;
+        this.absRotation = absRotation;
     }
 
     private static int lookupKey(Direction localUp, Direction localForward) {
@@ -102,6 +102,10 @@ public enum CombinedOrientation implements StringRepresentable {
 
     public Direction getLocalForward() {
         return this.localForward;
+    }
+
+    public static CombinedOrientation next(CombinedOrientation in) {
+        return CombinedOrientation.values()[(in.ordinal() + 1) % CombinedOrientation.values().length];
     }
 
     /***
@@ -156,6 +160,7 @@ public enum CombinedOrientation implements StringRepresentable {
     }
 
     public Vec3i getStateRotation() {
+        if(stateRotation == null) return absRotation;
         return stateRotation;
     }
 

@@ -1,16 +1,19 @@
 
-package com.quattage.mechano.foundation.helper;
+package com.quattage.mechano.foundation.block.hitbox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.gson.stream.MalformedJsonException;
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
 import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.Direction.Axis;
@@ -69,29 +72,28 @@ public class VoxelShapeBuilder {
 	}
 
 	// copied from create (protected in voxelshaper)
-	public static VoxelShape getRotatedCopy(VoxelShape shape, Vec3i rotation) {
+	public static VoxelShape getRotatedCopy(VoxelShape shape, Vec3i rotation, boolean mulRot) {
 
 		if(shape.isEmpty() || rotation.equals(Vec3i.ZERO))
 			return shape;
 
 		MutableObject<VoxelShape> result = new MutableObject<>(Shapes.empty());
-		Vec3 center = new Vec3(8, 8, 8);
 
 		shape.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
 			Vec3 v1 = new Vec3(x1, y1, z1).scale(16)
-				.subtract(center);
+				.subtract(DirectionTransformer.MIDDLE);
 			Vec3 v2 = new Vec3(x2, y2, z2).scale(16)
-				.subtract(center);
-			
-			v1 = VecHelper.rotate(v1, (float) rotation.getX() * 90, Axis.X);
-			v1 = VecHelper.rotate(v1, (float) rotation.getY() * 90, Axis.Y);
-			v1 = VecHelper.rotate(v1, (float) rotation.getZ() * 90, Axis.Z)
-				.add(center);
+				.subtract(DirectionTransformer.MIDDLE);
 
-			v2 = VecHelper.rotate(v2, (float) rotation.getX() * 90, Axis.X);
-			v2 = VecHelper.rotate(v2, (float) rotation.getY() * 90, Axis.Y);
-			v2 = VecHelper.rotate(v2, (float) rotation.getZ() * 90, Axis.Z)
-				.add(center);
+			v1 = VecHelper.rotate(v1, (float) rotation.getX(), Axis.X);
+			v1 = VecHelper.rotate(v1, (float) rotation.getY(), Axis.Y);
+			v1 = VecHelper.rotate(v1, (float) rotation.getZ(), Axis.Z)
+				.add(DirectionTransformer.MIDDLE);
+
+			v2 = VecHelper.rotate(v2, (float) rotation.getX(), Axis.X);
+			v2 = VecHelper.rotate(v2, (float) rotation.getY(), Axis.Y);
+			v2 = VecHelper.rotate(v2, (float) rotation.getZ(), Axis.Z)
+				.add(DirectionTransformer.MIDDLE);
 
 			VoxelShape rotated = newBox(v1, v2);
 			result.setValue(Shapes.join(result.getValue(), rotated, BooleanOp.OR));
@@ -100,8 +102,9 @@ public class VoxelShapeBuilder {
 		return result.getValue();
 	}
 
-	public void optimize() {
+	public VoxelShapeBuilder optimize() {
 		shape = shape.optimize();
+		return this;
 	}
 
 	public boolean hasFeatures() {
@@ -113,10 +116,14 @@ public class VoxelShapeBuilder {
 	}
 
 	public static class ShapeAccumulator {
-		
+
 		private TemporaryShape[] shapes = new TemporaryShape[0];
 
 		public void add(TemporaryShape shape) {
+			if(!shape.isComplete()) {
+				Mechano.LOGGER.error("Failed to add an unfinished TemporaryShape to a ShapeAccumulator!");
+				return;
+			}
 			TemporaryShape[] copy = new TemporaryShape[shapes.length + 1];
 			System.arraycopy(shapes, 0, copy, 0, shapes.length);
 			copy[shapes.length] = shape;
@@ -125,7 +132,7 @@ public class VoxelShapeBuilder {
 
 		@Override
 		public String toString() {
-			if(shapes.length == 0) return "ShapeAccumulator[EMPTY]";
+			if(isEmpty()) return "ShapeAccumulator[EMPTY]";
 			String out = "";
 			for(int x = 0; x < shapes.length; x++) {
 				TemporaryShape shape = shapes[x];
@@ -139,11 +146,24 @@ public class VoxelShapeBuilder {
 		public boolean isEmpty() {
 			return shapes.length == 0;
 		}
+
+		public TemporaryShape getFirst() {
+			return shapes[0];
+		}
+
+		public void forEachBox(BiConsumer<TemporaryShape, Boolean> cons) {
+			for(int x = 0; x < shapes.length; x++) {
+				TemporaryShape shape = shapes[x];
+				if(shape == null || !shape.isComplete()) 
+					continue;
+				cons.accept(shape, x == 0);
+			}
+		}
 	}
 
 	public static class TemporaryShape {
 
-		private double[] shape = new double[6];
+		private @Nullable double[] shape = new double[6];
 		private Stage stage = Stage.EMPTY;
 
 		public TemporaryShape() {}
@@ -164,6 +184,7 @@ public class VoxelShapeBuilder {
 
 		@SuppressWarnings("unchecked")
 		public void collect(Map.Entry<String, Map<String, Object>> s) throws MalformedJsonException {
+			assertNotDisposed();
 			if(s.getKey().equals("from") && this.stage == Stage.EMPTY) {
 				read(0, (ArrayList<Object>)(s.getValue()));
 				this.stage = Stage.HALF;
@@ -172,6 +193,19 @@ public class VoxelShapeBuilder {
 				this.stage = Stage.COMPLETE;
 			} else if(this.stage == Stage.COMPLETE) throw new IllegalStateException(
 				"This Temporary Shape has already been assembled! Additional calls to accept() aren't allowed!"
+			);
+		}
+
+		public void collect(double x, double y, double z) {
+			assertNotDisposed();
+			if(this.stage == Stage.EMPTY) {
+				this.shape[0] = x; this.shape[1] = y; this.shape[2] = z;
+				this.stage = Stage.HALF;
+			} else if(this.stage == Stage.HALF) {
+				this.shape[3] = x; this.shape[4] = y; this.shape[5] = z;
+				this.stage = Stage.COMPLETE;
+			} else if(this.stage == Stage.COMPLETE) throw new IllegalStateException(
+				"This TemporaryShape has already been assembled! Additional calls to accept() aren't allowed!"
 			);
 		}
 
@@ -197,19 +231,70 @@ public class VoxelShapeBuilder {
 		}
 
 		public void flushInto(VoxelShapeBuilder builder) {
+			assertNotDisposed();
 			if(this.stage != Stage.COMPLETE) return;
 			builder.addBox(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5]);
-			this.stage = Stage.EMPTY;
-			this.shape = new double[6];
+			clear();
 		}
 
 		public void flushInto(ShapeAccumulator accumulator) {
+			assertNotDisposed();
 			if(this.stage != Stage.COMPLETE) return;
 			accumulator.add(new TemporaryShape(this.shape));
-			this.stage = Stage.EMPTY;
-			this.shape = new double[6];
+			clear();
 		}
 
+
+		public void dispose() {
+			this.stage = null;
+			this.shape = null;
+		}
+
+		public void assertNotDisposed() {
+			if(this.stage == null || this.shape == null)
+				throw new IllegalStateException("Couldn't perform an operation on a TemporaryShape that has already been destroyed!");
+		}
+
+		public void clear() {
+			this.shape = new double[6];
+			this.stage = Stage.EMPTY;
+		}
+
+		public double minX() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get minX coordinate for an unfinished shape!");
+			return shape[0];
+		}
+
+		public double minY() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get minY coordinate for an unfinished shape!");
+			return shape[1];
+		}
+
+		public double minZ() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get minZ coordinate for an unfinished shape!");
+			return shape[2];
+		}
+
+		public double maxX() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get maxX coordinate for an unfinished shape!");
+			return shape[3];
+		}
+
+		public double maxY() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get maxY coordinate for an unfinished shape!");
+			return shape[4];
+		}
+
+		public double maxZ() {
+			if(stage != Stage.COMPLETE)
+				throw new IllegalStateException("Couldn't get maxZ coordinate for an unfinished shape!");
+			return shape[5];
+		}
 
 		@Override
 		public String toString() {

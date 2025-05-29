@@ -1,4 +1,4 @@
-package com.quattage.mechano.infrastructure.gametest.command;
+package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;

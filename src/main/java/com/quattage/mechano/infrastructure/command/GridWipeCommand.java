@@ -1,4 +1,4 @@
-package com.quattage.mechano.infrastructure.gametest.command;
+package com.quattage.mechano.infrastructure.command;
 
 import java.util.UUID;
 

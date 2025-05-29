@@ -1,14 +1,17 @@
-package com.quattage.mechano.infrastructure.hitbox;
+package com.quattage.mechano.foundation.block.hitbox;
 
 import java.util.Map;
 import java.util.Objects;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.helper.VoxelShapeBuilder;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class HitboxStateTree implements HitboxRepresentable {
@@ -166,5 +169,10 @@ public class HitboxStateTree implements HitboxRepresentable {
     public VoxelShape get() {
         Mechano.LOGGER.error("Couldn't acquire VoxelShape - At least one token must be provied to traverse this state tree!");
         return VoxelShapeBuilder.CUBE;
+    }
+
+    @Override
+    public VoxelShape get(BlockState state, BlockGetter block, BlockPos pos, CollisionContext collisionContext) {
+        return get(state);
     }
 }

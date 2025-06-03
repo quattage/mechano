@@ -1,15 +1,15 @@
-package com.quattage.mechano.foundation.api.transmission;
+package com.quattage.mechano.foundation.api.transmitter;
 
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
-import com.quattage.mechano.foundation.api.landmarks.GridNode;
-import com.quattage.mechano.foundation.api.landmarks.GridPath;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterTypeBuilder;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.GridPath;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterTypeBuilder;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;

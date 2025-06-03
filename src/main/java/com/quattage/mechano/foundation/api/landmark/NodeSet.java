@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import com.quattage.mechano.foundation.api.PowerGrid;
 

@@ -3,9 +3,9 @@ package com.quattage.mechano.foundation.api.switchboard;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;

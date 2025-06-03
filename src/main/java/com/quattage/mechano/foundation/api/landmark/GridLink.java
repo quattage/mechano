@@ -1,8 +1,8 @@
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 
-import com.quattage.mechano.foundation.api.transmission.Transmitter;
+import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
 import net.minecraft.nbt.CompoundTag;
 

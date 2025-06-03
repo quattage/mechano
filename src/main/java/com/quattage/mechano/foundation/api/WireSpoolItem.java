@@ -1,11 +1,14 @@
 package com.quattage.mechano.foundation.api;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.content.connector.SingleConnectorBlockEntity;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 import com.quattage.mechano.foundation.api.switchboard.Response;
-import com.quattage.mechano.foundation.api.transmission.Transmitable;
-import com.quattage.mechano.foundation.api.transmission.Transmitter;
+import com.quattage.mechano.foundation.api.transmitter.Transmitable;
+import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -53,8 +56,19 @@ public abstract class WireSpoolItem<T extends Transmitter<?>> extends Item imple
 
 
     @Override
-    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        super.inventoryTick(stack, level, entity, slotId, isSelected);
+    public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
+        super.inventoryTick(stack, world, entity, slotId, isSelected);
+        if(!isSelected) return;
+        if(!world.isClientSide) return;
+
+        SingleConnectorBlockEntity.endPos = VectorHelper.getLookingRay((Player)entity, 0, 10f).end;
+
+        AnchorPoint previous = AnchorPoint.retrieve(world, stack);
+        if(previous == null) 
+            stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+        else if(!previous.existsInWorld(world))
+            stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+
     }
 
 

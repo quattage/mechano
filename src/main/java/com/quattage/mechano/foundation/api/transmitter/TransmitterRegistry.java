@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.transmission;
+package com.quattage.mechano.foundation.api.transmitter;
 
 import java.util.Objects;
 import java.util.function.Supplier;

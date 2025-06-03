@@ -1,6 +1,6 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.api.client.AnchorGuiLayer;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorGuiLayer;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.GameType;
@@ -19,11 +19,9 @@ public class MechanoClientEvents {
 
     @EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
     public static class Bus {
-
         @SubscribeEvent
         public static void registerLayers(RegisterGuiLayersEvent evt) {
             evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);
         }
-
     }
 }

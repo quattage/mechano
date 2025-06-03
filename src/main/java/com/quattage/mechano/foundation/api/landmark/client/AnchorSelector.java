@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.client;
+package com.quattage.mechano.foundation.api.landmark.client;
 
 import java.util.ArrayList;
 import java.util.PriorityQueue;
@@ -11,12 +11,12 @@ import org.apache.commons.lang3.function.TriConsumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.transmission.Transmitable;
-import com.quattage.mechano.foundation.api.transmission.Transmitable.HoldingSummary;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
 import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.transmitter.Transmitable;
+import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.quattage.mechano.foundation.mixin.client.RenderBuffersAccessor;
 
@@ -99,11 +99,12 @@ public class AnchorSelector {
 
     // both may be null for a brief moment before the first tick is fired
     public @Nullable Active selected;
-    protected @Nullable VectorHelper.Ray lookingRay; // TODO probably just use instance.hitresult
+    @Nullable
+    public VectorHelper.Ray lookingRay; // TODO probably just use instance.hitresult
     protected float selectedTicks = 0;
 
-    protected boolean lookedThisFrame = false;
-    protected ArrayList<Component> currentTooltip = new ArrayList<>();;
+    public boolean lookedThisFrame = false;
+    public ArrayList<Component> currentTooltip = new ArrayList<>();;
     public Transmitable.HoldingSummary playerHands = new HoldingSummary(null, null, null, null);
     private final Queue<Active> trackedEntries = new PriorityQueue<>();
 

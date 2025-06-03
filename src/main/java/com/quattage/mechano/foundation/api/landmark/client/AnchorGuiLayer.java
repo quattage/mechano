@@ -1,10 +1,10 @@
-package com.quattage.mechano.foundation.api.client;
+package com.quattage.mechano.foundation.api.landmark.client;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.MechanoClientEvents;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.simibubi.create.foundation.gui.RemovedGuiUtils;
 import com.simibubi.create.infrastructure.config.AllConfigs;

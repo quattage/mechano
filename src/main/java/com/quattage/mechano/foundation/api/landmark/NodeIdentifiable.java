@@ -1,9 +1,9 @@
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

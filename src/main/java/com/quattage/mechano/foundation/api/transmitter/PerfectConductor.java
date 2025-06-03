@@ -1,9 +1,9 @@
-package com.quattage.mechano.foundation.api.transmission;
+package com.quattage.mechano.foundation.api.transmitter;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;

@@ -15,10 +15,10 @@ import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
-import com.quattage.mechano.foundation.api.landmarks.GridNode;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
-import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -43,7 +43,6 @@ public class GridManifestGenerator {
 
     private @Nullable ServerPlayer requester = null;
     private @Nullable GlobalServerGrid active = null;
-    
 
     public boolean isQueued() {
         return requester != null && active != null;

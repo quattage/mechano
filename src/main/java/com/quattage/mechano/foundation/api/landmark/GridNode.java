@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Iterator;
 import java.util.Objects;

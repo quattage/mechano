@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;

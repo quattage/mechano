@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -9,7 +9,7 @@ import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.PowerGrid;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
 import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
 
 import io.netty.buffer.ByteBuf;

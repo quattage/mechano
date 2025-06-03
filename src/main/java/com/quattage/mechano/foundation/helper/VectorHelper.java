@@ -1,6 +1,7 @@
 
 package com.quattage.mechano.foundation.helper;
 
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -107,10 +108,43 @@ public class VectorHelper {
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos, Color color, String hash) {
-        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, 0.2f))
+        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, 0.1f))
             .disableLineNormals()
             .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
-            .lineWidth(0.06f)
+            .lineWidth(0.006f)
+            .colored(color);
+    }
+
+    /***
+     * Draws a simple debug box at the given Vec3 position
+     */
+    public static void drawDebugBox(Vec3 pos, float size, Color color, String hash) {
+        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, size))
+            .disableLineNormals()
+            .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+            .lineWidth(0.006f)
+            .colored(color);
+    }
+
+    /***
+     * Draws a simple debug box at the given Vec3 position
+     */
+    public static void drawDebugBox(Vector3d pos, float size, Color color, String hash) {
+        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, size))
+            .disableLineNormals()
+            .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+            .lineWidth(0.006f)
+            .colored(color);
+    }
+
+    /***
+     * Draws a simple debug box at the given Vec3 position
+     */
+    public static void drawDebugBox(Vector3f pos, float size, Color color, String hash) {
+        Outliner.getInstance().showAABB(hash, VectorHelper.toAABB(pos, size))
+            .disableLineNormals()
+            .withFaceTexture(AllSpecialTextures.CUTOUT_CHECKERED)
+            .lineWidth(0.006f)
             .colored(color);
     }
 
@@ -123,6 +157,26 @@ public class VectorHelper {
     public static AABB toAABB(Vec3 pos, float s) {
         Vec3 size = new Vec3(s, s, s);
         return new AABB(pos.subtract(size), pos.add(size));
+    }
+
+    /***
+     * Creates a new AABB at the given Vec3.
+     * @param pos Vec3 to use as a basis
+     * @param s Size of the AABB
+     * @return A new AABB at the given Vec3
+     */
+    public static AABB toAABB(Vector3d pos, float s) {
+        return toAABB(new Vec3(pos.x, pos.y, pos.z), s);
+    }
+
+    /***
+     * Creates a new AABB at the given Vec3.
+     * @param pos Vec3 to use as a basis
+     * @param s Size of the AABB
+     * @return A new AABB at the given Vec3
+     */
+    public static AABB toAABB(Vector3f pos, float s) {
+        return toAABB(new Vec3(pos.x, pos.y, pos.z), s);
     }
 
     

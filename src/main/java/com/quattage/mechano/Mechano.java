@@ -3,12 +3,13 @@ package com.quattage.mechano;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.infrastructure.datagen.MechanoData;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.createmod.catnip.lang.LangBuilder;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
@@ -41,6 +42,7 @@ public class Mechano {
         MechanoTransmissionTypes.register(modBus);
         modBus.addListener(EventPriority.LOWEST, MechanoData::collect);
     }
+
 
     public void commonSetup(FMLCommonSetupEvent event) {
 

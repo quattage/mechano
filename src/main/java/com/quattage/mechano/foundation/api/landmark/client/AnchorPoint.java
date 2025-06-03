@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.client;
+package com.quattage.mechano.foundation.api.landmark.client;
 
 import java.util.List;
 
@@ -7,11 +7,11 @@ import org.joml.Vector3f;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -30,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * An AnchorPoint is the client-sided mirror implementation of the
- * {@link com.quattage.mechano.foundation.api.landmarks.GridNode GridNode},
+ * {@link com.quattage.mechano.foundation.api.landmark.GridNode GridNode},
  * built specifically to store transformation data. 
  * 
  * <p> The AnchorPoint

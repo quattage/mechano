@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;

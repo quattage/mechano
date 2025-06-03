@@ -9,18 +9,32 @@ import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorRotationRepresentable;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 
 /**
  * Wraps a VoxelShape for storage and automatically populates a map
  * with rotated variants of said VoxelShape as they're requested.
  */
+@EventBusSubscriber
 public final class LazyRotatableHitbox implements HitboxRepresentable {
+
+    // clear all registered orientations when the player logs out to
+    // prevent old hitboxes from sitting in memory forever
+    private static final ObjectArrayList<LazyRotatableHitbox> all = new ObjectArrayList<>();
+    @SubscribeEvent
+    public static void clearStale(PlayerLoggedOutEvent evt) {
+        for(int x = 0; x < all.size(); x++)
+            all.get(x).orientations = null;
+    }
 
     // the unrotated shape at (0, 0, 0), or UP_NORTH
     private final VoxelShape rootShape;
@@ -33,6 +47,7 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
             throw new IllegalArgumentException("Attempted to create a Hitbox from an empty shape!");
         this.rootShape = rootShape.optimize();
         this.orientations = null;
+        all.add(this);
     }
 
     /**

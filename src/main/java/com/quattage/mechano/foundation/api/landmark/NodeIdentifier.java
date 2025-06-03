@@ -1,12 +1,12 @@
 
 
-package com.quattage.mechano.foundation.api.landmarks;
+package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 import java.util.stream.IntStream;
 
 import com.mojang.serialization.Codec;
-import com.quattage.mechano.foundation.api.landmarks.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.Util;
@@ -19,7 +19,7 @@ import net.minecraft.network.codec.StreamCodec;
  * Basic implementation of {@link NodeIdentifiable} that provides hashing, 
  * equivalence, and serialization methods for a block position and an index value.
  * This abstract class is used by {@link GridNode}, {@link GridNode.Address}, {@link GridNode.Tracker},
- * and {@link com.quattage.mechano.foundation.api.client.AnchorPoint AnchorPoint} - All of these classes
+ * and {@link com.quattage.mechano.foundation.api.landmark.client.AnchorPoint AnchorPoint} - All of these classes
  * share the same hashing, equivalence, and serialization methods, so they can all be used to query {@link  com.quattage.mechano.foundation.api.PowerGrid PowerGrid}
  */
 public abstract class NodeIdentifier implements NodeIdentifiable {
@@ -93,7 +93,7 @@ public abstract class NodeIdentifier implements NodeIdentifiable {
 
     /**
      * A dummy implementation of {@link NodeIdentifier} useful as
-     * a stand-in replacement for {@link GridNode} or {@link com.quattage.mechano.foundation.api.client.AnchorPoint AnchorPoint} instances when
+     * a stand-in replacement for {@link GridNode} or {@link com.quattage.mechano.foundation.api.landmark.client.AnchorPoint AnchorPoint} instances when
      * retrieving them from the {@link com.quattage.mechano.foundation.api.PowerGrid PowerGrid}
      * or when sending packets.
      */

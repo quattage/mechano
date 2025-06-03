@@ -1,9 +1,9 @@
-package com.quattage.mechano.foundation.api.client;
+package com.quattage.mechano.foundation.api.landmark.client;
 
 import java.util.function.Consumer;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 

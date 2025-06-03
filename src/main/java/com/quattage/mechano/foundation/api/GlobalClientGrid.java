@@ -1,10 +1,10 @@
 package com.quattage.mechano.foundation.api;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.Response;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;

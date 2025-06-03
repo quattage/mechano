@@ -1,8 +1,8 @@
-package com.quattage.mechano.foundation.api.transmission;
+package com.quattage.mechano.foundation.api.transmitter;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.spool.HookupTransmitter;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.neoforged.bus.api.IEventBus;
 

@@ -1,5 +1,5 @@
 
-package com.quattage.mechano.foundation.api.transmission;
+package com.quattage.mechano.foundation.api.transmitter;
 
 import java.util.List;
 
@@ -7,10 +7,10 @@ import static com.quattage.mechano.Mechano.lang;
 
 import com.quattage.mechano.MechanoDataAttachments;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 import com.quattage.mechano.foundation.api.switchboard.Response;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.network.chat.Component;

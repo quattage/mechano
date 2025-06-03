@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.test;
 
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.client.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorArray.Builder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;

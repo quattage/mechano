@@ -8,15 +8,15 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
-import com.quattage.mechano.foundation.api.landmarks.GridNode;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmarks.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
-import com.quattage.mechano.foundation.api.transmission.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.api.transmission.Transmitter;
-import com.quattage.mechano.foundation.api.transmission.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -356,7 +356,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
     /**
      * Finds a node at the given address by iterating through all subgrids.
-     * @param address {@link com.quattage.mechano.foundation.api.landmarks.NodeIdentifier NodeIdentifier} to look for
+     * @param address {@link com.quattage.mechano.foundation.api.landmark.NodeIdentifier NodeIdentifier} to look for
      * @return A pair containing the {@link GridNode} and its {@link PowerGrid parent}. If a node is not found
      * at the given address, the contents of the pair will be null.
      */
@@ -487,7 +487,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     /**
      * Writes this entire GlobalServerGrid to a new ListTag
      * @returns A new ListTag, made of {@link CompoundTag CompoundTags}
-     * acquired by the PowerGrid's {@link com.quattage.mechano.foundation.api.landmarks.NodeSet#write writing process}
+     * acquired by the PowerGrid's {@link com.quattage.mechano.foundation.api.landmark.NodeSet#write writing process}
      */
     @Override
     protected @Nullable ListTag writeAll() {

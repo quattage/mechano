@@ -2,11 +2,11 @@ package com.quattage.mechano.foundation.api;
 
 import java.util.List;
 
-import com.quattage.mechano.foundation.api.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.client.AnchorArray;
-import com.quattage.mechano.foundation.api.landmarks.DispatchedNode;
-import com.quattage.mechano.foundation.api.landmarks.GridLink;
-import com.quattage.mechano.foundation.api.transmission.Transmitable;
+import com.quattage.mechano.foundation.api.landmark.DispatchedNode;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorArray;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.blockEntity.ElectricBlockEntity;
 
 import net.minecraft.core.BlockPos;

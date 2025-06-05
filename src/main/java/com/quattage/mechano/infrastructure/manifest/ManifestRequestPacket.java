@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.switchboard;
+package com.quattage.mechano.infrastructure.manifest;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;

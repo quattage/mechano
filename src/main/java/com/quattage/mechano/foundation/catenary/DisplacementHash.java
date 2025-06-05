@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.catenary;
+package com.quattage.mechano.foundation.catenary;
 
 import org.joml.Math;
 

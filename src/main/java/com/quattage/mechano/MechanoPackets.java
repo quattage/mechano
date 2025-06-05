@@ -3,13 +3,13 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.foundation.api.switchboard.ManifestRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.api.switchboard.ManifestResponsePacket;
-import com.quattage.mechano.foundation.api.switchboard.ManifestResultPacket;
+import com.quattage.mechano.infrastructure.manifest.ManifestRequestPacket;
+import com.quattage.mechano.infrastructure.manifest.ManifestResponsePacket;
+import com.quattage.mechano.infrastructure.manifest.ManifestResultPacket;
 
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;

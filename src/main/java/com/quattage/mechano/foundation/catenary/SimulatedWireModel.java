@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.catenary;
+package com.quattage.mechano.foundation.catenary;
 
 import java.util.function.Consumer;
 
@@ -7,21 +7,23 @@ import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.world.phys.Vec3;
 
-public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
+public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
 
-    public float spannedDistance = 0;
+    // average accumulated velocity as of the last time the wire was simulated
     public float avgVelocity = 0;
 
     private @Nullable ObjectArrayList<Point> points;
     private @Nullable ObjectArrayList<Stick> sticks;
 
-    public RealtimeWireModel() {}
+    public SimulatedWireModel() {}
 
     /**
      * Initializes a Verlet Integration simulation for this WireModel. Calls to this method
@@ -33,12 +35,12 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
      * that data will be cleared. This WireModel will return to its unbaked, simulatable state.
      * @return This WireModel for chaining calls
      */
-    public RealtimeWireModel initialize() {
+    public SimulatedWireModel initialize() {
         assertHasOffset();
-        int pointCount = getPointCount();
-        this.points = new ObjectArrayList<Point>(pointCount);
-        this.sticks = new ObjectArrayList<Stick>(pointCount - 1);
-        addSegments(pointCount, true);
+        int segmentCount = getSegmentCount();
+        this.points = new ObjectArrayList<Point>(segmentCount + 1);
+        this.sticks = new ObjectArrayList<Stick>(segmentCount);
+        addSegments(segmentCount, true);
         return this;
     }
 
@@ -47,12 +49,14 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
     private void addSegments(int segments, boolean pinEnds) {
         Point previous = null;
         Vector3f trgt = new Vector3f();
-        for(int x = 0; x <= segments; x++) {
-            float spanProgress = ((float)x / (float)segments);
+        for(int x = 0; x < segments; x++) {
+            float spanProgress = 1f - ((float)x / (float)segments);
             Point newPoint = new Point(quicklerp(trgt, spanProgress));
             points.add(x, newPoint);
-            if(previous != null)
+            if(previous != null) {
                 sticks.add(x - 1, new Stick(previous, newPoint));
+                Mechano.LOGGER.info(x + ", " + spanProgress + ": " + sticks.get(x - 1) + ", diff: " + sticks.get(x - 1).start.pos.distance(sticks.get(x - 1).end.pos));
+            }
             previous = newPoint;
         }
         if(pinEnds) {
@@ -69,7 +73,7 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
             wasPinned = true;
         }
         int totalSegments = points.size() + additionalSegments;
-        for(int x = points.size(); x <= totalSegments; x++) {
+        for(int x = points.size(); x < totalSegments; x++) {
             // the new point gets placed between the current and last point
             Point newPoint = new Point(previous.pos.lerp(offset, 0.5f, new Vector3f()));
             points.add(x, newPoint);
@@ -80,30 +84,26 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
             points.getLast().pin();
     }
 
-    /**
-     * A method useful for reminding this WireModel to update its length.
-     * Called automatically whenever this WireModel is {@link #moveTo moved.}
-     */
+    @Override
     public void calculateSegmentation() {
-        this.spannedDistance = offset.length();
 
+        this.length = offset.length();
         if(!isInitialized()) return;
-
         this.points.getFirst().clearPos();
-        int pointCount = getPointCount();
+        int segmentCount = getSegmentCount();
 
         // grow or shrink the wire as needed
-        if(pointCount < this.points.size()) {
+        if(segmentCount < this.points.size()) {
             boolean wasPinned = this.points.getLast().pinned;
-            this.points.removeElements(pointCount, this.points.size());
-            this.sticks.removeElements(pointCount - 1, this.sticks.size());
+            this.points.removeElements(segmentCount, this.points.size());
+            this.sticks.removeElements(segmentCount - 1, this.sticks.size());
             if(wasPinned) this.points.getLast().pin();
             this.points.trim();
             this.sticks.trim();
-        } else if(pointCount > this.points.size()) {
-            this.points.ensureCapacity(pointCount);
-            this.sticks.ensureCapacity(pointCount - 1);
-            addAdditionalSegments(pointCount - this.points.size());
+        } else if(segmentCount > this.points.size()) {
+            this.points.ensureCapacity(segmentCount);
+            this.sticks.ensureCapacity(segmentCount - 1);
+            addAdditionalSegments(segmentCount - this.points.size());
         }
         this.points.getLast().setPos(offset);
     }
@@ -115,7 +115,7 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
 
 
     @Override
-    public RealtimeWireModel setOffset(Vector3f offset) {
+    public SimulatedWireModel setOffset(Vector3f offset) {
         if(this.offset == null)
             this.offset = new Vector3f(offset.x, offset.y, offset.z);
         else this.offset.set(offset);
@@ -124,7 +124,7 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
     }
 
     @Override
-    public RealtimeWireModel setOffset(Vec3 start, Vec3 end) {
+    public SimulatedWireModel setOffset(Vec3 start, Vec3 end) {
         if(this.offset == null)
             this.offset = new Vector3f();
         this.offset.set((float)(end.x - start.x), (float)(end.y - start.y), (float)(end.z - start.z));
@@ -133,28 +133,11 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
     }
 
     /**
-     * Runs {@link #simulate} multiple times to deform this WireModel into an approximate catenary shape.
-     * @param steps (Optional) The amount of simulation steps to perform. Or provide no value to use the {@link #CATENARY_SOLVER_ITERATIONS default}
-     */
-    public void simulateAhead() {
-        simulateAhead(CATENARY_SOLVER_ITERATIONS);
-    }
-
-
-    /**
-     * Runs {@link #simulate} multiple times to deform this WireModel into an approximate catenary shape.
-     * @param steps (Optional) The amount of simulation steps to perform. Or provide no value to use the {@link #CATENARY_SOLVER_ITERATIONS default}
-     */
-    public void simulateAhead(int steps) {
-        for(int x = 0; x < steps; x++)
-            simulate();
-    }
-
-    /**
      * A call to this method represents a sigular update
-     * of a discrete Verlet Integration simulation. This 
-     * method can be called to accumulate gravity on a wire 
-     * over time. 
+     * of a discrete Verlet Integration simulation. 
+     * This wire will seek a state of minimal potential energy
+     * by applying gravity and inertia.
+     * <p>
      * In order for this method to function as expected, 
      * You need to first call {@link #moveTo} to
      * set this WireModel's start and end positions,
@@ -162,13 +145,15 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
      * to initially construct the wire itself.
      * @throws IllegalStateException if this WireModel hasn't been moved or initialized at least once.
     */
-    public void simulate() {
+    @Override
+    public void update() {
         assertHasOffset();
-        assertIntegrateCompatable();
+        assertSimulatable();
 
-        final Vector3f gravity = new Vector3f(0, CATENARY_POINT_MASS / (float)points.size(), 0);
+        final Vector3f gravity = getGravity(points.size());
         final Vector3d lastPos = new Vector3d();
 
+        // apply velocity and gravity
         avgVelocity = 0;
         for(Point point : points) {
             if(point.pinned) continue;
@@ -179,28 +164,27 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
             point.pos.sub(gravity);
             point.lastPos.set(lastPos);
         }
+
         avgVelocity /= points.size();
-
-        // if(Float.isNaN(avgVelocity)) {
-        //     Mechano.LOGGER.warn("Instability detected in " + this.toFullString() + " - The simulation has been reset");
-        //     initializeSimulation();
-        //     return;
-        // }
-
-        float segmentLength = getSegmentLength();
-        for(int x = 0; x < CATENARY_SOLVER_ITERATIONS; x++) {
-            for(Stick stick : sticks) {
-                Vector3f center = stick.getCenter();
-                Vector3f facing = stick.getFacingVector();
-                Vector3f nudge = new Vector3f(facing.x * segmentLength / 2f, facing.y * segmentLength / 2f, facing.z * segmentLength / 2f);
-                if(!stick.start.pinned)
-                    stick.start.pos.set(center).add(nudge);
-                if(!stick.end.pinned)
-                    stick.end.pos.set(center).sub(nudge);
-            }
+        if(Float.isNaN(avgVelocity)) {
+            Mechano.LOGGER.warn("Instability detected in " + this.toFullString() + " - The simulation has been reset");
+            initialize();
+            return;
         }
 
-        // Mechano.LOGGER.info("P: " + points.size() + " S: " + sticks.size() + " VEL: " + avgVelocity);
+        float lengthAdj = getLengthAdjustment(sticks.size());
+        Vector3f facing = new Vector3f();
+        Vector3f center = new Vector3f();
+
+        for(int x = 0; x < CATENARY_SOLVER_ITERATIONS; x++) {
+            for(int s = sticks.size() - 1; s >= 0; s--) {
+                Stick stick = sticks.get(s);
+                facing.set(stick.getAsRay()).normalize();
+                center.set(stick.getCenter());
+                if(!stick.start.pinned) stick.start.pos.set(center).add(facing.x * lengthAdj, facing.y * lengthAdj, facing.z * lengthAdj);
+                if(!stick.end.pinned) stick.end.pos.set(center).sub(facing.x * lengthAdj, facing.y * lengthAdj, facing.z * lengthAdj);
+            }
+        }
     }
 
     @Override
@@ -208,33 +192,9 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
         throw new UnsupportedOperationException("Unimplemented method 'render'");
     }
 
-    /*
-     * The amount of points in this wire is determined by the distance spanned, which, in turn
-     * determines the length of each uniform segment
-     */
-    private int getPointCount() {
-        return Math.max(CATENARY_POINT_MINIMUM, Math.min(CATENARY_POINT_MAXIMUM, (int)(spannedDistance * CATENARY_POINT_RESOLUTION)));
-    }
-
-    /*
-     * The segment length is uniform for every Stick across the wire and 
-     * is based directly on how long the wire itself is.
-     * We also assume that there's a tiny amount of extra length to prevent
-     * the wire from getting too tight and freaking out in certain situations
-     */
-    private float getSegmentLength() {
-        return Math.max(0.015f, (spannedDistance / sticks.size()) + (1 - tension) + CATENARY_TENSION_EPSILON);
-    }
-
-
-    private void assertHasOffset() {
-        if(offset == null)
-            throw new IllegalStateException("Cannot perform operation on " + this + " - This WireModel is missing a start or end position! (It was either never populated or this WireModel instance was destroyed.)");
-    }
-
 
     // sanity checks for baked vs realtime state
-    private void assertIntegrateCompatable() {
+    private void assertSimulatable() {
         if(points == null || sticks == null)
             throw new IllegalStateException("Cannot integrate " + this + " - This WireModel has not been initialized!");
     }
@@ -271,15 +231,26 @@ public class RealtimeWireModel extends WireModel<RealtimeWireModel> {
     public void drawDebug(Vec3 basis) {
         if(sticks == null) return;
         for(int x = 0; x < sticks.size(); x++) {
-            Stick s = sticks.get(x);
-            if(s == null) continue;
-            Outliner.getInstance().showLine("stick_" + x, basis.add(s.start.pos.x, s.start.pos.y, s.start.pos.z), basis.add(s.end.pos.x, s.end.pos.y, s.end.pos.z)).lineWidth(0.02f).disableCull().colored(Color.GREEN);
+            Stick stick = sticks.get(x);
+            if(stick == null) continue;
+            VectorHelper.drawDebugBox(basis.add(stick.end.pos.x, stick.end.pos.y, stick.end.pos.z), 0.007f, Color.BLACK, "sim_point_" + x);
+            Outliner.getInstance().showLine("sim_stick_" + x, basis.add(stick.start.pos.x, stick.start.pos.y, stick.start.pos.z), basis.add(stick.end.pos.x, stick.end.pos.y, stick.end.pos.z)).lineWidth(0.02f).disableCull().colored(Color.GREEN);
         }
     }
 
     @Override
     public String toString() {
-        return "WireModel[" + offset + ", " + spannedDistance + "m]";
+        if(sticks == null) return "SimulatedWireModel[UNINITIALIZED]";
+        String out = "\nSimulatedWireModel[\n";
+        for(int x = 0; x < sticks.size(); x++) {
+            Stick stick = sticks.get(x);
+            if(stick == null) {
+                out += "\t" + x + ": (NULL)\n";
+                continue;
+            }
+            out += "\t" + x + ": " + stick + "\n";
+        }
+        return out + "]";
     }
 
 

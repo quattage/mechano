@@ -83,6 +83,16 @@ public class VectorHelper {
         return Math.max(a.x, Math.max(a.y, a.z));
     }
 
+    /**
+     * Draws the normal vector as a line in 3d space
+     * @param basis Position of the starting point
+     * @param normal Offset towards the ending point (the direction of the ray)
+     * @param c Color of the line to be drawn
+     */
+    public static void drawDebugRay(Vec3 basis, Vector3f normal, Color c) {
+        Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x, normal.y, normal.z)).lineWidth(0.02f).disableCull().colored(c);
+    }
+
     /***
      * Draws a simple debug box at the given Vec3 position
      */
@@ -238,6 +248,8 @@ public class VectorHelper {
             (int)Math.floor(vec.z)
         );
     }
+
+    
 
     /***
      * Casts coordinates of a Vec3 to ints and returns a BlockPos

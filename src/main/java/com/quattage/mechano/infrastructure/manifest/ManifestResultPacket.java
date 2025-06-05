@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.switchboard;
+package com.quattage.mechano.infrastructure.manifest;
 
 import java.io.File;
 import java.io.PrintWriter;

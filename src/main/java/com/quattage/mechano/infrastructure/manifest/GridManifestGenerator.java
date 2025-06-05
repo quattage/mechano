@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.switchboard;
+package com.quattage.mechano.infrastructure.manifest;
 
 import java.text.Format;
 import java.text.SimpleDateFormat;

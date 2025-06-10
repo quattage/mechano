@@ -2,6 +2,8 @@ package com.quattage.mechano;
 
 import org.slf4j.Logger;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.infrastructure.datagen.MechanoData;
@@ -9,7 +11,6 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.createmod.catnip.lang.LangBuilder;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
@@ -27,6 +28,8 @@ public class Mechano {
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(ID)
         .defaultCreativeTab((ResourceKey<CreativeModeTab>) null);
     public static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Gson GSON = new GsonBuilder().setLenient().create();
 
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();

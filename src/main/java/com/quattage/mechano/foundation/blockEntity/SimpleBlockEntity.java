@@ -1,8 +1,9 @@
 package com.quattage.mechano.foundation.blockEntity;
 
+import java.util.function.Consumer;
+
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.simibubi.create.api.schematic.nbt.PartialSafeNBT;
 import com.simibubi.create.foundation.block.IBE;
 import com.simibubi.create.foundation.blockEntity.CachedRenderBBBlockEntity;

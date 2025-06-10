@@ -1,11 +1,22 @@
-package com.quattage.mechano.foundation.catenary;
+package com.quattage.mechano.foundation.catenary.meshing;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.helper.VectorHelper;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.PoseStack.Pose;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.MutableExtruder;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Point;
 
-import net.createmod.catnip.theme.Color;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -30,21 +41,19 @@ import net.minecraft.world.phys.Vec3;
  */
 public abstract class WireModel<T extends WireModel<?>> {
 
-    public static int CATENARY_SOLVER_ITERATIONS = 10;
+    public static WireModel<?> of(Vec3 start, Vec3 end, @Nullable TransmitterType<?> type) {
+        WireModel<?> wire = new ParametricWireModel();
+        wire.initialize().setOffset(start, end);
+        wire.update();
+        wire = wire.toSimulated(true);
+        wire.updateAhead(10);
+        wire.setTension(type == null ? CatenaryAttributes.DEFAULT.getTension() : type.getAttributes().getTension());
+        return wire;
+    }
 
-    public static final float CATENARY_POINT_RESOLUTION = 1f;
-    public static final float CATENARY_POINT_MASS = 3f;
-    public static final float CATENARY_TENSION_EPSILON = 0.001f;
-    public static final float CATENARY_HYPERBOLIC = 7.8f;
-
-    public static int CATENARY_POINT_MINIMUM = 4;
-    public static int CATENARY_POINT_MAXIMUM = 32;
-    
-    
     protected @Nullable Vector3f offset;
-
-    public float tension = 0.5f;
-    public float length = 0f;
+    protected Tension tension = Tension.AVERAGE;
+    protected float length = 0f;
 
     public Vec3 getEnd(Vec3 basis) {
         return new Vec3(basis.x + offset.x, basis.y + offset.y, basis.z + offset.z);
@@ -81,7 +90,7 @@ public abstract class WireModel<T extends WireModel<?>> {
      * May throw exceptions depending on initialization state
      * and implementing class.
      */
-    abstract void update();
+    public abstract void update();
 
     /**
      * Runs {@link #update} <code>steps</code> number
@@ -107,11 +116,56 @@ public abstract class WireModel<T extends WireModel<?>> {
      */
     public abstract void calculateSegmentation();
 
-
     /**
      * Renders this WireModel to the provided stack.
      */
-    public abstract void render();
+    protected abstract void render(VertexConsumer buffer, Pose pose, MutableExtruder attributes, float pTicks);
+
+    /**
+     * Renders this WireModel to the {@link RenderType} from the provided
+     * {@link TransmitterRegistry Transmitter}. Vertices are automatically
+     * submitted to the buffer associated with the supplied transmitter.
+     * <p> For rendering to the chunk with BlockAtlas support, see {@link #renderFromAtlas}
+     * 
+     * @param basis
+     * @param trns TransmitterType to use (determines the texture)
+     * @param matrixStack Matrix to use as a basis for transformation
+     * @param buffers Buffer source to grab the vertex consumer from
+     * @param pTicks Partial ticks
+     */
+    public void renderDirectly(MultiBufferSource buffers, PoseStack matrixStack, BlockAndTintGetter world, Vec3 worldPos, Vec3 offset, @Nullable TransmitterType<?> type, float pTicks) {
+        assertHasOffset();
+
+        MutableExtruder attributes = CatenaryAttributes.getMutableFor(type, worldPos).in(world);
+        if(!attributes.model.canRender()) {
+            Mechano.LOGGER.error("Attempted to render WireModel for non-drawing type '" + TransmitterRegistry.INSTANCE.getKey(type) + "'");
+            return;
+        }
+
+        RenderType shader = attributes.getShaderFor(type);
+        VertexConsumer buffer = buffers.getBuffer(shader);
+
+        matrixStack.pushPose();
+        matrixStack.translate(offset.x, offset.y, offset.z);
+        render(buffer, matrixStack.last(), attributes, pTicks);
+        matrixStack.popPose();
+    }
+
+    /**
+     * Renders this WireModel using the block atlas and its associated {@link RenderType}. 
+     * This method is designed specifically to inject this WireModel's geometry into
+     * a chunk during its meshing phase.
+     * <p> For rendering in a BER/Entity context, see {@link #renderDirectly}
+     * 
+     * @param basis
+     * @param trns TransmitterType to use (determines the location of the texture in the block atlas)
+     * @param matrixStack Matrix to use as a basis for transformation
+     * @param buffers Buffer source to grab the vertex consumer from
+     * @param pTicks Partial ticks
+     */
+    public void renderFromAtlas(BlockAndTintGetter world, Vec3 basis, @Nullable TransmitterType<?> trns, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
+
+    }
 
     /**
      * Initializes this WireModel, telling it to
@@ -158,11 +212,11 @@ public abstract class WireModel<T extends WireModel<?>> {
      * determines the length of each uniform segment
      */
     public int getSegmentCount() {
-        return Math.max(CATENARY_POINT_MINIMUM, Math.min(CATENARY_POINT_MAXIMUM, (int)(length * CATENARY_POINT_RESOLUTION)));
+        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(length * CatenaryAttributes.DRAW_RES)));
     }   
 
     public Vector3f getGravity(int points) {
-        return new Vector3f(0, (CATENARY_POINT_MASS / (float)points) * (1 - tension), 0);
+        return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * (1 - tension.get()), new Vector3f());
     }
 
     /**
@@ -175,7 +229,7 @@ public abstract class WireModel<T extends WireModel<?>> {
      * @param segmentCount the amount of segments in the wire
      */
     public float getLengthAdjustment(int segmentCount) {
-        return Math.max(0.0015f, (length / segmentCount) + CATENARY_TENSION_EPSILON) / (Math.max(1f, tension * 16f));
+        return Math.max(0.0015f, (length / segmentCount) + CatenaryAttributes.TENSION_EPSILON) / (Math.max(1f, tension.get(16f)));
     }
 
     /**
@@ -187,7 +241,7 @@ public abstract class WireModel<T extends WireModel<?>> {
      * numbers and achieve similar visual results.
      */
     public float getApproximateTension() {
-        return tension;
+        return (1 - tension.get()) * ((Math.abs(offset.x) + Math.abs(offset.z)) / (128 * (tension.getSquared())));
     }
 
     /**
@@ -200,103 +254,56 @@ public abstract class WireModel<T extends WireModel<?>> {
             throw new IllegalStateException("Cannot perform operation on " + this + " - This WireModel is missing a start or end position! (It was either never populated or this WireModel instance was destroyed.)");
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Represents a singular point in 3D space
-     * with a controllable position and velocity.
-     * <h2>Important Note:</h2>
-     * All coordinates for both Points and Sticks fall within the parent
-     * wire's Local frame of reference. This point's position vector
-     * does NOT represent a point in the world. For more information, 
-     * read the javadoc attached to {@link WireModel}
-     */
-    public static class Point {
-        
-        protected Vector3f pos;
-        protected Vector3f lastPos;
-        protected boolean pinned;
-
-        public Point(Vector3f pos) {
-            setPos(pos);
-            this.pinned = false;
-        }
-
-        public void clearPos() {
-            this.pos = new Vector3f();
-            this.lastPos = new Vector3f();
-        }
-
-        public void setPos(Vector3f pos) {
-            this.pos = new Vector3f(pos);
-            this.lastPos = new Vector3f(pos);
-        }
-
-        public void pin() {
-            this.pinned = true;
-            lastPos = new Vector3f(pos);
-        }
-
-        public void unpin() {
-            this.pinned = false;
-        }
-
-        public String toString() {
-            return"(" + String.format("%4.3f" , pos.x) + ", " +  String.format("%4.3f" , pos.y) + ", " +  String.format("%4.3f" , pos.z) + ")";
-        }
-
-        public void drawDebug(Vec3 basis, int hashIndex) {
-            VectorHelper.drawDebugBox(basis.add(pos.x, pos.y, pos.z), 0.05f, Color.BLACK, "point_" + hashIndex);
-        }
+    public boolean increaseTension() {
+        int ord = tension.ordinal() + 1;
+        if(ord >= Tension.values().length) return false;
+        tension = Tension.values()[ord];
+        return true;
     }
 
+    public boolean decreaseTension() {
+        int ord = tension.ordinal() - 1;
+        if(ord < 0) return false;
+        Tension trgt = Tension.values()[ord];
+        if(trgt.equals(Tension.STUPID_LOOSE))
+            return false;
+        tension = trgt;
+        return true;
+    }
 
+    public boolean setTension(Tension tension) {
+        if(tension == null) return setTension();
+        if(this.tension.equals(tension)) return false;
+        this.tension = tension;
+        return true;
+    }
+
+    public boolean setTension() {
+        return resetTension();
+    }
+
+    public boolean resetTension() {
+        if(this.tension.equals(Tension.AVERAGE)) return false;
+        this.tension = Tension.AVERAGE;
+        return true;
+    }
+
+    public boolean setTension(int tension) {
+        return setTension(Tension.values()[Math.max(0, Math.min(Tension.values().length - 1, tension))]);
+    }
+
+    public Tension getTension() {
+        return tension;
+    }
 
     /**
-     * A physical link connecting two {@link Point points}
-     * Designed as a way for PBD/particle simulations to
-     * apprixmimate the behaviour of chains by representing
-     * an arbitrary volume as a length.
-     * <h2>Important Note:</h2>
-     * All coordinates for both Points and Sticks fall within the parent
-     * wire's Local frame of reference. For more information, 
-     * read the javadoc attached to {@link WireModel}
+     * Converts this WireModel to its {@link SimulatedWireModel simulatable version}
+     * if possible. Calls to this method will <strong>uninitialize</strong> this
+     * WireModel instance during the process of creating a SimulatedWireModel,
+     * transfering its {@link Point point data} over without copying.
+     * @param pinEnds <code>true</code> if the resulting SimulatedWireModel
+     * should have its ends pinned during its initialization phase
+     * @return A (new or preexisting) SimulatedWireModel instance
      */
-    public static class Stick {
-
-        protected final Point start, end;
-        protected Vector3f facing;
-        protected Vector3f center;
-
-        public Stick(Point start, Point end) {
-            this.start = start;
-            this.end = end;
-            this.facing = new Vector3f();
-            this.center = new Vector3f();
-        }
-
-        public Vector3f getCenter() {
-            center.x = (start.pos.x + end.pos.x) / 2f;
-            center.y = (start.pos.y + end.pos.y) / 2f;
-            center.z = (start.pos.z + end.pos.z) / 2f;
-            return center;
-        }
-
-        public Vector3f getAsRay() {
-            facing.x = (float)(start.pos.x - end.pos.x);
-            facing.y = (float)(start.pos.y - end.pos.y);
-            facing.z = (float)(start.pos.z - end.pos.z);
-            return facing;
-        }
-
-        public String toString() {
-            return "(" + String.format("%.2f", start.pos.x) + ", " + String.format("%.2f", start.pos.y) + ", " + String.format("%.2f", start.pos.z) + "  ->  " + String.format("%.2f", end.pos.x) + ", " + String.format("%.2f", end.pos.y) + ", " + String.format("%.2f", end.pos.z) + ")";
-        }
-    }
+    public abstract SimulatedWireModel toSimulated(boolean pinEnds);
 }

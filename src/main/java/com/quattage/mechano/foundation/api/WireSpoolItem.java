@@ -1,13 +1,12 @@
 package com.quattage.mechano.foundation.api;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.content.connector.SingleConnectorBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.minecraft.world.InteractionHand;
@@ -61,7 +60,7 @@ public abstract class WireSpoolItem<T extends Transmitter<?>> extends Item imple
         if(!isSelected) return;
         if(!world.isClientSide) return;
 
-        SingleConnectorBlockEntity.endPos = VectorHelper.getLookingRay((Player)entity, 0, 10f).end;
+        PowerGridBlockEntityRenderer.endPos = VectorHelper.getLookingRay((Player)entity, 0, 10f).end;
 
         AnchorPoint previous = AnchorPoint.retrieve(world, stack);
         if(previous == null) 

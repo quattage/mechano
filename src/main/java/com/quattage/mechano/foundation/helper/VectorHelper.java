@@ -5,7 +5,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.helper.shape.ShapeGetter;
 import com.simibubi.create.AllSpecialTextures;
 
 import net.createmod.catnip.outliner.Outliner;
@@ -90,7 +89,7 @@ public class VectorHelper {
      * @param c Color of the line to be drawn
      */
     public static void drawDebugRay(Vec3 basis, Vector3f normal, Color c) {
-        Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x, normal.y, normal.z)).lineWidth(0.02f).disableCull().colored(c);
+        Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x * 0.3f, normal.y * 0.3f, normal.z * 0.3f)).lineWidth(0.02f).disableCull().colored(c);
     }
 
     /***

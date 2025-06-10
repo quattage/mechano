@@ -1,20 +1,33 @@
 package com.quattage.mechano.foundation.api.transmitter;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.IEventBus;
 
 public class TransmitterRegistry {
+
+    public static final TransmitterRegistry INSTANCE = new TransmitterRegistry();
     
     private boolean isLoaded = false;
     private ResourceLocation[] keys = new ResourceLocation[0];
@@ -23,6 +36,10 @@ public class TransmitterRegistry {
     public Transmitter<?> get(int id) {
         TransmitterType<?> type = getRaw(id);
         return type.make();
+    }
+
+    public int size() {
+        return contents.size();
     }
 
     public ResourceLocation getKey(TransmitterType<?> type) {
@@ -90,13 +107,12 @@ public class TransmitterRegistry {
             throw new IllegalStateException("An error occured when building this Transmitter<?> registry - The key array does not match the size of the contents set! (" + keys.length + " != " + contents.size());
         isLoaded = true;
         contents.trim();
-
-        for(ResourceLocation type : contents.keySet()) {
-            Mechano.LOGGER.info("TYPE: " + type);
-        }
     }
 
-
+    public void forEachEntry(BiConsumer<ResourceLocation, TransmitterType<?>> cons) {
+        for(Map.Entry<ResourceLocation, TransmitterType<?>> entry : contents.entrySet())
+            cons.accept(entry.getKey(), entry.getValue());
+    }
 
 
 
@@ -125,12 +141,15 @@ public class TransmitterRegistry {
         private final boolean canSameBlock;
         private final boolean ignoresLimits;
         private final int maxDistance;
-
+        private final CatenaryAttributeHolder defaults;
+        
+        private ResourceLocation textureLocation = null;
+        private TextureAtlasSprite atlasSprite = null;
 
         public static final StreamCodec<ByteBuf, TransmitterType<?>> STREAM_CODEC = new StreamCodec<>() {
             @Override
             public TransmitterType<?> decode(ByteBuf buffer) {
-                TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
+                TransmitterType<?> type = INSTANCE.getRaw(buffer.readByte() + 128);
                 if(type.streamCodec != null) type.streamCodec.decode(buffer);
                 return type;
             }
@@ -141,12 +160,14 @@ public class TransmitterRegistry {
         };
     
 
-        protected TransmitterType(Supplier<T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, boolean canSameBlock, boolean ignoresLimits, int maxDistance) {
+        protected TransmitterType(Supplier<T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, boolean canSameBlock, boolean ignoresLimits, int maxDistance, CatenaryAttributeHolder defaults, ResourceLocation tex) {
             this.defaultConstructor = defaultConstructor;
             this.streamCodec = streamCodec;
             this.canSameBlock = canSameBlock;
             this.ignoresLimits = ignoresLimits;
             this.maxDistance = maxDistance;
+            this.defaults = defaults;
+            this.textureLocation = tex;
         }
 
         /**
@@ -224,10 +245,62 @@ public class TransmitterRegistry {
             return 1 << packedIndex;
         }
 
-
         public CompoundTag writeTo(CompoundTag in) {
             in.putByte("id", packedIndex);
             return in;
+        }
+
+        public CatenaryAttributeHolder getDefaultAttributes() {
+            return defaults;
+        }
+
+        public CatenaryAttributeHolder getAttributes() {
+            return CatenaryAttributeHolder.copy(defaults);
+        }
+
+        public CatenaryAttributeHolder getAttributes(Tension t) {
+            return CatenaryAttributeHolder.copy(defaults).withTension(t);
+        }
+
+        @OnlyIn(Dist.CLIENT)
+        public ResourceLocation getTextureLocation() {
+            return textureLocation != null ? textureLocation : CatenaryModelProvider.MISSING_TEX;
+        }
+
+        @OnlyIn(Dist.CLIENT)
+        @SuppressWarnings("deprecation")
+        public TextureAtlasSprite getSprite() {
+            if(atlasSprite == null) {
+                if(textureLocation == null)
+                    atlasSprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(MissingTextureAtlasSprite.getLocation());
+                else atlasSprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(getTextureLocation());
+            }
+            return atlasSprite;
+        }
+
+        /**
+         * Called by the {@link CatenaryModelProvider} before
+         * {@link #applyResourceReloadResult} to Nullify all 
+         * resource related data in this TransmitterType before
+         * reloading it. This prevents stale resources from
+         * persisting longer than they should.
+         */
+        @OnlyIn(Dist.CLIENT)
+        public void unloadResource() {
+            this.textureLocation = null; 
+            this.atlasSprite = null;
+        }
+
+        /**
+         * Called by the {@link CatenaryModelProvider} to update this
+         * Transmitter's {@link #defaults catenary attributes}
+         * @param model The model cooresponding to this TransmitterType,
+         * as it is supplied by {@link net.minecraft.server.packs.resources.SimplePreparableReloadListener#apply}
+         */
+        @OnlyIn(Dist.CLIENT)
+        public void applyResourceReloadResult(CatenaryModelProvider.ModelDefinition model) {
+            this.textureLocation = model.getTexture();
+            this.atlasSprite = null;
         }
     }
 
@@ -240,6 +313,9 @@ public class TransmitterRegistry {
         private int maxDistance = 16;
         private boolean canSameBlock = false;
         private boolean ignoresLimits = false;
+
+        private CatenaryAttributeHolder defaults = CatenaryAttributes.DEFAULT;
+        private ResourceLocation tex = null;
 
         public TransmitterTypeBuilder(Supplier<T> defaultCtor) {
             this.defaultCtor = defaultCtor;
@@ -292,8 +368,22 @@ public class TransmitterRegistry {
             return this;
         }
 
+        /**
+         * Define a custom set of {@link CatenaryAttributeHolder catenary attributes}
+         * for the rendering pipeline of this TransmitterType's associated catenaries
+         */
+        public TransmitterTypeBuilder<T> withAttributes(CatenaryAttributeHolder defaults) {
+            this.defaults = defaults;
+            return this;
+        }
+
+        public TransmitterTypeBuilder<T> deferTextureTo(ResourceLocation loc) {
+            this.tex = loc;
+            return this;
+        }
+
         public TransmitterType<T> build() {
-            return new TransmitterType<T>(defaultCtor, streamCodec, canSameBlock, ignoresLimits, maxDistance);
+            return new TransmitterType<T>(defaultCtor, streamCodec, canSameBlock, ignoresLimits, maxDistance, defaults, tex);
         }
     }
 }

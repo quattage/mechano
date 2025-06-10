@@ -104,4 +104,6 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
         super.onBlockBroken(world, pos, oldState, newState);
         surrogate.severAndForget();
     }
+
+    
 }

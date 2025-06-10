@@ -14,8 +14,8 @@ import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -91,7 +91,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
             GridNode newEnd = instantiator.getOrCreateProvisional(endAddress);
             if(newEnd == null || newStart.equals(newEnd)) continue;
 
-            Transmitter<?> trns = MechanoTransmissionTypes.REGISTRY.get(serializedLink);
+            Transmitter<?> trns = TransmitterRegistry.INSTANCE.get(serializedLink);
             GridLink newLink = new GridLink(newStart, newEnd, trns);
 
             if(newLink.getConnection().needsSerialization()) {

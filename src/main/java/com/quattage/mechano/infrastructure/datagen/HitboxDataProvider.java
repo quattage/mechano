@@ -19,8 +19,6 @@ import javax.annotation.processing.Generated;
 import org.apache.commons.lang3.text.WordUtils;
 import org.jetbrains.annotations.Nullable;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.hitbox.HitboxRepresentable;
 import com.quattage.mechano.foundation.block.hitbox.HitboxStateTree;
@@ -41,9 +39,6 @@ import net.neoforged.bus.api.IEventBus;
 
 
 public class HitboxDataProvider {
-
-    private static final Gson GSON = new GsonBuilder().setLenient().create();
-
 
     public static void generate(RegistrateGenericProvider provider) {
         provider.add(new Generator() {
@@ -104,7 +99,7 @@ public class HitboxDataProvider {
                     String name = path.getFileName().toString();
                     readModel(
                         cls, hitboxes, name.substring(0, name.lastIndexOf(".")), shape,
-                        (List<Map<String, Map<String, Object>>>)(GSON.fromJson(reader, Map.class).get("elements"))
+                        (List<Map<String, Map<String, Object>>>)(Mechano.GSON.fromJson(reader, Map.class).get("elements"))
                     );
                 } catch(IOException e) {
                     Mechano.LOGGER.error("Error reading file '" + path + "'");

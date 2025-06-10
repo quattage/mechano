@@ -18,7 +18,7 @@ import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -163,7 +163,7 @@ public class GridManifestGenerator {
                     continue;
                 }
                 ResourceLocation trnsKey = null;
-                try { trnsKey = MechanoTransmissionTypes.REGISTRY.getKey(link.transmitter.getType()); }
+                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.transmitter.getType()); }
                 catch(Exception e) { trnsKey = Mechano.asResource("transmitter_acquisition_error"); };
                 out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEnd().strip();
             }

@@ -15,6 +15,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.BooleanOp;
@@ -73,7 +74,6 @@ public abstract class ConnectorBlock<T extends PowerGridBlockEntity> extends Com
 
         world.destroyBlock(pos, true);
     }
-
 
     @Override
     protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {

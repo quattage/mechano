@@ -125,6 +125,7 @@ public class AnchorPoint extends NodeIdentifier {
 
     /**
      * @return The actual Vec3 position of this AnchorPoint with its offset applied
+     * @see {@link #getOffset} to get this AnchorPoint's offset in local space
      */
     public Vec3 getRealPosition() {
         return new Vec3(
@@ -132,6 +133,15 @@ public class AnchorPoint extends NodeIdentifier {
             getY() + offset.y,
             getZ() + offset.z
         );
+    }
+
+
+    /**
+     * @return The raw Vec3 offset of this AnchorPoint from its BlockPos
+     * @see {@link #getRealPosition} to get the actual in-world position of this AnchorPoint
+     */
+    public Vec3 getOffset() {
+        return new Vec3(offset.x, offset.y, offset.z);
     }
 
     /**

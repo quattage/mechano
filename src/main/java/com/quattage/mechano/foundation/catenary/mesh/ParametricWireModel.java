@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary.mesh;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -6,9 +6,9 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.MutableExtruder;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Point;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Stick;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -97,7 +97,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     }
 
     @Override
-    protected void render(VertexConsumer buffer, Pose pose, MutableExtruder attributes, float pTicks) {
+    public void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks) {
         
     }
 

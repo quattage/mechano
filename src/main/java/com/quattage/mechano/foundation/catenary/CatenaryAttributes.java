@@ -10,6 +10,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
@@ -17,11 +18,8 @@ import net.minecraft.Util;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.phys.Vec3;
 
-import com.quattage.mechano.foundation.catenary.meshing.ProfileExtrusion;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.MutableExtruder;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
 
 public class CatenaryAttributes {
 
@@ -36,18 +34,8 @@ public class CatenaryAttributes {
     public static final int DRAW_MIN = 4;
     public static final int DRAW_MAX = 32;
 
-    public static final  CatenaryAttributeHolder INVISIBLE
-        = CatenaryAttributes
-            .as(ModelType.NO_DRAW)
-            .withThickness(Thickness.ZERO);
-
-    public static final CatenaryAttributeHolder DEFAULT 
-        = CatenaryAttributes
-            .as(ModelType.SQUARE)
-            .withThickness(Thickness.TRIPLE)
-            .withTension(Tension.AVERAGE);
-
-
+    
+    
     public static final Function<TransmitterType<?>, RenderType> SOLID_MATERIAL = Util.memoize(trns -> {
         RenderType.CompositeState composite = RenderType.CompositeState.builder()
             .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
@@ -75,56 +63,86 @@ public class CatenaryAttributes {
         return RenderType.create("catenary_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
     });
 
+    public static final  CatenaryAttributeHolder INVISIBLE
+        = CatenaryAttributes
+            .as(ModelType.NO_DRAW)
+            .withThickness(Thickness.ZERO);
+
+    public static final CatenaryAttributeHolder DEFAULT 
+        = CatenaryAttributes
+            .as(ModelType.SQUARE)
+            .withThickness(Thickness.TRIPLE)
+            .withTension(Tension.AVERAGE);
+
+    public static enum ModelType {
+
+        SQUARE(SOLID_MATERIAL, new Extruder() {
+            @Override
+            public void make(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals) {
+                if(previous == null) geo.computeMatrix(current.getForward());
+                else geo.computeMatrix(previous.getForward(), current.getForward());
+                if(faceNormals) {
+                    geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
+                        .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
+                }
+                geo.place4Verts(current.start.pos, 0);
+                if(next != null) geo.computeMatrix(current.getForward(), next.getForward());
+                geo.place4Verts(current.end.pos, 4);
+                geo.walkUVs(current, iteration);
+                geo.emitQuad(buffer, pose, geo.normAX(), geo.normAY(), geo.normAZ(), 0, 4, 5, 1);
+                geo.emitQuad(buffer, pose, -geo.normAX(), -geo.normAY(), -geo.normAZ(), 2, 6, 7, 3);
+                geo.shiftUVs();
+                geo.emitQuad(buffer, pose, geo.normBX(), geo.normBY(), geo.normBZ(), 3, 7, 4, 0);
+                geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 6, 2);
+            }
+        }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.profile),
+
+
+        CROSS(null, null), CROSS_CUTOUT(null, null),
+        BILLBOARD(null, null), BILLBOARD_CUTOUT(null, null),
+        NO_DRAW(null, null);
+
+        public final @Nullable Extruder profile;
+        private final @Nullable Function<TransmitterType<?>, RenderType> mat;
+
+        private ModelType(Function<TransmitterType<?>, RenderType> materialGetter, Extruder extruder) {
+            Mechano.LOGGER.error("FUCK: " + materialGetter);
+            this.profile = extruder;
+            this.mat = Util.memoize(materialGetter);
+        }
+
+        public @Nullable RenderType getShader(TransmitterType<?> type) {
+            if(profile == null) return null;
+            if(type == null) return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+            ResourceLocation loc = TransmitterRegistry.INSTANCE.getKey(type);
+            if(mat == null) {
+                Mechano.LOGGER.warn("No valid RenderType could be found for transmitter '" + loc + "' (Model type '" + this + "')");
+                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+            }
+            RenderType shader = mat.apply(type);
+            if(shader == null) {
+                Mechano.LOGGER.warn("No valid RenderType could be found for transmitter '" + loc + "'");
+                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+            }
+            return shader;
+        }
+
+        public Extruder getProfile() {
+            if(profile == null)
+                throw new UnsupportedOperationException("Extruder for " + this.name() + " has not yet been implemented!");
+            return profile;
+        }
+    }
+
     public static CatenaryAttributeHolder as(ModelType type) {
         return new CatenaryAttributeHolder(type);
     }
-
-
-    public static CatenaryAttributeHolder getFor(@Nullable TransmitterType<?> type) {
-        return getFor(type, null);
-    }
-
-    public static CatenaryAttributeHolder getFor(@Nullable TransmitterType<?> type, Tension t) {
-        if(type == null)
-            return CatenaryAttributeHolder.copy(DEFAULT).withTension(t);
-        return CatenaryAttributeHolder.copy(type.getAttributes()).withTension(t);
-    }
-
-    public static MutableExtruder getMutableFor(@Nullable TransmitterType<?> type, Vec3 basis) {
-        return getMutableFor(type, null, basis);
-    }
-
-    public static MutableExtruder getMutableFor(@Nullable TransmitterType<?> type, Tension tension, Vec3 basis) {
-        if(type == null)
-            return (MutableExtruder)CatenaryAttributeHolder.mutableCopy(DEFAULT, basis).withTension(tension);
-        CatenaryAttributeHolder original = type.getAttributes();
-        MutableExtruder out = new MutableExtruder(original.model, basis);
-        out.thick = original.thick;
-        out.tension = tension == null ? original.tension : tension;
-        return out;
-    }
-
 
     public static class CatenaryAttributeHolder {
 
         public final ModelType model;
         protected @Nullable Thickness thick = Thickness.TRIPLE;
         protected @Nullable Tension tension = null;
-
-        public static CatenaryAttributeHolder copy(CatenaryAttributeHolder in) {
-            CatenaryAttributeHolder copy = new CatenaryAttributeHolder(in.getModelType());
-            copy.thick = in.thick;
-            copy.tension = in.tension;
-            return copy;
-        }
-
-        public static MutableExtruder mutableCopy(CatenaryAttributeHolder in, Vec3 basis) {
-            MutableExtruder copy = CatenaryGeometry
-                .begin(in.getModelType()).at(basis)
-                .withThickness(in.thick)
-                .withTension(in.tension);
-            return copy;
-        }
 
         protected CatenaryAttributeHolder(ModelType model) {
             this.model = model;
@@ -146,12 +164,8 @@ public class CatenaryAttributes {
             return model;
         }
 
-        public float getThickness() {
-            return thick == null ? Thickness.TRIPLE.get() : thick.get();
-        }
-
-        public float getHalfThickness() {
-            return thick == null ? Thickness.TRIPLE.get() / 2f : thick.get() / 2f;
+        public Thickness getThickness() {
+            return thick == null ? Thickness.TRIPLE : thick;
         }
 
         public Tension getTension() {
@@ -167,60 +181,7 @@ public class CatenaryAttributes {
         }
     }
 
-    public static enum ModelType {
-
-        SQUARE(false, true, new ProfileExtrusion() {
-            @Override
-            public void extrude(VertexConsumer buffer, Pose pose, float length, int uWidth, @Nullable float[] verts, @Nullable int[] light, Vector3f[] matrix) {
-                emitQuad(buffer, pose, light, verts, matrix[3], 0, 4, 5, 1, 0, 0, 0, 0);
-                emitQuad(buffer, pose, light, verts, matrix[4], 3, 7, 4, 0, 0, 0, 0, 0);
-                emitQuad(buffer, pose, light, verts, matrix[4], 2, 6, 7, 3, 0, 0, 0, 0);
-                emitQuad(buffer, pose, light, verts, matrix[3], 1, 5, 6, 2, 0, 0, 0, 0);
-            }
-        }), SQUARE_CUTOUT(true, true, SQUARE.profile),
-
-
-        CROSS(false, true, null), CROSS_CUTOUT(true, true, null),
-
-        BILLBOARD(false, true, null), BILLBOARD_CUTOUT(true, true, null),
-
-        NO_DRAW(false, false, null);
-
-        public final ProfileExtrusion profile;
-        private final boolean cutout;
-        private final boolean draws;
-
-        private ModelType(boolean cutout, boolean draws, ProfileExtrusion extruder) {
-            this.cutout = cutout;
-            this.draws = draws;
-            this.profile = extruder;
-        }
-
-        private @Nullable RenderType getShader(TransmitterType<?> type) {
-            if(!draws) return null;
-            if(type == null)
-                return cutout ? RenderType.CUTOUT : RenderType.SOLID;
-            ResourceLocation loc = TransmitterRegistry.INSTANCE.getKey(type);
-            RenderType shader = cutout 
-                ? CUTOUT_MATERIAL.apply(type)
-                : SOLID_MATERIAL.apply(type);
-            if(shader == null) {
-                Mechano.LOGGER.warn("No valid RenderType could be found for regstered TransmitterType '" + loc + "' - A fallback default RenderType was returned!");
-                return cutout ? RenderType.CUTOUT_MIPPED : RenderType.SOLID;
-            }
-            return shader;
-        }
-
-        public ProfileExtrusion getProfile() {
-            if(profile == null)
-                throw new UnsupportedOperationException("Extruder for " + this.name() + " has not yet been implemented!");
-            return profile;
-        }
-
-        public boolean canRender() {
-            return draws;
-        }
-    }
+    
 
     public static enum Thickness {
         ZERO(0),

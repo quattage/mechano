@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary.mesh;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -8,9 +8,9 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.MutableExtruder;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Point;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Stick;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -188,30 +188,27 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
     }
 
     @Override
-    protected void render(VertexConsumer buffer, Pose pose, MutableExtruder attributes, float pTicks) {
+    public void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks) {
         if(sticks.size() < 2) {
             Mechano.LOGGER.error("Attempted to render SimulatedWireModel with invalid (< 2) size!");
             return;
         }
 
-        final float width = attributes.getThickness();
-        final Vector3f[] matrix = new Vector3f[] { new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f() };  // right, up, forward, normal1, normal2
-        final float[] verts = new float[24];
         Stick previous = sticks.getFirst();
-        final int[] light = attributes.getLight(previous);
-
-        attributes.model.profile.make(null, previous, sticks.get(1), light, verts, matrix, attributes, buffer, pose, width, true);
+        geo.light[0] = geo.getLight(previous.start.pos);
+        geo.light[1] = geo.getLight(previous.end.pos);
+        geo.model.profile.make(buffer, pose, geo, null, previous, sticks.get(1), 0, true);
         for(int x = 1; x < sticks.size() - 1; x++) {
             Stick current = sticks.get(x);
-            light[1] = attributes.getLight(current.start.pos);
-            attributes.model.profile.make(previous, current, sticks.get(x + 1), light, verts, matrix, attributes, buffer, pose, width, true);
+            geo.light[1] = geo.getLight(current.start.pos);
+            geo.model.profile.make(buffer, pose, geo, previous, current, sticks.get(x + 1), x, true);
             previous = current;
-            light[0] = light[1];
+            geo.light[0] = geo.light[1];
         }
 
         Stick last = sticks.getLast();
-        light[1] = attributes.getLight(last.end.pos);
-        attributes.model.profile.make(previous, last, null, light, verts, matrix, attributes, buffer, pose, width, true);
+        geo.light[1] = geo.getLight(last.end.pos);
+        geo.model.profile.make(buffer, pose, geo, previous, last, null, sticks.size(), true);
     }
 
     @Override

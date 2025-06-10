@@ -141,7 +141,7 @@ public class TransmitterRegistry {
         private final boolean canSameBlock;
         private final boolean ignoresLimits;
         private final int maxDistance;
-        private final CatenaryAttributeHolder defaults;
+        public final CatenaryAttributeHolder defaults;
         
         private ResourceLocation textureLocation = null;
         private TextureAtlasSprite atlasSprite = null;
@@ -248,18 +248,6 @@ public class TransmitterRegistry {
         public CompoundTag writeTo(CompoundTag in) {
             in.putByte("id", packedIndex);
             return in;
-        }
-
-        public CatenaryAttributeHolder getDefaultAttributes() {
-            return defaults;
-        }
-
-        public CatenaryAttributeHolder getAttributes() {
-            return CatenaryAttributeHolder.copy(defaults);
-        }
-
-        public CatenaryAttributeHolder getAttributes(Tension t) {
-            return CatenaryAttributeHolder.copy(defaults).withTension(t);
         }
 
         @OnlyIn(Dist.CLIENT)

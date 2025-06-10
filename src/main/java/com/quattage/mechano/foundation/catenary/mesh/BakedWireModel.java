@@ -1,8 +1,8 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary.mesh;
 
 public class BakedWireModel {
 
-    // x, y, z, u, v
+    // px, py, pz, nx, ny, nz, u, v
     private float[] mesh;
 
     public void prime(int points) {

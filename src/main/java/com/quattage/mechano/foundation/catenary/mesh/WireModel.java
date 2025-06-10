@@ -1,22 +1,15 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary.mesh;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.MutableExtruder;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryGeometry.Point;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
 
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -41,13 +34,22 @@ import net.minecraft.world.phys.Vec3;
  */
 public abstract class WireModel<T extends WireModel<?>> {
 
-    public static WireModel<?> of(Vec3 start, Vec3 end, @Nullable TransmitterType<?> type) {
+    public static WireModel<?> simulate(Vec3 start, Vec3 end) {
         WireModel<?> wire = new ParametricWireModel();
         wire.initialize().setOffset(start, end);
         wire.update();
         wire = wire.toSimulated(true);
         wire.updateAhead(10);
-        wire.setTension(type == null ? CatenaryAttributes.DEFAULT.getTension() : type.getAttributes().getTension());
+        return wire;
+    }
+
+    public static WireModel<?> simulate(Vec3 start, Vec3 end, Tension t) {
+        WireModel<?> wire = new ParametricWireModel();
+        wire.initialize().setOffset(start, end);
+        wire.update();
+        wire = wire.toSimulated(true);
+        wire.updateAhead(10);
+        wire.setTension(t);
         return wire;
     }
 
@@ -117,55 +119,12 @@ public abstract class WireModel<T extends WireModel<?>> {
     public abstract void calculateSegmentation();
 
     /**
-     * Renders this WireModel to the provided stack.
+     * Renders this WireModel to the provided stack. For more 
+     * comprehensive access and ease of use, this method is
+     * primarily intended to be accessed via the
+     * {@link CatenaryGeometry#render geometry dispatcher}
      */
-    protected abstract void render(VertexConsumer buffer, Pose pose, MutableExtruder attributes, float pTicks);
-
-    /**
-     * Renders this WireModel to the {@link RenderType} from the provided
-     * {@link TransmitterRegistry Transmitter}. Vertices are automatically
-     * submitted to the buffer associated with the supplied transmitter.
-     * <p> For rendering to the chunk with BlockAtlas support, see {@link #renderFromAtlas}
-     * 
-     * @param basis
-     * @param trns TransmitterType to use (determines the texture)
-     * @param matrixStack Matrix to use as a basis for transformation
-     * @param buffers Buffer source to grab the vertex consumer from
-     * @param pTicks Partial ticks
-     */
-    public void renderDirectly(MultiBufferSource buffers, PoseStack matrixStack, BlockAndTintGetter world, Vec3 worldPos, Vec3 offset, @Nullable TransmitterType<?> type, float pTicks) {
-        assertHasOffset();
-
-        MutableExtruder attributes = CatenaryAttributes.getMutableFor(type, worldPos).in(world);
-        if(!attributes.model.canRender()) {
-            Mechano.LOGGER.error("Attempted to render WireModel for non-drawing type '" + TransmitterRegistry.INSTANCE.getKey(type) + "'");
-            return;
-        }
-
-        RenderType shader = attributes.getShaderFor(type);
-        VertexConsumer buffer = buffers.getBuffer(shader);
-
-        matrixStack.pushPose();
-        matrixStack.translate(offset.x, offset.y, offset.z);
-        render(buffer, matrixStack.last(), attributes, pTicks);
-        matrixStack.popPose();
-    }
-
-    /**
-     * Renders this WireModel using the block atlas and its associated {@link RenderType}. 
-     * This method is designed specifically to inject this WireModel's geometry into
-     * a chunk during its meshing phase.
-     * <p> For rendering in a BER/Entity context, see {@link #renderDirectly}
-     * 
-     * @param basis
-     * @param trns TransmitterType to use (determines the location of the texture in the block atlas)
-     * @param matrixStack Matrix to use as a basis for transformation
-     * @param buffers Buffer source to grab the vertex consumer from
-     * @param pTicks Partial ticks
-     */
-    public void renderFromAtlas(BlockAndTintGetter world, Vec3 basis, @Nullable TransmitterType<?> trns, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
-
-    }
+    public abstract void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks);
 
     /**
      * Initializes this WireModel, telling it to

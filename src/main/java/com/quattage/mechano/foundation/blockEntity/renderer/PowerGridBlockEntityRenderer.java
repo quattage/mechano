@@ -7,7 +7,8 @@ import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.catenary.meshing.WireModel;
+import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
+import com.quattage.mechano.foundation.catenary.mesh.WireModel;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -19,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extends SimpleBlockEntityRenderer<T> {
 
     public static Vec3 endPos = null;
+    private static CatenaryGeometry cat;
 
     public PowerGridBlockEntityRenderer(Context context) {
         super(context);
@@ -58,8 +60,11 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
     public void test(T pgbe, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
         if(endPos == null) return;
         Long start = System.nanoTime();
-        WireModel<?> wire = WireModel.of(pgbe.anchors.getByIndex(0).getRealPosition(), endPos, null);
-        wire.renderDirectly(buffers, matrixStack, pgbe.getLevel(), pgbe.anchors.getByIndex(0).getRealPosition(), pgbe.anchors.getByIndex(0).getOffset(), MechanoTransmissionTypes.HOOKUP, pTicks);
+        WireModel<?> wire = WireModel.simulate(pgbe.anchors.getByIndex(0).getRealPosition(), endPos);
+        cat = CatenaryGeometry.as(MechanoTransmissionTypes.HOOKUP)
+            .in(pgbe.getLevel())
+            .withPosition(pgbe.anchors.getByIndex(0).getRealPosition())
+            .render(buffers, matrixStack, wire, pgbe.anchors.getByIndex(0).getOffset(), pTicks);
         // Mechano.LOGGER.warn("TIME: " + ((System.nanoTime() - start) / 1000000f) + "ms");
     }
 

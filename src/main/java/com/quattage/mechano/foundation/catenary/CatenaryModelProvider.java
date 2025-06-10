@@ -33,7 +33,7 @@ public class CatenaryModelProvider extends SimplePreparableReloadListener<Map<Tr
         Map<TransmitterType<?>, ModelDefinition> out = new HashMap<>();
         TransmitterRegistry.INSTANCE.forEachEntry((loc, trns) -> {
             trns.unloadResource();
-            if(!trns.getAttributes().model.canRender()) return;
+            if(trns.defaults.model.profile == null) return;
             ResourceLocation location = ResourceLocation.fromNamespaceAndPath(loc.getNamespace(), "models/block/catenary/" + loc.getPath() + ".json");
             manager.getResource(location).ifPresentOrElse(resource -> {
                 try(Reader reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8)) {

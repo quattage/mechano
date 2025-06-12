@@ -44,7 +44,6 @@ public class MechanoTransmissionTypes {
             ).build()
     );
 
-
     public static void register(IEventBus modBus) {
         TransmitterRegistry.INSTANCE.register(modBus);
     }

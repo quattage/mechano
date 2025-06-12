@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -356,7 +356,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
     /**
      * Finds a node at the given address by iterating through all subgrids.
-     * @param address {@link com.quattage.mechano.foundation.api.landmark.NodeIdentifier NodeIdentifier} to look for
+     * @param address {@link com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier NodeIdentifier} to look for
      * @return A pair containing the {@link GridNode} and its {@link PowerGrid parent}. If a node is not found
      * at the given address, the contents of the pair will be null.
      */

@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.catenary;
+package com.quattage.mechano.foundation.catenary.meshing;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -21,11 +21,12 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.catenary.Catenary;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.ModelType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Thickness;
-import com.quattage.mechano.foundation.catenary.mesh.WireModel;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 /**
@@ -33,50 +34,69 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
  * before it's pushed to a VertexConsumer. This class manages
  * an array of floats to minimize strain on the GC by eliminating
  * boxing/unboxing vectors and continuous re-allocation of hundreds 
- * of floats. 
+ * of floats. To be completely honest, I have no idea whether or 
+ * not this results in any reasonable performance uplift
+ * compared to the alternative, but it's pretty cool, so yknow.
+ * This class will probably be abstracted or replaced when
+ * I move over to flywheel and/or make use of compute shaders.
  * <p>
  * Since it's essentially just a wrapper for all kinds of data related
  * to pushing vertices, geometric operations that use this class
  * can reap the benefits of significantly smaller method headers,
- * such as {@link Extruder} and {@link WireModel#render}
+ * such as {@link MeshExtruder} and {@link Catenary#render}
  */
-public class CatenaryGeometry extends CatenaryAttributeHolder {
+public class GeoHolder extends CatenaryAttributeHolder {
 
-    public static CatenaryGeometry as(TransmitterType<?> type) {
-        return new CatenaryGeometry(type);
+    public static GeoHolder as(TransmitterType<?> type) {
+        return new GeoHolder(type);
+    }
+
+    public static GeoHolder asEmpty() {
+        return new GeoHolder();
     }
 
     private Vec3 basis;
     private MutableBlockPos lightLookup;
-    public final int[] light = new int[] { LightTexture.FULL_BRIGHT, LightTexture.FULL_BRIGHT };
-    private final float[] data = new float[44];
-    private @Nullable BlockAndTintGetter world;
+    private final float[] data = new float[46];
     private RenderType material = RenderType.SOLID;
+
+    private @Nullable BlockAndTintGetter world;
     private @Nullable TextureAtlasSprite atlas;
     private boolean useTextureAtlas = false;
 
-    private CatenaryGeometry(ModelType model) {
+    private GeoHolder(ModelType model) {
         super(model);
-        this.world = null;
         data[41] = 1;
         data[43] = 1;
-        this.lightLookup = new MutableBlockPos();
+        data[44] = LightTexture.FULL_BRIGHT;
+        data[45] = LightTexture.FULL_BRIGHT;
+        lightLookup = new MutableBlockPos();
     }
 
-    private CatenaryGeometry(TransmitterType<?> type) {
+    private GeoHolder(TransmitterType<?> type) {
         super(type.defaults.model);
-        this.world = null;
-        this.lightLookup = new MutableBlockPos();
+        lightLookup = new MutableBlockPos();
         data[41] = 1;
         data[43] = 1;
+        data[44] = LightTexture.FULL_BRIGHT;
+        data[45] = LightTexture.FULL_BRIGHT;
         withAppearance(type);
     }
 
-    public CatenaryGeometry withAppearance(TransmitterType<?> type) {
+    private GeoHolder() {
+        super(null);
+        data[41] = 1;
+        data[43] = 1;
+        data[44] = LightTexture.FULL_BRIGHT;
+        data[45] = LightTexture.FULL_BRIGHT;
+        lightLookup = new MutableBlockPos();
+    }
+
+    public GeoHolder withAppearance(TransmitterType<?> type) {
         this.material = this.model.getShader(type);
         if(this.material == null)
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - Typs type has no configured material!");
-        this.thick = type.defaults.thick;
+        this.thick = type.defaults.getThickness();
         if(this.thick.equals(Thickness.ZERO))
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has a thickness of zero!");
         this.data[0] = thick.half();
@@ -87,28 +107,28 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
     }
 
     @Override
-    public CatenaryGeometry withThickness(Thickness thick) {
+    public GeoHolder withThickness(Thickness thick) {
         data[0] = thick.get() / 2f;
         data[41] = thick.getPixels();
         return this;
     }
 
-    public CatenaryGeometry in(BlockAndTintGetter world) {
+    public GeoHolder in(BlockAndTintGetter world) {
         this.world = world;
         return this;
     } 
 
-    public CatenaryGeometry withPosition(Vec3 pos) {
+    public GeoHolder withPosition(Vec3 pos) {
         this.basis = pos;
         return this;
     }
 
     @Override
-    public CatenaryGeometry withTension(Tension tension) {
-        return (CatenaryGeometry)super.withTension(tension);
+    public GeoHolder withTension(Tension tension) {
+        return (GeoHolder)super.withTension(tension);
     }
 
-    public CatenaryGeometry useAtlas() {
+    public GeoHolder useAtlas() {
         if(atlas == null) {
             Mechano.LOGGER.warn("Attempt to enable CatenaryGeometry texture atlas was ignored since this instance hasn't been configured with an atlas.");
             return this;
@@ -117,9 +137,23 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return this;
     }
 
-    public CatenaryGeometry ignoreAtlas() {
+    public GeoHolder ignoreAtlas() {
         this.useTextureAtlas = false;
         return this;
+    }
+
+    public void reset() {
+        basis = new Vec3(0, 0, 0);
+        lightLookup.set(0, 0, 0);
+        data[44] = LightTexture.FULL_BRIGHT;
+        data[45] = LightTexture.FULL_BRIGHT;
+        resetMatrix();
+        resetVerts();
+        resetUVs();
+        world = null;
+        material = RenderType.SOLID;
+        atlas = null;
+        useTextureAtlas = false;
     }
 
     /**
@@ -134,7 +168,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public CatenaryGeometry render(MultiBufferSource buffers, PoseStack matrixStack, WireModel<?> model, Vec3 localOffset, float pTicks) {
+    public GeoHolder render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, Vec3 localOffset, float pTicks) {
         if(localOffset == null) localOffset = new Vec3(0, 0, 0);
         VertexConsumer buffer = buffers.getBuffer(material);
         matrixStack.pushPose();
@@ -156,7 +190,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public CatenaryGeometry render(MultiBufferSource buffers, PoseStack matrixStack, WireModel<?> model, float pTicks) {
+    public GeoHolder render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, float pTicks) {
         return render(buffers, matrixStack, model, null, pTicks);
     }
 
@@ -231,12 +265,19 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         data[37] = 0; data[38] = 0; data[39] = 0;
     }
 
+    public void resetUVs() {
+        data[40] = 0;
+        data[41] = 1;
+        data[42] = 0;
+        data[43] = 1;
+    }
+
     /**
      * Recomputes this extruder's internal matrix by using the average
      * between the two given vectors 
      * @see {@link #computeMatrix(Vector3f)}
      */
-    public CatenaryGeometry computeMatrix(Vector3f forwardA, Vector3f forwardB) {
+    public GeoHolder computeMatrix(Vector3f forwardA, Vector3f forwardB) {
         return computeMatrix(forwardA.add(forwardB, new Vector3f()).normalize());
     }
 
@@ -250,7 +291,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * <code>forward</code> yourself.
      * @param forward
      */
-    public CatenaryGeometry computeMatrix(Vector3f forward) {
+    public GeoHolder computeMatrix(Vector3f forward) {
         data[4] = CatenaryAttributes.UP.x; 
         data[5] = CatenaryAttributes.UP.y; 
         data[6] = CatenaryAttributes.UP.z;
@@ -279,7 +320,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return this;
     }
 
-    public CatenaryGeometry setNormalA(float x, float y, float z) {
+    public GeoHolder setNormalA(float x, float y, float z) {
         data[10] = x; data[11] = y; data[12] = z;
         float s = fastinvsqrt(Math.fma(data[10], data[10], Math.fma(data[11], data[11], data[12] * data[12])));
         data[10] *= s;
@@ -288,7 +329,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return this;
     }
 
-    public CatenaryGeometry setNormalB(float x, float y, float z) {
+    public GeoHolder setNormalB(float x, float y, float z) {
         data[13] = x; data[14] = y; data[15] = z;
         float s = fastinvsqrt(Math.fma(data[13], data[13], Math.fma(data[14], data[14], data[15] * data[15])));
         data[13] *= s;
@@ -297,7 +338,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return this;
     }
 
-    public CatenaryGeometry setNormalA(Vector3f norm) {
+    public GeoHolder setNormalA(Vector3f norm) {
         data[10] = norm.x; data[11] = norm.y; data[12] = norm.z;
         float s = fastinvsqrt(Math.fma(data[10], data[10], Math.fma(data[11], data[11], data[12] * data[12])));
         data[10] *= s;
@@ -306,7 +347,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return this;
     }
 
-    public CatenaryGeometry setNormalB(Vector3f norm) {
+    public GeoHolder setNormalB(Vector3f norm) {
         data[13] = norm.x; data[14] = norm.y; data[15] = norm.z;
         float s = fastinvsqrt(Math.fma(data[13], data[13], Math.fma(data[14], data[14], data[15] * data[15])));
         data[13] *= s;
@@ -322,7 +363,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         return x * (1.5f - xh * x * x);
     }
 
-    public CatenaryGeometry setVert(int offset, float x, float y, float z) {
+    public GeoHolder setVert(int offset, float x, float y, float z) {
         if(offset >= 8)
             throw new ArrayIndexOutOfBoundsException("Can't get vertex at offset " + offset + " - There are only up to 8 vertices in this CatenaryGeometry!");
         offset = offset * 3 + 16;
@@ -359,7 +400,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * @param pos
      * @param offset The offset to use when storing vertices here.
      */
-    public CatenaryGeometry place4Verts(Vector3f pos, int offset) {
+    public GeoHolder place4Verts(Vector3f pos, int offset) {
         return this.setVert(offset, 
             pos.x + rightX() * radius(),
             pos.y + rightY() * radius(),
@@ -389,7 +430,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * @param z
      * @param offset The offset to use when storing vertices here.
      */
-    public CatenaryGeometry place4Verts(float x, float y, float z, int offset) {
+    public GeoHolder place4Verts(float x, float y, float z, int offset) {
         return this.setVert(offset, 
             x + rightX() * radius(),
             y + rightY() * radius(),
@@ -410,59 +451,59 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
     }
 
 
-    public CatenaryGeometry emitQuad(VertexConsumer buffer, Pose pose, int offsetA, int offsetB, int offsetC, int offsetD) {
+    public GeoHolder emitQuad(VertexConsumer buffer, Pose pose, int offsetA, int offsetB, int offsetC, int offsetD) {
         buffer.addVertex(pose, getVertX(offsetA), getVertY(offsetA), getVertZ(offsetA))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v0())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[0])
+            .setLight((int)data[44])
             .setNormal(pose, normAX(), normAY(), normAZ());
         buffer.addVertex(pose, getVertX(offsetB), getVertY(offsetB), getVertZ(offsetB))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v1())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[1])
+            .setLight((int)data[45])
             .setNormal(pose, normAX(), normAY(), normAZ());
         buffer.addVertex(pose, getVertX(offsetC), getVertY(offsetC), getVertZ(offsetC))
             .setColor(255, 255, 255, 255)
             .setUv(u1(), v1())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[1])
+            .setLight((int)data[45])
             .setNormal(pose, normAX(), normAY(), normAZ());
         buffer.addVertex(pose, getVertX(offsetD), getVertY(offsetD), getVertZ(offsetD))
             .setColor(255, 255, 255, 255)
             .setUv(u1(), v0())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[0])
+            .setLight((int)data[44])
             .setNormal(pose, normAX(), normAY(), normAZ());
         return this;
     }
 
 
-    public CatenaryGeometry emitQuad(VertexConsumer buffer, Pose pose, float normX, float normY, float normZ, int offsetA, int offsetB, int offsetC, int offsetD) {
+    public GeoHolder emitQuad(VertexConsumer buffer, Pose pose, float normX, float normY, float normZ, int offsetA, int offsetB, int offsetC, int offsetD) {
         buffer.addVertex(pose, getVertX(offsetA), getVertY(offsetA), getVertZ(offsetA))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v0())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[0])
+            .setLight((int)data[44])
             .setNormal(pose, normX, normY, normZ);
         buffer.addVertex(pose, getVertX(offsetB), getVertY(offsetB), getVertZ(offsetB))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v1())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[1])
+            .setLight((int)data[45])
             .setNormal(pose, normX, normY, normZ);
         buffer.addVertex(pose, getVertX(offsetC), getVertY(offsetC), getVertZ(offsetC))
             .setColor(255, 255, 255, 255)
             .setUv(u1(), v1())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[1])
+            .setLight((int)data[45])
             .setNormal(pose, normX, normY, normZ);
         buffer.addVertex(pose, getVertX(offsetD), getVertY(offsetD), getVertZ(offsetD))
             .setColor(255, 255, 255, 255)
             .setUv(u1(), v0())
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(light[0])
+            .setLight((int)data[44])
             .setNormal(pose, normX, normY, normZ);
         return this;
     }
@@ -488,14 +529,15 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
             ? atlas.getU(data[43]) : data[43] / 16f;
     }
 
-    public CatenaryGeometry walkUVs(Stick stick, int iteration) {
+    public GeoHolder walkUVs(Stick stick, int iteration) {
         data[42] = (stick.length * 2f) * (float)iteration;
         data[43] = data[42] + (stick.length) * 4;
         if(atlas == null || !useTextureAtlas) return this;
+        // TODO atlas clipping
         return this;
     }
 
-    public CatenaryGeometry shiftUVs() {
+    public GeoHolder shiftUVs() {
         data[40] += thick.getPixels();
         data[40] %= Math.min(thick.getPixels() * 2, CatenaryAttributes.TEX_DIMS[0]);
         data[41] += thick.getPixels();
@@ -510,6 +552,30 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         lightLookup.setY((int)Math.floor(pos.y + basis.y)); 
         lightLookup.setZ((int)Math.floor(pos.z + basis.z));
         return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, lightLookup), world.getBrightness(LightLayer.SKY, lightLookup));
+    }
+
+
+    public int getLight0() {
+        return (int)data[44];
+    }
+
+    public int getLight1() {
+        return (int)data[45];
+    }
+
+    public GeoHolder setLight0(int light) {
+        data[44] = light;
+        return this;
+    }
+
+    public GeoHolder setLight1(int light) {
+        data[45] = light;
+        return this;
+    }
+
+    public GeoHolder walkLight() {
+        data[44] = data[45];
+        return this;
     }
 
     public Vec3 getBasis() {
@@ -528,7 +594,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * All coordinates for both Points and Sticks fall within the parent
      * wire's Local frame of reference. This point's position vector
      * does NOT represent a point in the world. For more information, 
-     * read the javadoc attached to {@link WireModel}
+     * read the javadoc attached to {@link Catenary}
      */
     public static class Point {
 
@@ -537,7 +603,8 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         public boolean pinned;
 
         public Point(Vector3f pos) {
-            setPos(pos);
+            this.pos = new Vector3f(pos);
+            this.lastPos = new Vector3f(pos);
             this.pinned = false;
         }
 
@@ -547,8 +614,8 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
         }
 
         public void setPos(Vector3f pos) {
+            this.lastPos = new Vector3f(this.pos);
             this.pos = new Vector3f(pos);
-            this.lastPos = new Vector3f(pos);
         }
 
         public void pin() {
@@ -582,12 +649,12 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
      * <h2>Important Note:</h2>
      * All coordinates for both Points and Sticks fall within the parent
      * wire's Local frame of reference. For more information, 
-     * read the javadoc attached to {@link WireModel}
+     * read the javadoc attached to {@link Catenary}
      */
     public static class Stick {
 
         public final Point start, end;
-        public final float length;
+        public float length;
         public Vector3f facing;
         public Vector3f center;
 
@@ -610,6 +677,7 @@ public class CatenaryGeometry extends CatenaryAttributeHolder {
             facing.x = (float)(start.pos.x - end.pos.x);
             facing.y = (float)(start.pos.y - end.pos.y);
             facing.z = (float)(start.pos.z - end.pos.z);
+            this.length = facing.length();
             return facing.normalize();
         }
 

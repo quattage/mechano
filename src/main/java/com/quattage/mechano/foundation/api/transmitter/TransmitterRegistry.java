@@ -9,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 
 import io.netty.buffer.ByteBuf;
@@ -83,22 +82,18 @@ public class TransmitterRegistry {
     }
 
     public <T extends Transmitter<?>> TransmitterType<T> register(ResourceLocation key, Supplier<? extends TransmitterType<T>> func) {
-        
         if(isLoaded) throw new IllegalStateException("Cannot register new entries to a TransmitterRegistry that has already been loaded!");
         Objects.requireNonNull(key);
         Objects.requireNonNull(func);
         if(contents.size() >= 32) throw new IllegalStateException("Cannot register new entry '" + key + "' - This TransmitterRegistry is full!");
-
         TransmitterType<T> registryType = func.get();
         if(contents.putIfAbsent(key, registryType) != null) 
             throw new IllegalArgumentException("Duplicate TransmitterRegistry at '" + key + "'");
-
         ResourceLocation[] copy = new ResourceLocation[keys.length + 1];
         System.arraycopy(keys, 0, copy, 0, keys.length);
         registryType.packedIndex = (byte)(keys.length - 128);
         copy[keys.length] = key;
         this.keys = copy;
-
         return registryType;
     }
 

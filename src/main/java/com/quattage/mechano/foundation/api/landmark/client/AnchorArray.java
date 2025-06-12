@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation.api.landmark.client;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
@@ -80,7 +80,7 @@ public class AnchorArray {
     
 
     public boolean contains(BlockPos pos, AnchorPoint anchor) {
-        return anchor.isLocatedAt(pos) && anchor.getIndex() > 0 && anchor.getIndex() < size();
+        return anchor == null ? false : anchor.isLocatedAt(pos) && anchor.getIndex() >= 0 && anchor.getIndex() < size();
     }
 
 

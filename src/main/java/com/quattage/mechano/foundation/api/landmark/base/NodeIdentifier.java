@@ -1,11 +1,13 @@
 
 
-package com.quattage.mechano.foundation.api.landmark;
+package com.quattage.mechano.foundation.api.landmark.base;
 
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 import com.mojang.serialization.Codec;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
 
 import io.netty.buffer.ByteBuf;
@@ -14,6 +16,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 
 /**
  * Basic implementation of {@link NodeIdentifiable} that provides hashing, 
@@ -147,5 +151,51 @@ public abstract class NodeIdentifier implements NodeIdentifiable {
 		public Tracker makeTrackable() {
 			throw new UnsupportedOperationException("Dummy addresses aren't trackable!");
 		}
+    }
+
+
+
+
+    /**
+     * A hashable 
+     */
+    public static class UniversalKey extends Key {
+
+        private UUID entityTarget;
+
+        public UniversalKey(BlockPos pos, UUID entityTarget) {
+            super(pos);
+            this.entityTarget = entityTarget;
+        }
+
+        public UniversalKey(BlockPos pos, int index, UUID entityTarget) {
+            super(pos, index);
+            this.entityTarget = entityTarget;
+        }
+
+        public UniversalKey(int x, int y, int z, int index, UUID entityTarget) {
+            super(x, y, z, index);
+            this.entityTarget = entityTarget;
+        }
+
+        public UUID getEntityUUID() {
+            return entityTarget;
+        }
+
+        public Entity getEntity(ServerLevel world) {
+            return world.getEntity(entityTarget);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() * 31 + entityTarget.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if(this == other) return true;
+            if(!(other instanceof UniversalKey that)) return false;
+            return this.index == that.index && this.getPos().equals(that.getPos()) && this.entityTarget.equals(that.entityTarget);
+        }
     }
 }

@@ -1,13 +1,17 @@
 package com.quattage.mechano.foundation.api;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoDataAttachments;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier.Key;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -32,13 +36,15 @@ public abstract class WireSpoolItem<T extends Transmitter<?>> extends Item imple
         
         ItemStack stack = AnchorSelector.INSTANCE.playerHands.stack();
         AnchorSelector.Active sel = AnchorSelector.INSTANCE.selected;
-
         if(!stack.has(MechanoDataAttachments.ADDRESS_COMPONENT)) {
             if(!AnchorSelector.INSTANCE.selected.response.indicatesSuccess()) {
                 // TODO send initial fail message to selector and GuiLayer
                 return InteractionResultHolder.fail(stack);
             }
-            stack.set(MechanoDataAttachments.ADDRESS_COMPONENT, sel.strip());
+            Key addr = sel.strip();
+            stack.set(MechanoDataAttachments.ADDRESS_COMPONENT, addr);
+            PowerGridBlockEntityRenderer.selected = AnchorPoint.retrieve(level, addr);
+            if(PowerGridBlockEntityRenderer.selected == null) cancelAwaitingConnection(sel, null, stack);
             return InteractionResultHolder.success(stack);
         }
 
@@ -48,28 +54,35 @@ public abstract class WireSpoolItem<T extends Transmitter<?>> extends Item imple
 
         GlobalClientGrid client = SidedGridDispatcher.client(player);
         Response<?> result = client.requestLink(previous, AnchorSelector.INSTANCE.selected.anchor, getTransmitterType());
-        if(Response.shouldBail(result)) stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
-        if(result.indicatesSuccess()) return InteractionResultHolder.success(stack);
+        if(Response.shouldBail(result)) 
+            cancelAwaitingConnection(sel, previous, stack);
+        if(result.indicatesSuccess()) 
+            return InteractionResultHolder.success(stack);
+
         return InteractionResultHolder.fail(stack);
     }
-
 
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
         super.inventoryTick(stack, world, entity, slotId, isSelected);
-        if(!isSelected) return;
         if(!world.isClientSide) return;
-
-        PowerGridBlockEntityRenderer.endPos = VectorHelper.getLookingRay((Player)entity, 0, 10f).end;
-
-        AnchorPoint previous = AnchorPoint.retrieve(world, stack);
-        if(previous == null) 
-            stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+        NodeIdentifiable addr = stack.get(MechanoDataAttachments.ADDRESS_COMPONENT);
+        if(addr == null) return;
+        AnchorPoint previous = AnchorPoint.retrieve(world, addr);
+        if(previous == null)
+            cancelAwaitingConnection(addr, previous, stack);
         else if(!previous.existsInWorld(world))
-            stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
-
+            cancelAwaitingConnection(addr, previous, stack);
+        else if(!previous.hasRoom())
+            cancelAwaitingConnection(addr, previous, stack);
     }
 
+
+    public void cancelAwaitingConnection(NodeIdentifiable addr, @Nullable AnchorPoint target, ItemStack stack) {
+        Mechano.LOGGER.info("CANCELLED: " + addr);
+        stack.remove(MechanoDataAttachments.ADDRESS_COMPONENT);
+        PowerGridBlockEntityRenderer.selected = null;
+    }
 
     @Override
     public boolean isNotReplaceableByPickAction(ItemStack stack, Player player, int inventorySlot) {

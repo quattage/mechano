@@ -1,6 +1,8 @@
 package com.quattage.mechano.foundation.api.landmark;
 
 import com.quattage.mechano.foundation.api.PowerGrid;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 
 import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;

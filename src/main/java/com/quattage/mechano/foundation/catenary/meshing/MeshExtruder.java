@@ -1,13 +1,13 @@
-package com.quattage.mechano.foundation.catenary;
+package com.quattage.mechano.foundation.catenary.meshing;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 @FunctionalInterface
-public interface Extruder {
+public interface MeshExtruder {
     /**
      * Defines a scheme/paradigm for winding a {@link Stick} into an 
      * extruded geometric profile. Implementations define the particular 
@@ -20,9 +20,9 @@ public interface Extruder {
      * their ends. Alternatively, endpoint averaging can be ignored by 
      * simply passing  <code>null</code> in place of either adjacent 
      * stick.
-     * @param buffer VertexConsumer to push geomtry to
+     * @param buffer VertexConsumer to push geometry to
      * @param pose Pose to use for transforming
-     * @param geo {@link CatenaryGeometry} to store and process vertex data
+     * @param geo {@link GeoHolder} to store and process vertex data
      * @param previous (Optional, can be null) The previous stick in the chain
      * @param current (Required) The stick to create a profile of
      * @param next (Optional, can be null) The next stick in the chain
@@ -31,6 +31,7 @@ public interface Extruder {
      * between one another. This is particularly useful for panning UVs across an atlas.
      * @param faceNormals <code>true</code> if new face normals should be computed here. If <code>false</code>,
      * the normals contained in <code>geo</code> will not be recomputed, but reused. 
+     * @param pTicks partial ticks
      */
-    void make(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals);
+    void make(VertexConsumer buffer, Pose pose, GeoHolder geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks);
 }

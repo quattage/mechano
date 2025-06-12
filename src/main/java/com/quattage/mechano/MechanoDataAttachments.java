@@ -4,7 +4,7 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;

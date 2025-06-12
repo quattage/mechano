@@ -14,9 +14,9 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
 import com.quattage.mechano.foundation.api.landmark.NodeSet;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.BlockPos;

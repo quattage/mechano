@@ -13,13 +13,14 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.meshing.MeshExtruder;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
 
 import net.minecraft.Util;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
-
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
 
 public class CatenaryAttributes {
 
@@ -31,11 +32,9 @@ public class CatenaryAttributes {
     public static final float POINT_MASS = 3f;
     public static final float TENSION_EPSILON = 1e-3f;
     public static final float DRAW_RES = 1f;
-    public static final int DRAW_MIN = 4;
+    public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
-    
-    
     public static final Function<TransmitterType<?>, RenderType> SOLID_MATERIAL = Util.memoize(trns -> {
         RenderType.CompositeState composite = RenderType.CompositeState.builder()
             .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
@@ -76,18 +75,22 @@ public class CatenaryAttributes {
 
     public static enum ModelType {
 
-        SQUARE(SOLID_MATERIAL, new Extruder() {
+        SQUARE(SOLID_MATERIAL, new MeshExtruder() {
             @Override
-            public void make(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals) {
+            public void make(VertexConsumer buffer, Pose pose, GeoHolder geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks) {
+
                 if(previous == null) geo.computeMatrix(current.getForward());
                 else geo.computeMatrix(previous.getForward(), current.getForward());
+
                 if(faceNormals) {
                     geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
                         .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
                 }
-                geo.place4Verts(current.start.pos, 0);
+
+                geo.place4Verts(current.start(pTicks), 0);
                 if(next != null) geo.computeMatrix(current.getForward(), next.getForward());
-                geo.place4Verts(current.end.pos, 4);
+                geo.place4Verts(current.end(pTicks), 4);
+
                 geo.walkUVs(current, iteration);
                 geo.emitQuad(buffer, pose, geo.normAX(), geo.normAY(), geo.normAZ(), 0, 4, 5, 1);
                 geo.emitQuad(buffer, pose, -geo.normAX(), -geo.normAY(), -geo.normAZ(), 2, 6, 7, 3);
@@ -102,10 +105,10 @@ public class CatenaryAttributes {
         BILLBOARD(null, null), BILLBOARD_CUTOUT(null, null),
         NO_DRAW(null, null);
 
-        public final @Nullable Extruder profile;
+        public final @Nullable MeshExtruder profile;
         private final @Nullable Function<TransmitterType<?>, RenderType> mat;
 
-        private ModelType(Function<TransmitterType<?>, RenderType> materialGetter, Extruder extruder) {
+        private ModelType(Function<TransmitterType<?>, RenderType> materialGetter, MeshExtruder extruder) {
             Mechano.LOGGER.error("FUCK: " + materialGetter);
             this.profile = extruder;
             this.mat = Util.memoize(materialGetter);
@@ -127,7 +130,7 @@ public class CatenaryAttributes {
             return shader;
         }
 
-        public Extruder getProfile() {
+        public MeshExtruder getProfile() {
             if(profile == null)
                 throw new UnsupportedOperationException("Extruder for " + this.name() + " has not yet been implemented!");
             return profile;
@@ -140,7 +143,7 @@ public class CatenaryAttributes {
 
     public static class CatenaryAttributeHolder {
 
-        public final ModelType model;
+        public @Nullable ModelType model;
         protected @Nullable Thickness thick = Thickness.TRIPLE;
         protected @Nullable Tension tension = null;
 

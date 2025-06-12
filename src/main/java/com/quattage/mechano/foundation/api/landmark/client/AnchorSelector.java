@@ -12,8 +12,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
@@ -96,11 +96,10 @@ public class AnchorSelector {
      */
     public static AnchorSelector INSTANCE = new AnchorSelector();
 
-
     // both may be null for a brief moment before the first tick is fired
     public @Nullable Active selected;
     @Nullable
-    public VectorHelper.Ray lookingRay; // TODO probably just use instance.hitresult
+    public VectorHelper.Ray lookingRay; // TODO instance.hitresult with additional clipping?
     protected float selectedTicks = 0;
 
     public boolean lookedThisFrame = false;
@@ -116,6 +115,8 @@ public class AnchorSelector {
             reset(); 
             return; 
         }
+
+        this.lookingRay = VectorHelper.getLookingRay(player, deltas.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
 
         updateForCurrentFrame(player, deltas);
         if(trackedEntries.isEmpty()) {
@@ -184,7 +185,6 @@ public class AnchorSelector {
     public void reset() {
         lookedThisFrame = false;
         selectedTicks = 0;
-        lookingRay = null;
         selected = null;
         currentTooltip = new ArrayList<>();
         trackedEntries.clear();
@@ -229,8 +229,6 @@ public class AnchorSelector {
     // updates the player's held item, raycast, and tooltip information for this frame
     private void updateForCurrentFrame(LocalPlayer player, DeltaTracker delta) {
         this.playerHands = Transmitable.getHolding(player);
-        float distance = (float)player.blockInteractionRange();
-        this.lookingRay = VectorHelper.getLookingRay(player, delta.getGameTimeDeltaPartialTick(false), distance);
         this.currentTooltip = new ArrayList<>();
     }
 

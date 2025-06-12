@@ -2,7 +2,7 @@ package com.quattage.mechano.infrastructure.manifest;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 
 import io.netty.buffer.ByteBuf;

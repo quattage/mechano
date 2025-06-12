@@ -1,22 +1,24 @@
-package com.quattage.mechano.foundation.catenary.mesh;
+package com.quattage.mechano.foundation.catenary.model;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
+import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Point;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.world.phys.Vec3;
 
-public class ParametricWireModel extends WireModel<ParametricWireModel> {
+public class ParametricCatenary extends Catenary<ParametricCatenary> {
     
     private @Nullable ObjectArrayList<Point> points;
 
@@ -28,7 +30,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     private static final float a = 10f;
 
     @Override
-    public ParametricWireModel setOffset(Vector3f offset) {
+    public ParametricCatenary setOffset(Vector3f offset) {
         if(this.offset == null)
             this.offset = new Vector3f(offset.x, offset.y, offset.z);
         else this.offset.set(offset);
@@ -37,7 +39,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     }
 
     @Override
-    public ParametricWireModel setOffset(Vec3 start, Vec3 end) {
+    public ParametricCatenary setOffset(Vec3 start, Vec3 end) {
         if(this.offset == null) this.offset = new Vector3f();
         this.offset.set((float)(end.x - start.x), (float)(end.y - start.y), (float)(end.z - start.z));
         calculateSegmentation();
@@ -45,7 +47,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     }
 
     @Override
-    public ParametricWireModel initialize() {
+    public ParametricCatenary initialize() {
         this.points = new ObjectArrayList<>();
         return this;
     }
@@ -80,7 +82,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     }
 
     @Override
-    public void update() {
+    public void update(float delta) {
         assertInitialized();
         Vector3f oU = new Vector3f();
         Vector3f oV = new Vector3f();
@@ -97,7 +99,7 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
     }
 
     @Override
-    public void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks) {
+    public void render(VertexConsumer buffer, Pose pose, GeoHolder geo, float pTicks) {
         
     }
 
@@ -136,10 +138,10 @@ public class ParametricWireModel extends WireModel<ParametricWireModel> {
         return out + "]";
     }
 
-    public SimulatedWireModel toSimulated(boolean pinEnds) {
+    public SimulatedCatenary toSimulated(boolean pinEnds) {
         assertInitialized();
         assertHasOffset();
-        SimulatedWireModel simulated = new SimulatedWireModel();
+        SimulatedCatenary simulated = new SimulatedCatenary();
         simulated.points = this.points;
         simulated.sticks = new ObjectArrayList<Stick>(this.points.size() - 1);
         Point previous = null;

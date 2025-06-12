@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.catenary.mesh;
+package com.quattage.mechano.foundation.catenary.model;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -7,10 +7,11 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Point;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -18,7 +19,7 @@ import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.world.phys.Vec3;
 
-public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
+public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
     // average accumulated velocity as of the last time the wire was simulated
     public float avgVelocity = 0;
@@ -26,7 +27,7 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
 
-    public SimulatedWireModel() {}
+    public SimulatedCatenary() {}
 
     /**
      * Initializes a Verlet Integration simulation for this WireModel. Calls to this 
@@ -40,7 +41,7 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
      * that data will be cleared. This WireModel will return to its initial state.
      * @return This WireModel for chaining calls
      */
-    public SimulatedWireModel initialize() {
+    public SimulatedCatenary initialize() {
         assertHasOffset();
         int segments = getSegmentCount();
         this.points = new ObjectArrayList<Point>(segments + 1);
@@ -51,10 +52,8 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
             float spanProgress = 1f - ((float)x / (float)segments);
             Point newPoint = new Point(quicklerp(trgt, spanProgress));
             points.add(x, newPoint);
-            if(previous != null) {
+            if(previous != null)
                 sticks.add(x - 1, new Stick(previous, newPoint));
-                Mechano.LOGGER.info(x + ", " + spanProgress + ": " + sticks.get(x - 1) + ", diff: " + sticks.get(x - 1).start.pos.distance(sticks.get(x - 1).end.pos));
-            }
             previous = newPoint;
         }
         points.getFirst().pin();
@@ -118,7 +117,7 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
 
 
     @Override
-    public SimulatedWireModel setOffset(Vector3f offset) {
+    public SimulatedCatenary setOffset(Vector3f offset) {
         if(this.offset == null)
             this.offset = new Vector3f(offset.x, offset.y, offset.z);
         else this.offset.set(offset);
@@ -127,7 +126,7 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
     }
 
     @Override
-    public SimulatedWireModel setOffset(Vec3 start, Vec3 end) {
+    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
         if(this.offset == null)
             this.offset = new Vector3f();
         this.offset.set((float)(end.x - start.x), (float)(end.y - start.y), (float)(end.z - start.z));
@@ -149,12 +148,14 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
      * @throws IllegalStateException if this WireModel doesn't have {@link #setOffset an offset} or hasn't been {@link #initialize initialized} at least once.
     */
     @Override
-    public void update() {
+    public void update(float delta) {
         assertHasOffset();
         assertSimulatable();
 
         final Vector3f gravity = getGravity(points.size());
         final Vector3d lastPos = new Vector3d();
+
+        // Mechano.LOGGER.info("DELTA: " + timestep);
 
         // apply velocity and gravity
         avgVelocity = 0;
@@ -162,9 +163,9 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
             if(point.pinned) continue;
             lastPos.set(point.pos);
             Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
+            vel.sub(gravity);
             avgVelocity += vel.length();
             point.pos.add(vel);
-            point.pos.sub(gravity);
             point.lastPos.set(lastPos);
         }
 
@@ -188,27 +189,35 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
     }
 
     @Override
-    public void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks) {
+    public void updateAhead(int steps) {
+        for(int x = 0; x < steps * 3; x++) {
+            update();
+            if(avgVelocity <= CatenaryAttributes.TENSION_EPSILON)
+                return;
+        }
+        Mechano.LOGGER.warn("Simulated WireModel of (" + length + "m) couldn't reach a state of restitution in " + steps * 3 + " iterations.");
+    }
+
+    @Override
+    public void render(VertexConsumer buffer, Pose pose, GeoHolder geo, float pTicks) {
         if(sticks.size() < 2) {
             Mechano.LOGGER.error("Attempted to render SimulatedWireModel with invalid (< 2) size!");
             return;
         }
-
         Stick previous = sticks.getFirst();
-        geo.light[0] = geo.getLight(previous.start.pos);
-        geo.light[1] = geo.getLight(previous.end.pos);
-        geo.model.profile.make(buffer, pose, geo, null, previous, sticks.get(1), 0, true);
+        geo.setLight0(geo.getLight(previous.start.pos));
+        geo.setLight1(geo.getLight(previous.end.pos));
+        geo.model.profile.make(buffer, pose, geo, null, previous, sticks.get(1), 0, true, pTicks);
         for(int x = 1; x < sticks.size() - 1; x++) {
             Stick current = sticks.get(x);
-            geo.light[1] = geo.getLight(current.start.pos);
-            geo.model.profile.make(buffer, pose, geo, previous, current, sticks.get(x + 1), x, true);
+            geo.setLight1(geo.getLight(current.start.pos));
+            geo.model.profile.make(buffer, pose, geo, previous, current, sticks.get(x + 1), x, true, pTicks);
             previous = current;
-            geo.light[0] = geo.light[1];
+            geo.walkLight();
         }
-
         Stick last = sticks.getLast();
-        geo.light[1] = geo.getLight(last.end.pos);
-        geo.model.profile.make(buffer, pose, geo, previous, last, null, sticks.size(), true);
+        geo.setLight1(geo.getLight(last.end.pos));
+        geo.model.profile.make(buffer, pose, geo, previous, last, null, sticks.size(), true, pTicks);
     }
 
     @Override
@@ -254,7 +263,7 @@ public class SimulatedWireModel extends WireModel<SimulatedWireModel> {
     }
 
     @Override
-    public SimulatedWireModel toSimulated(boolean pinEnds) {
+    public SimulatedCatenary toSimulated(boolean pinEnds) {
         Mechano.LOGGER.warn("Attempted to convert a SimulatedWireModel to itself!");
         return this;
     }

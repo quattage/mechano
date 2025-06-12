@@ -25,7 +25,7 @@ import net.minecraft.world.level.LevelReader;
  * the {@link com.quattage.mechano.foundation.api.PowerGrid PowerGrid}. 
  * Implementations of this interface usually subclass {@link net.minecraft.world.level.ItemLike ItemLike}.
  */
-public interface Transmitable<T extends Transmitter> {
+public interface Transmitable<T extends Transmitter<?>> {
 
     /**
      * Called continuously on the client while the player is looking at an {@link AnchorPoint} while the player is

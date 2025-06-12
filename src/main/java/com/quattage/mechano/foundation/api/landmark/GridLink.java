@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
 import net.minecraft.nbt.CompoundTag;
@@ -29,8 +30,6 @@ public class GridLink {
         this.length = length;
         this.transmitter = transmitter;
     }
-
-    
 
     public static float getEuclideanDistance(NodeIdentifiable a, NodeIdentifiable b) {
         return (float)Math.sqrt(

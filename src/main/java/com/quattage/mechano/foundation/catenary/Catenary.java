@@ -1,21 +1,29 @@
-package com.quattage.mechano.foundation.catenary.mesh;
+package com.quattage.mechano.foundation.catenary;
+
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
+import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry.Point;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Point;
+import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Provides multiple ways to build, update, simulate, and bake
  * catenary wire meshes. These meshes can be bound to 
- * multple shaders (for both BE and chunk meshes) 
+ * multple shaders (for both chunk and non-chunk meshes) 
  * and pushed to PoseStacks at most phases of rendering.
  *
  * All math is done within a defined local frame.
@@ -29,33 +37,30 @@ import net.minecraft.world.phys.Vec3;
  * <p>
  * Implementations need to keep this in mind when rendering, since it means that the wire must be moved to its 
  * in-world position at some point after it's constructed but before it's drawn. Normally, this is done
- * by translating the PoseStack.
+ * by applying a basis vector and/or translating the PoseStack, depending on what context you're rendering from.
  * 
  */
-public abstract class WireModel<T extends WireModel<?>> {
+public abstract class Catenary<T extends Catenary<?>> {
 
-    public static WireModel<?> simulate(Vec3 start, Vec3 end) {
-        WireModel<?> wire = new ParametricWireModel();
-        wire.initialize().setOffset(start, end);
-        wire.update();
-        wire = wire.toSimulated(true);
-        wire.updateAhead(10);
-        return wire;
+    // TODO FLYWHEEL
+
+    public static void tryUpdateOrElse(BlockEntity be, Catenary<?> model, float pTicks, Consumer<Catenary<?>> cons) {
+        LocalPlayer p = Minecraft.getInstance().player;
+        if(p == null || be == null || model == null || PowerGridBlockEntityRenderer.selected == null) {
+            cons.accept(model);
+            return;
+        }
+        if(!PowerGridBlockEntityRenderer.selected.belongsTo(be)) {
+            cons.accept(model);
+            return;
+        }
+        model.setOffset(PowerGridBlockEntityRenderer.selected.getRealPosition(), p.getRopeHoldPosition(pTicks)).update();
     }
 
-    public static WireModel<?> simulate(Vec3 start, Vec3 end, Tension t) {
-        WireModel<?> wire = new ParametricWireModel();
-        wire.initialize().setOffset(start, end);
-        wire.update();
-        wire = wire.toSimulated(true);
-        wire.updateAhead(10);
-        wire.setTension(t);
-        return wire;
-    }
-
-    protected @Nullable Vector3f offset;
-    protected Tension tension = Tension.AVERAGE;
-    protected float length = 0f;
+    @Nullable
+    public Vector3f offset;
+    public Tension tension = Tension.AVERAGE;
+    public float length = 0f;
 
     public Vec3 getEnd(Vec3 basis) {
         return new Vec3(basis.x + offset.x, basis.y + offset.y, basis.z + offset.z);
@@ -84,20 +89,72 @@ public abstract class WireModel<T extends WireModel<?>> {
      */
     public abstract T setOffset(Vec3 start, Vec3 end);
 
+    @SuppressWarnings("unchecked")
+    public T setOffset(AnchorSelector selector) {
+        if(selector == null) return (T)this;
+        if(!selector.hasSelection()) return (T)this;
+        if(AnchorSelector.INSTANCE.lookingRay == null) return (T)this;
+        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getRealPosition(), AnchorSelector.INSTANCE.lookingRay.end);
+    }
+
 
     /**
      * Updates this WireModel. May bake, simulate, or otherwise
-     * construct a mesh based on the implementing subclass's
-     * requirements.
-     * May throw exceptions depending on initialization state
-     * and implementing class.
+     * construct mesh-related based on the implementing subclass's
+     * requirements in any structure deemed suitable by this
+     * WireModel's underlying implementation. 
+     * <p>
+     * Note that updating a model will not result in any visual
+     * indication that anything has occured in-game. For that to
+     * happen, the model must be {@link #render pushed to a VertexConsumer}
+     * The re-usable pipeline wrapper, {@link GeoHolder}, contains
+     * more robust helper methods for doing this.
+     * <p> 
+     * <h3>A quick note about update cycles</h3>
+     * It is reccomended that most WireModel implementations run
+     * on a fixed update cycle for performance and stability
+     * reasons. Updating WireModels in a frame-dependent context
+     * (such as a renderer) comes with an immediate performance
+     * hit, as well as a potential to produce bad results at 
+     * especially high or low framerates If you must call this
+     * method in a non-fixed context, use the {@link #update(float) 
+     * overload that takes a delta}.
      */
-    public abstract void update();
+    public void update() {
+        update(1);
+    }
+
+    /**
+     * Updates this WireModel. May bake, simulate, or otherwise
+     * construct mesh-related based on the implementing subclass's
+     * requirements in any structure deemed suitable by this
+     * WireModel's underlying implementation. 
+     * <p>
+     * Note that updating a model will not result in any visual
+     * indication that anything has occured in-game. For that to
+     * happen, the model must be {@link #render pushed to a VertexConsumer}
+     * The re-usable pipeline wrapper, {@link GeoHolder}, contains
+     * more robust helper methods for doing this.
+     * <p> 
+     * <h3>A quick note about update cycles</h3>
+     * It is reccomended that most WireModel implementations run
+     * on a fixed update cycle for performance and stability
+     * reasons. Updating WireModels in a frame-dependent context
+     * (such as a renderer) comes with an immediate performance
+     * hit, as well as a potential to produce bad results at 
+     * especially high or low framerates If you must call this
+     * method in a non-fixed context, use the {@link #update(float) 
+     * overload that takes a delta}.
+     */
+    public abstract void update(float delta);
 
     /**
      * Runs {@link #update} <code>steps</code> number
-     * of times. Useful for simulation-based WireModels
-     * that use iterative solvers.
+     * of times. This is useful for simulation-based
+     * WireModel implementations that use iterative
+     * solvers, where you need to run {@link #update}
+     * multiple times in order to achieve the desired 
+     * result.
      * @param steps
      */
     public void updateAhead(int steps) {
@@ -122,9 +179,9 @@ public abstract class WireModel<T extends WireModel<?>> {
      * Renders this WireModel to the provided stack. For more 
      * comprehensive access and ease of use, this method is
      * primarily intended to be accessed via the
-     * {@link CatenaryGeometry#render geometry dispatcher}
+     * {@link GeoHolder#render geometry dispatcher}
      */
-    public abstract void render(VertexConsumer buffer, Pose pose, CatenaryGeometry geo, float pTicks);
+    public abstract void render(VertexConsumer buffer, Pose pose, GeoHolder geo, float pTicks);
 
     /**
      * Initializes this WireModel, telling it to
@@ -176,6 +233,10 @@ public abstract class WireModel<T extends WireModel<?>> {
 
     public Vector3f getGravity(int points) {
         return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * (1 - tension.get()), new Vector3f());
+    }
+
+    public Vector3f getGravity(int points, DeltaTracker delta) {
+        return CatenaryAttributes.UP.mul(((CatenaryAttributes.POINT_MASS / (float)points) * (1 - tension.get())) * delta.getGameTimeDeltaTicks(), new Vector3f());
     }
 
     /**
@@ -256,7 +317,7 @@ public abstract class WireModel<T extends WireModel<?>> {
     }
 
     /**
-     * Converts this WireModel to its {@link SimulatedWireModel simulatable version}
+     * Converts this WireModel to its {@link SimulatedCatenary simulatable version}
      * if possible. Calls to this method will <strong>uninitialize</strong> this
      * WireModel instance during the process of creating a SimulatedWireModel,
      * transfering its {@link Point point data} over without copying.
@@ -264,5 +325,5 @@ public abstract class WireModel<T extends WireModel<?>> {
      * should have its ends pinned during its initialization phase
      * @return A (new or preexisting) SimulatedWireModel instance
      */
-    public abstract SimulatedWireModel toSimulated(boolean pinEnds);
+    public abstract SimulatedCatenary toSimulated(boolean pinEnds);
 }

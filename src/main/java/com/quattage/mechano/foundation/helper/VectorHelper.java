@@ -378,6 +378,10 @@ public class VectorHelper {
             this.end = hit.getLocation();
             this.normal = normal;
         }
+        @Override
+        public String toString() {
+            return "Ray[" + end + "]";
+        }
     }
 
 

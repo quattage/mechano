@@ -8,6 +8,8 @@ import com.quattage.mechano.foundation.api.landmark.client.AnchorArray;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.blockEntity.ElectricBlockEntity;
+import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
+import com.quattage.mechano.foundation.catenary.Catenary;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -56,7 +58,8 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity {
 
     @Override
     public void tick() {
-        
+        if(!getLevel().isClientSide) return;
+        Catenary.tryUpdateOrElse(this, PowerGridBlockEntityRenderer.catenary, 1, (catenary) -> {});
     }
 
     @Override

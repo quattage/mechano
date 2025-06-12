@@ -17,7 +17,7 @@ import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 
 import net.createmod.catnip.platform.CatnipServices;

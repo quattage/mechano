@@ -1,6 +1,6 @@
-package com.quattage.mechano.foundation.catenary.mesh;
+package com.quattage.mechano.foundation.catenary.model;
 
-public class BakedWireModel {
+public class BakedCatenary {
 
     // px, py, pz, nx, ny, nz, u, v
     private float[] mesh;

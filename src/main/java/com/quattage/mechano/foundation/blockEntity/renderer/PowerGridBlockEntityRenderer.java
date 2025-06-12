@@ -1,17 +1,18 @@
 
 package com.quattage.mechano.foundation.blockEntity.renderer;
 
+import javax.annotation.Nullable;
+
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.catenary.CatenaryGeometry;
-import com.quattage.mechano.foundation.catenary.mesh.WireModel;
+import com.quattage.mechano.foundation.catenary.Catenary;
+import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.LocalPlayer; 
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.phys.AABB;
@@ -19,8 +20,9 @@ import net.minecraft.world.phys.Vec3;
 
 public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extends SimpleBlockEntityRenderer<T> {
 
-    public static Vec3 endPos = null;
-    private static CatenaryGeometry cat;
+    public static @Nullable AnchorPoint selected;
+    public static @Nullable GeoHolder mesher = null;
+    public static @Nullable Catenary<?> catenary = null;
 
     public PowerGridBlockEntityRenderer(Context context) {
         super(context);
@@ -31,7 +33,7 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
             int packedLight, int packedOverlay) {
         super.render(blockEntity, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
         tickAnchors(blockEntity);
-        test(blockEntity, poseStack, bufferSource, partialTick);
+        renderPlayerWire(blockEntity, Minecraft.getInstance().player, poseStack, bufferSource, partialTick);
     }
 
     /**
@@ -57,29 +59,43 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
         });
     }
 
-    public void test(T pgbe, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
-        if(endPos == null) return;
-        Long start = System.nanoTime();
-        WireModel<?> wire = WireModel.simulate(pgbe.anchors.getByIndex(0).getRealPosition(), endPos);
-        cat = CatenaryGeometry.as(MechanoTransmissionTypes.HOOKUP)
-            .in(pgbe.getLevel())
-            .withPosition(pgbe.anchors.getByIndex(0).getRealPosition())
-            .render(buffers, matrixStack, wire, pgbe.anchors.getByIndex(0).getOffset(), pTicks);
-        // Mechano.LOGGER.warn("TIME: " + ((System.nanoTime() - start) / 1000000f) + "ms");
+    public void renderPlayerWire(T pgbe, LocalPlayer player, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
+        if(!pgbe.anchors.contains(pgbe.getBlockPos(), selected)) return;
+
+        if(player == null || selected == null) {
+            if(mesher != null) {
+                mesher = null;
+                selected = null;
+                catenary = null;
+            }
+            return;
+        }
+        Vec3 rp = selected.getRealPosition();
+        if(AnchorSelector.INSTANCE.lookingRay == null) return;
+        if(mesher == null) {
+            mesher = GeoHolder.as(AnchorSelector.INSTANCE.playerHands.implementingItem().getTransmitterType())
+                .in(pgbe.getLevel())
+                .withPosition(rp);
+            catenary = new SimulatedCatenary().setOffset(rp, AnchorSelector.INSTANCE.lookingRay.end).initialize();
+        }
+        mesher.render(buffers, matrixStack, catenary, selected.getOffset(), pTicks);
     }
 
     @Override
     public boolean shouldRender(T blockEntity, Vec3 cameraPos) {
-        return true;
+        if(mesher != null) return true;
+        return super.shouldRender(blockEntity, cameraPos);
     }
 
     @Override
     public boolean shouldRenderOffScreen(T blockEntity) {
-        return true;
+        if(mesher != null) return true;
+        return super.shouldRenderOffScreen(blockEntity);
     }
     
     @Override
     public AABB getRenderBoundingBox(T blockEntity) {
-        return AABB.INFINITE;
+        if(mesher != null) return AABB.INFINITE;
+        return super.getRenderBoundingBox(blockEntity);
     }
 }

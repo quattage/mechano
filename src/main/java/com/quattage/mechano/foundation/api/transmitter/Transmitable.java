@@ -5,14 +5,16 @@ import java.util.List;
 
 import static com.quattage.mechano.Mechano.lang;
 
-import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
@@ -35,15 +37,16 @@ public interface Transmitable<T extends Transmitter<?>> {
      * tooltip elements to the provided list if applicable.
      * @param world World to operate within
      * @param tooltip The list of text components that will be appended to the displayed tooltip.
-     * @param be PGBE that the target AnchorPoint belongs to
+     * @param holder Holder that the target AnchorPoint belongs to
      * @param target The AnchorPoint that the player is looking at
      * @param held Container for information about the player and their held item stack
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
-    default Response<?> collectTooltipInfoAndResponse(LevelReader world, List<Component> tooltip, PowerGridBlockEntity be, AnchorPoint target, HoldingSummary held) {
+    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointHoldable holder, AnchorPoint target, HoldingSummary held) {
         lang().text("hi >:)").forGoggles(tooltip);
-        AnchorPoint prev = AnchorPoint.retrieve(world, held.stack.get(MechanoDataAttachments.ADDRESS_COMPONENT));
-        if(target.equals(prev)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
+        GridUUID prevAddress = held.stack.get(GridUUIDData.ATTACHMENT);
+        AnchorPoint prevAnchor = prevAddress == null ? null : prevAddress.getAnchor(world);
+        if(target.equals(prevAnchor)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
         if(!target.isCompatableWith(getTransmitterType())) return Response.Anchor.INCOMPATABLE;
         if(!target.hasRoom()) return Response.Anchor.FULL;
         return Response.SUCCESS;
@@ -109,7 +112,7 @@ public interface Transmitable<T extends Transmitter<?>> {
      * this object.
      */
     public static record HoldingSummary(Player player, InteractionHand hand, ItemStack stack, Transmitable<? extends ItemLike> implementingItem) {
-        public boolean isHoldingReleventItem() { return player != null && hand != null && implementingItem != null; }
+        public boolean isHoldingReleventItem() { return player != null && hand != null && implementingItem != null && stack != null; }
         public int bitmask() { return implementingItem == null ? 0 : implementingItem.getTransmitterType().bitmask(); }
         @Override
         public final String toString() {

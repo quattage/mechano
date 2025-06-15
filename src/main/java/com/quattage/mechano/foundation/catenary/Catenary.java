@@ -7,7 +7,8 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
@@ -44,17 +45,17 @@ public abstract class Catenary<T extends Catenary<?>> {
 
     // TODO FLYWHEEL
 
-    public static void tryUpdateOrElse(BlockEntity be, Catenary<?> model, float pTicks, Consumer<Catenary<?>> cons) {
+    public static void tryUpdateOrElse(AnchorPointHoldable holder, Catenary<?> model, float pTicks, Consumer<Catenary<?>> cons) {
         LocalPlayer p = Minecraft.getInstance().player;
-        if(p == null || be == null || model == null || PowerGridBlockEntityRenderer.selected == null) {
+        if(p == null || holder == null || model == null || PowerGridBlockEntityRenderer.selected == null) {
             cons.accept(model);
             return;
         }
-        if(!PowerGridBlockEntityRenderer.selected.belongsTo(be)) {
+        if(!holder.containsAnchor(PowerGridBlockEntityRenderer.selected)) {
             cons.accept(model);
             return;
         }
-        model.setOffset(PowerGridBlockEntityRenderer.selected.getRealPosition(), p.getRopeHoldPosition(pTicks)).update();
+        model.setOffset(PowerGridBlockEntityRenderer.selected.getPos(), p.getRopeHoldPosition(pTicks)).update();
     }
 
     @Nullable
@@ -94,7 +95,7 @@ public abstract class Catenary<T extends Catenary<?>> {
         if(selector == null) return (T)this;
         if(!selector.hasSelection()) return (T)this;
         if(AnchorSelector.INSTANCE.lookingRay == null) return (T)this;
-        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getRealPosition(), AnchorSelector.INSTANCE.lookingRay.end);
+        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getPos(), AnchorSelector.INSTANCE.lookingRay.end);
     }
 
 

@@ -1,15 +1,14 @@
-package com.quattage.mechano.foundation.api.landmark.client;
+package com.quattage.mechano.foundation.api.anchor;
 
 import java.util.function.Consumer;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -24,7 +23,7 @@ public class AnchorArray {
     public static final AnchorArray EMPTY = new AnchorArray(new AnchorPoint[0]);
     private final AnchorPoint[] anchors;
 
-    public static AnchorArray.Builder construct(BlockEntity parent) {
+    public static AnchorArray.Builder construct(AnchorPointHoldable parent) {
         return new Builder(parent);
     }
 
@@ -77,26 +76,25 @@ public class AnchorArray {
             output += anchors[x] == null ? "\tnull,\n" : ("\t" + anchors[x].toString() + ", \n");
         return output + "]";
     }
-    
 
-    public boolean contains(BlockPos pos, AnchorPoint anchor) {
-        return anchor == null ? false : anchor.isLocatedAt(pos) && anchor.getIndex() >= 0 && anchor.getIndex() < size();
+    public boolean contains(GridUUID addr) {
+        if(addr == null) return false;
+        if(addr.getIndex() < 0 || addr.getIndex() > GridUUID.MAX_SHARED_OCCUPANCY) return false;
+        AnchorPoint anchor = anchors[addr.getIndex()];
+        if(anchor == null) return false;
+        return addr.equals(anchor.getAddress());
     }
 
 
 
 
 
-
-    /**
-     * Fluentish builder for creating AnchorPoint arrays.
-     */
     public static class Builder {
         
-        private ObjectArrayList<AnchorPoint.Builder> anchors = new ObjectArrayList<>(NodeIdentifier.MAX_OCCUPANCY);
-        private BlockEntity parent;
+        private ObjectArrayList<AnchorPoint.Builder> anchors = new ObjectArrayList<>(GridUUID.MAX_SHARED_OCCUPANCY);
+        private AnchorPointHoldable parent;
 
-        public Builder(BlockEntity parent) {
+        public Builder(AnchorPointHoldable parent) {
             this.parent = parent;
         }
 
@@ -116,13 +114,11 @@ public class AnchorArray {
             }
             AnchorPoint[] builtAnchors = new AnchorPoint[anchors.size()];
             for(int x = 0; x < builtAnchors.length; x++) {
-                if(x >= NodeIdentifier.MAX_OCCUPANCY) {
-                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + parent + " - Max anchor occupancy (" + NodeIdentifier.MAX_OCCUPANCY + ") has been reached!");
+                if(x >= GridUUID.MAX_SHARED_OCCUPANCY) {
+                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + parent + " - Max anchor occupancy (" + GridUUID.MAX_SHARED_OCCUPANCY + ") has been reached!");
                     break;
-                }
-                builtAnchors[x] = anchors.get(x).instantiate(pos, x);
-            }
-            return new AnchorArray(builtAnchors);
+                } builtAnchors[x] = anchors.get(x).make(pos, x);
+            } return new AnchorArray(builtAnchors);
         }
     }
 }

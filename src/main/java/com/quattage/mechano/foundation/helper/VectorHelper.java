@@ -82,6 +82,11 @@ public class VectorHelper {
         return Math.max(a.x, Math.max(a.y, a.z));
     }
 
+    public static boolean approxEqual(Vec3 a, Vec3 b) {
+        double eps = 1e-7;
+        return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps && Math.abs(a.z - b.z) < eps;
+    }
+
     /**
      * Draws the normal vector as a line in 3d space
      * @param basis Position of the starting point
@@ -247,8 +252,6 @@ public class VectorHelper {
             (int)Math.floor(vec.z)
         );
     }
-
-    
 
     /***
      * Casts coordinates of a Vec3 to ints and returns a BlockPos

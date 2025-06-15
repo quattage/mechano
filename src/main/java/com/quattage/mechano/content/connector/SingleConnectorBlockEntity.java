@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.foundation.api.landmark.client.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -13,7 +13,7 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
     }
 
     @Override
-    protected void construct(Builder anchors) {
+    public void constructAnchors(Builder anchors) {
         anchors
             .add()
                 .at(8, 16, 8) 

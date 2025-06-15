@@ -266,7 +266,7 @@ public abstract sealed class SidedGridDispatcher permits GlobalClientGrid, Globa
             CatnipServices.NETWORK.sendToClient(
                 evt.getPlayer(), 
                 new LinkResponsePacket(
-                    start.strip(), end.strip(), 
+                    start.getAddress(), end.getAddress(), 
                     lrh, link.getConnection().getType(), 
                     Response.Task.CHUNK_LOAD
                 )

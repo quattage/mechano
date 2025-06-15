@@ -2,22 +2,23 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.level.LevelReader;
 
-public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key end, LinkResponseHolder lrh, TransmitterType<?> transmitter, Response.Task task) implements ClientboundPacketPayload {
+public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolder lrh, TransmitterType<?> transmitter, Response.Task task) implements ClientboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, LinkResponsePacket> STREAM_CODEC = StreamCodec.composite(
-        NodeIdentifier.Key.STREAM_CODEC, LinkResponsePacket::start, 
-        NodeIdentifier.Key.STREAM_CODEC, LinkResponsePacket::end,
+    public static final StreamCodec<RegistryFriendlyByteBuf, LinkResponsePacket> STREAM_CODEC = StreamCodec.composite(
+        GridUUIDData.STREAM_CODEC, LinkResponsePacket::start,
+        GridUUIDData.STREAM_CODEC, LinkResponsePacket::end,
         LinkResponseHolder.STREAM_CODEC, LinkResponsePacket::lrh,
         TransmitterType.STREAM_CODEC, LinkResponsePacket::transmitter,
         Response.Task.STREAM_CODEC, LinkResponsePacket::task,
@@ -29,46 +30,45 @@ public record LinkResponsePacket(NodeIdentifier.Key start, NodeIdentifier.Key en
         return MechanoPackets.LINK_S2C;
     }
 
-
     @Override
     public void handle(LocalPlayer player) {
         LevelReader world = player.level();
-        PowerGridBlockEntity startBE = start.getHost(world);
-        PowerGridBlockEntity endBE = end.getHost(world);
+        AnchorPointHoldable startHost = start.getHolder(world);
+        AnchorPointHoldable endHost = end.getHolder(world);
         if(task == Response.Task.CHUNK_LOAD) {
-            handleAsymmetric(world, startBE);
+            handleAsymmetric(world, startHost);
             return;
         }
-        handleDoubleSided(world, startBE, endBE);
+        handleDoubleSided(world, startHost, endHost);
     }
 
 
-    private void handleDoubleSided(LevelReader world, PowerGridBlockEntity startBE, PowerGridBlockEntity endBE) {
-        if(endBE == null && startBE != null) {
-            startBE.surrogate.sync(world, null);
-            startBE.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
-            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the ending address, got " + startBE);
+    private void handleDoubleSided(LevelReader world, AnchorPointHoldable startHost, AnchorPointHoldable endHost) {
+        if(endHost == null && startHost != null) {
+            startHost.getSurrogate().sync(world, null);
+            startHost.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
+            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the ending address, got " + startHost);
             return;
-        } else if(startBE == null && endBE != null) {
-            endBE.surrogate.sync(world, null);
-            endBE.anchors.getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
-            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address, got " + endBE);
+        } else if(startHost == null && endHost != null) {
+            endHost.getSurrogate().sync(world, null);
+            endHost.getAnchors().getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
+            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address, got " + endHost);
             return;
-        } else if(endBE == null && startBE == null) {
+        } else if(endHost == null && startHost == null) {
             Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at either address!");
             return;
         }
 
-        startBE.surrogate.sync(world, null);
-        startBE.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
-        endBE.surrogate.sync(world, null);
-        endBE.anchors.getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
+        startHost.getSurrogate().sync(world, null);
+        startHost.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
+        endHost.getSurrogate().sync(world, null);
+        endHost.getAnchors().getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
     }
 
-    private void handleAsymmetric(LevelReader world, PowerGridBlockEntity be) {
-        if(be == null)
+    private void handleAsymmetric(LevelReader world,  AnchorPointHoldable host) {
+        if(host == null)
             throw new NullPointerException("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address");
-        be.surrogate.sync(world, null);
-        be.anchors.getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
+        host.getSurrogate().sync(world, null);
+        host.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
     }
 }

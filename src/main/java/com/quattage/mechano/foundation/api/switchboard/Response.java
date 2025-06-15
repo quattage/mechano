@@ -3,7 +3,6 @@ package com.quattage.mechano.foundation.api.switchboard;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 
@@ -19,26 +18,17 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
     public static final Response.Agnostic FAIL_CANCEL = new Agnostic("cancel", false);
     public static final Response.Agnostic FAIL_GENERIC = new Agnostic("generic", false);
 
-
-
-
-
-
     public static final StreamCodec<ByteBuf, Response<?>> STREAM_CODEC = new StreamCodec<>() {
-
         @Override
         public Response<?> decode(ByteBuf buffer) {
             return responses == null ? Response.FAIL_GENERIC : responses[buffer.readByte()];
         }
-
         @Override
         public void encode(ByteBuf buffer, Response<?> value) {
             buffer.writeByte(value.code);
         }
-        
     };
 
-    
     private final String name;
     private final boolean success;
     protected final byte code;
@@ -111,18 +101,6 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         return link.shouldBail();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
     public static final class Anchor extends Response<Anchor> {
 
         public static final Response.Anchor NONE = new Anchor("none", true);
@@ -153,20 +131,6 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
             return "anchor";
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     public static final class Link extends Response<Link>{
 
@@ -253,6 +217,8 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
     public static enum Task {
         CREATE,
         DESTROY,
+        SYNC,
+        UNSYNC,
         RESYNC,
         CHUNK_LOAD
         ;

@@ -1,19 +1,21 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
-public record AnchorPointSyncPacket(NodeIdentifier.Key address, byte connections, boolean enabled) implements ClientboundPacketPayload {
+public record AnchorPointSyncPacket(GridUUID addr, byte connections, boolean enabled) implements ClientboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, AnchorPointSyncPacket> STREAM_CODEC = StreamCodec.composite(
-        NodeIdentifier.Key.STREAM_CODEC, AnchorPointSyncPacket::address,
+    public static final StreamCodec<RegistryFriendlyByteBuf, AnchorPointSyncPacket> STREAM_CODEC = StreamCodec.composite(
+        GridUUIDData.STREAM_CODEC, AnchorPointSyncPacket::addr,
         ByteBufCodecs.BYTE, AnchorPointSyncPacket::connections,
         ByteBufCodecs.BOOL, AnchorPointSyncPacket::enabled,
         AnchorPointSyncPacket::new
@@ -26,9 +28,8 @@ public record AnchorPointSyncPacket(NodeIdentifier.Key address, byte connections
 
     @Override
     public void handle(LocalPlayer player) {
-        AnchorPoint anchor = AnchorPoint.retrieve(player.level(), address);
-        if(anchor == null)
-            return;
+        AnchorPoint anchor = addr.getAnchor((ClientLevel)player.level());
+        if(anchor == null) return;
         anchor.sync(connections, null);
     }
 }

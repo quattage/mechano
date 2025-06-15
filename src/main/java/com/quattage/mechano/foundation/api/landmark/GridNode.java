@@ -8,34 +8,29 @@ import javax.annotation.Nullable;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
-
-
-
 /**
- * A GridNode is a functional implementation of {@link NodeIdentifier} and provides 
+ * A GridNode is a functional implementation of {@link GridIdentifier} and provides 
  * access to the Y axis of an adjacency list defined by the {@link PowerGrid}.
  * Nodes are hashed by <code>X, Y, Z, and I</code>, where <code>XYZ</code> describes the 
  * position in the world, and <code>I</code> is the index of the node at that block 
  * position. Multiple nodes may occupy the same block.
  */
-public class GridNode extends NodeIdentifier {
+public class GridNode {
 
     // all fields are null if this GridNode has been destroyed
-    public @Nullable PowerGrid owner;
-    public @Nullable PowerGridBlockEntity host;
+    private @Nullable PowerGrid owner;
+    private @Nullable AnchorPointHoldable holder;
+    private @Nullable GridUUID address;
 
     /**
      * A list of links to other nodes.
@@ -47,63 +42,30 @@ public class GridNode extends NodeIdentifier {
     public @Nullable ObjectArrayList<GridLink> links = new ObjectArrayList<>();
 
 
-    public GridNode(PowerGrid owner, PowerGridBlockEntity host, int index) {
-        super(host.getBlockPos(), index);
+    public GridNode(PowerGrid owner, AnchorPointHoldable holder, GridUUID address) {
         Objects.requireNonNull(owner);
-        Objects.requireNonNull(host);
+        Objects.requireNonNull(holder);
+        Objects.requireNonNull(address);
         this.owner = owner;
-        this.host = host;
+        this.holder = holder;
+        this.address = address;
     }
 
-
-    /**
-     * Tests the integrity of the data contained within this GridNode
-     * to determine its relevlence. If <code>false,</code> an error will be 
-     * printed to the console. Invalid nodes indicate some kind of serialization
-     * or level loading issue that should be addressed. If all is working,
-     * this check is entirely unncessary, as GridNode instances should
-     * never be allowed to enter a state where calls to this method return false.
-     * @return <code>true</code> if this GridNode is valid.
-     */
-    public boolean isValid() {
-        if(links.isEmpty()) {
-            Mechano.LOGGER.warn("GridNode at " + this + " was found to have no links and failed validity checks.");
-            return false;
-        }
-        if(host == null) {
-            Mechano.LOGGER.warn("GridNode at " + this + " doesn't have a host and failed validity checks.");
-            return false;
-        }
-        if(!host.getBlockPos().equals(getPos())) {
-            Mechano.LOGGER.warn("GridNode at " + this + " node doesn't match its provided host at (" + host.getBlockPos() + "), validity checks failed.");
-            return false;
-        }
-        return true;
+    public GridNode(PowerGrid owner, AnchorPointHoldable holder) {
+        Objects.requireNonNull(owner);
+        Objects.requireNonNull(holder);
+        Objects.requireNonNull(address);
+        this.owner = owner;
+        this.holder = holder;
+        this.address = holder.createAddress();
     }
 
     /**
-     * Creates a new {@link Tracker} instance from this GridNode. TrackedNodes
-     * @return A new TrackedNode instance for hashing and pathfinding
-     */
-    @Override
-    public Tracker makeTrackable() {
-        assertNotDestroyed();
-        return new Tracker(this);
-    }
-
-    public void forEachLink(Consumer<GridLink> cons) {
-        assertNotDestroyed();
-        for(int x = 0; x < links.size(); x++) {
-            cons.accept(links.get(x));
-        }
-    }
-
-    /**
-     * Removes all links from this GridNode that point to the given
+     * Removes all links from his GridNode that point to the given
      * ending address
      * @param address
      */
-    public void removeLinksInvolving(NodeIdentifiable address) {
+    public void removeLinksInvolving(GridUUID address) {
         assertNotDestroyed();
         Iterator<GridLink> linksIterator = links.iterator();
         while(linksIterator.hasNext()) {
@@ -112,7 +74,7 @@ public class GridNode extends NodeIdentifier {
                 linksIterator.remove();
         }
         if(links.isEmpty())
-            this.host.surrogate.severAndForget();
+            holder.getSurrogate().severAndForget();
     }
 
     public void wipeLinks(boolean notify) {
@@ -123,213 +85,76 @@ public class GridNode extends NodeIdentifier {
             it.remove();
             if(!notify) continue;
             thisLink.transmitter.onConnectionDestroyed(owner.getWorld(), null, thisLink);
-            host.onConnectionBroken(owner.getWorld(), thisLink);
+            holder.onConnectionBroken(owner.getWorld(), thisLink);
         }
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        assertNotDestroyed();
+        address.writeTo(in);
+        ListTag serializedLinks = new ListTag();
+        for(GridLink link : links)
+            serializedLinks.add(link.writeTo(new CompoundTag()));
+        in.put("links", serializedLinks);
+        return in;
+    }
+
+    public void forEachLink(Consumer<GridLink> cons) {
+        assertNotDestroyed();
+        for(int x = 0; x < links.size(); x++) {
+            cons.accept(links.get(x));
+        }
+    }
+
+    public boolean isValid() {
+        return true;
+    }
+
+    public PowerGrid getOwner() {
+        return owner;
+    }
+
+    public AnchorPointHoldable getHolder() {
+        return holder;
+    }
+
+    public GridUUID getAddress() {
+        return address;
     }
 
     public boolean hasLinks() {
         return links.size() > 0;
     }
 
-    /**
-     * Determines whether or not the given node is functionally identical to this one.
-     * Differs from {@link NodeIdentifier#equals equals} in that this method compares
-     * more than just its internally-hashed address.
-     * @param other Node to compare
-     * @return <code>true</code> if the given node shares the same position, parent, and links as the given node.
-     */
-    public boolean isExactMatch(GridNode other) {
-        assertNotDestroyed();
-        if(other == this) return true;
-        if(!this.equals(other)) return false;
-        if(!this.host.equals(other.host)) return false;
-        if(this.links.size() != other.links.size()) return false;
-        for(int x = 0; x < links.size(); x++) {
-            if(!this.links.get(x).equals(other.links.get(x)))
-                return false;
-        }
-        return true;
-    }
-
-    @Override
-    public CompoundTag writeTo(CompoundTag in) {
-        assertNotDestroyed();
-        super.writeTo(in);
-        ListTag serializedLinks = new ListTag();
-        for(GridLink link : links) {
-            serializedLinks.add(link.writeTo(new CompoundTag()));
-        }
-        in.put("links", serializedLinks);
-        return in;
-    }
-
     private void assertNotDestroyed() {
-        if(owner == null || host == null || links == null)
+        if(owner == null || holder == null || links == null)
             throw new IllegalStateException("An operation attempted to run on a GridNode that has already been destroyed. (This Node has potentially leaked!)");
     }
 
     public void nullify() {
         this.owner = null;
-        this.host = null;
+        this.holder = null;
         this.links = null;
     }
 
     public void notifyHost() {
-        if(host != null && !host.isRemoved())
-                CatnipServices.NETWORK.sendToAllClients(new AnchorPointSyncPacket(strip(), (byte)(links.size() - 128), true));
+        if(holder != null)
+            CatnipServices.NETWORK.sendToAllClients(new AnchorPointSyncPacket(address, (byte)(links.size() - 128), true));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof GridNode that)) return false;
+        return this.address.equals(that.address);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.address.hashCode();
     }
 
 
 
 
-
-
-
-
-
-    /**
-     * An object that wraps {@link GridNode} instances
-     * while providing additional capabilities that
-     * GridNodes only need intermittently.
-     * 
-     * A {@link PowerGrid} uses instances of this class
-     * to maintain visitation history for pathing guidance.
-     * This ensures safe access while eliminating multiple transient
-     * variables from having to be declared in the GridNode itself.
-     */
-    public static class Tracker implements NodeIdentifiable, Comparable<Tracker> {
-
-        private float f = 0;
-        private float heur = 0;
-        private float cum = Float.MAX_VALUE;
-        private boolean visited = false;
-        public final GridNode node;
-
-        public float getF() {
-            return f;
-        }
-
-        protected Tracker(GridNode node) {
-            this.node = node;
-        }
-
-        /**
-         * Primes this TrackedNode for pathfinding by estimating
-         * a heuristic cost to the target address
-         * @param target 
-         * @return This TrackedNode with modified guidance values
-         */
-        public Tracker estimateCostTo(NodeIdentifiable target) {
-            updateHeuristic(target);
-            this.visited = true;
-            this.cum = 0;
-            return this;
-        }
-
-        /**
-         * Update the heuristic to this address based
-         * directly upon the in-world position of the
-         * target address.
-         * @param target 
-         * @return The updated heuristic value
-         */
-        public float updateHeuristic(NodeIdentifiable target) {
-            this.heur = GridLink.getEuclideanDistance(this, target);
-            this.f = cum + heur;
-            return heur;
-        }
-
-        /**
-         * Updates the heuristic to this address based on the 
-         * traversal cost of the given {@link GridLink}
-         * Modifies this address in-place with the new heuristic and f values.
-         * @param link GridLink describing the connection to be traversed.
-         * @return The new heuristic value stored by this address after modification.
-         */
-        public float updateWeightedHeuristic(GridLink link) {
-            this.heur = link.calculateTraversalCost();
-            this.f = cum + heur;
-            return heur;
-        }
-
-        /**
-         * Investigates the given <code>neighbor</code> across the given <code>link</code>
-         * Returns a boolean representing whether the path described by the link and neighbor should be
-         * addressed. 
-         * @param link The link across which the investigation is occuring
-         * @param neighbor The neighboring node to investigate. Should have the same address as the link's target
-         * @return <code>true</code> if this address is worth investigating while pathfinding
-         */
-        public boolean investigateAcross(GridLink link, Tracker neighbor) {
-            if(neighbor.visited) return false;
-            if(!link.startsWith(this)) return false;
-            if(!link.endsWith(neighbor)) return false;
-            float tentative = this.updateWeightedHeuristic(link) + this.cum;
-            if(tentative < neighbor.cum) {
-                neighbor.cum = tentative;
-                neighbor.updateWeightedHeuristic(link);
-                return true;
-            }
-            return false;
-        }
-
-        /**
-         * Resets the heuristic values in this TrackedNode to defaults.
-         * Not necessary for most circumstances, but can be useful for 
-         * reusing instances.
-         */
-        public void reset() {
-            this.f = 0;
-            this.heur = 0;
-            this.cum = Float.MAX_VALUE;
-            this.visited = false;
-        }
-
-        /**
-         * Compares the heuristic cost of this TrakcedNode
-         * to the given TrackedNode
-         */
-        @Override
-        public int compareTo(Tracker that) {
-            if(this.f > that.f) return 1;
-            if(this.f < that.f) return -1;
-            return 0;
-        }
-
-        @Override
-        public BlockPos getPos() {
-            return node.getPos();
-        }
-
-        @Override
-        public int getIndex() {
-            return node.getIndex();
-        }
-
-        @Override
-        public Tracker makeTrackable() {
-            Mechano.LOGGER.warn("The node " + this + " was already a TrackedNode instance, but a call was made to makeTrackable()");
-            return this;
-        }
-
-        public void markVisited() {
-            this.visited = true;
-        }
-
-        public String toString() {
-            return "TrackedNode (" + getX() + "," + getY() + "," + getZ() + "," + getIndex() + ")";
-        }
-
-        @Override
-        public CompoundTag writeTo(CompoundTag in) {
-            Mechano.LOGGER.warn("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
-            return node.writeTo(in);
-        }
-
-        @Override
-        public CompoundTag writeOnlyAddress(CompoundTag in) {
-            Mechano.LOGGER.warn("Potential bad access - " + this + " was serialized to NBT. (This instanec has probably leaked!)");
-            return node.writeOnlyAddress(in);
-        }
-    }
+    
 }

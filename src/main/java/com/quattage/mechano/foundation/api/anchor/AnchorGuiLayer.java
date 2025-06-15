@@ -1,10 +1,9 @@
-package com.quattage.mechano.foundation.api.landmark.client;
+package com.quattage.mechano.foundation.api.anchor;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.MechanoClientEvents;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.simibubi.create.foundation.gui.RemovedGuiUtils;
 import com.simibubi.create.infrastructure.config.AllConfigs;
@@ -18,6 +17,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -35,8 +35,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class AnchorGuiLayer {
 
 	private static int hoverTicks = 0;
-	private static @Nullable NodeIdentifiable lastTarget = null;
-
+	private static @Nullable AnchorSelector.Active lastTarget = null;
 
 	public static void renderOverlay(GuiGraphics graphics, DeltaTracker deltas) {
 
@@ -100,11 +99,14 @@ public class AnchorGuiLayer {
 			colorBorderBot.scaleAlpha(fade);
 		}
 
-		GuiGameElement.of(AnchorSelector.INSTANCE.selected.be.getBlockState().getBlock().asItem())
+		ItemStack visual = AnchorSelector.INSTANCE.selected.holder.getVisualStack();
+		if(visual != null && !visual.isEmpty()) {
+		GuiGameElement.of(visual)
 			.at(posX + 10, posY - 16, 450)
 			.render(graphics);
-		poseStack.popPose();
+		}
 
+		poseStack.popPose();
 		RemovedGuiUtils.drawHoveringText(graphics, AnchorSelector.INSTANCE.currentTooltip, posX, posY, width, height, -1, colorBackground.getRGB(),
 			colorBorderTop.getRGB(), colorBorderBot.getRGB(), mc.font);
 	}

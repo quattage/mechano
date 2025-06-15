@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.test;
 
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;
@@ -16,7 +16,7 @@ public class TestAxisBlockEntity extends PowerGridBlockEntity {
     }
 
     @Override
-    protected void construct(Builder anchors) {
+    public void constructAnchors(Builder anchors) {
         anchors
         .add()
             .connections(5)

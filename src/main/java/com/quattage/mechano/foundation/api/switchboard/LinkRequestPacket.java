@@ -3,24 +3,25 @@ package com.quattage.mechano.foundation.api.switchboard;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 
-public record LinkRequestPacket(NodeIdentifier.Key start, NodeIdentifier.Key end, TransmitterType<?> transmitter, Response.Task task) implements ServerboundPacketPayload {
+public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?> transmitter, Response.Task task) implements ServerboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, LinkRequestPacket> STREAM_CODEC = StreamCodec.composite(
-        NodeIdentifier.Key.STREAM_CODEC, LinkRequestPacket::start, 
-        NodeIdentifier.Key.STREAM_CODEC, LinkRequestPacket::end,
+    public static final StreamCodec<RegistryFriendlyByteBuf, LinkRequestPacket> STREAM_CODEC = StreamCodec.composite(
+        GridUUIDData.STREAM_CODEC, LinkRequestPacket::start,
+        GridUUIDData.STREAM_CODEC, LinkRequestPacket::end,
         TransmitterType.STREAM_CODEC, LinkRequestPacket::transmitter,
         Response.Task.STREAM_CODEC, LinkRequestPacket::task,
         LinkRequestPacket::new

@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmark.client;
+package com.quattage.mechano.foundation.api.anchor;
 
 import java.util.ArrayList;
 import java.util.PriorityQueue;
@@ -10,10 +10,8 @@ import org.apache.commons.lang3.function.TriConsumer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
@@ -25,10 +23,9 @@ import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
@@ -129,13 +126,13 @@ public class AnchorSelector {
                 reset();
                 return;
             }
-            findTargetAndRun(deltas, (pgbe, sel, distance) -> {
-                pgbe.collectTooltipInfo(currentTooltip, sel.anchor, playerHands);
-                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse(player.level(), currentTooltip, pgbe, sel.anchor, playerHands);
+            findTargetAndRun(deltas, (holder, sel, distance) -> {
+                holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
+                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, holder, sel.anchor, playerHands);
             });
         } else {
-            findTargetAndRun(deltas, (pgbe, sel, distance) -> {
-                pgbe.collectTooltipInfo(currentTooltip, sel.anchor, playerHands);
+            findTargetAndRun(deltas, (holder, sel, distance) -> {
+                holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
                 sel.response = Response.Anchor.NONE;
             });
         }
@@ -221,9 +218,9 @@ public class AnchorSelector {
      * so this distance value doesn't necessarily have to be coherent - you can just submit an abitrary number (like, for example, 0, 
      * if you want this anchor to be evaluated with the highest priority
      */
-    public void track(PowerGridBlockEntity owner, AnchorPoint anchor, float distance) {
-        if(owner == null || anchor == null || distance <= 0) return;
-        trackedEntries.add(new Active(owner, anchor, distance));
+    public void track(AnchorPointHoldable holder, AnchorPoint anchor, float distance) {
+        if(holder == null || anchor == null || distance <= 0) return;
+        trackedEntries.add(new Active(holder, anchor, anchor.getAddress(), distance));
     }
 
     // updates the player's held item, raycast, and tooltip information for this frame
@@ -234,19 +231,19 @@ public class AnchorSelector {
 
     // resets the target if its source was removed from the world
     private void invalidateStaleTarget() {
-        if(selected != null && !selected.anchor.existsInWorld(playerHands.player().level()))
+        if(selected != null && !selected.anchor.existsIn(playerHands.player().level()))
             reset();
     }
 
     /**
      * Searches through nearby AnchorPoints and executes the provided consumer on the most relevent one.
-     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent PGBE,
+     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent holder,
      * and the distance from the player will be passed to the provided consumer. The provided consumer
      * may not fire at all if the player isn't near any AnchorPoints or isn't targeting one directly.
      * This is used internally to handle tooltip aggregation and some basic event stuff.
      * @param cons Consumer that is executed when this 
      */
-    private void findTargetAndRun(DeltaTracker delta, TriConsumer<PowerGridBlockEntity, AnchorSelector.Active, Float> cons) { 
+    private void findTargetAndRun(DeltaTracker delta, TriConsumer<AnchorPointHoldable, AnchorSelector.Active, Float> cons) { 
         // TODO public access may be useful
         lookedThisFrame = false;
         while(!trackedEntries.isEmpty()) {
@@ -255,7 +252,7 @@ public class AnchorSelector {
             if(!sel.anchor.isIntersecting(lookingRay)) continue;
             lookedThisFrame = true;
             selected = sel;
-            cons.accept(sel.be, sel, sel.distance);
+            cons.accept(sel.holder, sel, sel.distance);
             break;
         }
         if(!lookedThisFrame) {
@@ -270,9 +267,19 @@ public class AnchorSelector {
         return !currentTooltip.isEmpty();
     }
 
-    public boolean isSelected(NodeIdentifiable id) {
+    public boolean isSelected(GridUUID id) {
         if(!hasSelection()) return false;
         return selected.anchor.equals(id);
+    }
+
+    public boolean isSelected(AnchorSelector.Active sel) {
+        if(sel == null) return false;
+        return isSelected(sel.address);
+    }
+
+    public boolean isSelected(AnchorPoint anchor) {
+        if(anchor == null) return false;
+        return isSelected(anchor.getAddress());
     }
 
     @Override
@@ -285,17 +292,19 @@ public class AnchorSelector {
      * An {@link AnchorPoint} container for comparing based on distance to the LocalPlayer
      * and sorting in a PriorityQueue
      */
-    public static class Active implements Comparable<Active>, NodeIdentifiable {
+    public static class Active implements Comparable<Active> {
 
-        public final PowerGridBlockEntity be; 
+        public final AnchorPointHoldable holder; 
         public final AnchorPoint anchor;
         public final float distance;
+        public final GridUUID address;
         public Response<?> response;
         private VoxelShape highlightShape;
 
-        public Active(PowerGridBlockEntity be, AnchorPoint anchor, float distance) {
-            this.be = be;
+        public Active(AnchorPointHoldable holder, AnchorPoint anchor, GridUUID address, float distance) {
+            this.holder = holder;
             this.anchor = anchor;
+            this.address = address;
             this.distance = distance;
             this.response = Response.Anchor.NONE;
             float size = anchor.getSize();
@@ -309,7 +318,7 @@ public class AnchorSelector {
         }
 
         public boolean isInvalid() {
-            return be == null || anchor == null || response == null || distance <= 0;
+            return holder == null || anchor == null || response == null || distance <= 0;
         }
 
         @Override
@@ -341,7 +350,7 @@ public class AnchorSelector {
 
             Minecraft mc = Minecraft.getInstance();
             if(mc != null && !mc.level.getWorldBorder().isWithinBounds(basis)) return false;
-            Vec3 shapePos = anchor.getRealPosition();
+            Vec3 shapePos = anchor.getPos();
 
             matrix.pushPose();
             matrix.translate(shapePos.x - basis.x, shapePos.y - basis.y, shapePos.z - basis.z);
@@ -379,34 +388,7 @@ public class AnchorSelector {
 
         @Override
         public String toString() {
-            return "[" + be.getBlockPos() + ", " + anchor + ", " +  response + "]";
-        }
-
-        @Override
-        public BlockPos getPos() {
-            return anchor.getPos();
-        }
-
-        @Override
-        public CompoundTag writeTo(CompoundTag in) {
-            Mechano.LOGGER.warn("Potential bad access - " + this + " (selected) was serialized to NBT!");
-            return anchor.writeTo(in);
-        }
-
-        @Override
-        public CompoundTag writeOnlyAddress(CompoundTag in) {
-            Mechano.LOGGER.warn("Potential bad access - " + this + " (selected) was serialized to NBT!");
-            return anchor.writeOnlyAddress(in);
-        }
-
-        @Override
-        public Tracker makeTrackable() {
-            throw new UnsupportedOperationException("Active selections aren't trackable!");
-        }
-
-        @Override
-        public int getIndex() {
-            return anchor.getIndex();
+            return "[" + holder + ", " + anchor + ", " +  response + "]";
         }
     }
 }

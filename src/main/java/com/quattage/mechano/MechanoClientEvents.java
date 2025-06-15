@@ -1,6 +1,6 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.api.landmark.client.AnchorGuiLayer;
+import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 
 import net.minecraft.client.Minecraft;

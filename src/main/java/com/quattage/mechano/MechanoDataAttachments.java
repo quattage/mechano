@@ -4,7 +4,8 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -33,16 +34,8 @@ public class MechanoDataAttachments {
 
 
     // data components
-    private static final DeferredRegister.DataComponents COMPONENT_REGISTRY = DeferredRegister.createDataComponents(
+    public static final DeferredRegister.DataComponents COMPONENT_REGISTRY = DeferredRegister.createDataComponents(
         Registries.DATA_COMPONENT_TYPE, Mechano.ID);
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<NodeIdentifier.Key>> ADDRESS_COMPONENT
-        = COMPONENT_REGISTRY.registerComponentType(
-            "address",
-            b -> b
-                .persistent(NodeIdentifier.Key.CODEC)
-                .networkSynchronized(NodeIdentifier.Key.STREAM_CODEC)
-    );
 
 
 

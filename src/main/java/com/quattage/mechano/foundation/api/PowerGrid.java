@@ -11,15 +11,17 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
-import com.quattage.mechano.foundation.api.landmark.NodeSet;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.NodeMap;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.impl.HeuristicUUID;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
 
@@ -27,30 +29,30 @@ public class PowerGrid {
 
     protected GlobalServerGrid global;
     public int gridIndex = -1;
-    public NodeSet nodes;
-
-    public PowerGrid(PowerGrid original, @Nullable NodeSet newContents) {
-        Objects.requireNonNull(original);
-        this.global = original.global;
-        this.gridIndex = original.gridIndex;
-        this.nodes = newContents == null ? new NodeSet() : newContents;
-        this.global.subgrids.set(gridIndex, this);
-    }
-
-    public PowerGrid(GlobalServerGrid parent, @Nullable NodeSet newContents) {
-        Objects.requireNonNull(parent);
-        this.gridIndex = parent.subgrids.size();
-        this.global = parent;
-        this.nodes = newContents == null ? new NodeSet() : newContents;
-        this.global.subgrids.add(this);
-    }
+    public NodeMap nodes;
 
     protected PowerGrid(GlobalServerGrid parent, int preload) {
         Objects.requireNonNull(parent);
         this.gridIndex = parent.subgrids.size();
-        this.nodes = new NodeSet(new ObjectOpenHashSet<GridNode>(preload));
+        this.nodes = new NodeMap(new Object2ObjectOpenHashMap<>(preload));
         this.global = parent;
         this.global.subgrids.add(this);
+    }
+
+    public PowerGrid(GlobalServerGrid parent, @Nullable NodeMap newContents) {
+        Objects.requireNonNull(parent);
+        this.gridIndex = parent.subgrids.size();
+        this.global = parent;
+        this.nodes = newContents == null ? new NodeMap() : newContents;
+        this.global.subgrids.add(this);
+    }
+
+    public PowerGrid(PowerGrid original, @Nullable NodeMap newContents) {
+        Objects.requireNonNull(original);
+        this.global = original.global;
+        this.gridIndex = original.gridIndex;
+        this.nodes = newContents == null ? new NodeMap() : newContents;
+        this.global.subgrids.set(gridIndex, this);
     }
 
     /**
@@ -61,18 +63,21 @@ public class PowerGrid {
      * Note that, if the returned GridNode is newly created, it will be blank. 
      * Blank GridNodes that have no links should not persist in the PowerGrid 
      * for long, since they represent dead ends.
-     * @param address Address to get or add (Compatable with any type outlined by {@link NodeSet#get})
+     * @param address Address to get or add (Compatable with any type outlined by {@link NodeMap#get})
      * @return The GridNode at this address, or the new one that was created at the specified address. Will be null if there is no PGBE at the address.
      * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
-    public @Nullable GridNode getOrCreateProvisional(NodeIdentifiable address) {
+    public @Nullable GridNode getOrCreateProvisional(GridUUID address) {
         assertNotDestroyed();
         GridNode node = nodes.get(address);
         if(node != null) return node;
-        PowerGridBlockEntity pgbe = address.getHost(global.getLevelReader());
-        if(pgbe == null) return null;
-        node = new GridNode(this, pgbe, address.getIndex());
-        pgbe.surrogate.owner = this;
+        AnchorPointHoldable host = address.getHolder(global.getLevelReader());
+        if(host == null) {
+            Mechano.LOGGER.error("Failed to instantiate provisional node at " + address + " - No in-world reference to this address could be found!");
+            return null;
+        }
+        node = new GridNode(this, host, address);
+        host.getSurrogate().owner = this;
         this.nodes.add(node);
         return node;
     }
@@ -134,11 +139,11 @@ public class PowerGrid {
      */
     public @Nullable List<PowerGrid> splitDiscontinuities() {
         assertNotDestroyed();
-        final Set<NodeIdentifiable> visited = new HashSet<>();
+        final Set<GridUUID> visited = new HashSet<>();
         final List<PowerGrid> output = new ArrayList<>();
         nodes.forEach(node -> {
-            if(visited.contains(node)) return;
-            NodeSet cluster = new NodeSet();
+            if(visited.contains(node.getAddress())) return;
+            NodeMap cluster = new NodeMap();
             floodFillRecurse(node, visited, cluster);
             if(cluster.size() > 1)
                 output.add(new PowerGrid(this, cluster));
@@ -147,14 +152,14 @@ public class PowerGrid {
     }
 
     // recursive implementation for the method ^^ up there
-    private void floodFillRecurse(NodeIdentifiable start, Set<NodeIdentifiable> visited, NodeSet clusterResult) {
+    private void floodFillRecurse(GridNode start, Set<GridUUID> visited, NodeMap clusterResult) {
         GridNode iteration = nodes.get(start);
-        visited.add(start);
+        visited.add(start.getAddress());
         if(iteration == null || iteration.links.isEmpty()) return;
         clusterResult.add(iteration);
         iteration.forEachLink(link -> {
             GridNode adjacent = link.getEnd();
-            if(!visited.contains(adjacent))
+            if(!visited.contains(adjacent.getAddress()))
                 floodFillRecurse(adjacent, visited, clusterResult);
         });
     }
@@ -169,34 +174,38 @@ public class PowerGrid {
      * @return The resulting {@link GridPath} or null if no path could be found
      * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
-    public @Nullable GridPath findPathBetween(NodeIdentifiable start, NodeIdentifiable end) {
+    public @Nullable GridPath findPathBetween(GridUUID start, GridUUID end) {
         assertNotDestroyed();
 
         if(start == null || !nodes.contains(start)) return null;
         if(end == null || !nodes.contains(end)) return null;
         if(start.equals(end)) return null;
 
-        final Queue<GridNode.Tracker> open = new PriorityQueue<>(11);
+        final Queue<HeuristicUUID> open = new PriorityQueue<>(11);
         final GridPath output = GridPath.makeProvisional();
-        final ObjectOpenHashSet<GridNode.Tracker> trackedNodes = new ObjectOpenHashSet<>();
+        final ObjectOpenHashSet<HeuristicUUID> trackedNodes = new ObjectOpenHashSet<>();
         open.add(start.makeTrackable().estimateCostTo(end));
 
         while(!open.isEmpty()) {
-            final GridNode.Tracker local = open.poll();
-            if(local.equals(end)) return output;
+            final HeuristicUUID local = open.poll();
+            if(local.getAddress().equals(end)) return output;
 
             trackedNodes.add(local);
             local.markVisited();
 
-            local.node.forEachLink(adjacentLink -> {
-                if(!adjacentLink.canTraverse()) return;
+            GridNode localNode = nodes.get(local.getAddress());
+            if(localNode == null) {
+                throw new IllegalStateException("Error encountered while finding path between " + start 
+                    + " and " + end + " - Traversal at " + local.getAddress() + " returned null!");
+            }
 
-                GridNode.Tracker neighbor = trackedNodes.get(adjacentLink.getEnd());
+            localNode.forEachLink(adjacentLink -> {
+                if(!adjacentLink.canTraverse()) return;
+                HeuristicUUID neighbor = trackedNodes.get(adjacentLink.getEnd());
                 if(neighbor == null) {
-                    neighbor = adjacentLink.getEnd().makeTrackable();
+                    neighbor = adjacentLink.getEnd().getAddress().makeTrackable();
                     trackedNodes.add(neighbor);
                 }
-
                 if(local.investigateAcross(adjacentLink, neighbor)) {
                     output.add(adjacentLink);
                     if(!open.contains(neighbor))
@@ -209,16 +218,17 @@ public class PowerGrid {
 
     /**
      * Retrieve every node in this PowerGrid belonging to the given
-     * BlockPos, regardless of index
-     * @param pos block position in the minecraft world to look for
+     * Address, while ignoring that address's index. All {@link GridNode GridNodes} 
+     * that point to the given address will be added to the returned list.
+     * @param addr Address to get all occurances of
      * @return A list of all GridNode objects belonging to the given BlockPos
      * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
      */
-    public List<GridNode> getAllOccurancesOf(BlockPos pos) {
+    public List<GridNode> getAllOccurancesOf(GridUUID addr) {
         assertNotDestroyed();
-        List<GridNode> output = new ArrayList<>(NodeIdentifier.MAX_OCCUPANCY);
-        for(int x = 0; x < NodeIdentifier.MAX_OCCUPANCY; x++) {
-            GridNode link = nodes.get(new NodeIdentifier.Key(pos, x));
+        List<GridNode> output = new ArrayList<>(GridUUID.MAX_SHARED_OCCUPANCY);
+        for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
+            GridNode link = nodes.get(addr.indexedCopy(x));
             if(link == null) break;
             output.add(link);
         }
@@ -226,30 +236,20 @@ public class PowerGrid {
     }
 
     /**
-     * Retrieve every node in this PowerGrid belonging to the given
-     * BlockPos, regardless of index
-     * @param pos block position in the minecraft world to look for
-     * @return A list of all GridNode objects belonging to the given BlockPos
-     */
-    public List<GridNode> getAllOccurancesOf(int x, int y, int z) {
-        return getAllOccurancesOf(new BlockPos(x, y, z));
-    }
-
-    /**
-     * Merges the contents of the provided {@link NodeSet}
+     * Merges the contents of the provided {@link NodeMap}
      * into this PowerGrid.
      * @param otherNodes Nodes to add
      * @return <code>true</code> if this PowerGrid was modified.
      */
-    public boolean addAll(NodeSet otherNodes) {
+    public boolean addAll(NodeMap otherNodes) {
         assertNotDestroyed();
         if(otherNodes.isEmpty()) return false;
-        int oldSize = this.nodes.set.size();
-        this.nodes.set.ensureCapacity(oldSize + otherNodes.set.size());
+        int oldSize = this.nodes.size();
+        this.nodes.ensureCapacity(oldSize + otherNodes.size());
         otherNodes.forEach(node -> {
-            this.nodes.set.add(node);
+            this.nodes.add(node);
         });
-        return oldSize != this.nodes.set.size();
+        return oldSize != this.nodes.size();
     }
 
     /**
@@ -258,14 +258,14 @@ public class PowerGrid {
      */
     public void clear() {
         assertNotDestroyed();
-        Iterator<GridNode> it = nodes.set.iterator();
+        Iterator<GridNode> it = nodes.iterator();
         while (it.hasNext()) {
             GridNode node = it.next();
             node.wipeLinks(true);
             node.nullify();
             it.remove();
         }
-        nodes.set.trim(4);
+        nodes.trim();
         nullify();
     }
 
@@ -277,13 +277,13 @@ public class PowerGrid {
      * @return <code>true</code> if this PowerGrid was modified as a result
      * of this call.
      */
-    public boolean removeNode(NodeIdentifiable address) {
+    public boolean removeNode(GridUUID address) {
         assertNotDestroyed();        
 
         // remove the node in question
         GridNode removed = nodes.get(address);
         if(address == null) return false;
-        nodes.remove(removed);
+        nodes.remove(removed.getAddress());
         if(removed.links.isEmpty()) {
             if(nodes != null && nodes.isEmpty())
                 global.destroyGrid(this);
@@ -312,10 +312,10 @@ public class PowerGrid {
         for(GridNode node : altered) {
             node.notifyHost();
             if(node.links.isEmpty()) {
-                node.host.surrogate.forget(getWorld());
-                nodes.remove(node);
-                if(node.owner.nodes.isEmpty())
-                    global.destroyGrid(node.owner);
+                node.getHolder().getSurrogate().forget(getWorld());
+                nodes.remove(node.getAddress());
+                if(node.getOwner().nodes.isEmpty())
+                    global.destroyGrid(node.getOwner());
                 node.nullify();
             }
         }

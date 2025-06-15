@@ -13,11 +13,11 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBuildParameters;
 import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -26,8 +26,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
 
 public class GridManifestGenerator {
 
@@ -40,7 +38,6 @@ public class GridManifestGenerator {
 
     private @Nullable CompletableFuture<String> clientResponseTask;
     private @Nullable CompletableFuture<String> compiledManifestTask;
-
     private @Nullable ServerPlayer requester = null;
     private @Nullable GlobalServerGrid active = null;
 
@@ -80,7 +77,7 @@ public class GridManifestGenerator {
                 if(grid.nodes.isEmpty()) {
                     manifest += "\t▸ Error (subgrid unpopulated)\n";
                 }
-                for(GridNode node : grid.nodes.set) {
+                for(GridNode node : grid.nodes) {
                     count++;
                     manifest += collectNodeInfo(active.getLevelReader(), node) + "\t└┄┄┄┄\n";
                 }
@@ -107,65 +104,48 @@ public class GridManifestGenerator {
                 .withStyle(ChatFormatting.GREEN), false);
             float elapsed = (System.currentTimeMillis() - this.requestTime) / 1000;
             result += " in " + elapsed + " seconds.         ■▗▗▜▟";
-            unload();
 
+            unload();
             CatnipServices.NETWORK.sendToClient(requester, new ManifestResultPacket("\n" + result));
             Mechano.LOGGER.info("\n\n\n" + result);
         });
         return true;
     }
 
-
-
-
     private String collectNodeInfo(LevelReader world, GridNode node) {
 
-        String out = "\t┌ Node " + node.toString() + ":  ";
+        String out = "\t┌ ▣ " + node.getAddress().toString() + ":  ";
         out += "\n\t┆\t" + (node.isValid() ? "☑ Valid" : "☒ Invalid (See below for details)");
-        out += "\n\t┆\t▸ Owned by Grid " + node.owner.gridIndex;
+        out += "\n\t┆\t▸ Owned by Grid " + node.getOwner().gridIndex;
         out += "\n\t┆\t▸ Bound to: ";
-        PowerGridBlockEntity host = node.host;
+        AnchorPointHoldable host = node.getHolder();
 
-        boolean reaq = false;
-        if(host == null) {
-            host = node.getHost(world);
-            reaq = true;
-        }
-
-        if(node.owner != null) {
-            if(reaq) out += "(♻) ";
-            BlockState state = node.host.getBlockState();
-            if(state == null) {
-                out += "Error (got null BlockState for '" + node.getClass().getSimpleName() + "')";
-            } else {
-                Block block = state.getBlock();
-                if(block == null) {
-                    out += "Error (got null Block for '" + node.getClass().getSimpleName() + "')";
-                } else 
-                    out += "'" + block.getName().getString() + "'";
-            }
+        if(node.getOwner() != null) {
+            String state = host.describeState();
+            if(state == null || state.isEmpty())
+                out += "Error (Host '" + host + "' has not implemented describeState())";
         } else {
             out += "N/A - host invalidated, couldn't be reacquired. \n\t\t\t No further information available.";
             return out;
         }
 
         out += "\n\t┆\t⌕ Dispatch: ";
-        out += "\n\t┆\t\t▸ Server Status: " + (host.surrogate.isSynced() ? ("Synced to Subgrid " + host.surrogate.owner.gridIndex) : "no accelerated reference");
-        out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.strip());
+        out += "\n\t┆\t\t▸ Server Status: " + (host.getSurrogate().isSynced() ? ("Synced to Subgrid " + host.getSurrogate().owner.gridIndex) : "no accelerated reference");
+        out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());
         out += "\n\t┆\t☍ Links:";
 
         if(node.links.isEmpty()) {
             out += "\n\t┆\t\t⚠ Error (no links)";
         } else {
             for(GridLink link : node.links) {
-                if(!link.startsWith(node)) {
+                if(!link.startsWith(node.getAddress())) {
                     out += "⚠ Error (unmatched source)\n";
                     continue;
                 }
                 ResourceLocation trnsKey = null;
                 try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.transmitter.getType()); }
                 catch(Exception e) { trnsKey = Mechano.asResource("transmitter_acquisition_error"); };
-                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEnd().strip();
+                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEnd().getAddress();
             }
         }
 
@@ -180,25 +160,7 @@ public class GridManifestGenerator {
         this.compiledManifestTask = null;
     }
 
-    @Override
-    public String toString() {
-        return requester == null ? "no incoming requests" : "Currently processing a request from '" + getPlayerName() + "' in '" + getDimensionName() + "' at " + getTime();
-    }
-
-    private String getPlayerName() {
-        return requester == null ? "none" : requester.getDisplayName().getString();
-    }
-
-    private String getDimensionName() {
-        return active == null ? "none" : active.getWorld().dimension().location().toString();
-    }
-
-    private String getTime() {
-        return DATE_FT.format(new Date(requestTime));
-    }
-
-
-    private String requestClientInfoFrom(NodeIdentifier.Key addr) {
+    private String requestClientInfoFrom(GridUUID addr) {
         if(requester == null) return "Error (manifest)";
         clientResponseTask = new CompletableFuture<>();
         CatnipServices.NETWORK.sendToClient(requester, new ManifestRequestPacket(addr));
@@ -218,6 +180,22 @@ public class GridManifestGenerator {
             clientResponseTask.complete(data);
     }
 
+    @Override
+    public String toString() {
+        return requester == null ? "no incoming requests" : "Currently processing a request from '" + getPlayerName() + "' in '" + getDimensionName() + "' at " + getTime();
+    }
+
+    private String getPlayerName() {
+        return requester == null ? "none" : requester.getDisplayName().getString();
+    }
+
+    private String getDimensionName() {
+        return active == null ? "none" : active.getWorld().dimension().location().toString();
+    }
+
+    private String getTime() {
+        return DATE_FT.format(new Date(requestTime));
+    }
 
 
     // hehehhahehhehahehehahehaheheahhehehehehehah

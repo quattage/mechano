@@ -1,20 +1,21 @@
 package com.quattage.mechano.infrastructure.manifest;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 
-public record ManifestRequestPacket(NodeIdentifier.Key address) implements ClientboundPacketPayload {
+public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, ManifestRequestPacket> STREAM_CODEC = StreamCodec.composite(
-        NodeIdentifier.Key.STREAM_CODEC, ManifestRequestPacket::address,
+    public static final StreamCodec<RegistryFriendlyByteBuf, ManifestRequestPacket> STREAM_CODEC = StreamCodec.composite(
+        GridUUIDData.STREAM_CODEC, ManifestRequestPacket::addr,
         ManifestRequestPacket::new
     );
 
@@ -25,14 +26,14 @@ public record ManifestRequestPacket(NodeIdentifier.Key address) implements Clien
 
     @Override
     public void handle(LocalPlayer player) {
-        PowerGridBlockEntity pgbe = address.getHost(player.level());
-        if(pgbe == null) {
+        AnchorPointHoldable host = addr.getHolder(player.level());
+        if(host == null) {
             send("\n\t┆\t\t" + "▪ Error (PGBE Not found)");
             return;
         }
-        String out = (pgbe.surrogate.isSynced() ? "Synced, " : "Unsynced, ") + pgbe.anchors.size() + " anchors: ";
-        for(int x = 0; x < pgbe.anchors.size(); x++) {
-            AnchorPoint anchor = pgbe.anchors.getByIndex(x);
+        String out = (host.getSurrogate().isSynced() ? "Synced, " : "Unsynced, ") + host.getAnchors().size() + " anchors: ";
+        for(int x = 0; x < host.getAnchors().size(); x++) {
+            AnchorPoint anchor = host.getAnchor(x);
             if(anchor == null) {
                 out += "\n\t┆\t\t\t▪ Error (null anchor)";
                 continue;

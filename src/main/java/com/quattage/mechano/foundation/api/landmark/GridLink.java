@@ -2,10 +2,11 @@ package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.phys.Vec3;
 
 public class GridLink {
 
@@ -20,7 +21,7 @@ public class GridLink {
         Objects.requireNonNull(transmitter);
         this.start = start;
         this.end = end;
-        this.length = Math.round(getEuclideanDistance(start, end));
+        this.length = Math.round(getEuclideanDistance(start.getAddress(), end.getAddress()));
         this.transmitter = transmitter;
     }
 
@@ -31,27 +32,47 @@ public class GridLink {
         this.transmitter = transmitter;
     }
 
-    public static float getEuclideanDistance(NodeIdentifiable a, NodeIdentifiable b) {
+    public static float getEuclideanDistance(GridUUID a, GridUUID b) {
+        Vec3 aPos = a.getPos();
+        Vec3 bPos = b.getPos();
         return (float)Math.sqrt(
-            Math.pow(a.getX() - b.getX(), 2) +
-            Math.pow(a.getY() - b.getY(), 2) +
-            Math.pow(a.getZ() - b.getZ(), 2)
+            Math.pow(aPos.x - bPos.x, 2) +
+            Math.pow(aPos.y - bPos.y, 2) +
+            Math.pow(aPos.z - bPos.z, 2)
         );
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        end.getAddress().writeTo(in);
+        transmitter.getType().writeTo(in);
+        if(transmitter.needsSerialization()) {
+            CompoundTag extras = new CompoundTag();
+            transmitter.writeTo(extras);
+            in.put("data", extras);
+        }
+        return in;
+    }
+
+    public float calculateTraversalCost() {
+        // TODO traversal cost should vary depending on whether or not
+        // the pathfinding gets closer or further away from the target
+        if(end == null) return Float.MAX_VALUE;
+        return Math.max(0, length + transmitter.getCost());
     }
 
     public GridLink copyAndFlip() {
         return new GridLink(end, start, transmitter, length);
     }
 
-    public boolean startsWith(NodeIdentifiable address) {
-        return start.equals(address);
+    public boolean startsWith(GridUUID address) {
+        return start.getAddress().equals(address);
     }
 
-    public boolean endsWith(NodeIdentifiable address) {
-        return address.equals(end);
+    public boolean endsWith(GridUUID address) {
+        return end.getAddress().equals(address);
     }
 
-    public boolean involves(NodeIdentifiable address) {
+    public boolean involves(GridUUID address) {
         return startsWith(address) || endsWith(address);
     }
 
@@ -65,13 +86,6 @@ public class GridLink {
 
     public boolean canTraverse() {
         return end != null && transmitter.isEnabled();
-    }
-
-    public float calculateTraversalCost() {
-        // TODO traversal cost should vary depending on whether or not
-        // the pathfinding gets closer or further away from the target
-        if(end == null) return Float.MAX_VALUE;
-        return Math.max(0, length + transmitter.getCost());
     }
 
     public boolean equals(Object other) {
@@ -89,16 +103,5 @@ public class GridLink {
 
     public Transmitter<?> getConnection() {
         return transmitter;
-    }
-
-    public CompoundTag writeTo(CompoundTag in) {
-        end.writeOnlyAddress(in);
-        transmitter.getType().writeTo(in);
-        if(transmitter.needsSerialization()) {
-            CompoundTag extras = new CompoundTag();
-            transmitter.writeTo(extras);
-            in.put("data", extras);
-        }
-        return in;
     }
 }

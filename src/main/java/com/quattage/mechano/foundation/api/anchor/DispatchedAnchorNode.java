@@ -1,28 +1,25 @@
-package com.quattage.mechano.foundation.api.landmark;
+package com.quattage.mechano.foundation.api.anchor;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.GlobalServerGrid;
 import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
+import com.quattage.mechano.foundation.api.switchboard.Response;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 
 /**
- * A side-agnostic addressable NodeIdentifiable whose index is always 0.
+ * A side-agnostic version of the {@link AnchorArray} whose index is always 0.
  * This class does a few things: <ul>
  * 
  * <li>Simultaneously represents both logical sides (client and server)
@@ -34,17 +31,16 @@ import net.minecraft.world.level.LevelReader;
  * starting at this DispatchedNode's internally stored BlockEntity instance.
  * <li>Stores an {@link #owner accelerated reference} to the most relevent 
  * {@link PowerGrid} containing an address that points to this
- * DispatchedNode's {@link #pgbe internal BlockEntity},
+ * DispatchedNode's {@link #holder internal host},
  * skipping the need to call {@link GlobalServerGrid#lookup} and avoiding
  * brute-force iteration.
  *
  * </ul><p>
- * This class can be instantiated by implementing BlockEntities as a way
- * to for them to keep track of their PowerGrid representation on both
- * logical sides while avoiding race conditions, stale data, and large 
- * packets.
+ * This class should be instantiated by implementing {@link AnchorPointHostable hosts} 
+ * as a way to for them to keep track of their PowerGrid representation on both logical 
+ * sides while avoiding race conditions, stale data, and large packets.
  */
-public final class DispatchedNode implements NodeIdentifiable {
+public final class DispatchedAnchorNode {
 
     /**
      * The owner is always null on the client, and sometimes null
@@ -63,7 +59,10 @@ public final class DispatchedNode implements NodeIdentifiable {
      * Never null, immutable - The host of this DispatchedNode
      * in the world. Used for getting BlockPos and level.
      */
-    private final PowerGridBlockEntity pgbe;
+    private final AnchorPointHoldable holder;
+
+    // lazily loaded from the holder
+    public @Nullable GridUUID addr = null;
 
     /**
      * Indicates (on both the server and client) the
@@ -71,9 +70,9 @@ public final class DispatchedNode implements NodeIdentifiable {
      */
     public int nodeCount = -1;
 
-    public DispatchedNode(PowerGridBlockEntity pgbe) {
-        Objects.requireNonNull(pgbe);
-        this.pgbe = pgbe;
+    public DispatchedAnchorNode(AnchorPointHoldable holder) {
+        Objects.requireNonNull(holder);
+        this.holder = holder;
     }
 
     /**
@@ -94,7 +93,7 @@ public final class DispatchedNode implements NodeIdentifiable {
         if(!world.isClientSide()) {
             belongsToNetwork = true;
             this.owner = newOwner;
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getPos(), SidedTask.SYNC));
+            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getOrMakeAddress(), Response.Task.SYNC));
             return;
         }
         belongsToNetwork = true;
@@ -108,14 +107,14 @@ public final class DispatchedNode implements NodeIdentifiable {
      * this method does not alter the PowerGrid itself. This can result
      * in stale references in the PowerGrid if not used carefully.
      * <p> 
-     * When in doubt, use {@link DispatchedNode#severAndForget()} instead.
+     * When in doubt, use {@link DispatchedAnchorNode#severAndForget()} instead.
      * @param world
      */
     public void forget(LevelReader world) {
         if(!world.isClientSide()) {
             belongsToNetwork = false;
             this.owner = null;
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getPos(), SidedTask.UNSYNC));
+            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getOrMakeAddress(), Response.Task.SYNC));
             return;
         }
         belongsToNetwork = false;
@@ -134,12 +133,18 @@ public final class DispatchedNode implements NodeIdentifiable {
      * instance valid so that it can be reused later.
      */
     public void severAndForget() {
-        if(getLevel().isClientSide) return;
+        if(holder.getWorld().isClientSide) return;
         if(!isSynced()) return;
         forEachAddress((grid, addr) -> {
             grid.removeNode(addr);
         });
-        forget(getLevel());
+        forget(holder.getWorld());
+    }
+
+    private GridUUID getOrMakeAddress() {
+        if(this.addr != null) return this.addr;
+        this.addr = holder.createAddress();
+        return this.addr;
     }
 
     /**
@@ -148,83 +153,31 @@ public final class DispatchedNode implements NodeIdentifiable {
      * a mutable key.
      * @param cons
      */
-    public void forEachAddress(BiConsumer<PowerGrid, NodeIdentifier.Key> cons) {
-        if(getLevel().isClientSide()) return;
+    public void forEachAddress(BiConsumer<PowerGrid, GridUUID> cons) {
+        if(holder.getWorld().isClientSide()) return;
         PowerGrid grid = this.owner;
-        GlobalServerGrid global = SidedGridDispatcher.server(getLevel());
-        NodeIdentifier.Key address = this.strip();
+        GlobalServerGrid global = SidedGridDispatcher.server(holder.getWorld());
         if(grid == null) {
-            grid = global.lookup(address).getFirst();
+            grid = global.lookup(getOrMakeAddress()).getFirst();
+            Mechano.LOGGER.warn("Dispatch at " + getOrMakeAddress() + " had to re-acquire its parent grid.");
             if(grid == null) return;
         }
         for(int x = 0; x < nodeCount; x++) {
-            address.setIndex(x);
-            cons.accept(grid, address);
+            GridUUID copy = getOrMakeAddress().indexedCopy(x);
+            cons.accept(grid, copy);
         }
     }
 
     public PowerGrid getOwner() {
         return owner;
     }
-
-    @Override
-    public @Nullable BlockPos getPos() {
-        return pgbe.getBlockPos();
-    }
-
-    @Override
-    public Tracker makeTrackable() {
-        throw new UnsupportedOperationException("DispatchedNodes aren't trackable!");
-    }
-
-    @Override
-    public int getIndex() {
-        return 0;
-    }
-
-    public @Nullable Level getLevel() {
-        if(pgbe.isRemoved()) return null;
-        return pgbe.getLevel();
-    }
-
-
-    public boolean isClientSide() {
-        return getLevel().isClientSide;
+    
+    public DispatchedAnchorNode loadInto(PowerGrid grid) {
+        this.owner = grid;
+        return this;
     }
 
     public String toString() {
-        return "DispatchedNode(" + pgbe + ", " + (isClientSide() ? "CLIENT" : "SERVER") + ", synced? : " + isSynced() + ")";
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    public static enum SidedTask {
-
-        RESYNC,
-        SYNC,
-        UNSYNC;
-
-        public static final StreamCodec<ByteBuf, SidedTask> STREAM_CODEC = new StreamCodec<>() {
-            @Override
-            public SidedTask decode(ByteBuf buffer) {
-                return SidedTask.values()[buffer.readByte()];
-            }
-            @Override
-            public void encode(ByteBuf buffer, SidedTask value) {
-                buffer.writeByte(value.ordinal());
-            }
-        };
+        return "DispatchedNode(" + holder + ", " + (holder.getWorld().isClientSide ? "CLIENT" : "SERVER") + ", synced? : " + isSynced() + ")";
     }
 }

@@ -1,24 +1,23 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.DispatchedNode;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
 
-import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public record DispatchSyncPacket(BlockPos pos, DispatchedNode.SidedTask task) implements ClientboundPacketPayload {
+public record DispatchSyncPacket(GridUUID addr, Response.Task task) implements ClientboundPacketPayload {
 
-    public static final StreamCodec<ByteBuf, DispatchSyncPacket> STREAM_CODEC = StreamCodec.composite(
-        BlockPos.STREAM_CODEC, DispatchSyncPacket::pos,
-        DispatchedNode.SidedTask.STREAM_CODEC, DispatchSyncPacket::task,
+    public static final StreamCodec<RegistryFriendlyByteBuf, DispatchSyncPacket> STREAM_CODEC = StreamCodec.composite(
+        GridUUIDData.STREAM_CODEC, DispatchSyncPacket::addr,
+        Response.Task.STREAM_CODEC, DispatchSyncPacket::task,
         DispatchSyncPacket::new
     );
 
@@ -32,19 +31,15 @@ public record DispatchSyncPacket(BlockPos pos, DispatchedNode.SidedTask task) im
     public void handle(LocalPlayer player) {
         LevelReader world = player.level();
         if(world == null) return;
-
-        NodeIdentifier.Key address = new NodeIdentifier.Key(pos);
-        PowerGridBlockEntity pgbe = address.getHost(player.level());
-
-        if(pgbe == null)
-            return;
+        DispatchedAnchorNode surrogate = addr.getSurrogate(world);
+        if(surrogate == null) return;
 
         switch(task) {
             case SYNC:
-                pgbe.surrogate.sync(world, null);
+                surrogate.sync(world, null);
                 break;
             case UNSYNC:
-                pgbe.surrogate.forget(world);
+                surrogate.forget(world);
                 break;
             default:
                 break;

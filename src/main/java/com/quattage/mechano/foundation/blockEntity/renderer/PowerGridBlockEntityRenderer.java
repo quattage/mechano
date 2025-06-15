@@ -5,8 +5,9 @@ import javax.annotation.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.client.AnchorSelector;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
 import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
@@ -15,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer; 
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -29,11 +31,14 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
     }
     
     @Override
-    public void render(T blockEntity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
+    public void render(T pgbe, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
             int packedLight, int packedOverlay) {
-        super.render(blockEntity, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
-        tickAnchors(blockEntity);
-        renderPlayerWire(blockEntity, Minecraft.getInstance().player, poseStack, bufferSource, partialTick);
+        super.render(pgbe, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
+        LocalPlayer player = Minecraft.getInstance().player;
+        if(player == null) return;
+        double reach = player.getAttributes().getValue(Attributes.ENTITY_INTERACTION_RANGE);
+        tickAnchors(player, pgbe, reach);
+        renderPlayerWire(player, pgbe, poseStack, bufferSource, partialTick);
     }
 
     /**
@@ -49,18 +54,17 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
      * The visibility and interaction status of each anchor is evaluated in the {@link AnchorSelector#INSTANCE Anchor Selector}
      * @param be
      */
-    public void tickAnchors(T be) {
-        LocalPlayer player = Minecraft.getInstance().player;
+    public void tickAnchors(LocalPlayer player, T pgbe, double reach) {
         if(player == null) return;
-        be.anchors.forEach(anchor -> {
-            float distance = (float)player.getEyePosition().distanceTo(anchor.getRealPosition());
-            if(distance > AnchorPoint.VIS_RANGE) return;
-            AnchorSelector.INSTANCE.track(be, anchor, distance);
+        pgbe.getAnchors().forEach(anchor -> {
+            float distance = (float)anchor.distanceTo(player);
+            if(distance > reach * 1.5f) return;
+            AnchorSelector.INSTANCE.track(pgbe, anchor, distance);
         });
     }
 
-    public void renderPlayerWire(T pgbe, LocalPlayer player, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
-        if(!pgbe.anchors.contains(pgbe.getBlockPos(), selected)) return;
+    public void renderPlayerWire(LocalPlayer player, T pgbe, PoseStack matrixStack, MultiBufferSource buffers, float pTicks) {
+        if(!pgbe.containsAnchor(selected)) return;
 
         if(player == null || selected == null) {
             if(mesher != null) {
@@ -70,7 +74,7 @@ public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extend
             }
             return;
         }
-        Vec3 rp = selected.getRealPosition();
+        Vec3 rp = selected.getPos();
         if(AnchorSelector.INSTANCE.lookingRay == null) return;
         if(mesher == null) {
             mesher = GeoHolder.as(AnchorSelector.INSTANCE.playerHands.implementingItem().getTransmitterType())

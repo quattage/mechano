@@ -24,19 +24,6 @@ import net.minecraft.world.level.Level;
  */
 public abstract class Transmitter<T extends Transmitter<?>> {
 
-    // public static final StreamCodec<ByteBuf, Transmitter<?>> STREAM_CODEC = new StreamCodec<>() {
-    //         @Override
-    //         public Transmitter<?> decode(ByteBuf buffer) {
-    //             TransmitterType<?> type = MechanoTransmissionTypes.REGISTRY.getRaw(buffer.readByte() + 128);
-    //             if(type.streamCodec != null) type.streamCodec.decode(buffer);
-    //             return type;
-    //         }
-    //         @Override 
-    //         public void encode(ByteBuf buffer, Transmitter<?> value) {
-    //             buffer.writeByte(value.packedIndex);
-    //         }
-    //     };
-
     /**
      * This method is the entrypoint for building TransmitterTypes for the {@link TransmitterRegistry}. 
      * This allows transmitters to attach, serialize, and stream arbitrary data via packets.

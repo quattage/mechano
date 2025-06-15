@@ -1,16 +1,13 @@
-package com.quattage.mechano.foundation.api.landmark.client;
+package com.quattage.mechano.foundation.api.anchor;
 
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.GridNode.Tracker;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifiable;
-import com.quattage.mechano.foundation.api.landmark.base.NodeIdentifier;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.uuid.impl.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -18,12 +15,12 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import static com.quattage.mechano.Mechano.lang;
 
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -36,22 +33,16 @@ import net.minecraft.world.phys.Vec3;
  * <p> The AnchorPoint
  * occupies physical space, where the GridNode does not.
  */
-public class AnchorPoint extends NodeIdentifier {
+public class AnchorPoint {
 
-    public static final int VIS_RANGE = 15;
-
+    private GridUUID backer;
     private byte[] data;
-
     private boolean enabled;
     private Vector3f offset;
+    public int bitmask;
 
-    /**
-     * A bitmask for determining what types of connections this anchor can support
-     */
-    public final int bitmask;
-
-    public AnchorPoint(BlockPos pos, int index, float px, float py, float pz, float size, boolean enabled, int maxc) {
-        super(pos, index);
+    public AnchorPoint(GridUUID pos, float px, float py, float pz, float size, boolean enabled, int maxc) {
+        this.backer = pos;
         this.data = new byte[]{
             packMeasurement(px),
             packMeasurement(py),
@@ -62,79 +53,43 @@ public class AnchorPoint extends NodeIdentifier {
         };
         this.offset = getRaw();
         this.enabled = enabled;
-        bitmask = 0xFFFFFFFF;
+        this.bitmask = 0xFFFFFFFF;
     }
 
-
-    /**
-     * Gets an AnchorPoint at the given address
-     * @param world World to operate within
-     * @param address Address to find
-     * @return AnchorPoint at the given address, or <code>null</code> if one couldn't be found.
-     */
-    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable NodeIdentifiable address) {
-        if(address == null) return null;
-        if(!world.isClientSide()) {
-            Mechano.LOGGER.error("Attempted to retrieve AnchorPoint " + address + " from non-permissible server context!");
-            return null;
-        }
-        PowerGridBlockEntity pgbe = address.getHost(world);
-        return pgbe == null ? null : pgbe.anchors.getByIndex(address.getIndex());
+    public AnchorPoint initializeFrom(CompoundTag tag) {
+        this.data = tag.getByteArray("data");
+        this.enabled = tag.getBoolean("e");
+        this.bitmask = tag.getInt("bm");
+        return this;
     }
 
-    /**
-     * Gets an AnchorPoint at the given address
-     * @param world World to operate within
-     * @param stack ItemStack to extract the address from. Expected to be stored as a {@link com.quattage.mechano.MechanoDataAttachments#ADDRESS_COMPONENT data attachment}
-     * @return AnchorPoint at the given address, or <code>null</code> if one couldn't be found.
-     */
-    public static @Nullable AnchorPoint retrieve(LevelReader world, @Nullable ItemStack stack) {
-        if(stack == null) return null;
-        return retrieve(world, stack.get(MechanoDataAttachments.ADDRESS_COMPONENT));
-    }
-
-    /**
-     * Evaluates the world to determine whether the block hosting this AnchorPoint
-     * still exists. Note - Always returns <code>FALSE</code> on the server, as AnchorPoints
-     * should <strong>only</strong> be instantiated on the client.
-     * @param world
-     * @return <code>true</code> if this AnchorPoint belongs to a BlockEntity that exists
-     */
-    public boolean existsInWorld(LevelReader world) {
-        if(world == null) return false;
-        if(!world.isClientSide()) return false;
-        BlockEntity be = world.getBlockEntity(pos);
-        if(be == null) return false;
-        if(!(be instanceof PowerGridBlockEntity pgbe)) return false;
-        return pgbe.anchors != null && index < pgbe.anchors.size();
-    }
-
-    public void sync(byte connections, @Nullable LevelReader refresher) {
+    public void sync(byte connections, @Nullable LevelReader world) {
         this.data[4] = connections;
-        if(refresher != null) {
-            PowerGridBlockEntity pgbe = getHost(refresher);
-            if(pgbe == null) return;
+        if(world != null) {
+            AnchorPointHoldable host = backer.getHolder(world);
+            if(host == null) return;
             if(getCurrentConnections() > 0)
-                pgbe.surrogate.sync(refresher, null);
-            else pgbe.surrogate.forget(refresher);
-            BlockState state = pgbe.getBlockState();
-            if(state == null) return;
-            updateOrientation(state);
+                host.getSurrogate().sync(world, null);
+            else host.getSurrogate().forget(world);
         }
     }
 
-    /**
-     * @return The actual Vec3 position of this AnchorPoint with its offset applied
-     * @see {@link #getOffset} to get this AnchorPoint's offset in local space
-     */
-    public Vec3 getRealPosition() {
-        return new Vec3(
-            getX() + offset.x,
-            getY() + offset.y,
-            getZ() + offset.z
-        );
+    public GridUUIDData getDiscriminatorType() {
+        return backer.getDiscriminatorType();
     }
 
+    public int getIndex() {
+        return backer.getIndex();
+    }
+
+    public boolean existsIn(LevelReader world) {
+        if(world == null || !world.isClientSide()) return false;
+        return backer.hasAnchorIn((ClientLevel)world);
+    }
+
+    public Vec3 getPos() {
+        return backer.getOffsetPos(offset.x, offset.y, offset.z);
+    }
 
     /**
      * @return The raw Vec3 offset of this AnchorPoint from its BlockPos
@@ -234,13 +189,14 @@ public class AnchorPoint extends NodeIdentifier {
      */
     public AABB makeHitbox(boolean useSize) {
         float size = useSize ? getSize() : 0;
+        BlockPos pos = backer.getBlockPos();
         return new AABB(
-            (getX() + offset.x) - size,
-            (getY() + offset.y) - size,
-            (getZ() + offset.z) - size,
-            (getX() + offset.x) + size,
-            (getY() + offset.y) + size,
-            (getZ() + offset.z) + size
+            (pos.getX() + offset.x) - size,
+            (pos.getY() + offset.y) - size,
+            (pos.getZ() + offset.z) - size,
+            (pos.getX() + offset.x) + size,
+            (pos.getY() + offset.y) + size,
+            (pos.getZ() + offset.z) + size
         );
     }
 
@@ -249,9 +205,16 @@ public class AnchorPoint extends NodeIdentifier {
         return this.enabled;
     }
 
+    public GridUUID getAddress() {
+        return backer;
+    }
 
     public float distanceTo(AnchorPoint other) {
-        return (float)getRealPosition().distanceTo(other.getRealPosition());
+        return (float)getPos().distanceTo(other.getPos());
+    }
+
+    public float distanceTo(Player player) {
+        return (float)player.getEyePosition().distanceTo(getPos());
     }
 
     /**
@@ -298,17 +261,7 @@ public class AnchorPoint extends NodeIdentifier {
         return makeHitbox(true).clip(ray.start, ray.end).isPresent();
     }
 
-    @Override
-    public Tracker makeTrackable() {
-        throw new UnsupportedOperationException("AnchorPoints aren't trackable!");
-    }
-
-    @Override
-    public CompoundTag writeTo(CompoundTag in) {
-        in.putInt("i", index);
-        in.putByteArray("xyzs", data);
-        return in;
-    }
+    
 
     @Override
     public String toString() {
@@ -316,18 +269,26 @@ public class AnchorPoint extends NodeIdentifier {
         String y = String.format("%.2f", offset.y);
         String z = String.format("%.2f", offset.z);
         String mask = Integer.toBinaryString(bitmask);
-        return "(" + x + "," + y + "," + z + ", " + index + " / " + NodeIdentifier.MAX_OCCUPANCY + "), " + mask;
+        return "(" + x + "," + y + "," + z + ", " + getIndex() + " / " + GridUUID.MAX_SHARED_OCCUPANCY + "), " + mask;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        return backer.equals(obj);
+    }
 
+    @Override
+    public int hashCode() {
+        return backer.hashCode();
+    }
 
-
-
-
-
-
-
-
+    public CompoundTag writeTo(CompoundTag tag) {
+        // tag.put("pos", GridUUIDData.write(backer, new CompoundTag()));
+        tag.putByteArray("data", data);
+        tag.putBoolean("e", enabled);
+        tag.putInt("bm", bitmask);
+        return tag;
+    }
 
 
 
@@ -418,8 +379,8 @@ public class AnchorPoint extends NodeIdentifier {
             return prev;
         }
 
-        protected AnchorPoint instantiate(BlockPos pos, int index) {
-            return new AnchorPoint(pos, index, offx, offy, offz, size, enabled, max);
+        protected AnchorPoint make(BlockPos pos, int index) {
+            return new AnchorPoint(new VoxelUUID(pos, index), offx, offy, offz, size, enabled, max);
         }
     }
 }

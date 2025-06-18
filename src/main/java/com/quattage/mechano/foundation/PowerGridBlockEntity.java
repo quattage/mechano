@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api;
+package com.quattage.mechano.foundation;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;

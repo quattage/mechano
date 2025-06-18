@@ -8,6 +8,7 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;

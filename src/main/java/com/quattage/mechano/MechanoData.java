@@ -3,7 +3,6 @@ package com.quattage.mechano;
 
 import java.util.function.Supplier;
 
-import com.quattage.mechano.foundation.api.GridChunkData;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.EntityAnchorPointHost;
 

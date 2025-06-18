@@ -13,6 +13,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.Connection;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

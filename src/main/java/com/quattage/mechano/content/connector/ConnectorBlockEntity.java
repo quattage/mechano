@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.PowerGridBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;

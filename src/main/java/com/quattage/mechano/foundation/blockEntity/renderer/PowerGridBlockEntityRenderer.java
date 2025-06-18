@@ -2,7 +2,7 @@
 package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.PowerGridBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 

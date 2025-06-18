@@ -1,7 +1,6 @@
-package com.quattage.mechano.foundation.api;
+package com.quattage.mechano.foundation.api.landmark;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.Connection;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 

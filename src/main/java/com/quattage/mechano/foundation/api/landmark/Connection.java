@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.api.landmark;
 
-import com.quattage.mechano.foundation.api.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;

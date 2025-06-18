@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.api.landmark;
 
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.LevelReader;
@@ -17,10 +18,8 @@ public class GridLink extends Connection {
         this.end = end;
     }
 
-    private GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns, float length) {
-        super(trns, length);
-        if(world.isClientSide())
-            throw new IllegalArgumentException("Can't instantiate ServerGridLink in a client-sided world!");
+    private GridLink(GridNode start, GridNode end, Transmitter<?> trns, Tension tension, float length) {
+        super(trns, length, tension);
         this.start = start;
         this.end = end;
     }
@@ -59,5 +58,9 @@ public class GridLink extends Connection {
     @Override
     public boolean isClientSide() {
         return false;
+    }
+
+    public GridLink copyAndFlip() {
+        return new GridLink(start, end, this.getTransmitter(), getTension(), this.length);
     }
 }

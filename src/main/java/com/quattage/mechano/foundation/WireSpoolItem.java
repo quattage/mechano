@@ -1,9 +1,11 @@
-package com.quattage.mechano.foundation.api;
+package com.quattage.mechano.foundation;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.ClientGrid;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;

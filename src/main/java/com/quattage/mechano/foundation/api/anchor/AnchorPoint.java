@@ -5,9 +5,9 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
-import com.quattage.mechano.foundation.api.landmark.uuid.impl.VoxelUUID;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -66,16 +66,12 @@ public class AnchorPoint {
     public void sync(byte connections, @Nullable LevelReader world) {
         this.data[4] = connections;
         if(world != null) {
-            AnchorPointHoldable host = backer.getHolder(world);
+            AnchorPointable host = backer.getHolder(world);
             if(host == null) return;
             if(getCurrentConnections() > 0)
                 host.getSurrogate().sync(world, null);
             else host.getSurrogate().forget(world);
         }
-    }
-
-    public GridUUIDData getDiscriminatorType() {
-        return backer.getDiscriminatorType();
     }
 
     public int getIndex() {
@@ -87,8 +83,8 @@ public class AnchorPoint {
         return backer.hasAnchorIn((ClientLevel)world);
     }
 
-    public Vec3 getPos() {
-        return backer.getOffsetPos(offset.x, offset.y, offset.z);
+    public Vec3 getPos(LevelReader world) {
+        return backer.getOffsetPos(world, offset.x, offset.y, offset.z);
     }
 
     /**
@@ -187,9 +183,9 @@ public class AnchorPoint {
      * @param useSize if <code>false<code>, the returned AABB will have a size of 0.
      * @return A new AABB describing this AnchorPoint's hitbox
      */
-    public AABB makeHitbox(boolean useSize) {
+    public AABB makeHitbox(LevelReader world, boolean useSize) {
         float size = useSize ? getSize() : 0;
-        BlockPos pos = backer.getBlockPos();
+        BlockPos pos = backer.getBlockPos(world);
         return new AABB(
             (pos.getX() + offset.x) - size,
             (pos.getY() + offset.y) - size,
@@ -209,12 +205,12 @@ public class AnchorPoint {
         return backer;
     }
 
-    public float distanceTo(AnchorPoint other) {
-        return (float)getPos().distanceTo(other.getPos());
+    public float distanceTo(LevelReader world, AnchorPoint other) {
+        return (float)getPos(world).distanceTo(other.getPos(world));
     }
 
     public float distanceTo(Player player) {
-        return (float)player.getEyePosition().distanceTo(getPos());
+        return (float)player.getEyePosition().distanceTo(getPos(player.level()));
     }
 
     /**
@@ -257,8 +253,8 @@ public class AnchorPoint {
      * @param ray Raycast to test
      * @return <code>true</code> if <code>ray</code> is intersecting this AnchorPoint
      */
-    public boolean isIntersecting(VectorHelper.Ray ray) {
-        return makeHitbox(true).clip(ray.start, ray.end).isPresent();
+    public boolean isIntersecting(LevelReader world, VectorHelper.Ray ray) {
+        return makeHitbox(world, true).clip(ray.start, ray.end).isPresent();
     }
 
     

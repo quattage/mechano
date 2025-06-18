@@ -2,9 +2,9 @@ package com.quattage.mechano.infrastructure.manifest;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;
@@ -15,7 +15,7 @@ import net.minecraft.network.codec.StreamCodec;
 public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ManifestRequestPacket> STREAM_CODEC = StreamCodec.composite(
-        GridUUIDData.STREAM_CODEC, ManifestRequestPacket::addr,
+        DiscriminatorData.STREAM_CODEC, ManifestRequestPacket::addr,
         ManifestRequestPacket::new
     );
 
@@ -26,7 +26,7 @@ public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketP
 
     @Override
     public void handle(LocalPlayer player) {
-        AnchorPointHoldable host = addr.getHolder(player.level());
+        AnchorPointable host = addr.getHolder(player.level());
         if(host == null) {
             send("\n\t┆\t\t" + "▪ Error (PGBE Not found)");
             return;

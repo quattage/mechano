@@ -6,10 +6,10 @@ import java.util.List;
 import static com.quattage.mechano.Mechano.lang;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
@@ -24,7 +24,7 @@ import net.minecraft.world.level.LevelReader;
 
 /**
  * Provides the skeleton implementation required for clients to interface with
- * the {@link com.quattage.mechano.foundation.api.PowerGrid PowerGrid}. 
+ * the {@link com.quattage.mechano.foundation.api.ServerMatrix ServerMatrix}. 
  * Implementations of this interface usually subclass {@link net.minecraft.world.level.ItemLike ItemLike}.
  */
 public interface Transmitable<T extends Transmitter<?>> {
@@ -42,9 +42,9 @@ public interface Transmitable<T extends Transmitter<?>> {
      * @param held Container for information about the player and their held item stack
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
-    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointHoldable holder, AnchorPoint target, HoldingSummary held) {
+    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointable holder, AnchorPoint target, HoldingSummary held) {
         lang().text("hi >:)").forGoggles(tooltip);
-        GridUUID prevAddress = held.stack.get(GridUUIDData.ATTACHMENT);
+        GridUUID prevAddress = held.stack.get(DiscriminatorData.ATTACHMENT);
         AnchorPoint prevAnchor = prevAddress == null ? null : prevAddress.getAnchor(world);
         if(target.equals(prevAnchor)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
         if(!target.isCompatableWith(getTransmitterType())) return Response.Anchor.INCOMPATABLE;

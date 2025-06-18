@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation.api.anchor;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
@@ -23,7 +23,11 @@ public class AnchorArray {
     public static final AnchorArray EMPTY = new AnchorArray(new AnchorPoint[0]);
     private final AnchorPoint[] anchors;
 
-    public static AnchorArray.Builder construct(AnchorPointHoldable parent) {
+    public static AnchorArray ofSingle(AnchorPoint anchor) {
+        return new AnchorArray(new AnchorPoint[] {anchor});
+    }
+
+    public static AnchorArray.Builder construct(AnchorPointable parent) {
         return new Builder(parent);
     }
 
@@ -92,9 +96,9 @@ public class AnchorArray {
     public static class Builder {
         
         private ObjectArrayList<AnchorPoint.Builder> anchors = new ObjectArrayList<>(GridUUID.MAX_SHARED_OCCUPANCY);
-        private AnchorPointHoldable parent;
+        private AnchorPointable parent;
 
-        public Builder(AnchorPointHoldable parent) {
+        public Builder(AnchorPointable parent) {
             this.parent = parent;
         }
 

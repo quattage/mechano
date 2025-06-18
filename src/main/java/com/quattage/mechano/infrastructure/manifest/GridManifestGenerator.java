@@ -11,13 +11,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBuildParameters;
-import com.quattage.mechano.foundation.api.GlobalServerGrid;
-import com.quattage.mechano.foundation.api.PowerGrid;
+import com.quattage.mechano.foundation.api.ServerGrid;
+import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -39,7 +39,7 @@ public class GridManifestGenerator {
     private @Nullable CompletableFuture<String> clientResponseTask;
     private @Nullable CompletableFuture<String> compiledManifestTask;
     private @Nullable ServerPlayer requester = null;
-    private @Nullable GlobalServerGrid active = null;
+    private @Nullable ServerGrid active = null;
 
     public boolean isQueued() {
         return requester != null && active != null;
@@ -62,24 +62,24 @@ public class GridManifestGenerator {
         this.active = SidedGridDispatcher.server(requester);
         this.requester = requester;
         this.requestTime = System.currentTimeMillis();
-        if(active.subgrids.isEmpty()) {
+        if(active.matrices.isEmpty()) {
             unload();
             return false;
         }
         this.compiledManifestTask = CompletableFuture.supplyAsync(() -> {
             if(!isQueued()) return "";
-            String manifest = "▛▙▘▘■  Mechano PowerGrid API manifest generator [" + MechanoBuildParameters.VERSION +  
+            String manifest = "▛▙▘▘■  Mechano ServerMatrix API manifest generator [" + MechanoBuildParameters.VERSION +  
             "] ■▝▝▟▜\n\n⎙ Requested by: '" + getPlayerName() + "' at [" + getTime() + "]\n⌂ Attached to: '" + getDimensionName() + "'\n\n";
 
             int count = 0;
-            for(PowerGrid grid : active.subgrids) {
+            for(ServerMatrix grid : active.matrices) {
                 manifest += "⣿ Subgrid " + grid.gridIndex  + ":\n";
                 if(grid.nodes.isEmpty()) {
                     manifest += "\t▸ Error (subgrid unpopulated)\n";
                 }
                 for(GridNode node : grid.nodes) {
                     count++;
-                    manifest += collectNodeInfo(active.getLevelReader(), node) + "\t└┄┄┄┄\n";
+                    manifest += collectNodeInfo(active.getWorld(), node) + "\t└┄┄┄┄\n";
                 }
                 manifest += "\n--\n";
             }
@@ -114,11 +114,11 @@ public class GridManifestGenerator {
 
     private String collectNodeInfo(LevelReader world, GridNode node) {
 
-        String out = "\t┌ ▣ " + node.getAddress().toString() + ":  ";
+        String out = "\t┌ ▣ " + node.getAddress().toString(world) + ":  ";
         out += "\n\t┆\t" + (node.isValid() ? "☑ Valid" : "☒ Invalid (See below for details)");
         out += "\n\t┆\t▸ Owned by Grid " + node.getOwner().gridIndex;
         out += "\n\t┆\t▸ Bound to: ";
-        AnchorPointHoldable host = node.getHolder();
+        AnchorPointable host = node.getHolder();
 
         if(node.getOwner() != null) {
             String state = host.describeState();
@@ -143,9 +143,9 @@ public class GridManifestGenerator {
                     continue;
                 }
                 ResourceLocation trnsKey = null;
-                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.transmitter.getType()); }
+                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.getTransmitterType()); }
                 catch(Exception e) { trnsKey = Mechano.asResource("transmitter_acquisition_error"); };
-                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEnd().getAddress();
+                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEndNode().getAddress();
             }
         }
 

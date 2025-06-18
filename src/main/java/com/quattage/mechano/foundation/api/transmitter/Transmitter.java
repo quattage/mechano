@@ -4,7 +4,7 @@ import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.PowerGrid;
+import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
@@ -19,7 +19,7 @@ import net.minecraft.world.level.Level;
  * A Transmitter describes the physical aspects
  * of the {@link GridLink} between two {@link GridNode GridNodes}. 
  * It provides a series of callbacks for responding to updates within
- * the {@link PowerGrid}, as well as an open-ended way to implement your own
+ * the {@link ServerMatrix}, as well as an open-ended way to implement your own
  * transport paradigms. (like energy, redstone signals, items, etc.)
  */
 public abstract class Transmitter<T extends Transmitter<?>> {
@@ -67,8 +67,8 @@ public abstract class Transmitter<T extends Transmitter<?>> {
      * sequencing server-sided events related to this item. <p>
 
      * This method is called just before the provided {@link GridLink} is
-     * validated and added to the relevent {@link PowerGrid}. This means
-     * that this GridLink instance does not yet exist in the PowerGrid at the time of 
+     * validated and added to the relevent {@link ServerMatrix}. This means
+     * that this GridLink instance does not yet exist in the ServerMatrix at the time of 
      * invocation. It's best not to store a reference to this instance anywhere, 
      * as it can easily be made stale by internal systems or by returning 
      * <code>false</code> here
@@ -82,7 +82,7 @@ public abstract class Transmitter<T extends Transmitter<?>> {
     public abstract void onConnectionCreated(Level world, GridLink connection); 
 
     /**
-     * Called just after a connection is removed from its associated {@link PowerGrid}.
+     * Called just after a connection is removed from its associated {@link ServerMatrix}.
      * 
      * At the time of invocation, the provided {@link GridLink} instance has already
      * been removed from the grid, so it is guaranteed to be stale.

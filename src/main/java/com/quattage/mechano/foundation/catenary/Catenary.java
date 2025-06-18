@@ -1,24 +1,17 @@
 package com.quattage.mechano.foundation.catenary;
 
-import java.util.function.Consumer;
-
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Point;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -41,22 +34,9 @@ import net.minecraft.world.phys.Vec3;
  * by applying a basis vector and/or translating the PoseStack, depending on what context you're rendering from.
  * 
  */
-public abstract class Catenary<T extends Catenary<?>> {
+public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
 
     // TODO FLYWHEEL
-
-    public static void tryUpdateOrElse(AnchorPointHoldable holder, Catenary<?> model, float pTicks, Consumer<Catenary<?>> cons) {
-        LocalPlayer p = Minecraft.getInstance().player;
-        if(p == null || holder == null || model == null || PowerGridBlockEntityRenderer.selected == null) {
-            cons.accept(model);
-            return;
-        }
-        if(!holder.containsAnchor(PowerGridBlockEntityRenderer.selected)) {
-            cons.accept(model);
-            return;
-        }
-        model.setOffset(PowerGridBlockEntityRenderer.selected.getPos(), p.getRopeHoldPosition(pTicks)).update();
-    }
 
     @Nullable
     public Vector3f offset;
@@ -95,7 +75,7 @@ public abstract class Catenary<T extends Catenary<?>> {
         if(selector == null) return (T)this;
         if(!selector.hasSelection()) return (T)this;
         if(AnchorSelector.INSTANCE.lookingRay == null) return (T)this;
-        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getPos(), AnchorSelector.INSTANCE.lookingRay.end);
+        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getPos(selector.playerHands.player().level()), AnchorSelector.INSTANCE.lookingRay.end);
     }
 
 
@@ -108,7 +88,7 @@ public abstract class Catenary<T extends Catenary<?>> {
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
      * happen, the model must be {@link #render pushed to a VertexConsumer}
-     * The re-usable pipeline wrapper, {@link GeoHolder}, contains
+     * The re-usable pipeline wrapper, {@link CatenaryMesher}, contains
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
@@ -134,7 +114,7 @@ public abstract class Catenary<T extends Catenary<?>> {
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
      * happen, the model must be {@link #render pushed to a VertexConsumer}
-     * The re-usable pipeline wrapper, {@link GeoHolder}, contains
+     * The re-usable pipeline wrapper, {@link CatenaryMesher}, contains
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
@@ -180,9 +160,9 @@ public abstract class Catenary<T extends Catenary<?>> {
      * Renders this WireModel to the provided stack. For more 
      * comprehensive access and ease of use, this method is
      * primarily intended to be accessed via the
-     * {@link GeoHolder#render geometry dispatcher}
+     * {@link CatenaryMesher#render geometry dispatcher}
      */
-    public abstract void render(VertexConsumer buffer, Pose pose, GeoHolder geo, float pTicks);
+    public abstract void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks);
 
     /**
      * Initializes this WireModel, telling it to
@@ -275,46 +255,17 @@ public abstract class Catenary<T extends Catenary<?>> {
             throw new IllegalStateException("Cannot perform operation on " + this + " - This WireModel is missing a start or end position! (It was either never populated or this WireModel instance was destroyed.)");
     }
 
-    public boolean increaseTension() {
-        int ord = tension.ordinal() + 1;
-        if(ord >= Tension.values().length) return false;
-        tension = Tension.values()[ord];
-        return true;
+    @Override
+    public Tension getTension() {
+        return tension;
     }
 
-    public boolean decreaseTension() {
-        int ord = tension.ordinal() - 1;
-        if(ord < 0) return false;
-        Tension trgt = Tension.values()[ord];
-        if(trgt.equals(Tension.STUPID_LOOSE))
-            return false;
-        tension = trgt;
-        return true;
-    }
-
+    @Override
     public boolean setTension(Tension tension) {
         if(tension == null) return setTension();
         if(this.tension.equals(tension)) return false;
         this.tension = tension;
         return true;
-    }
-
-    public boolean setTension() {
-        return resetTension();
-    }
-
-    public boolean resetTension() {
-        if(this.tension.equals(Tension.AVERAGE)) return false;
-        this.tension = Tension.AVERAGE;
-        return true;
-    }
-
-    public boolean setTension(int tension) {
-        return setTension(Tension.values()[Math.max(0, Math.min(Tension.values().length - 1, tension))]);
-    }
-
-    public Tension getTension() {
-        return tension;
     }
 
     /**

@@ -8,11 +8,11 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -21,45 +21,45 @@ import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.Trans
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.createmod.catnip.data.Pair;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelReader;
 
 /**
- * A GlobalGrid is the top-level manager for {@link PowerGrid PowerGrids}.
+ * A GlobalGrid is the top-level manager for {@link ServerMatrix ServerMatrices}.
  * Data Attachments are leveraged to add one GlobalGrid to each level/dimension.
  */
-public final class GlobalServerGrid extends SidedGridDispatcher {
+public final class ServerGrid extends SidedGridDispatcher {
 
-    public ObjectArrayList<PowerGrid> subgrids;
-    public Object2ObjectOpenHashMap<ChunkPos, List<GridLink>> linksByChunk = new Object2ObjectOpenHashMap<>();
+    public ObjectArrayList<ServerMatrix> matrices;
+    public Object2ObjectOpenHashMap<ChunkPos, ObjectOpenHashSet<GridLink>> linksByChunk = new Object2ObjectOpenHashMap<>();
 
     /**
-     * Loads a GlobalServerGrid from a serialized list of {@link PowerGrid PowerGrids}. 
-     * All PowerGrids, their {@link GridNode GridNodes}, and their {@link GridLink GridLinks}
+     * Loads a ServerGrid from a serialized list of {@link ServerMatrix ServerMatrices}. 
+     * All ServerMatrices, their {@link GridNode GridNodes}, and their {@link GridLink GridLinks}
      * are loaded from here. This method is called by the {@link com.quattage.mechano.foundation.api.SidedGridDisptacher.Serializer serializer}
      * @param subgrids A two-dimensional {@link ListTag} - A list of subgrids, where each subgrid is a list of {@link CompoundTag CompoundTags}
-     * @param world World that the resulting GlobalServerGrid uses to look up {@link PowerGridBlockEntity PGBEs}
-     * @return a new GlobalServerGrid with data primed from the provided list of grids.
+     * @param world World that the resulting ServerGrid uses to look up {@link PowerGridBlockEntity PGBEs}
+     * @return a new ServerGrid with data primed from the provided list of grids.
      */
-    public static GlobalServerGrid loadFrom(ListTag subgrids, ServerLevel world) {
-        GlobalServerGrid freshGlobal = new GlobalServerGrid(world,  new ObjectArrayList<>(subgrids.size()));
+    public static ServerGrid loadFrom(ListTag subgrids, ServerLevel world) {
+        ServerGrid freshGlobal = new ServerGrid(world,  new ObjectArrayList<>(subgrids.size()));
         for(int x = 0; x < subgrids.size(); x++) {
             ListTag writtens = subgrids.getList(x);
             if(writtens.isEmpty()) continue;
-            PowerGrid freshLocal = new PowerGrid(freshGlobal, writtens.size());
+            ServerMatrix freshLocal = new ServerMatrix(freshGlobal, writtens.size());
             for(int y = 0; y < writtens.size(); y++) {
                 CompoundTag node = writtens.getCompound(y);
-                createNodeAndMakeProvisionalLinks(freshGlobal, freshLocal, GridUUIDData.read(node), node.getList("links", Tag.TAG_COMPOUND));
+                createNodeAndMakeProvisionalLinks(freshGlobal, freshLocal, DiscriminatorData.read(node), node.getList("links", Tag.TAG_COMPOUND));
             }
             // if the powergrid failed to deserialize make sure it gets removed
             if(freshLocal.nodes.isEmpty()) {
-                if(freshLocal.gridIndex < 0 || freshLocal.gridIndex >= subgrids.size() || freshGlobal.subgrids.remove(freshLocal.gridIndex) == null)
-                    freshGlobal.subgrids.remove(freshLocal);
+                if(freshLocal.gridIndex < 0 || freshLocal.gridIndex >= subgrids.size() || freshGlobal.matrices.remove(freshLocal.gridIndex) == null)
+                    freshGlobal.matrices.remove(freshLocal);
                 freshLocal.nullify();
             }
         }
@@ -67,15 +67,15 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     }
 
     /**
-     * A breakout method for making {@link GlobalServerGrid#loadFrom} easier to read - 
+     * A breakout method for making {@link ServerGrid#loadFrom} easier to read - 
      * This method is responsible for de-serializing the GridNode and its links <p>
      * getOrCreate is used here to ensure that only one canonical reference to each GridNode exists after
-     * the GlobalServerGrid is loaded. GridNodes may have already been created as links by previous calls
+     * the ServerGrid is loaded. GridNodes may have already been created as links by previous calls
      * to this method.
      * 
      * TODO A recursive approach may reduce iteration count slightly if links are created depth-first rather than re-addressing provisional links
      */
-    private static void createNodeAndMakeProvisionalLinks(GlobalServerGrid grid, PowerGrid instantiator, GridUUID address, @Nullable ListTag links) {
+    private static void createNodeAndMakeProvisionalLinks(ServerGrid grid, ServerMatrix instantiator, GridUUID address, @Nullable ListTag links) {
         if(links == null || links.isEmpty()) return;
         GridNode newStart = instantiator.getOrCreateProvisional(address);
         if(newStart == null) return;
@@ -83,16 +83,16 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
         for(int x = 0; x < links.size(); x++) {
             CompoundTag serializedLink = links.getCompound(x);
-            GridUUID endAddress = GridUUIDData.read(serializedLink);
+            GridUUID endAddress = DiscriminatorData.read(serializedLink);
             GridNode newEnd = instantiator.getOrCreateProvisional(endAddress);
             if(newEnd == null || newStart.equals(newEnd)) continue;
 
             Transmitter<?> trns = TransmitterRegistry.INSTANCE.get(serializedLink);
-            GridLink newLink = new GridLink(newStart, newEnd, trns);
+            GridLink newLink = new GridLink(grid.getWorld(), newStart, newEnd, trns);
 
-            if(newLink.getConnection().needsSerialization()) {
+            if(newLink.getTransmitter().needsSerialization()) {
                 CompoundTag data = serializedLink.getCompound("data");
-                if(!data.isEmpty()) newLink.getConnection().loadFrom(data);
+                if(!data.isEmpty()) newLink.getTransmitter().loadFrom(data);
             }
             newStart.links.add(newLink);
             grid.trackLink(newLink);
@@ -101,14 +101,14 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     }
 
     /**
-     * Creates a new GlobalServerGrid with a predefined list of subgrids.
+     * Creates a new ServerGrid with a predefined list of subgrids.
      * Used internally by the {@link SidedGridDispatcher#SERIALIZER}
      * @param world ServerLevel that owns this grid
-     * @param subgrids Subgrids to instantiate the new GlobalServerGrid with
+     * @param subgrids Subgrids to instantiate the new ServerGrid with
      */
-    protected GlobalServerGrid(ServerLevel world, ObjectArrayList<PowerGrid> subgrids) {
+    public ServerGrid(ServerLevel world, ObjectArrayList<ServerMatrix> subgrids) {
         super(world);
-        this.subgrids = subgrids;
+        this.matrices = subgrids;
     }
 
 
@@ -116,13 +116,13 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
     /**
      * Create a link between any two {@link GridNode GridNodes} as long as their host
-     * {@link PowerGridBlockEntity} instances exist in this GlobalServerGrid's level.
-     * This method is a no-questions-asked wrapper for {@link GlobalServerGrid#linkUnsafe linkUnsafe}
-     * that performs operations to maintain the integrity of this GlobalServerGrid regardless of its 
+     * {@link PowerGridBlockEntity} instances exist in this ServerGrid's level.
+     * This method is a no-questions-asked wrapper for {@link ServerGrid#linkUnsafe linkUnsafe}
+     * that performs operations to maintain the integrity of this ServerGrid regardless of its 
      * internal state when linking. It does this by creating new {@link GridNode GridNodes} and/or 
-     * {@link PowerGrid PowerGrids} where necessary. 
+     * {@link ServerMatrix ServerMatrices} where necessary. 
      * <p>
-     * {@link GlobalServerGrid#linkUnsafe linkUnsafe} instead.
+     * {@link ServerGrid#linkUnsafe linkUnsafe} instead.
      * @param start Starting address 
      * @param end Ending address
      * @param type The type of link that will be created between <code>start</code> and <code>end</code>
@@ -132,9 +132,8 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     public LinkResponseHolder createLink(GridUUID start, GridUUID end, TransmitterType<?> type) {
 
         // prep and sanity checks
-        LevelReader world = getLevelReader();
-        AnchorPointHoldable startHost = start.getHolder(world);
-        AnchorPointHoldable endHost = end.getHolder(world);
+        AnchorPointable startHost = start.getHolder(world);
+        AnchorPointable endHost = end.getHolder(world);
 
         if(startHost == null) {
             Mechano.LOGGER.error("Failed to create link from " + start + " to " + end + " - No valid PGBE could be found at the starting address!");
@@ -153,15 +152,15 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
         // nodes both belong to grids
         if(startHost.getSurrogate().isSynced() && endHost.getSurrogate().isSynced()) {
 
-            PowerGrid startPG = startHost.getSurrogate().getOwner();
-            PowerGrid endPG = endHost.getSurrogate().getOwner();
+            ServerMatrix startPG = startHost.getSurrogate().getOwner();
+            ServerMatrix endPG = endHost.getSurrogate().getOwner();
 
             // nodes both belong to the same grid
             if(startPG.gridIndex == endPG.gridIndex) {
                 endPG = null;
                 GridNode startNode = startPG.nodes.get(start);
                 GridNode endNode = startPG.nodes.get(end);
-                GridLink newLink = new GridLink(startNode, endNode, trns);
+                GridLink newLink = new GridLink(getWorld(), startNode, endNode, trns);
 
                 startHost.getSurrogate().owner = startPG;
                 endHost.getSurrogate().owner = startPG;
@@ -170,7 +169,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
             }
 
             // nodes both belong to different grids
-            PowerGrid merged = mergeGrids(startPG.gridIndex, endPG.gridIndex);
+            ServerMatrix merged = mergeGrids(startPG.gridIndex, endPG.gridIndex);
             GridNode startNode = merged.nodes.get(start);
             GridNode endNode = merged.nodes.get(end);
             startHost.getSurrogate().owner = merged;
@@ -200,7 +199,7 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
         // neither belongs to grid
         if(!startHost.getSurrogate().isSynced() && !endHost.getSurrogate().isSynced()) {
-            PowerGrid newGrid = new PowerGrid(this, 2);
+            ServerMatrix newGrid = new ServerMatrix(this, 2);
             GridNode startNode = new GridNode(newGrid, startHost, start);
             GridNode endNode = new GridNode(newGrid, endHost, end);
             newGrid.nodes.add(startNode);
@@ -224,41 +223,41 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
 
     /**
-     * Takes the contents from one {@link PowerGrid} in this GlobalServerGrid and 
+     * Takes the contents from one {@link ServerMatrix} in this ServerGrid and 
      * merges it into the other. 
      * <p>
      * Nodes are merged by order of index, so a the contents of a grid with a HIGHER
      * index are merged onto a grid with a LOWER index. This also means that no new 
-     * PowerGrid instances are created - the PowerGrid located at the lower of the 
+     * ServerMatrix instances are created - the ServerMatrix located at the lower of the 
      * two indices is recycled. 
      * <p>
      * Additionally, if the merge is successful, this call will immediately mark 
-     * the the grid belonging to the higher index for removal. If this PowerGrid 
+     * the the grid belonging to the higher index for removal. If this ServerMatrix 
      * instance is stored anywhere, its reference should be nullified to prevent 
-     * a leak. Only use the PowerGrid returned from this method.
+     * a leak. Only use the ServerMatrix returned from this method.
      * 
-     * @param index1 The index of the first PowerGrid to merge
-     * @param index2 The index of the second PowerGrid to merge
-     * @return A reference to the resulting PowerGrid. This reference will be 
-     * identical to the PowerGrid found at the lower of the two provided indices, 
+     * @param index1 The index of the first ServerMatrix to merge
+     * @param index2 The index of the second ServerMatrix to merge
+     * @return A reference to the resulting ServerMatrix. This reference will be 
+     * identical to the ServerMatrix found at the lower of the two provided indices, 
      * but it will contain the contents of both grids.
      * @throws ArrayIndexOutOfBoundsException if the indices provided are outside the bounds of the subgrids list.
      */
-    public PowerGrid mergeGrids(int index1, int index2) {
+    public ServerMatrix mergeGrids(int index1, int index2) {
 
-        if(index1 < 0 || index1 >= subgrids.size())
-            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index1 '" + index1 + "' is out of bounds for a GlobalServerGrid with " + subgrids.size() + " subgrids!");
-        if(index2 < 0 || index2 >= subgrids.size())
-            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index1 '" + index2 + "' is out of bounds for a GlobalServerGrid with " + subgrids.size() + " subgrids!");
+        if(index1 < 0 || index1 >= matrices.size())
+            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index1 '" + index1 + "' is out of bounds for a ServerGrid with " + matrices.size() + " subgrids!");
+        if(index2 < 0 || index2 >= matrices.size())
+            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index1 '" + index2 + "' is out of bounds for a ServerGrid with " + matrices.size() + " subgrids!");
 
         if(index1 == index2)
-            return subgrids.get(index1);
+            return matrices.get(index1);
 
         // merge 2 into 1
         if(index1 < index2) {
-            PowerGrid grid1 = subgrids.get(index1);
+            ServerMatrix grid1 = matrices.get(index1);
             grid1.gridIndex = index1;
-            PowerGrid grid2 = subgrids.remove(index2);
+            ServerMatrix grid2 = matrices.remove(index2);
             grid1.addAll(grid2.nodes);
             grid2.nullify();
             updateGridIndices(index1);
@@ -267,9 +266,9 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
         // merge 1 into 2
         if(index2 < index1) {
-            PowerGrid grid2 = subgrids.get(index2);
+            ServerMatrix grid2 = matrices.get(index2);
             grid2.gridIndex = index2;
-            PowerGrid grid1 = subgrids.remove(index1);
+            ServerMatrix grid1 = matrices.remove(index1);
             grid2.addAll(grid1.nodes);
             grid1.nullify();
             updateGridIndices(index2);
@@ -286,14 +285,14 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 /**
      * Creates a symmetrical link between <code>start</code> and <code>end</code>. 
      * Does not perform any checks to ensure that this link is valid. When in doubt, use
-     * {@link GlobalServerGrid#createLink createLink} instead.
+     * {@link ServerGrid#createLink createLink} instead.
      * @param start GridNode start
      * @param end GridNode end
      * @param trns The transmitter that the link will contain
      * @return The GridLink that was created
      */
-    public GridLink linkUnsafe(GridNode start, @Nullable AnchorPointHoldable startHost, GridNode end, @Nullable AnchorPointHoldable endHost, Transmitter<?> trns) {
-        GridLink link = new GridLink(start, end, trns);
+    public GridLink linkUnsafe(GridNode start, @Nullable AnchorPointable startHost, GridNode end, @Nullable AnchorPointable endHost, Transmitter<?> trns) {
+        GridLink link = new GridLink(getWorld(), start, end, trns);
         return linkUnsafe(link, startHost, endHost);
     }
 
@@ -303,18 +302,18 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     /**
      * Creates a symmetrical link between <code>start</code> and <code>end</code>. 
      * Does not perform any checks to ensure that this link is valid. When in doubt, use
-     * {@link GlobalServerGrid#createLink createLink} instead.
+     * {@link ServerGrid#createLink createLink} instead.
      * @param link GridLink to add
      * @param trns The transmitter that the link will contain
      * @return The GridLink provided
      */
-    public GridLink linkUnsafe(GridLink link, @Nullable AnchorPointHoldable startHost, @Nullable AnchorPointHoldable endHost) {
-        link.getStart().links.add(link);
+    public GridLink linkUnsafe(GridLink link, @Nullable AnchorPointable startHost, @Nullable AnchorPointable endHost) {
+        link.getStartNode().links.add(link);
         trackLink(link);
         GridLink inverse = link.copyAndFlip();
-        inverse.getStart().links.add(inverse);
+        inverse.getStartNode().links.add(inverse);
         trackLink(inverse);
-        link.getConnection().onConnectionCreated(getWorld(), link);
+        link.getTransmitter().onConnectionCreated(getWorld(), link);
         if(startHost != null) startHost.onConnectionMade(world, link);
         if(endHost != null) endHost.onConnectionMade(world, inverse);
         return link;
@@ -322,27 +321,24 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
 
     /**
-     * Adds the provied GridLink to this GlobalServerGrid's 
+     * Adds the provied GridLink to this ServerGrid's 
      * tracked links set.
      * @param link Link to add
      */
     public void trackLink(GridLink link) {
-        ChunkPos startChunkPos = new ChunkPos(link.getStart().getAddress().getBlockPos());
-        List<GridLink> links = linksByChunk.get(startChunkPos);
+        ChunkPos startChunkPos = new ChunkPos(link.getStartNode().getAddress().getBlockPos(world));
+        ObjectOpenHashSet<GridLink> links = linksByChunk.get(startChunkPos);
         if(links == null) {
-            links = new ArrayList<>();
+            links = new ObjectOpenHashSet<>();
             links.add(link);
             linksByChunk.put(startChunkPos, links);
             return;
         }
-        int index = links.indexOf(link);
-        if(index == -1)
-            links.add(link);
-        else links.set(index, link);
+        links.add(link);
     }
 
     public void untrackLink(GridLink link) {
-        ChunkPos startChunkPos = new ChunkPos(link.getStart().getAddress().getBlockPos());
+        ChunkPos startChunkPos = new ChunkPos(link.getStartNode().getAddress().getBlockPos(world));
         List<GridLink> links = linksByChunk.get(startChunkPos);
         if(links == null) return;
         links.remove(link);
@@ -353,12 +349,12 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     /**
      * Finds a node at the given address by iterating through all subgrids.
      * @param address {@link com.quattage.mechano.foundation.api.landmark.GridIdentifier.base.NodeIdentifier NodeIdentifier} to look for
-     * @return A pair containing the {@link GridNode} and its {@link PowerGrid parent}. If a node is not found
+     * @return A pair containing the {@link GridNode} and its {@link ServerMatrix parent}. If a node is not found
      * at the given address, the contents of the pair will be null.
      */
-    public Pair<PowerGrid, GridNode> lookup(GridUUID address) {
-        for(int x = 0; x < subgrids.size(); x++) {
-            PowerGrid grid = subgrids.get(x);
+    public Pair<ServerMatrix, GridNode> lookup(GridUUID address) {
+        for(int x = 0; x < matrices.size(); x++) {
+            ServerMatrix grid = matrices.get(x);
             GridNode get = grid.nodes.get(address);
             if(get != null) return Pair.of(grid, get);
         }
@@ -369,31 +365,31 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
 
     /**
-     * Iterates over all {@link PowerGrid} instances
+     * Iterates over all {@link ServerMatrix} instances
      * and clears them. Broadcasts updates as a result.
      */
     public void clear() {
-        Iterator<PowerGrid> it = subgrids.iterator();
+        Iterator<ServerMatrix> it = matrices.iterator();
         while(it.hasNext()) {
-            PowerGrid grid = it.next();
+            ServerMatrix grid = it.next();
             grid.clear();
             it.remove();
         }
-        subgrids.trim(1);
+        matrices.trim(1);
     }
 
 
 
 
     /**
-     * Iteratively updates all PowerGrid indices to match where they are
-     * in this GlobalServerGrid's subgrid array. This is necessary
+     * Iteratively updates all ServerMatrix indices to match where they are
+     * in this ServerGrid's subgrid array. This is necessary
      * any time the list gets smaller.
      * @param startingIndex Index to start from. Normally, this would be the index that was removed.
      */
     public void updateGridIndices(int startingIndex) {
-        for(int x = startingIndex; x < subgrids.size(); x++)
-            subgrids.get(x).gridIndex = x;
+        for(int x = startingIndex; x < matrices.size(); x++)
+            matrices.get(x).gridIndex = x;
     }
 
 
@@ -401,19 +397,19 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
     /**
      * Destroys the grid at the given index, or does nothing
-     * if the index doesn't exist in this GlobalServerGrid.
+     * if the index doesn't exist in this ServerGrid.
      * @param index
-     * @return <code>true</code> if this GlobalServerGrid was modified as a result of this call
+     * @return <code>true</code> if this ServerGrid was modified as a result of this call
      */
     public boolean destroyGridAt(int index) {
-        if(index < 0 || index >= subgrids.size())
+        if(index < 0 || index >= matrices.size())
             return false;
-        PowerGrid grid = subgrids.remove(index);
+        ServerMatrix grid = matrices.remove(index);
         if(grid == null) return false;
         grid.nullify();
 
-        if(subgrids.isEmpty()) {
-            subgrids.trim();
+        if(matrices.isEmpty()) {
+            matrices.trim();
             return true;
         }
 
@@ -424,23 +420,23 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
     /**
      * Destroys the grid at the given index, or does nothing
-     * if the index doesn't exist in this GlobalServerGrid.
-     * @param grid PowerGrid to destroy
-     * @return <code>true</code> if this GlobalServerGrid was modified as a result of this call
+     * if the index doesn't exist in this ServerGrid.
+     * @param grid ServerMatrix to destroy
+     * @return <code>true</code> if this ServerGrid was modified as a result of this call
      */
-    public boolean destroyGrid(PowerGrid grid) {
+    public boolean destroyGrid(ServerMatrix grid) {
         int index = grid.gridIndex;
-        if(grid.gridIndex < 0 || grid.gridIndex >= subgrids.size())
-            index = subgrids.indexOf(grid);
+        if(grid.gridIndex < 0 || grid.gridIndex >= matrices.size())
+            index = matrices.indexOf(grid);
         if(index < 0) {
             grid.nullify();
             return false;
         }
-        subgrids.remove(index);
+        matrices.remove(index);
         grid.nullify();
 
-        if(subgrids.isEmpty()) {
-            subgrids.trim();
+        if(matrices.isEmpty()) {
+            matrices.trim();
             return true;
         }
 
@@ -449,28 +445,28 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
     }
 
     /**
-     * Adds every member of the supplied list to this GlobalServerGrid's 
+     * Adds every member of the supplied list to this ServerGrid's 
      * subgrids list and updates their indices.
      * @param grids Grids to add
      */
-    public void addAll(List<PowerGrid> grids) {
+    public void addAll(List<ServerMatrix> grids) {
         if(grids.isEmpty()) return;
-        subgrids.ensureCapacity(subgrids.size() + grids.size());
+        matrices.ensureCapacity(matrices.size() + grids.size());
         for(int x = 0; x < grids.size(); x++) {
-            PowerGrid grid = grids.get(x);
+            ServerMatrix grid = grids.get(x);
             if(grid.nodes.isEmpty()) {
                 grid.nullify();
                 continue;
             }
-            subgrids.add(grid);
-            grid.gridIndex = subgrids.size() - 1;
+            matrices.add(grid);
+            grid.gridIndex = matrices.size() - 1;
         }
-        subgrids.trim();
+        matrices.trim();
     }
 
 
     /**
-     * @return The ServerLevel that this GlobalServerGrid is attached to.
+     * @return The ServerLevel that this ServerGrid is attached to.
      */
     @Override
     public ServerLevel getWorld() {
@@ -481,14 +477,14 @@ public final class GlobalServerGrid extends SidedGridDispatcher {
 
 
     /**
-     * Writes this entire GlobalServerGrid to a new ListTag
+     * Writes this entire ServerGrid to a new ListTag
      * @returns A new ListTag, made of {@link CompoundTag CompoundTags}
-     * acquired by the PowerGrid's {@link com.quattage.mechano.foundation.api.landmark.NodeMap#write writing process}
+     * acquired by the ServerMatrix's {@link com.quattage.mechano.foundation.api.landmark.NodeMap#write writing process}
      */
     @Override
     protected @Nullable ListTag writeAll() {
         ListTag output = new ListTag();
-        for(PowerGrid grid : subgrids) {
+        for(ServerMatrix grid : matrices) {
             if(grid == null || grid.nodes.isEmpty() || grid.global == null) 
                 continue;
             output.add(grid.nodes.write());

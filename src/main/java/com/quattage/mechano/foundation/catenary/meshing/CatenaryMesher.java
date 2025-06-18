@@ -31,10 +31,12 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 
 /**
  * This class is a central place for managing mutable vertex data
- * before it's pushed to a VertexConsumer. This class manages
- * an array of floats to minimize strain on the GC by eliminating
- * boxing/unboxing vectors and continuous re-allocation of hundreds 
- * of floats. To be completely honest, I have no idea whether or 
+ * before it's pushed to a VertexConsumer.  
+ * <p>
+ * In order to reduce strain on the GC, this class contains
+ * a large, reusable array of single-precision floats, and
+ * never boxes/unboxes or reallocates these values.
+ * To be completely honest, I have no idea whether or 
  * not this results in any reasonable performance uplift
  * compared to the alternative, but it's pretty cool, so yknow.
  * This class will probably be abstracted or replaced when
@@ -45,14 +47,14 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
  * can reap the benefits of significantly smaller method headers,
  * such as {@link MeshExtruder} and {@link Catenary#render}
  */
-public class GeoHolder extends CatenaryAttributeHolder {
+public class CatenaryMesher extends CatenaryAttributeHolder {
 
-    public static GeoHolder as(TransmitterType<?> type) {
-        return new GeoHolder(type);
+    public static CatenaryMesher as(TransmitterType<?> type) {
+        return new CatenaryMesher(type);
     }
 
-    public static GeoHolder asEmpty() {
-        return new GeoHolder();
+    public static CatenaryMesher asEmpty() {
+        return new CatenaryMesher();
     }
 
     private Vec3 basis;
@@ -64,7 +66,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
     private @Nullable TextureAtlasSprite atlas;
     private boolean useTextureAtlas = false;
 
-    private GeoHolder(ModelType model) {
+    private CatenaryMesher(ModelType model) {
         super(model);
         data[41] = 1;
         data[43] = 1;
@@ -73,7 +75,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         lightLookup = new MutableBlockPos();
     }
 
-    private GeoHolder(TransmitterType<?> type) {
+    private CatenaryMesher(TransmitterType<?> type) {
         super(type.defaults.model);
         lightLookup = new MutableBlockPos();
         data[41] = 1;
@@ -83,7 +85,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         withAppearance(type);
     }
 
-    private GeoHolder() {
+    private CatenaryMesher() {
         super(null);
         data[41] = 1;
         data[43] = 1;
@@ -92,7 +94,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         lightLookup = new MutableBlockPos();
     }
 
-    public GeoHolder withAppearance(TransmitterType<?> type) {
+    public CatenaryMesher withAppearance(TransmitterType<?> type) {
         this.material = this.model.getShader(type);
         if(this.material == null)
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - Typs type has no configured material!");
@@ -107,28 +109,28 @@ public class GeoHolder extends CatenaryAttributeHolder {
     }
 
     @Override
-    public GeoHolder withThickness(Thickness thick) {
+    public CatenaryMesher withThickness(Thickness thick) {
         data[0] = thick.get() / 2f;
         data[41] = thick.getPixels();
         return this;
     }
 
-    public GeoHolder in(BlockAndTintGetter world) {
+    public CatenaryMesher in(BlockAndTintGetter world) {
         this.world = world;
         return this;
     } 
 
-    public GeoHolder withPosition(Vec3 pos) {
+    public CatenaryMesher at(Vec3 pos) {
         this.basis = pos;
         return this;
     }
 
     @Override
-    public GeoHolder withTension(Tension tension) {
-        return (GeoHolder)super.withTension(tension);
+    public CatenaryMesher withTension(Tension tension) {
+        return (CatenaryMesher)super.withTension(tension);
     }
 
-    public GeoHolder useAtlas() {
+    public CatenaryMesher useAtlas() {
         if(atlas == null) {
             Mechano.LOGGER.warn("Attempt to enable CatenaryGeometry texture atlas was ignored since this instance hasn't been configured with an atlas.");
             return this;
@@ -137,7 +139,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder ignoreAtlas() {
+    public CatenaryMesher ignoreAtlas() {
         this.useTextureAtlas = false;
         return this;
     }
@@ -168,7 +170,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public GeoHolder render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, Vec3 localOffset, float pTicks) {
+    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, Vec3 localOffset, float pTicks) {
         if(localOffset == null) localOffset = new Vec3(0, 0, 0);
         VertexConsumer buffer = buffers.getBuffer(material);
         matrixStack.pushPose();
@@ -190,7 +192,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public GeoHolder render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, float pTicks) {
+    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, float pTicks) {
         return render(buffers, matrixStack, model, null, pTicks);
     }
 
@@ -277,7 +279,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * between the two given vectors 
      * @see {@link #computeMatrix(Vector3f)}
      */
-    public GeoHolder computeMatrix(Vector3f forwardA, Vector3f forwardB) {
+    public CatenaryMesher computeMatrix(Vector3f forwardA, Vector3f forwardB) {
         return computeMatrix(forwardA.add(forwardB, new Vector3f()).normalize());
     }
 
@@ -291,7 +293,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * <code>forward</code> yourself.
      * @param forward
      */
-    public GeoHolder computeMatrix(Vector3f forward) {
+    public CatenaryMesher computeMatrix(Vector3f forward) {
         data[4] = CatenaryAttributes.UP.x; 
         data[5] = CatenaryAttributes.UP.y; 
         data[6] = CatenaryAttributes.UP.z;
@@ -320,7 +322,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder setNormalA(float x, float y, float z) {
+    public CatenaryMesher setNormalA(float x, float y, float z) {
         data[10] = x; data[11] = y; data[12] = z;
         float s = fastinvsqrt(Math.fma(data[10], data[10], Math.fma(data[11], data[11], data[12] * data[12])));
         data[10] *= s;
@@ -329,7 +331,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder setNormalB(float x, float y, float z) {
+    public CatenaryMesher setNormalB(float x, float y, float z) {
         data[13] = x; data[14] = y; data[15] = z;
         float s = fastinvsqrt(Math.fma(data[13], data[13], Math.fma(data[14], data[14], data[15] * data[15])));
         data[13] *= s;
@@ -338,7 +340,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder setNormalA(Vector3f norm) {
+    public CatenaryMesher setNormalA(Vector3f norm) {
         data[10] = norm.x; data[11] = norm.y; data[12] = norm.z;
         float s = fastinvsqrt(Math.fma(data[10], data[10], Math.fma(data[11], data[11], data[12] * data[12])));
         data[10] *= s;
@@ -347,7 +349,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder setNormalB(Vector3f norm) {
+    public CatenaryMesher setNormalB(Vector3f norm) {
         data[13] = norm.x; data[14] = norm.y; data[15] = norm.z;
         float s = fastinvsqrt(Math.fma(data[13], data[13], Math.fma(data[14], data[14], data[15] * data[15])));
         data[13] *= s;
@@ -363,7 +365,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return x * (1.5f - xh * x * x);
     }
 
-    public GeoHolder setVert(int offset, float x, float y, float z) {
+    public CatenaryMesher setVert(int offset, float x, float y, float z) {
         if(offset >= 8)
             throw new ArrayIndexOutOfBoundsException("Can't get vertex at offset " + offset + " - There are only up to 8 vertices in this CatenaryGeometry!");
         offset = offset * 3 + 16;
@@ -400,7 +402,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * @param pos
      * @param offset The offset to use when storing vertices here.
      */
-    public GeoHolder place4Verts(Vector3f pos, int offset) {
+    public CatenaryMesher place4Verts(Vector3f pos, int offset) {
         return this.setVert(offset, 
             pos.x + rightX() * radius(),
             pos.y + rightY() * radius(),
@@ -430,7 +432,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
      * @param z
      * @param offset The offset to use when storing vertices here.
      */
-    public GeoHolder place4Verts(float x, float y, float z, int offset) {
+    public CatenaryMesher place4Verts(float x, float y, float z, int offset) {
         return this.setVert(offset, 
             x + rightX() * radius(),
             y + rightY() * radius(),
@@ -451,7 +453,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
     }
 
 
-    public GeoHolder emitQuad(VertexConsumer buffer, Pose pose, int offsetA, int offsetB, int offsetC, int offsetD) {
+    public CatenaryMesher emitQuad(VertexConsumer buffer, Pose pose, int offsetA, int offsetB, int offsetC, int offsetD) {
         buffer.addVertex(pose, getVertX(offsetA), getVertY(offsetA), getVertZ(offsetA))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v0())
@@ -480,7 +482,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
     }
 
 
-    public GeoHolder emitQuad(VertexConsumer buffer, Pose pose, float normX, float normY, float normZ, int offsetA, int offsetB, int offsetC, int offsetD) {
+    public CatenaryMesher emitQuad(VertexConsumer buffer, Pose pose, float normX, float normY, float normZ, int offsetA, int offsetB, int offsetC, int offsetD) {
         buffer.addVertex(pose, getVertX(offsetA), getVertY(offsetA), getVertZ(offsetA))
             .setColor(255, 255, 255, 255)
             .setUv(u0(), v0())
@@ -529,7 +531,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
             ? atlas.getU(data[43]) : data[43] / 16f;
     }
 
-    public GeoHolder walkUVs(Stick stick, int iteration) {
+    public CatenaryMesher walkUVs(Stick stick, int iteration) {
         data[42] = (stick.length * 2f) * (float)iteration;
         data[43] = data[42] + (stick.length) * 4;
         if(atlas == null || !useTextureAtlas) return this;
@@ -537,7 +539,7 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return this;
     }
 
-    public GeoHolder shiftUVs() {
+    public CatenaryMesher shiftUVs() {
         data[40] += thick.getPixels();
         data[40] %= Math.min(thick.getPixels() * 2, CatenaryAttributes.TEX_DIMS[0]);
         data[41] += thick.getPixels();
@@ -563,17 +565,17 @@ public class GeoHolder extends CatenaryAttributeHolder {
         return (int)data[45];
     }
 
-    public GeoHolder setLight0(int light) {
+    public CatenaryMesher setLight0(int light) {
         data[44] = light;
         return this;
     }
 
-    public GeoHolder setLight1(int light) {
+    public CatenaryMesher setLight1(int light) {
         data[45] = light;
         return this;
     }
 
-    public GeoHolder walkLight() {
+    public CatenaryMesher walkLight() {
         data[44] = data[45];
         return this;
     }

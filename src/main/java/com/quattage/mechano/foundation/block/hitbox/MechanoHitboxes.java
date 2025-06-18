@@ -1,11 +1,7 @@
-package com.quattage.mechano;
+package com.quattage.mechano.foundation.block.hitbox;
 
 import javax.annotation.processing.Generated;
 
-import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder;
-import com.quattage.mechano.foundation.block.hitbox.HitboxRepresentable;
-import com.quattage.mechano.foundation.block.hitbox.LazyRotatableHitbox;
-import com.quattage.mechano.foundation.block.hitbox.HitboxStateTree;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.IEventBus;
 

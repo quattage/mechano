@@ -9,9 +9,9 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Point;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -190,7 +190,7 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
     @Override
     public void updateAhead(int steps) {
-        for(int x = 0; x < steps * 3; x++) {
+        for(int x = 0; x < steps; x++) {
             update();
             if(avgVelocity <= CatenaryAttributes.TENSION_EPSILON)
                 return;
@@ -199,7 +199,7 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
     }
 
     @Override
-    public void render(VertexConsumer buffer, Pose pose, GeoHolder geo, float pTicks) {
+    public void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
         if(sticks.size() < 2) {
             Mechano.LOGGER.error("Attempted to render SimulatedWireModel with invalid (< 2) size!");
             return;

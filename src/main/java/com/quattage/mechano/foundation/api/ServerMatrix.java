@@ -12,66 +12,66 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
 import com.quattage.mechano.foundation.api.landmark.NodeMap;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.impl.HeuristicUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.HeuristicUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.server.level.ServerLevel;
 
 
-public class PowerGrid {
+public class ServerMatrix {
 
-    protected GlobalServerGrid global;
+    protected ServerGrid global;
     public int gridIndex = -1;
     public NodeMap nodes;
 
-    protected PowerGrid(GlobalServerGrid parent, int preload) {
+    protected ServerMatrix(ServerGrid parent, int preload) {
         Objects.requireNonNull(parent);
-        this.gridIndex = parent.subgrids.size();
+        this.gridIndex = parent.matrices.size();
         this.nodes = new NodeMap(new Object2ObjectOpenHashMap<>(preload));
         this.global = parent;
-        this.global.subgrids.add(this);
+        this.global.matrices.add(this);
     }
 
-    public PowerGrid(GlobalServerGrid parent, @Nullable NodeMap newContents) {
+    public ServerMatrix(ServerGrid parent, @Nullable NodeMap newContents) {
         Objects.requireNonNull(parent);
-        this.gridIndex = parent.subgrids.size();
+        this.gridIndex = parent.matrices.size();
         this.global = parent;
         this.nodes = newContents == null ? new NodeMap() : newContents;
-        this.global.subgrids.add(this);
+        this.global.matrices.add(this);
     }
 
-    public PowerGrid(PowerGrid original, @Nullable NodeMap newContents) {
+    public ServerMatrix(ServerMatrix original, @Nullable NodeMap newContents) {
         Objects.requireNonNull(original);
         this.global = original.global;
         this.gridIndex = original.gridIndex;
         this.nodes = newContents == null ? new NodeMap() : newContents;
-        this.global.subgrids.set(gridIndex, this);
+        this.global.matrices.set(gridIndex, this);
     }
 
     /**
      * Gets the node at the given address, or create a new one if
      * no node at this address exists. This method is mainly designed
-     * to be used during the loading process defined in {@link GlobalServerGrid#makeProvisionalNodeAndLinks}
+     * to be used during the loading process defined in {@link ServerGrid#makeProvisionalNodeAndLinks}
      * <p>
      * Note that, if the returned GridNode is newly created, it will be blank. 
-     * Blank GridNodes that have no links should not persist in the PowerGrid 
+     * Blank GridNodes that have no links should not persist in the LocalMatrix 
      * for long, since they represent dead ends.
      * @param address Address to get or add (Compatable with any type outlined by {@link NodeMap#get})
      * @return The GridNode at this address, or the new one that was created at the specified address. Will be null if there is no PGBE at the address.
-     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
+     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public @Nullable GridNode getOrCreateProvisional(GridUUID address) {
         assertNotDestroyed();
         GridNode node = nodes.get(address);
         if(node != null) return node;
-        AnchorPointHoldable host = address.getHolder(global.getLevelReader());
+        AnchorPointable host = address.getHolder(global.getWorld());
         if(host == null) {
             Mechano.LOGGER.error("Failed to instantiate provisional node at " + address + " - No in-world reference to this address could be found!");
             return null;
@@ -84,7 +84,7 @@ public class PowerGrid {
 
     /**
      * Splits discontinuities and removes empty or stale {@link GridNode}
-     * instances from this PowerGrid. The instance that this is run on will be stale,
+     * instances from this LocalMatrix. The instance that this is run on will be stale,
      * and a new list of instnaces will be added to the {@link GlobalTransferGrid}
      * that this local belongs to.
      */
@@ -118,7 +118,7 @@ public class PowerGrid {
         }
 
         if(this.nodes.size() > 3) {
-            List<PowerGrid> clusters = splitDiscontinuities();
+            List<ServerMatrix> clusters = splitDiscontinuities();
             if(clusters.size() > 1) {
                 global.destroyGrid(this);
                 global.addAll(clusters);
@@ -127,26 +127,26 @@ public class PowerGrid {
     }
 
     /**
-     * Performs a Flood-Fill to locate discontinuities in this PowerGrid's
+     * Performs a Flood-Fill to locate discontinuities in this LocalMatrix's
      * underlying matrix. (https://en.wikipedia.org/wiki/Flood_fill) 
      * <p>
-     * Calls to this method will <strong>not</strong> modify this PowerGrid
-     * in-place. Instead, a list of PowerGrids is formed as a result of the 
+     * Calls to this method will <strong>not</strong> modify this LocalMatrix
+     * in-place. Instead, a list of ServerMatrices is formed as a result of the 
      * discontinuities contained within this one.
-     * @return List of new PowerGrid instances. The list will be empty if this 
-     * PowerGrid contains no discontinuities.
-     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
+     * @return List of new LocalMatrix instances. The list will be empty if this 
+     * LocalMatrix contains no discontinuities.
+     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
-    public @Nullable List<PowerGrid> splitDiscontinuities() {
+    public @Nullable List<ServerMatrix> splitDiscontinuities() {
         assertNotDestroyed();
         final Set<GridUUID> visited = new HashSet<>();
-        final List<PowerGrid> output = new ArrayList<>();
+        final List<ServerMatrix> output = new ArrayList<>();
         nodes.forEach(node -> {
             if(visited.contains(node.getAddress())) return;
             NodeMap cluster = new NodeMap();
             floodFillRecurse(node, visited, cluster);
             if(cluster.size() > 1)
-                output.add(new PowerGrid(this, cluster));
+                output.add(new ServerMatrix(this, cluster));
         });
         return output;
     }
@@ -158,7 +158,7 @@ public class PowerGrid {
         if(iteration == null || iteration.links.isEmpty()) return;
         clusterResult.add(iteration);
         iteration.forEachLink(link -> {
-            GridNode adjacent = link.getEnd();
+            GridNode adjacent = link.getEndNode();
             if(!visited.contains(adjacent.getAddress()))
                 floodFillRecurse(adjacent, visited, clusterResult);
         });
@@ -172,7 +172,7 @@ public class PowerGrid {
      * @param start Address to begin searching from
      * @param end Address to search for
      * @return The resulting {@link GridPath} or null if no path could be found
-     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
+     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public @Nullable GridPath findPathBetween(GridUUID start, GridUUID end) {
         assertNotDestroyed();
@@ -184,7 +184,7 @@ public class PowerGrid {
         final Queue<HeuristicUUID> open = new PriorityQueue<>(11);
         final GridPath output = GridPath.makeProvisional();
         final ObjectOpenHashSet<HeuristicUUID> trackedNodes = new ObjectOpenHashSet<>();
-        open.add(start.makeTrackable().estimateCostTo(end));
+        open.add(start.makeTrackable().estimateCostTo(getWorld(), end));
 
         while(!open.isEmpty()) {
             final HeuristicUUID local = open.poll();
@@ -201,9 +201,9 @@ public class PowerGrid {
 
             localNode.forEachLink(adjacentLink -> {
                 if(!adjacentLink.canTraverse()) return;
-                HeuristicUUID neighbor = trackedNodes.get(adjacentLink.getEnd());
+                HeuristicUUID neighbor = trackedNodes.get(adjacentLink.getEndNode());
                 if(neighbor == null) {
-                    neighbor = adjacentLink.getEnd().getAddress().makeTrackable();
+                    neighbor = adjacentLink.getEndNode().getAddress().makeTrackable();
                     trackedNodes.add(neighbor);
                 }
                 if(local.investigateAcross(adjacentLink, neighbor)) {
@@ -217,12 +217,12 @@ public class PowerGrid {
     }
 
     /**
-     * Retrieve every node in this PowerGrid belonging to the given
+     * Retrieve every node in this LocalMatrix belonging to the given
      * Address, while ignoring that address's index. All {@link GridNode GridNodes} 
      * that point to the given address will be added to the returned list.
      * @param addr Address to get all occurances of
      * @return A list of all GridNode objects belonging to the given BlockPos
-     * @throws IllegalStateException if this PowerGrid has been {@link PowerGrid#destroy destroyed.}
+     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public List<GridNode> getAllOccurancesOf(GridUUID addr) {
         assertNotDestroyed();
@@ -237,9 +237,9 @@ public class PowerGrid {
 
     /**
      * Merges the contents of the provided {@link NodeMap}
-     * into this PowerGrid.
+     * into this LocalMatrix.
      * @param otherNodes Nodes to add
-     * @return <code>true</code> if this PowerGrid was modified.
+     * @return <code>true</code> if this LocalMatrix was modified.
      */
     public boolean addAll(NodeMap otherNodes) {
         assertNotDestroyed();
@@ -253,7 +253,7 @@ public class PowerGrid {
     }
 
     /**
-     * Clears this PowerGrid, erasing its matrix and resizing its hash table.
+     * Clears this LocalMatrix, erasing its matrix and resizing its hash table.
      * Broadcasts updates as a result.
      */
     public void clear() {
@@ -270,11 +270,11 @@ public class PowerGrid {
     }
 
     /**
-     * Removes the node at the given address from this PowerGrid.
-     * If this PowerGrid is empty as a result of this call, this
-     * method will also remove and destroy this PowerGrid.
+     * Removes the node at the given address from this LocalMatrix.
+     * If this LocalMatrix is empty as a result of this call, this
+     * method will also remove and destroy this LocalMatrix.
      * @param address
-     * @return <code>true</code> if this PowerGrid was modified as a result
+     * @return <code>true</code> if this LocalMatrix was modified as a result
      * of this call.
      */
     public boolean removeNode(GridUUID address) {
@@ -296,14 +296,14 @@ public class PowerGrid {
         // remove links symmetrically while tracking changes
         removed.forEachLink(link -> {
             if(link == null) return;
-            GridNode endNode = link.getEnd();
+            GridNode endNode = link.getEndNode();
             Iterator<GridLink> linksIter = endNode.links.iterator();
             while(linksIter.hasNext()) {
                 GridLink linkToRemove = linksIter.next();
                 if(linkToRemove.endsWith(address)) {
                     linksIter.remove();
-                    altered.add(linkToRemove.getStart());
-                    altered.add(linkToRemove.getEnd());
+                    altered.add(linkToRemove.getStartNode());
+                    altered.add(linkToRemove.getEndNode());
                 }
             }
         });
@@ -326,12 +326,12 @@ public class PowerGrid {
     }
 
     /**
-     * Nullifies references in this PowerGrid for when it is removed.<p>
+     * Nullifies references in this LocalMatrix for when it is removed.<p>
      * Note that this method does <strong>NOT</strong> broadcast
      * changes or do any syncing - This method is specifically
      * to mark grids as stale so they aren't used anymore.
      * <p>
-     * If this method is called on a PowerGrid that's actively being
+     * If this method is called on a LocalMatrix that's actively being
      * used, all hell will break lose.
      */
     public void nullify() {
@@ -341,17 +341,17 @@ public class PowerGrid {
 
     private void assertNotDestroyed() {
         if(nodes == null || global == null) 
-            throw new IllegalStateException("An operation attempted to run on a PowerGrid that has already been destroyed. (A PowerGrid was probably leaked!)");
+            throw new IllegalStateException("An operation attempted to run on a LocalMatrix that has already been destroyed. (A LocalMatrix was probably leaked!)");
     }
 
     public ServerLevel getWorld() {
         assertNotDestroyed();
-        return global.getWorld();
+        return (ServerLevel)global.getWorld();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if(!(obj instanceof PowerGrid that)) return false;
+        if(!(obj instanceof ServerMatrix that)) return false;
         return this.gridIndex == that.gridIndex;
     }
 }

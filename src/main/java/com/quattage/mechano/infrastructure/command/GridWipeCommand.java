@@ -3,7 +3,7 @@ package com.quattage.mechano.infrastructure.command;
 import java.util.UUID;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.quattage.mechano.foundation.api.GlobalServerGrid;
+import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 
 import net.minecraft.ChatFormatting;
@@ -27,8 +27,8 @@ public class GridWipeCommand {
                         return 1;
                     }
 
-                    GlobalServerGrid grid = SidedGridDispatcher.server(sp);
-                    if(grid.subgrids.isEmpty()) {
+                    ServerGrid grid = SidedGridDispatcher.server(sp);
+                    if(grid.matrices.isEmpty()) {
                         requester = null;
                         requestTime = 0L;
                         source.sendFailure(Component.literal("No grid information has been saved to '" + sp.level().dimension().location().toString() + "'").withStyle(style -> style.withColor(ChatFormatting.RED)));

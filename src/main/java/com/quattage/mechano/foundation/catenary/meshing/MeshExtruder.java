@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation.catenary.meshing;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 @FunctionalInterface
@@ -22,7 +22,7 @@ public interface MeshExtruder {
      * stick.
      * @param buffer VertexConsumer to push geometry to
      * @param pose Pose to use for transforming
-     * @param geo {@link GeoHolder} to store and process vertex data
+     * @param geo {@link CatenaryMesher} to store and process vertex data
      * @param previous (Optional, can be null) The previous stick in the chain
      * @param current (Required) The stick to create a profile of
      * @param next (Optional, can be null) The next stick in the chain
@@ -33,5 +33,5 @@ public interface MeshExtruder {
      * the normals contained in <code>geo</code> will not be recomputed, but reused. 
      * @param pTicks partial ticks
      */
-    void make(VertexConsumer buffer, Pose pose, GeoHolder geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks);
+    void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks);
 }

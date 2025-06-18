@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmark.uuid;
+package com.quattage.mechano.foundation.api.landmark;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
@@ -13,8 +13,10 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoDataAttachments;
-import com.quattage.mechano.foundation.api.landmark.uuid.impl.VoxelUUID;
+import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.landmark.classifier.EntityUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.component.DataComponentType;
@@ -24,25 +26,19 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
-public enum GridUUIDData implements StringRepresentable {
+public enum DiscriminatorData implements StringRepresentable {
 
     // do not reorder these or god will smite you
     VOXEL(VoxelUUID.class),
-    WORLDLY(null),
-    ENTITY(null),
-    DOMAIN(null);
+    ENTITY(EntityUUID.class),
+    DOMAIN(null),
+    WORLDLY(null);
 
     private static final String PREFIX = "type";
 
     public static final Codec<byte[]> B64 = Codec.STRING.xmap(
         s -> Base64.getDecoder().decode(s),
         bytes -> Base64.getEncoder().encodeToString(bytes)
-    );
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
-        MechanoDataAttachments.COMPONENT_REGISTRY.registerComponentType(
-            "grid_identifier",
-            b -> b.persistent(GridUUIDData.CODEC).networkSynchronized(GridUUIDData.STREAM_CODEC)
     );
 
     public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID> STREAM_CODEC = new StreamCodec<>() {
@@ -53,15 +49,14 @@ public enum GridUUIDData implements StringRepresentable {
         }
         @Override
         public GridUUID decode(RegistryFriendlyByteBuf buffer) {
-            return GridUUIDData.values()[buffer.readInt()].instantiate(buffer);
+            return DiscriminatorData.values()[buffer.readInt()].instantiate(buffer);
         }
     };
-
 
     public static final Codec<GridUUID> CODEC = new Codec<>() {
         @Override
         public <T> DataResult<T> encode(GridUUID input, DynamicOps<T> ops, T prefix) {
-            GridUUIDData  type = input.getDiscriminatorType();
+            DiscriminatorData  type = input.getDiscriminatorType();
             RecordBuilder<T> builder = ops.mapBuilder();
             builder.add(PREFIX, type.ordinal(), Codec.INT);
             try {
@@ -78,10 +73,10 @@ public enum GridUUIDData implements StringRepresentable {
         public <T> DataResult<Pair<GridUUID, T>> decode(DynamicOps<T> ops, T input) {
             Dynamic<T> dyn = new Dynamic<>(ops, input);
             int ordinal = dyn.get(PREFIX).asInt(-1);
-            GridUUIDData[] types = GridUUIDData.values();
+            DiscriminatorData[] types = DiscriminatorData.values();
             if(ordinal < 0 || ordinal >= types.length)
                 return DataResult.error(() -> "Ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            GridUUIDData type = types[ordinal];
+            DiscriminatorData type = types[ordinal];
             try {
                 GridUUID newInstance = type.instantiate(dyn);
                 return DataResult.success(Pair.of(newInstance, input));
@@ -93,6 +88,12 @@ public enum GridUUIDData implements StringRepresentable {
             }
         }
     };
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
+        MechanoData.COMPONENT_REGISTRY.registerComponentType(
+            "grid_identifier",
+            b -> b.persistent(DiscriminatorData.CODEC).networkSynchronized(DiscriminatorData.STREAM_CODEC)
+    );
 
     public static CompoundTag write(GridUUID addr, CompoundTag tag) {
         tag.putInt(PREFIX, addr.getDiscriminatorType().ordinal());
@@ -113,7 +114,7 @@ public enum GridUUIDData implements StringRepresentable {
 
     public static GridUUID read(CompoundTag tag) {
         int ordinal = tag.getInt(PREFIX);
-        GridUUIDData[] types = GridUUIDData.values();
+        DiscriminatorData[] types = DiscriminatorData.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + tag +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
             return types[0].instantiate(tag);
@@ -123,7 +124,7 @@ public enum GridUUIDData implements StringRepresentable {
 
     public static GridUUID read(ByteBuf buffer) {
         int ordinal = buffer.readInt();
-        GridUUIDData[] types = GridUUIDData.values();
+        DiscriminatorData[] types = DiscriminatorData.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + buffer +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
             return types[0].instantiate(buffer);
@@ -133,7 +134,7 @@ public enum GridUUIDData implements StringRepresentable {
 
     public static GridUUID read(Dynamic<?> dyn) {
         int ordinal = dyn.get(PREFIX).asInt(-1);
-        GridUUIDData[] types = GridUUIDData.values();
+        DiscriminatorData[] types = DiscriminatorData.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + dyn +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
             return types[0].instantiate(dyn);
@@ -144,7 +145,7 @@ public enum GridUUIDData implements StringRepresentable {
 
     public static void clearReferences() {
         for(int x = 0; x < values().length; x++) {
-            GridUUIDData type = values()[x];
+            DiscriminatorData type = values()[x];
             type.byteBufCtor = null;
             type.dynamicCtor = null;
             type.tagCtor = null;
@@ -156,7 +157,7 @@ public enum GridUUIDData implements StringRepresentable {
     private WeakReference<Constructor<? extends GridUUID>> dynamicCtor = new WeakReference<>(null);;
     private WeakReference<Constructor<? extends GridUUID>> tagCtor = new WeakReference<>(null);;
 
-    private <R extends GridUUID> GridUUIDData(Class<R> clazz) {
+    private <R extends GridUUID> DiscriminatorData(Class<R> clazz) {
         this.clazz = clazz;
     }
 

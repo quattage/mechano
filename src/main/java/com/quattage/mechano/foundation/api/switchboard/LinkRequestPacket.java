@@ -1,10 +1,10 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.GlobalServerGrid;
+import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
@@ -20,8 +20,8 @@ import net.neoforged.api.distmarker.OnlyIn;
 public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?> transmitter, Response.Task task) implements ServerboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, LinkRequestPacket> STREAM_CODEC = StreamCodec.composite(
-        GridUUIDData.STREAM_CODEC, LinkRequestPacket::start,
-        GridUUIDData.STREAM_CODEC, LinkRequestPacket::end,
+        DiscriminatorData.STREAM_CODEC, LinkRequestPacket::start,
+        DiscriminatorData.STREAM_CODEC, LinkRequestPacket::end,
         TransmitterType.STREAM_CODEC, LinkRequestPacket::transmitter,
         Response.Task.STREAM_CODEC, LinkRequestPacket::task,
         LinkRequestPacket::new
@@ -35,7 +35,7 @@ public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?>
     @Override
     @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
-        GlobalServerGrid global = SidedGridDispatcher.server(player);
+        ServerGrid global = SidedGridDispatcher.server(player);
         LinkResponseHolder lrh = null;
         if(task == Response.Task.CREATE)
             lrh = global.createLink(start, end, transmitter);

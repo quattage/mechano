@@ -11,7 +11,7 @@ import org.apache.commons.lang3.function.TriConsumer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.api.PowerGridBlockEntity;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
@@ -28,6 +28,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -126,12 +127,12 @@ public class AnchorSelector {
                 reset();
                 return;
             }
-            findTargetAndRun(deltas, (holder, sel, distance) -> {
+            findTargetAndRun(player.level(), deltas, (holder, sel, distance) -> {
                 holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
                 sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, holder, sel.anchor, playerHands);
             });
         } else {
-            findTargetAndRun(deltas, (holder, sel, distance) -> {
+            findTargetAndRun(player.level(), deltas, (holder, sel, distance) -> {
                 holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
                 sel.response = Response.Anchor.NONE;
             });
@@ -218,7 +219,7 @@ public class AnchorSelector {
      * so this distance value doesn't necessarily have to be coherent - you can just submit an abitrary number (like, for example, 0, 
      * if you want this anchor to be evaluated with the highest priority
      */
-    public void track(AnchorPointHoldable holder, AnchorPoint anchor, float distance) {
+    public void track(AnchorPointable holder, AnchorPoint anchor, float distance) {
         if(holder == null || anchor == null || distance <= 0) return;
         trackedEntries.add(new Active(holder, anchor, anchor.getAddress(), distance));
     }
@@ -243,13 +244,13 @@ public class AnchorSelector {
      * This is used internally to handle tooltip aggregation and some basic event stuff.
      * @param cons Consumer that is executed when this 
      */
-    private void findTargetAndRun(DeltaTracker delta, TriConsumer<AnchorPointHoldable, AnchorSelector.Active, Float> cons) { 
+    private void findTargetAndRun(LevelReader world, DeltaTracker delta, TriConsumer<AnchorPointable, AnchorSelector.Active, Float> cons) { 
         // TODO public access may be useful
         lookedThisFrame = false;
         while(!trackedEntries.isEmpty()) {
             final Active sel = trackedEntries.poll();
-            if(sel == null || sel.isInvalid()) continue;
-            if(!sel.anchor.isIntersecting(lookingRay)) continue;
+            if(sel == null || sel.isInvalid() || !sel.holder.isInteractable()) continue;
+            if(!sel.anchor.isIntersecting(world, lookingRay)) continue;
             lookedThisFrame = true;
             selected = sel;
             cons.accept(sel.holder, sel, sel.distance);
@@ -294,14 +295,14 @@ public class AnchorSelector {
      */
     public static class Active implements Comparable<Active> {
 
-        public final AnchorPointHoldable holder; 
+        public final AnchorPointable holder; 
         public final AnchorPoint anchor;
         public final float distance;
         public final GridUUID address;
         public Response<?> response;
         private VoxelShape highlightShape;
 
-        public Active(AnchorPointHoldable holder, AnchorPoint anchor, GridUUID address, float distance) {
+        public Active(AnchorPointable holder, AnchorPoint anchor, GridUUID address, float distance) {
             this.holder = holder;
             this.anchor = anchor;
             this.address = address;
@@ -350,7 +351,7 @@ public class AnchorSelector {
 
             Minecraft mc = Minecraft.getInstance();
             if(mc != null && !mc.level.getWorldBorder().isWithinBounds(basis)) return false;
-            Vec3 shapePos = anchor.getPos();
+            Vec3 shapePos = anchor.getPos(holder.getWorld());
 
             matrix.pushPose();
             matrix.translate(shapePos.x - basis.x, shapePos.y - basis.y, shapePos.z - basis.z);
@@ -377,7 +378,7 @@ public class AnchorSelector {
          * Renders this wrapped AnchorPoint's AABB hitbox to the Create Outliner
          */
         public void renderComplexAABB(float ticks, boolean unique) {
-            AABB visual = anchor.makeHitbox(false).inflate(anchor.getSize() * ticks);
+            AABB visual = anchor.makeHitbox(holder.getWorld(), false).inflate(anchor.getSize() * ticks);
             Color col = Color.BLACK.mixWith(new Color(77, 253, 182), ticks);
             Outliner.getInstance().showAABB(unique ? anchor.hashCode() : 0xFFFFFFF, visual)
                 .disableCull()

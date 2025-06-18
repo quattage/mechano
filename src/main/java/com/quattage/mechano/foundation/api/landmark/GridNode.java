@@ -8,9 +8,9 @@ import javax.annotation.Nullable;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.ServerMatrix;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -20,7 +20,7 @@ import net.minecraft.nbt.ListTag;
 
 /**
  * A GridNode is a functional implementation of {@link GridIdentifier} and provides 
- * access to the Y axis of an adjacency list defined by the {@link PowerGrid}.
+ * access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
  * Nodes are hashed by <code>X, Y, Z, and I</code>, where <code>XYZ</code> describes the 
  * position in the world, and <code>I</code> is the index of the node at that block 
  * position. Multiple nodes may occupy the same block.
@@ -28,21 +28,21 @@ import net.minecraft.nbt.ListTag;
 public class GridNode {
 
     // all fields are null if this GridNode has been destroyed
-    private @Nullable PowerGrid owner;
-    private @Nullable AnchorPointHoldable holder;
+    private @Nullable ServerMatrix owner;
+    private @Nullable AnchorPointable holder;
     private @Nullable GridUUID address;
 
     /**
      * A list of links to other nodes.
      * This should never be modified directly.
      * Make any changes you need through the 
-     * {@link com.quattage.mechano.foundation.api.GlobalServerGrid GlobalServerGrid}
+     * {@link com.quattage.mechano.foundation.api.ServerGrid ServerGrid}
      */
     @ApiStatus.Internal
     public @Nullable ObjectArrayList<GridLink> links = new ObjectArrayList<>();
 
 
-    public GridNode(PowerGrid owner, AnchorPointHoldable holder, GridUUID address) {
+    public GridNode(ServerMatrix owner, AnchorPointable holder, GridUUID address) {
         Objects.requireNonNull(owner);
         Objects.requireNonNull(holder);
         Objects.requireNonNull(address);
@@ -51,7 +51,7 @@ public class GridNode {
         this.address = address;
     }
 
-    public GridNode(PowerGrid owner, AnchorPointHoldable holder) {
+    public GridNode(ServerMatrix owner, AnchorPointable holder) {
         Objects.requireNonNull(owner);
         Objects.requireNonNull(holder);
         Objects.requireNonNull(address);
@@ -74,7 +74,7 @@ public class GridNode {
                 linksIterator.remove();
         }
         if(links.isEmpty())
-            holder.getSurrogate().severAndForget();
+            holder.getSurrogate().destroy();
     }
 
     public void wipeLinks(boolean notify) {
@@ -84,7 +84,7 @@ public class GridNode {
             GridLink thisLink = it.next();
             it.remove();
             if(!notify) continue;
-            thisLink.transmitter.onConnectionDestroyed(owner.getWorld(), null, thisLink);
+            thisLink.getTransmitter().onConnectionDestroyed(owner.getWorld(), null, thisLink);
             holder.onConnectionBroken(owner.getWorld(), thisLink);
         }
     }
@@ -110,11 +110,11 @@ public class GridNode {
         return true;
     }
 
-    public PowerGrid getOwner() {
+    public ServerMatrix getOwner() {
         return owner;
     }
 
-    public AnchorPointHoldable getHolder() {
+    public AnchorPointable getHolder() {
         return holder;
     }
 

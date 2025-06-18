@@ -1,7 +1,8 @@
-package com.quattage.mechano.foundation.api.landmark.uuid.impl;
+package com.quattage.mechano.foundation.api.landmark.classifier;
 
 import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+
+import net.minecraft.world.level.LevelReader;
 
 public class HeuristicUUID implements Comparable<HeuristicUUID> {
 
@@ -47,8 +48,8 @@ public class HeuristicUUID implements Comparable<HeuristicUUID> {
      * @param target 
      * @return This TrackedNode with modified guidance values
      */
-    public HeuristicUUID estimateCostTo(GridUUID target) {
-        updateHeuristic(target);
+    public HeuristicUUID estimateCostTo(LevelReader world, GridUUID target) {
+        updateHeuristic(world, target);
         this.visited = true;
         this.cum = 0;
         return this;
@@ -61,8 +62,8 @@ public class HeuristicUUID implements Comparable<HeuristicUUID> {
      * @param target 
      * @return The updated heuristic value
      */
-    public float updateHeuristic(GridUUID target) {
-        this.heur = GridLink.getEuclideanDistance(this.addr, target);
+    public float updateHeuristic(LevelReader world, GridUUID target) {
+        this.heur = GridLink.getEuclideanDistance(world, this.addr, target);
         this.f = cum + heur;
         return heur;
     }

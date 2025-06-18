@@ -6,7 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.infrastructure.datagen.MechanoData;
+import com.quattage.mechano.infrastructure.datagen.MechanoDataGen;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -39,11 +39,10 @@ public class Mechano {
         MechanoItems.register(modBus);
         MechanoPackets.register(modBus);
         MechanoTags.register(modBus);
-        MechanoSettings.init(modBus);
         MechanoGroups.register(modBus);
-        MechanoDataAttachments.register(modBus);
+        MechanoData.register(modBus);
         MechanoTransmissionTypes.register(modBus);
-        modBus.addListener(EventPriority.LOWEST, MechanoData::collect);
+        modBus.addListener(EventPriority.LOWEST, MechanoDataGen::collect);
     }
 
 

@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.connector;
 
 import com.quattage.mechano.MechanoBlockEntities;
-import com.quattage.mechano.MechanoHitboxes;
+import com.quattage.mechano.foundation.block.hitbox.MechanoHitboxes;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;

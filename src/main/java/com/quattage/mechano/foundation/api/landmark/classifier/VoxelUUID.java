@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmark.uuid.impl;
+package com.quattage.mechano.foundation.api.landmark.classifier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -6,10 +6,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUIDData;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -39,11 +38,6 @@ public class VoxelUUID extends GridUUID {
         this.index = buffer.readByte();
     }
 
-    @Override
-    public GridUUID indexedCopy(int index) {
-        return new VoxelUUID(this.pos, index);
-    }
-
     public VoxelUUID(Dynamic<?> dyn) {
         dyn.get("x").asInt(0);
         dyn.get("y").asInt(0);
@@ -52,27 +46,42 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public GridUUIDData getDiscriminatorType() {
-        return GridUUIDData.VOXEL;
+    public GridUUID indexedCopy(int index) {
+        return new VoxelUUID(this.pos, index);
     }
 
     @Override
-    public BlockPos getBlockPos() {
+    public DiscriminatorData getDiscriminatorType() {
+        return DiscriminatorData.VOXEL;
+    }
+
+    @Override
+    public BlockPos getBlockPos(LevelReader world) {
         return pos;
     }
 
     @Override
-    public Vec3 getPos() {
+    public Vec3 getPos(LevelReader world) {
         return Vec3.atCenterOf(pos);
+    }
+    
+    @Override
+    public Vec3 getPos(LevelReader world, float pTicks) {
+        return getPos(world);
     }
 
     @Override
-    public Vec3 getOffsetPos(float ox, float oy, float oz) {
+    public Vec3 getOffsetPos(LevelReader world, float ox, float oy, float oz) {
         return new Vec3(
             pos.getX() + ox,
             pos.getY() + oy,
             pos.getZ() + oz
         );
+    }
+
+    @Override
+    public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) {
+        return getOffsetPos(world, ox, oy, oz);
     }
 
     @Override
@@ -82,23 +91,23 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
-        BlockEntity be = world.getBlockEntity(getBlockPos());
-        if(!(be instanceof AnchorPointHoldable aph)) return null;
+        BlockEntity be = world.getBlockEntity(getBlockPos(world));
+        if(!(be instanceof AnchorPointable aph)) return null;
         if(getIndex() < 0 || getIndex() > aph.getAnchors().size()) 
             return null;
         return aph.getAnchor(getIndex());
     }
 
     @Override
-    public @Nullable AnchorPointHoldable getHolder(LevelReader world) {
+    public @Nullable AnchorPointable getHolder(LevelReader world) {
         BlockEntity be = world.getBlockEntity(pos);
-        return be instanceof AnchorPointHoldable aph ? aph : null;
+        return be instanceof AnchorPointable aph ? aph : null;
     }
 
     @Override
     public @Nullable DispatchedAnchorNode getSurrogate(LevelReader world) {
         BlockEntity be = world.getBlockEntity(pos);
-        if(!(be instanceof AnchorPointHoldable aph)) return null;
+        if(!(be instanceof AnchorPointable aph)) return null;
         return aph.getSurrogate();
     }
 

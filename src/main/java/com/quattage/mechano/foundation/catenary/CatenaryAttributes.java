@@ -13,9 +13,9 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.meshing.MeshExtruder;
-import com.quattage.mechano.foundation.catenary.meshing.GeoHolder.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
 
 import net.minecraft.Util;
 import net.minecraft.client.renderer.RenderStateShard;
@@ -77,7 +77,7 @@ public class CatenaryAttributes {
 
         SQUARE(SOLID_MATERIAL, new MeshExtruder() {
             @Override
-            public void make(VertexConsumer buffer, Pose pose, GeoHolder geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks) {
+            public void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks) {
 
                 if(previous == null) geo.computeMatrix(current.getForward());
                 else geo.computeMatrix(previous.getForward(), current.getForward());

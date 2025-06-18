@@ -3,8 +3,8 @@ package com.quattage.mechano.foundation.api.landmark;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
-import com.quattage.mechano.foundation.api.PowerGrid;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.ServerMatrix;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.nbt.CompoundTag;
@@ -12,10 +12,10 @@ import net.minecraft.nbt.ListTag;
 
 /**
  * A collection of {@link GridNode GridNodes}. This class implements much of the data management features
- * that used to be built into {@link PowerGrid}. The NodeMap is intended for use as
+ * that used to be built into {@link ServerMatrix}. The NodeMap is intended for use as
  * the x axis of an adjacency list of {@link GridNode GridNodes}, but it may find use as a more
  * generic wrapper for a hash map. As such, all matrix-related implementation, such as
- * searching and pathfinding, are located in the {@link PowerGrid} class. <br></br>
+ * searching and pathfinding, are located in the {@link ServerMatrix} class. <br></br>
  * This class is backed by an {@link it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap Object2ObjectOpenHashMap},
  * where nodes are treated simultaneously as the key and the value. 
  * The {@link NodeMap#get get} method can be used with any subclass of {@link GridUUID} 

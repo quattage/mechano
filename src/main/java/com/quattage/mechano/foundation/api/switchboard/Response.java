@@ -182,7 +182,7 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         );
         public static LinkResponseHolder of(@Nullable GridLink link, Response<?> response) {
             if(link == null) return new LinkResponseHolder(response, new byte[] {Byte.MIN_VALUE, Byte.MIN_VALUE});
-            return LinkResponseHolder.of(link.getStart(), link.getEnd(), response);
+            return LinkResponseHolder.of(link.getStartNode(), link.getEndNode(), response);
         }
         public static LinkResponseHolder of(@Nullable GridNode start, @Nullable GridNode end, Response<?> response) {
             return new LinkResponseHolder(response, new byte[] {

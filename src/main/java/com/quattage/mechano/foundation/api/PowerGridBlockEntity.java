@@ -1,25 +1,24 @@
 package com.quattage.mechano.foundation.api;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.uuid.impl.VoxelUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
 import com.quattage.mechano.foundation.blockEntity.ElectricBlockEntity;
-import com.quattage.mechano.foundation.blockEntity.renderer.PowerGridBlockEntityRenderer;
-import com.quattage.mechano.foundation.catenary.Catenary;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public abstract class PowerGridBlockEntity extends ElectricBlockEntity implements AnchorPointHoldable {
+public abstract class PowerGridBlockEntity extends ElectricBlockEntity implements AnchorPointable {
 
     // always empty on the server
     private AnchorArray anchors = AnchorArray.EMPTY;
-    public final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
+    private final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
 
     public PowerGridBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -40,7 +39,6 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
     @Override
     public void tick() {
         if(!getLevel().isClientSide) return;
-        Catenary.tryUpdateOrElse(this, PowerGridBlockEntityRenderer.catenary, 1, (catenary) -> {});
     }
 
     @Override
@@ -62,7 +60,7 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
     @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
         super.onBlockBroken(world, pos, oldState, newState);
-        surrogate.severAndForget();
+        destroySurrogate();
     }
 
     @Override
@@ -83,5 +81,10 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
     @Override
     public String describeState() {
         return getBlockState().getBlock().getName().toString();
+    }
+
+    @Override
+    public Item getVisual() {
+        return getBlockState().getBlock().asItem();
     }
 }

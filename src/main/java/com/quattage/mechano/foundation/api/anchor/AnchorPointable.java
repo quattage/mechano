@@ -5,20 +5,20 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.PowerGrid;
+import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
-public interface AnchorPointHoldable {
+public interface AnchorPointable {
 
     public void constructAnchors(AnchorArray.Builder anchors);
 
@@ -75,6 +75,16 @@ public interface AnchorPointHoldable {
     }
 
     /**
+     * Destroys this holder's surrogate, which 
+     * removes worldly references in the {@link ServerGrid}.
+     * Calls to this method will destroy connections made to this
+     * holder.
+     */
+    public default void destroySurrogate() {
+        getSurrogate().destroy();
+    }
+
+    /**
      * Called while the player is targeting this holder or an {@link AnchorPoint} that belongs to it.
      * @param tooltip
      * @param player
@@ -89,12 +99,12 @@ public interface AnchorPointHoldable {
     }
 
     /**
-     * Called when this holder is initially registered within a {@link PowerGrid}.
+     * Called when this holder is initially registered within a {@link ServerMatrix}.
      * 
      * @param world World to operate within
      * @param grid The grid that this holder was added to
      */
-    public default void onAddedToGrid(Level world, PowerGrid grid) {
+    public default void onAddedToGrid(Level world, ServerMatrix grid) {
         
     }
 
@@ -117,12 +127,16 @@ public interface AnchorPointHoldable {
     }
 
     /**
-     * This method returns an arbitrary ItemStack which can be 
+     * This method returns an arbitrary Item which can be 
      * drawn to GUIs. It's used in the {@link com.quattage.mechano.foundation.api.anchor.AnchorGUILayer}
      * to label the highlight tab.
-     * @return An ItemStack that contains at least one item. This item can be drawn to GUI elements.
+     * @return An Item that contains at least one item. This item can be drawn to GUI elements.
      */
-    public default ItemStack getVisualStack() {
+    public default Item getVisual() {
         return null;
     }
+
+    public default boolean isInteractable() { return true; }
+
+    public default boolean isVisible() { return true; }
 }

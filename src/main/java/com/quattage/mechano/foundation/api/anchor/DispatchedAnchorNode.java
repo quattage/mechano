@@ -6,12 +6,12 @@ import java.util.function.BiConsumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.GlobalServerGrid;
-import com.quattage.mechano.foundation.api.PowerGrid;
+import com.quattage.mechano.foundation.api.ServerGrid;
+import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 
@@ -26,18 +26,18 @@ import net.minecraft.world.level.LevelReader;
  * and sends packets to sync each instance.
  * <li> Serves as an indicator for side-specific {@link SidedGridDispatcher} access,
  * where the client is able to tell whether or not the server-sided dispatch is
- * synced to a {@link PowerGrid}. (this is necessary because the PowerGrid does not exist on the client)
- * <li>Provides {@link #severAndForget() helper methods} for traversing the {@link GlobalServerGrid}
+ * synced to a {@link ServerMatrix}. (this is necessary because the ServerMatrix does not exist on the client)
+ * <li>Provides {@link #destroy() helper methods} for traversing the {@link ServerGrid}
  * starting at this DispatchedNode's internally stored BlockEntity instance.
  * <li>Stores an {@link #owner accelerated reference} to the most relevent 
- * {@link PowerGrid} containing an address that points to this
+ * {@link ServerMatrix} containing an address that points to this
  * DispatchedNode's {@link #holder internal host},
- * skipping the need to call {@link GlobalServerGrid#lookup} and avoiding
+ * skipping the need to call {@link ServerGrid#lookup} and avoiding
  * brute-force iteration.
  *
  * </ul><p>
  * This class should be instantiated by implementing {@link AnchorPointHostable hosts} 
- * as a way to for them to keep track of their PowerGrid representation on both logical 
+ * as a way to for them to keep track of their ServerMatrix representation on both logical 
  * sides while avoiding race conditions, stale data, and large packets.
  */
 public final class DispatchedAnchorNode {
@@ -45,9 +45,9 @@ public final class DispatchedAnchorNode {
     /**
      * The owner is always null on the client, and sometimes null
      * on the server. A DispatchedNode with a null owner indicates
-     * that this instance does not belong to a PowerGrid. 
+     * that this instance does not belong to a ServerMatrix. 
      */
-    public @Nullable PowerGrid owner;
+    public @Nullable ServerMatrix owner;
 
     /**
      * A client-sided hint so that we can tell if this DispatchedNode
@@ -59,7 +59,7 @@ public final class DispatchedAnchorNode {
      * Never null, immutable - The host of this DispatchedNode
      * in the world. Used for getting BlockPos and level.
      */
-    private final AnchorPointHoldable holder;
+    private final AnchorPointable holder;
 
     // lazily loaded from the holder
     public @Nullable GridUUID addr = null;
@@ -70,7 +70,7 @@ public final class DispatchedAnchorNode {
      */
     public int nodeCount = -1;
 
-    public DispatchedAnchorNode(AnchorPointHoldable holder) {
+    public DispatchedAnchorNode(AnchorPointable holder) {
         Objects.requireNonNull(holder);
         this.holder = holder;
     }
@@ -85,11 +85,11 @@ public final class DispatchedAnchorNode {
 
     /**
      * Updates this DispatchedNode, binding it to the given 
-     * PowerGrid.
+     * ServerMatrix.
      * @param world
      * @param newOwner
      */
-    public void sync(LevelReader world, @Nullable PowerGrid newOwner) {
+    public void sync(LevelReader world, @Nullable ServerMatrix newOwner) {
         if(!world.isClientSide()) {
             belongsToNetwork = true;
             this.owner = newOwner;
@@ -102,12 +102,12 @@ public final class DispatchedAnchorNode {
     }
 
     /**
-     * Tells this DispatchedNode to forget its references to the {@link PowerGrid}.
+     * Tells this DispatchedNode to forget its references to the {@link ServerMatrix}.
      * This is useful for when {@link GridLink} instances need to be removed, but
-     * this method does not alter the PowerGrid itself. This can result
-     * in stale references in the PowerGrid if not used carefully.
+     * this method does not alter the ServerMatrix itself. This can result
+     * in stale references in the ServerMatrix if not used carefully.
      * <p> 
-     * When in doubt, use {@link DispatchedAnchorNode#severAndForget()} instead.
+     * When in doubt, use {@link DispatchedAnchorNode#destroy()} instead.
      * @param world
      */
     public void forget(LevelReader world) {
@@ -124,15 +124,15 @@ public final class DispatchedAnchorNode {
 
     /**
      * Nullifies this DispatchedNode's internal references
-     * and removes its representation from the {@link PowerGrid}.
+     * and removes its representation from the {@link ServerMatrix}.
      * This is useful for when a block is broken or in some 
      * way disabled. {@link GridLink GridLinks} made to 
-     * {@link GridNode GridNodes} that belong to the parent 
-     * PGBE will be removed.
+     * {@link GridNode GridNodes} that belong to the cooresponding
+     * holder/GridNode will be removed.
      * Calls to this method will keep this DispatchedNode 
      * instance valid so that it can be reused later.
      */
-    public void severAndForget() {
+    public void destroy() {
         if(holder.getWorld().isClientSide) return;
         if(!isSynced()) return;
         forEachAddress((grid, addr) -> {
@@ -149,14 +149,14 @@ public final class DispatchedAnchorNode {
 
     /**
      * Executes the given consumer for each address that this DispatchedNode represents.
-     * Provides access to the PowerGrid that this DispatchedNode belongs to as well as
+     * Provides access to the ServerMatrix that this DispatchedNode belongs to as well as
      * a mutable key.
      * @param cons
      */
-    public void forEachAddress(BiConsumer<PowerGrid, GridUUID> cons) {
+    public void forEachAddress(BiConsumer<ServerMatrix, GridUUID> cons) {
         if(holder.getWorld().isClientSide()) return;
-        PowerGrid grid = this.owner;
-        GlobalServerGrid global = SidedGridDispatcher.server(holder.getWorld());
+        ServerMatrix grid = this.owner;
+        ServerGrid global = SidedGridDispatcher.server(holder.getWorld());
         if(grid == null) {
             grid = global.lookup(getOrMakeAddress()).getFirst();
             Mechano.LOGGER.warn("Dispatch at " + getOrMakeAddress() + " had to re-acquire its parent grid.");
@@ -168,11 +168,11 @@ public final class DispatchedAnchorNode {
         }
     }
 
-    public PowerGrid getOwner() {
+    public ServerMatrix getOwner() {
         return owner;
     }
     
-    public DispatchedAnchorNode loadInto(PowerGrid grid) {
+    public DispatchedAnchorNode loadInto(ServerMatrix grid) {
         this.owner = grid;
         return this;
     }

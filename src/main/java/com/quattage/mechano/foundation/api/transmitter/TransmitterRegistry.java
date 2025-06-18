@@ -241,7 +241,7 @@ public class TransmitterRegistry {
         }
 
         public CompoundTag writeTo(CompoundTag in) {
-            in.putByte("id", packedIndex);
+            in.putByte("trnsid", packedIndex);
             return in;
         }
 

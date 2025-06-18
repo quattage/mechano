@@ -67,7 +67,7 @@ public class HitboxDataProvider {
             this.outputDir = data.output()
                 .getOutputFolder(PackOutput.Target.DATA_PACK)
                 .getParent().getParent().getParent()
-                .resolve("main/java/com/quattage/" + Mechano.ID + "/" + generatedName + ".java");
+                .resolve("main/java/com/quattage/" + Mechano.ID + "/foundation/block/hitbox/" + generatedName + ".java");
         }
 
         @Override
@@ -150,7 +150,7 @@ public class HitboxDataProvider {
 
         private StringBuilder generateClassFile(String generatedName) {
             StringBuilder cls = new StringBuilder();
-            cls.append("package " + "com.quattage." + Mechano.ID + ";\n\n");
+            cls.append("package " + "com.quattage." + Mechano.ID + ".foundation.block.hitbox;\n\n");
             writeImport(cls, Generated.class, true);
             writeImport(cls, VoxelShapeBuilder.class, false);
             writeImport(cls, HitboxRepresentable.class, false);

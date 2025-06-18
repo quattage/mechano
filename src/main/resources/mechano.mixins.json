@@ -10,7 +10,8 @@
 
     ],
     "client": [
-        "client.RenderBuffersAccessor"
+        "client.RenderBuffersAccessor",
+        "LivingEntityMixin"
     ],
     "injectors": {
         "defaultRequire": 1

@@ -1,14 +1,14 @@
 
-package com.quattage.mechano.foundation.api.landmark.uuid;
+package com.quattage.mechano.foundation.api.landmark.classifier;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointHoldable;
+import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.uuid.impl.HeuristicUUID;
+import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
@@ -37,20 +37,22 @@ public abstract class GridUUID implements Comparable<GridUUID> {
         return index >= 0 && index < MAX_SHARED_OCCUPANCY;
     }
 
-    public abstract GridUUIDData getDiscriminatorType();
-    public abstract BlockPos getBlockPos();
-    public abstract Vec3 getPos();
-    public abstract Vec3 getOffsetPos(float ox, float oy, float oz);
+    public abstract DiscriminatorData getDiscriminatorType();
+    public abstract BlockPos getBlockPos(LevelReader world);
+    public abstract Vec3 getPos(LevelReader world);
+    public abstract Vec3 getPos(LevelReader world, float pTicks);
+    public abstract Vec3 getOffsetPos(LevelReader world, float ox, float oy, float oz);
+    public abstract Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz);
     public abstract int getIndex();
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
 
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
-    public abstract @Nullable AnchorPointHoldable getHolder(LevelReader world);
+    public abstract @Nullable AnchorPointable getHolder(LevelReader world);
     public abstract @Nullable DispatchedAnchorNode getSurrogate(LevelReader world);
 
-    public boolean isApproximately(GridUUID that) {
-        return VectorHelper.approxEqual(this.getPos(), that.getPos());
+    public boolean isApproximately(LevelReader world, GridUUID that) {
+        return VectorHelper.approxEqual(this.getPos(world), that.getPos(world));
     }
 
     public boolean hasAnchorIn(ClientLevel world) {
@@ -70,14 +72,14 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     public abstract void writeTo(CompoundTag tag);
     /**
      * Writes this NodeIdentifiable to a ButeBuf used by the 
-     * {@link GridUUIDData#STREAM_CODEC internal stream codec.}
+     * {@link DiscriminatorData#STREAM_CODEC internal stream codec.}
      * Enables this NodeIdentifiable to be serialized to the network.
      * @param buffer
      */
     public abstract void writeTo(ByteBuf buffer);
     /**
      * Writes this NodeIdentifiable to a RecordBuilder
-     * passed by the {@link GridUUIDData#CODEC internal codec.}
+     * passed by the {@link DiscriminatorData#CODEC internal codec.}
      * Enables this NodeIdentifiable to be written to disk.
      * @param ops
      */
@@ -88,12 +90,11 @@ public abstract class GridUUID implements Comparable<GridUUID> {
         return getDiscriminatorType().compareTo(o.getDiscriminatorType());
     }
 
-    @Override
-    public String toString() {
+    public String toString(LevelReader world) {
         return getDiscriminatorType() + "_uuid[" 
-            + getBlockPos().getX() + ", " 
-            + getBlockPos().getY() + ", " 
-            + getBlockPos().getZ() + ", " 
+            + getBlockPos(world).getX() + ", " 
+            + getBlockPos(world).getY() + ", " 
+            + getBlockPos(world).getZ() + ", " 
             + getIndex() 
             + "]";
     }

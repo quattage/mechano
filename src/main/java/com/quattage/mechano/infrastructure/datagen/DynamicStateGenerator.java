@@ -1,9 +1,10 @@
 
-package com.quattage.mechano.foundation.block.orientation;
+package com.quattage.mechano.infrastructure.datagen;
 
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.simibubi.create.foundation.data.SpecialBlockStateGen;
 import com.tterrag.registrate.providers.DataGenContext;
 import com.tterrag.registrate.providers.RegistrateBlockstateProvider;

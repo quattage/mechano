@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "mechano:item/hookup_spool"
+    "layer0": "mechano:item/spool_hookup"
   }
 }

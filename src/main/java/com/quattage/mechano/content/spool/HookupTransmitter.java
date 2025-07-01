@@ -7,7 +7,7 @@ import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 public class HookupTransmitter extends Transmitter<HookupTransmitter> {
@@ -38,7 +38,7 @@ public class HookupTransmitter extends Transmitter<HookupTransmitter> {
     }
 
 	@Override
-	public void onConnectionDestroyed(Level world, @Nullable Player destroyer, GridLink connection) {
-        return;
+    public void onConnectionDestroyed(Level world, @Nullable Entity destroyer, GridLink connection) {
+        
     }
 }

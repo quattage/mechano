@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
@@ -16,7 +16,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public record DispatchSyncPacket(GridUUID addr, Response.Task task) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DispatchSyncPacket> STREAM_CODEC = StreamCodec.composite(
-        DiscriminatorData.STREAM_CODEC, DispatchSyncPacket::addr,
+        UUIDDiscriminator.STREAM_CODEC, DispatchSyncPacket::addr,
         Response.Task.STREAM_CODEC, DispatchSyncPacket::task,
         DispatchSyncPacket::new
     );

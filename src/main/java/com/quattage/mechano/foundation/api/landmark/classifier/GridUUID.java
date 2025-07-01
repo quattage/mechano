@@ -1,4 +1,3 @@
-
 package com.quattage.mechano.foundation.api.landmark.classifier;
 
 import org.jetbrains.annotations.Nullable;
@@ -8,7 +7,6 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
@@ -17,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
  * Barebones implementation template for hashables that need to reference
@@ -37,7 +36,7 @@ public abstract class GridUUID implements Comparable<GridUUID> {
         return index >= 0 && index < MAX_SHARED_OCCUPANCY;
     }
 
-    public abstract DiscriminatorData getDiscriminatorType();
+    public abstract UUIDDiscriminator getDiscriminatorType();
     public abstract BlockPos getBlockPos(LevelReader world);
     public abstract Vec3 getPos(LevelReader world);
     public abstract Vec3 getPos(LevelReader world, float pTicks);
@@ -46,10 +45,19 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     public abstract int getIndex();
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
+    public abstract boolean canMoveDynamically();
+    public void applyForceToAttachment(LevelReader world, Vec3 force) {}
 
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
-    public abstract @Nullable AnchorPointable getHolder(LevelReader world);
+    public abstract @Nullable AnchorPointable<?> getAnchorPoints(LevelReader world);
     public abstract @Nullable DispatchedAnchorNode getSurrogate(LevelReader world);
+    public abstract @Nullable IAttachmentHolder getDataHolder(LevelReader world);
+    public abstract String describeDataHolder(LevelReader world);
+    public abstract float getAttachedSizeFactor(LevelReader world);
+
+    public boolean isAttachedToPlayer(LevelReader world) {
+        return false;
+    }
 
     public boolean isApproximately(LevelReader world, GridUUID that) {
         return VectorHelper.approxEqual(this.getPos(world), that.getPos(world));
@@ -72,14 +80,14 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     public abstract void writeTo(CompoundTag tag);
     /**
      * Writes this NodeIdentifiable to a ButeBuf used by the 
-     * {@link DiscriminatorData#STREAM_CODEC internal stream codec.}
+     * {@link UUIDDiscriminator#STREAM_CODEC internal stream codec.}
      * Enables this NodeIdentifiable to be serialized to the network.
      * @param buffer
      */
     public abstract void writeTo(ByteBuf buffer);
     /**
      * Writes this NodeIdentifiable to a RecordBuilder
-     * passed by the {@link DiscriminatorData#CODEC internal codec.}
+     * passed by the {@link UUIDDiscriminator#CODEC internal codec.}
      * Enables this NodeIdentifiable to be written to disk.
      * @param ops
      */
@@ -108,5 +116,10 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     @Override
     public int hashCode() {
         return this.getDiscriminatorType().ordinal();
+    }
+
+    @Override
+    public String toString() {
+        return "GridUUID[" + getDiscriminatorType().toString() + "]";
     }
 }

@@ -9,9 +9,11 @@ import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
+import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -41,7 +43,13 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     @Nullable
     public Vector3f offset;
     public Tension tension = Tension.AVERAGE;
+
     public float length = 0f;
+    public float maxLength = 32f;
+
+    public static Vec3 getLocalizedOffset(LivingEntity e, float pTicks) {
+        return e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
+    }
 
     public Vec3 getEnd(Vec3 basis) {
         return new Vec3(basis.x + offset.x, basis.y + offset.y, basis.z + offset.z);
@@ -53,20 +61,20 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
 
 
     /**
-     * Changes the offset of this WireModel, which will
+     * Changes the offset of this Catenary, which will
      * change its end point and may make it longer/shorter. 
-     * If this WireModel is baked, this method
+     * If this Catenary is baked, this method
      * will unbake it, move it, and rebake it. Calls to this method
      * may extend the length of the wire as needed.
      * @param offset New offset
-     * @return This WireModel for chaining
+     * @return This Catenary for chaining
      */
     public abstract T setOffset(Vector3f offset);
 
     /**
      * Automatically calculates the {@link #setOffset offset} vector
-     * for this WireModel given a known start and end point
-     * @return This WireModel for chaining
+     * for this Catenary given a known start and end point
+     * @return This Catenary for chaining
      */
     public abstract T setOffset(Vec3 start, Vec3 end);
 
@@ -80,24 +88,35 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
 
 
     /**
-     * Updates this WireModel. May bake, simulate, or otherwise
+     * Sets this Catenary's offset to the inverse of
+     * what it currently is. This is useful if you've 
+     * swapped its start and end points and need some way to
+     * reflect that change here without causing jittering.
+     */
+    public void invertOffset() {
+        if(offset != null)
+            setOffset(offset.mul(-1));
+    }
+
+    /**
+     * Updates this Catenary. May bake, simulate, or otherwise
      * construct mesh-related based on the implementing subclass's
      * requirements in any structure deemed suitable by this
-     * WireModel's underlying implementation. 
+     * Catenary's underlying implementation. 
      * <p>
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
-     * happen, the model must be {@link #render pushed to a VertexConsumer}
+     * happen, the model must be {@link #render pushed to a VertexConsumer}.
      * The re-usable pipeline wrapper, {@link CatenaryMesher}, contains
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
-     * It is reccomended that most WireModel implementations run
+     * It is reccomended that most Catenary implementations run
      * on a fixed update cycle for performance and stability
-     * reasons. Updating WireModels in a frame-dependent context
+     * reasons. Updating Catenarys in a frame-dependent context
      * (such as a renderer) comes with an immediate performance
      * hit, as well as a potential to produce bad results at 
-     * especially high or low framerates If you must call this
+     * especially high or low framerates. If you must call this
      * method in a non-fixed context, use the {@link #update(float) 
      * overload that takes a delta}.
      */
@@ -106,24 +125,24 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     }
 
     /**
-     * Updates this WireModel. May bake, simulate, or otherwise
+     * Updates this Catenary. May bake, simulate, or otherwise
      * construct mesh-related based on the implementing subclass's
      * requirements in any structure deemed suitable by this
-     * WireModel's underlying implementation. 
+     * Catenary's underlying implementation. 
      * <p>
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
-     * happen, the model must be {@link #render pushed to a VertexConsumer}
+     * happen, the model must be {@link #render pushed to a VertexConsumer}.
      * The re-usable pipeline wrapper, {@link CatenaryMesher}, contains
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
-     * It is reccomended that most WireModel implementations run
+     * It is reccomended that most Catenary implementations run
      * on a fixed update cycle for performance and stability
-     * reasons. Updating WireModels in a frame-dependent context
+     * reasons. Updating Catenarys in a frame-dependent context
      * (such as a renderer) comes with an immediate performance
      * hit, as well as a potential to produce bad results at 
-     * especially high or low framerates If you must call this
+     * especially high or low framerates. If you must call this
      * method in a non-fixed context, use the {@link #update(float) 
      * overload that takes a delta}.
      */
@@ -132,7 +151,7 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     /**
      * Runs {@link #update} <code>steps</code> number
      * of times. This is useful for simulation-based
-     * WireModel implementations that use iterative
+     * Catenary implementations that use iterative
      * solvers, where you need to run {@link #update}
      * multiple times in order to achieve the desired 
      * result.
@@ -144,20 +163,20 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     }
 
     /**
-     * Tells this WireModel to update its length.
+     * Tells this Catenary to update its length.
      * Doing so will automatically manage internal arrays if applicable,
      * and calculate local matrices and/or other relevent vector information.
      * <p>
      * This method mirrors the behaviour of {@link #update}, but this method
      * only needs to be called whenever the wire is {@link #setOffset moved,}
      * rather than continuously. To that point, this method is called automatically
-     * for WireModel implementations that require it, but this method can still
+     * for Catenary implementations that require it, but this method can still
      * be invoked manually in circumstances where doing so is useful.
      */
     public abstract void calculateSegmentation();
 
     /**
-     * Renders this WireModel to the provided stack. For more 
+     * Renders this Catenary to the provided stack. For more 
      * comprehensive access and ease of use, this method is
      * primarily intended to be accessed via the
      * {@link CatenaryMesher#render geometry dispatcher}
@@ -165,25 +184,25 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     public abstract void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks);
 
     /**
-     * Initializes this WireModel, telling it to
+     * Initializes this Catenary, telling it to
      * prepare itself based on its currently configured
      * start and end points. Any data that can't be populated
      * in a constructor should be prepared here.
-     * @return This WireModel for chaining
+     * @return This Catenary for chaining
      */
     public abstract T initialize();
 
     /**
      * At least one call to {@link #setOffset} and {@link #initialize}
-     * must be made before this WireModel meets the minimum requirements
+     * must be made before this Catenary meets the minimum requirements
      * in order to be meshed, shaded, and rendered. 
-     * @return <code>true</code> if this WireModel is initialized.
+     * @return <code>true</code> if this Catenary is initialized.
      */
     public abstract boolean isInitialized();
 
 
     /**
-     * A helper method provided by all implementing WireModels
+     * A helper method provided by all implementing Catenarys
      * to visualize their shape directly while skipping any 
      * meshing or shading proceeses.
      * @param basis The basis vector (usually the starting point of the wire)
@@ -221,7 +240,7 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     }
 
     /**
-     * For all WireModel implementations, the segment length is assumed to
+     * For all Catenary implementations, the segment length is assumed to
      * be uniform across the length of the wire. In some situations, this
      * may not be the case, since simulated wire segments can stretch. This 
      * number may not be completely accurate for non-parametric wires.
@@ -229,12 +248,12 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
      * to prevent simulated wires from becoming too tight. 
      * @param segmentCount the amount of segments in the wire
      */
-    public float getLengthAdjustment(int segmentCount) {
+    public float getSegmentLength(int segmentCount) {
         return Math.max(0.0015f, (length / segmentCount) + CatenaryAttributes.TENSION_EPSILON) / (Math.max(1f, tension.get(16f)));
     }
 
     /**
-     * For parametric WireModel implementations, this method
+     * For parametric Catenary implementations, this method
      * will closely approximate the required tension for use
      * as a hyperbolic cosine scaling factor. This method
      * mimics the use case of {@link #getSegmentLength}
@@ -248,11 +267,11 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     /**
      * a quick throw for when the offset vector has not been initialized
      * or has been nullified after rendering by some disposal process
-     * @throws IllegalStateException if this WireModel has no offset
+     * @throws IllegalStateException if this Catenary has no offset
      */
     protected void assertHasOffset() {
         if(offset == null)
-            throw new IllegalStateException("Cannot perform operation on " + this + " - This WireModel is missing a start or end position! (It was either never populated or this WireModel instance was destroyed.)");
+            throw new IllegalStateException("Cannot perform operation on " + this + " - This Catenary is missing a start or end position! (It was either never populated or this Catenary instance was destroyed.)");
     }
 
     @Override
@@ -269,13 +288,20 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     }
 
     /**
-     * Converts this WireModel to its {@link SimulatedCatenary simulatable version}
+     * Converts this Catenary to its {@link SimulatedCatenary simulatable version}
      * if possible. Calls to this method will <strong>uninitialize</strong> this
-     * WireModel instance during the process of creating a SimulatedWireModel,
+     * Catenary instance during the process of creating a SimulatedCatenary,
      * transfering its {@link Point point data} over without copying.
-     * @param pinEnds <code>true</code> if the resulting SimulatedWireModel
+     * @param pinEnds <code>true</code> if the resulting SimulatedCatenary
      * should have its ends pinned during its initialization phase
-     * @return A (new or preexisting) SimulatedWireModel instance
+     * @return A (new or preexisting) SimulatedCatenary instance
      */
     public abstract SimulatedCatenary toSimulated(boolean pinEnds);
+
+    /**
+     * Converts this Catenary to its {@link ParametricCatenary bakeable version}
+     * if possible.
+     * @return A (new or preexisting) ParametricCatenary instance
+     */
+    public abstract ParametricCatenary toParametric();
 }

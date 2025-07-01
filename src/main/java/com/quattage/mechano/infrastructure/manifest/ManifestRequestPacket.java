@@ -3,8 +3,8 @@ package com.quattage.mechano.infrastructure.manifest;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;
@@ -15,7 +15,7 @@ import net.minecraft.network.codec.StreamCodec;
 public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ManifestRequestPacket> STREAM_CODEC = StreamCodec.composite(
-        DiscriminatorData.STREAM_CODEC, ManifestRequestPacket::addr,
+        UUIDDiscriminator.STREAM_CODEC, ManifestRequestPacket::addr,
         ManifestRequestPacket::new
     );
 
@@ -26,24 +26,20 @@ public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketP
 
     @Override
     public void handle(LocalPlayer player) {
-        AnchorPointable host = addr.getHolder(player.level());
-        if(host == null) {
-            send("\n\t┆\t\t" + "▪ Error (PGBE Not found)");
+        AnchorPointable<?> points = addr.getAnchorPoints(player.level());
+        if(points == null) {
+            CatnipServices.NETWORK.sendToServer(new ManifestResponsePacket("\n\t┆\t\t" + "▪ Error (Host Not found)"));
             return;
         }
-        String out = (host.getSurrogate().isSynced() ? "Synced, " : "Unsynced, ") + host.getAnchors().size() + " anchors: ";
-        for(int x = 0; x < host.getAnchors().size(); x++) {
-            AnchorPoint anchor = host.getAnchor(x);
+        String out = (points.getSurrogate().isSynced() ? "Synced, " : "Unsynced, ") + points.getAnchors().size() + " anchors: ";
+        for(int x = 0; x < points.getAnchors().size(); x++) {
+            AnchorPoint anchor = points.getAnchor(x);
             if(anchor == null) {
                 out += "\n\t┆\t\t\t▪ Error (null anchor)";
                 continue;
             }
             out += "\n\t┆\t\t\t▪ Enabled? " + (anchor.isEnabled() + "").toUpperCase() + ", " + anchor.getCurrentConnections() + " / " + anchor.getMaxConnections() + " connections";
         }
-        send(out);
-    }
-
-    private void send(String msg) {
-        CatnipServices.NETWORK.sendToServer(new ManifestResponsePacket(msg));
+        CatnipServices.NETWORK.sendToServer(new ManifestResponsePacket(out));
     }
 }

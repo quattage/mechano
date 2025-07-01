@@ -1,12 +1,12 @@
 package com.quattage.mechano.content.spool;
 
-import com.quattage.mechano.foundation.WireSpoolItem;
+import com.quattage.mechano.foundation.SpoolItem;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
-public class HookupWireSpoolItem extends WireSpoolItem<HookupTransmitter> {
+public class HookupSpoolItem extends SpoolItem<HookupTransmitter> {
 
-    public HookupWireSpoolItem(Properties properties) {
+    public HookupSpoolItem(Properties properties) {
         super(properties);
     }
 

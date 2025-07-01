@@ -1,10 +1,14 @@
-// 1.21.1	2025-05-29T04:26:00.7853886	Registrate Provider for mechano [Registries, Data Maps, Recipes, Advancements, Loot Tables, Tags (enchantments), Tags (blocks), Tags (items), Tags (fluids), Tags (entity_types), generic_server_provider, Blockstates, Item models, Lang (en_us/en_ud), generic_client_provider]
+// 1.21.1	2025-06-28T20:35:24.9862068	Registrate Provider for mechano [Registries, Data Maps, Recipes, Advancements, Loot Tables, Tags (enchantments), Tags (blocks), Tags (items), Tags (fluids), Tags (entity_types), generic_server_provider, Blockstates, Item models, Lang (en_us/en_ud), generic_client_provider]
 9d6ed09d4ed06c5c03cabead556e3a4ad5006e24 assets/mechano/blockstates/connector_single.json
 27cc395a492efb5ecda79c5d0c33d2504d8dfb27 assets/mechano/blockstates/test_axis.json
-cd866900fc0170bb0d967644ccdf54ceb2469dff assets/mechano/lang/en_ud.json
-199b784b08dd0d4717cd5e60ca59444fe434d540 assets/mechano/lang/en_us.json
+5fd8d5eca32fbc1fe1daa017ed4af48ded962c8a assets/mechano/lang/en_ud.json
+946a1d284336687f361c1b38958b89191d488dd9 assets/mechano/lang/en_us.json
 0c83e6577a1cdcb44045b1e73fe05525848f690a assets/mechano/models/item/connector_single.json
-ffaab51f35f9b4b32cb3217c9fdc279b56628b1c assets/mechano/models/item/hookup_spool.json
+45556d71a23741b54f53f1be8ac8b6616134ff2a assets/mechano/models/item/spool_empty.json
+52689b6a6aa9c333886c6a84954bde94c30f1ed2 assets/mechano/models/item/spool_hookup.json
+81785c75bb45e4759c89d22e6e7cd6227ddf45f6 assets/mechano/models/item/spool_hookup_depleted.json
+1093752f49f42a074c69c3e2aac19146b224303b assets/mechano/models/item/spool_hookup_empty.json
+d8f22d86e859bc727636b6a54c4d1778f1c5f545 assets/mechano/models/item/spool_hookup_full.json
 ac7a768462f8114b19ede517afcac0762d53a618 assets/mechano/models/item/test_axis.json
 3c8203ac6b15a07d5c0d49e79ae090e431014e56 data/mechano/loot_table/blocks/connector_single.json
 e50321d8dcecaeb5e50382a3e70f93f310cb669d data/mechano/loot_table/blocks/test_axis.json

@@ -1,15 +1,15 @@
 
 package com.quattage.mechano.foundation.api.transmitter;
 
-import java.util.List;
-
 import static com.quattage.mechano.Mechano.lang;
+
+import java.util.List;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
@@ -42,9 +42,9 @@ public interface Transmitable<T extends Transmitter<?>> {
      * @param held Container for information about the player and their held item stack
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
-    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointable holder, AnchorPoint target, HoldingSummary held) {
+    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointable<?> points, AnchorPoint target, HoldingSummary held) {
         lang().text("hi >:)").forGoggles(tooltip);
-        GridUUID prevAddress = held.stack.get(DiscriminatorData.ATTACHMENT);
+        GridUUID prevAddress = held.stack.get(UUIDDiscriminator.ATTACHMENT);
         AnchorPoint prevAnchor = prevAddress == null ? null : prevAddress.getAnchor(world);
         if(target.equals(prevAnchor)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
         if(!target.isCompatableWith(getTransmitterType())) return Response.Anchor.INCOMPATABLE;

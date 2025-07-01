@@ -36,7 +36,7 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("hookup"), () -> Transmitter
             .builder(HookupTransmitter::new)
             .writesToNetwork(null)
-            .maximumSpannedDistance(16)
+            .maximumSpannedDistance(32)
             .withAttributes(CatenaryAttributes
                 .as(ModelType.SQUARE)
                 .withTension(Tension.AVERAGE)

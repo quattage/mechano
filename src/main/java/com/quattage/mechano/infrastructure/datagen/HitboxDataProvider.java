@@ -11,13 +11,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.annotation.processing.Generated;
 
 import org.apache.commons.lang3.text.WordUtils;
-import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.hitbox.HitboxRepresentable;
@@ -27,12 +24,10 @@ import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder;
 import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder.ShapeAccumulator;
 import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder.TemporaryShape;
 import com.tterrag.registrate.providers.RegistrateGenericProvider;
-import com.tterrag.registrate.providers.RegistrateGenericProvider.Generator;
 import com.tterrag.registrate.providers.RegistrateGenericProvider.GeneratorData;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.data.CachedOutput;
-import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.IEventBus;
@@ -41,30 +36,28 @@ import net.neoforged.bus.api.IEventBus;
 public class HitboxDataProvider {
 
     public static void generate(RegistrateGenericProvider provider) {
-        provider.add(new Generator() {
-            @Override
-            public DataProvider generate(GeneratorData data) {
-                return new Provider(data);
-            }
-        });
+        provider.add(Provider::new);
     }
 
-    public static class Provider implements DataProvider {
+    public static class Provider extends SimpleDataProvider {
         
         private final Path inputDir;
         private final String generatedName;
-        private final Path outputDir;
 
         @SuppressWarnings("deprecation")
         protected Provider(GeneratorData data) {
+            super(data);
             this.inputDir = data.output()
                 .getOutputFolder(PackOutput.Target.DATA_PACK)
                 .getParent().getParent().getParent()
                 .resolve("main/resources/data/" + Mechano.ID + "/hitboxes");
 
             this.generatedName = WordUtils.capitalize(Mechano.ID) + "Hitboxes";
+        }
 
-            this.outputDir = data.output()
+        @Override
+        public Path getOutputDirectory(GeneratorData data) {
+            return data.output()
                 .getOutputFolder(PackOutput.Target.DATA_PACK)
                 .getParent().getParent().getParent()
                 .resolve("main/java/com/quattage/" + Mechano.ID + "/foundation/block/hitbox/" + generatedName + ".java");
@@ -80,6 +73,7 @@ public class HitboxDataProvider {
             return "hitbox";
         }
 
+        @Override
         @SuppressWarnings("unchecked")
         public void generate(CachedOutput output) {
 
@@ -121,32 +115,6 @@ public class HitboxDataProvider {
             long elapsed = (System.currentTimeMillis() - startTime);
             Mechano.LOGGER.info("Generated " + count + " hitboxes in " + elapsed + "ms");
         }
-
-
-        private void createDirectory(Path dir) {
-            try {
-                Files.createDirectories(dir);
-            } catch(IOException e) {
-                Mechano.LOGGER.error("Failure while creating hitbox directory!");
-                e.printStackTrace();
-            }
-        }
-
-
-        private @Nullable List<Path> listFiles(Path dir) {
-            List<Path> output = null;
-            try(Stream<Path> fileStream = Files.walk(dir, 8)) {
-                output = fileStream
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".json"))
-                    .collect(Collectors.toList());
-            } catch(IOException e) {
-                Mechano.LOGGER.error("Failure while traversing hitbox directory!");
-                e.printStackTrace();
-            }
-            return output;
-        }
-
 
         private StringBuilder generateClassFile(String generatedName) {
             StringBuilder cls = new StringBuilder();

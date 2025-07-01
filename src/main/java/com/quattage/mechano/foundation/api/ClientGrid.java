@@ -33,6 +33,12 @@ public final class ClientGrid extends SidedGridDispatcher {
         return (ClientLevel)super.getWorld();
     }
 
+    @Override
+    protected void onLoad() {}
+
+    @Override
+    protected void onUnload() {}
+
     /**
      * Request that a link is made. This method does some simple
      * client-sided sanity checks and sents a packet to the 
@@ -45,15 +51,15 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param type The type of transmitter that the resulting link will host
      * @return {@link Response}
      */
-    public Response<?> requestLink(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type) {
+    public Response<?> requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type) {
 
         if(!startAnchor.existsIn(world)) {
-            Mechano.LOGGER.error("Failed to create link from " + startAnchor.getAddress() + " and " + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
+            Mechano.LOGGER.warn("Failed to create link from " + startAnchor.getAddress() + " and " + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
             return Response.Link.FAIL_SYNC_OUTDATED.andBailout();
         }
 
         if(!endAnchor.existsIn(world)) {
-            Mechano.LOGGER.error("Failed to create link from " + startAnchor + " and " + endAnchor + " - No valid PGBE could be found at the ending address");
+            Mechano.LOGGER.warn("Failed to create link from " + startAnchor + " and " + endAnchor + " - No valid PGBE could be found at the ending address");
             return Response.Link.FAIL_SYNC_OUTDATED.andBailout();
         }
 
@@ -62,13 +68,13 @@ public final class ClientGrid extends SidedGridDispatcher {
             if(!endAnchor.isCompatableWith(type)) return Response.Link.FAIL_DESTINATION_UNSUPPORTED;
         }
 
-        if(type.supportsSameBlockConnections()) {
+        if(!type.supportsSameBlockConnections())
             if(endAnchor.equals(startAnchor)) return Response.Link.FAIL_DUPLICATE;    
-        } else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return Response.Link.FAIL_DUPLICATE;
+        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return Response.Link.FAIL_DUPLICATE;
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
         if(linkDistance < type.getMinDistance()) return Response.Link.FAIL_TOO_CLOSE;
-        if(linkDistance > type.getMaxDistance()) return Response.Link.FAIL_TOO_FAR;
+        if(linkDistance > type.getMaxLength()) return Response.Link.FAIL_TOO_FAR;
 
         CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, Response.Task.CREATE));
         return Response.SUCCESS;
@@ -79,6 +85,10 @@ public final class ClientGrid extends SidedGridDispatcher {
         return new ListTag();
     }
 
+    public CatenaryMesher getMesher() {
+        return mesher;
+    }
+
     @Override
     protected String getDistPrefix() {
         return "CLIENT";
@@ -87,9 +97,5 @@ public final class ClientGrid extends SidedGridDispatcher {
     @Override
     public String toString() {
         return "ClientGrid(" + getDimensionName() + ", 0 members)";
-    }
-
-    public CatenaryMesher getMesher() {
-        return mesher;
     }
 }

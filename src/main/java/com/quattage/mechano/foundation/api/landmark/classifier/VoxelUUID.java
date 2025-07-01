@@ -8,15 +8,18 @@ import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class VoxelUUID extends GridUUID {
 
@@ -39,11 +42,11 @@ public class VoxelUUID extends GridUUID {
     }
 
     public VoxelUUID(Dynamic<?> dyn) {
-        dyn.get("x").asInt(0);
-        dyn.get("y").asInt(0);
-        dyn.get("z").asInt(0);
-        dyn.get("i").asInt(0);
+        this.pos = new BlockPos(dyn.get("x").asInt(0), dyn.get("y").asInt(0), dyn.get("z").asInt(0));
+        this.index = dyn.get("i").asInt(0);
     }
+
+    
 
     @Override
     public GridUUID indexedCopy(int index) {
@@ -51,8 +54,8 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public DiscriminatorData getDiscriminatorType() {
-        return DiscriminatorData.VOXEL;
+    public UUIDDiscriminator getDiscriminatorType() {
+        return UUIDDiscriminator.VOXEL;
     }
 
     @Override
@@ -99,7 +102,7 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public @Nullable AnchorPointable getHolder(LevelReader world) {
+    public @Nullable AnchorPointable<?> getAnchorPoints(LevelReader world) {
         BlockEntity be = world.getBlockEntity(pos);
         return be instanceof AnchorPointable aph ? aph : null;
     }
@@ -111,7 +114,34 @@ public class VoxelUUID extends GridUUID {
         return aph.getSurrogate();
     }
 
-    
+    @Override
+    public @Nullable IAttachmentHolder getDataHolder(LevelReader world) {
+        return world.getChunk(getBlockPos(world));
+    }
+
+    @Override
+    public String describeDataHolder(LevelReader world) {
+        IAttachmentHolder holder = getDataHolder(world);
+        if(holder instanceof LevelChunk chunk) {
+            ChunkPos pos = chunk.getPos();
+            return "LevelChunk[" + pos.x + ", " + pos.z + "]";
+        }
+        return "not_applicable";
+    }
+
+    @Override
+    public boolean canMoveDynamically() {
+        return false;
+    }
+
+    @Override
+    public float getAttachedSizeFactor(LevelReader world) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be == null) return 1;
+        BlockState state = be.getBlockState();
+        if(state == null) return 1;
+        return (float)state.getShape(world, pos).bounds().getSize();
+    }
 
     @Override
     public void writeTo(CompoundTag tag) {
@@ -142,11 +172,15 @@ public class VoxelUUID extends GridUUID {
     public boolean equals(Object obj) {
         if(this == obj) return true;
         if(!(obj instanceof VoxelUUID that)) return false;
+        if(this.pos == null) return false;
         return this.pos.equals(that.pos) && this.index == that.index;
     }
 
     @Override
     public int hashCode() {
+        if(pos == null) return super.hashCode();
         return super.hashCode() * 31 + pos.hashCode() * 31 + index;
     }
+
+
 }

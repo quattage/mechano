@@ -19,12 +19,21 @@ import com.quattage.mechano.foundation.api.landmark.GridPath;
 import com.quattage.mechano.foundation.api.landmark.NodeMap;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.classifier.HeuristicUUID;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.LevelReader;
 
-
+/**
+ * Represents a single localized cluster made of nodes and links,
+ * where each node has continuity with every other node in the cluster.
+ */
 public class ServerMatrix {
 
     protected ServerGrid global;
@@ -37,6 +46,10 @@ public class ServerMatrix {
         this.nodes = new NodeMap(new Object2ObjectOpenHashMap<>(preload));
         this.global = parent;
         this.global.matrices.add(this);
+    }
+
+    protected ServerMatrix(int preload) {
+        this.nodes = new NodeMap(new Object2ObjectOpenHashMap<>(preload));
     }
 
     public ServerMatrix(ServerGrid parent, @Nullable NodeMap newContents) {
@@ -60,24 +73,25 @@ public class ServerMatrix {
      * no node at this address exists. This method is mainly designed
      * to be used during the loading process defined in {@link ServerGrid#makeProvisionalNodeAndLinks}
      * <p>
-     * Note that, if the returned GridNode is newly created, it will be blank. 
+     * Note that if the returned GridNode is newly created, it will be blank. 
      * Blank GridNodes that have no links should not persist in the LocalMatrix 
      * for long, since they represent dead ends.
      * @param address Address to get or add (Compatable with any type outlined by {@link NodeMap#get})
      * @return The GridNode at this address, or the new one that was created at the specified address. Will be null if there is no PGBE at the address.
      * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
-    public @Nullable GridNode getOrCreateProvisional(GridUUID address) {
+    public @Nullable GridNode getOrCreateProvisional(LevelReader world, GridUUID address, boolean log) {
         assertNotDestroyed();
         GridNode node = nodes.get(address);
         if(node != null) return node;
-        AnchorPointable host = address.getHolder(global.getWorld());
-        if(host == null) {
-            Mechano.LOGGER.error("Failed to instantiate provisional node at " + address + " - No in-world reference to this address could be found!");
+        AnchorPointable<?> points = address.getAnchorPoints(world);
+        if(points == null) {
+            if(log) Mechano.LOGGER.error("Failed to instantiate provisional node at " + address 
+                + " - No in-world reference to this address could be found!");
             return null;
         }
-        node = new GridNode(this, host, address);
-        host.getSurrogate().owner = this;
+        node = new GridNode(this, points, address);
+        points.getSurrogate().sync(world, this);
         this.nodes.add(node);
         return node;
     }
@@ -90,38 +104,41 @@ public class ServerMatrix {
      */
     public void cleanup(boolean deepClean) {
         if(global == null) {
-            if(nodes == null) return;
-            if(deepClean) {
-                for(GridNode node : nodes) {
-                    node.links.clear();
-                    node.notifyHost();
-                    node.nullify();
-                }
+            if(nodes == null) {
+                Mechano.LOGGER.warn("Attempted to run cleanup on a ServerMatrix that has already been disposed!");
+                return;
+            }
+            for(GridNode node : nodes) {
+                node.notifyHost();
+                node.nullify();
             }
             this.nullify();
+            global.destroyMatrix(this);
             return;
         }
 
         if(nodes == null || nodes.isEmpty()) {
-            global.destroyGrid(this);
+            this.nullify();
+            global.destroyMatrix(this);
             return;
         }
 
         if(nodes.size() < 2) {
             for(GridNode node : nodes) {
-                node.links.clear();
                 node.notifyHost();
                 node.nullify();
             }
-            global.destroyGrid(this);
+            this.nullify();
+            global.destroyMatrix(this);
             return;
         }
 
         if(this.nodes.size() > 3) {
             List<ServerMatrix> clusters = splitDiscontinuities();
             if(clusters.size() > 1) {
-                global.destroyGrid(this);
+                global.destroyMatrix(this);
                 global.addAll(clusters);
+                this.nullify();
             }
         }
     }
@@ -155,7 +172,7 @@ public class ServerMatrix {
     private void floodFillRecurse(GridNode start, Set<GridUUID> visited, NodeMap clusterResult) {
         GridNode iteration = nodes.get(start);
         visited.add(start.getAddress());
-        if(iteration == null || iteration.links.isEmpty()) return;
+        if(iteration == null || iteration.getLinkCount() <= 0) return;
         clusterResult.add(iteration);
         iteration.forEachLink(link -> {
             GridNode adjacent = link.getEndNode();
@@ -284,45 +301,49 @@ public class ServerMatrix {
         GridNode removed = nodes.get(address);
         if(address == null) return false;
         nodes.remove(removed.getAddress());
-        if(removed.links.isEmpty()) {
+        if(removed.getLinkCount() <= 0) {
             if(nodes != null && nodes.isEmpty())
-                global.destroyGrid(this);
+                global.destroyMatrix(this);
             removed.nullify();
             return true;
         }
 
-        final Set<GridNode> altered = new HashSet<>();
+        boolean requiresCleaning = removed.getLinkCount() > 1;
 
         // remove links symmetrically while tracking changes
         removed.forEachLink(link -> {
             if(link == null) return;
             GridNode endNode = link.getEndNode();
-            Iterator<GridLink> linksIter = endNode.links.iterator();
+            Iterator<GridLink> linksIter = endNode.iterator();
             while(linksIter.hasNext()) {
                 GridLink linkToRemove = linksIter.next();
                 if(linkToRemove.endsWith(address)) {
                     linksIter.remove();
-                    altered.add(linkToRemove.getStartNode());
-                    altered.add(linkToRemove.getEndNode());
+                    linkToRemove.removeFrom(getWorld());
+                    CatnipServices.NETWORK.sendToAllClients(
+                        new LinkResponsePacket(
+                            link.getStart(), link.getEnd(), 
+                            LinkResponseHolder.of(link, Response.SUCCESS), 
+                            MechanoTransmissionTypes.PERFECT_CONDUCTOR, Response.Task.DESTROY
+                        ));
+                    removeIfEmpty(linkToRemove.getStartNode());
+                    removeIfEmpty(linkToRemove.getEndNode());
                 }
             }
         });
-
-        // notify adjacent nodes of the removal
-        for(GridNode node : altered) {
-            node.notifyHost();
-            if(node.links.isEmpty()) {
-                node.getHolder().getSurrogate().forget(getWorld());
-                nodes.remove(node.getAddress());
-                if(node.getOwner().nodes.isEmpty())
-                    global.destroyGrid(node.getOwner());
-                node.nullify();
-            }
-        }
-
-        cleanup(true);
+        if(requiresCleaning) cleanup(true);
         removed.nullify();
         return true;
+    }
+
+    private void removeIfEmpty(GridNode node) {
+        if(node.getLinkCount() <= 0) {
+            node.getAnchorPoints().getSurrogate().forget(getWorld());
+            nodes.remove(node.getAddress());
+            if(node.getOwner().nodes.isEmpty())
+                global.destroyMatrix(node.getOwner());
+            node.nullify();
+        }
     }
 
     /**
@@ -340,7 +361,7 @@ public class ServerMatrix {
     }
 
     private void assertNotDestroyed() {
-        if(nodes == null || global == null) 
+        if(nodes == null) 
             throw new IllegalStateException("An operation attempted to run on a LocalMatrix that has already been destroyed. (A LocalMatrix was probably leaked!)");
     }
 

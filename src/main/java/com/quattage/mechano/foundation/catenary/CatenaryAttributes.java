@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.foundation.catenary;
 
 import java.util.function.Function;
@@ -5,17 +6,17 @@ import java.util.function.Function;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
-import com.quattage.mechano.foundation.catenary.meshing.MeshExtruder;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
+import com.quattage.mechano.foundation.catenary.meshing.MeshExtruder;
 
 import net.minecraft.Util;
 import net.minecraft.client.renderer.RenderStateShard;
@@ -28,10 +29,14 @@ public class CatenaryAttributes {
     public static final int[] TEX_DIMS = new int[] { 16, 32 };
 
     public static final Vector3f UP = new Vector3f(0, 1, 0);
-    public static final int SOLVER_STEPS = 10;
+    public static final int SOLVER_STEPS = 20;
     public static final float POINT_MASS = 3f;
     public static final float TENSION_EPSILON = 1e-3f;
     public static final float DRAW_RES = 1f;
+
+    public static final float KINEMATIC_SOFT = 0.9f;
+    public static final float DETACH_THRESHOLD = 0.6f;
+
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
@@ -75,29 +80,23 @@ public class CatenaryAttributes {
 
     public static enum ModelType {
 
-        SQUARE(SOLID_MATERIAL, new MeshExtruder() {
-            @Override
-            public void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks) {
-
+        SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals,
+            float pTicks) -> {
                 if(previous == null) geo.computeMatrix(current.getForward());
                 else geo.computeMatrix(previous.getForward(), current.getForward());
-
                 if(faceNormals) {
                     geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
                         .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
                 }
-
                 geo.place4Verts(current.start(pTicks), 0);
                 if(next != null) geo.computeMatrix(current.getForward(), next.getForward());
                 geo.place4Verts(current.end(pTicks), 4);
-
                 geo.walkUVs(current, iteration);
                 geo.emitQuad(buffer, pose, geo.normAX(), geo.normAY(), geo.normAZ(), 0, 4, 5, 1);
                 geo.emitQuad(buffer, pose, -geo.normAX(), -geo.normAY(), -geo.normAZ(), 2, 6, 7, 3);
                 geo.shiftUVs();
                 geo.emitQuad(buffer, pose, geo.normBX(), geo.normBY(), geo.normBZ(), 3, 7, 4, 0);
                 geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 6, 2);
-            }
         }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.profile),
 
 
@@ -109,7 +108,6 @@ public class CatenaryAttributes {
         private final @Nullable Function<TransmitterType<?>, RenderType> mat;
 
         private ModelType(Function<TransmitterType<?>, RenderType> materialGetter, MeshExtruder extruder) {
-            Mechano.LOGGER.error("FUCK: " + materialGetter);
             this.profile = extruder;
             this.mat = Util.memoize(materialGetter);
         }
@@ -216,11 +214,11 @@ public class CatenaryAttributes {
     public static enum Tension {
 
         TAUT(1f),
-        TIGHT(0.4f),
-        AVERAGE(0.2f),
-        LOOSE(0.17f),
-        VERY_LOOSE(0.15f),
-        STUPID_LOOSE(0.09f);
+        TIGHT(0.99f),
+        AVERAGE(0.76f),
+        LOOSE(0.60f),
+        VERY_LOOSE(0.50f),
+        STUPID_LOOSE(0.40f);
         
         private final float t;
 

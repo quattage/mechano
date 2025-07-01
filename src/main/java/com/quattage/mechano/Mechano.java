@@ -5,8 +5,9 @@ import org.slf4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.foundation.SpoolItem;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.infrastructure.datagen.MechanoDataGen;
+import com.quattage.mechano.infrastructure.datagen.MechanoDatagen;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -42,12 +43,13 @@ public class Mechano {
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);
         MechanoTransmissionTypes.register(modBus);
-        modBus.addListener(EventPriority.LOWEST, MechanoDataGen::collect);
+        modBus.addListener(EventPriority.LOWEST, MechanoDatagen::collect);
+        modBus.addListener(this::onCommonSetup);
     }
 
 
-    public void commonSetup(FMLCommonSetupEvent event) {
-
+    public void onCommonSetup(FMLCommonSetupEvent event) {
+        SpoolItem.registerSpoolProperties();
     }
 
     public static ResourceLocation asResource(String path) {

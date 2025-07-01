@@ -2,19 +2,19 @@
 package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer; 
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
-public class PowerGridBlockEntityRenderer<T extends PowerGridBlockEntity> extends SimpleBlockEntityRenderer<T> {
+public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> extends SimpleBlockEntityRenderer<T> {
 
-    public PowerGridBlockEntityRenderer(Context context) {
+    public GriddableBlockEntityRenderer(Context context) {
         super(context);
     }
     

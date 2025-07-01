@@ -1,19 +1,18 @@
 package com.quattage.mechano.foundation.api.anchor;
 
+import static com.quattage.mechano.Mechano.lang;
+
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-
-import static com.quattage.mechano.Mechano.lang;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -49,7 +48,7 @@ public class AnchorPoint {
             packMeasurement(pz),
             packMeasurement(Math.max(0.001f, size)),
             Byte.MIN_VALUE,
-            (byte)(Math.max(0, Math.min(maxc, 256)) - 128)
+            (byte)(Math.max(0, Math.min(maxc, 255)) - 128)
         };
         this.offset = getRaw();
         this.enabled = enabled;
@@ -66,11 +65,11 @@ public class AnchorPoint {
     public void sync(byte connections, @Nullable LevelReader world) {
         this.data[4] = connections;
         if(world != null) {
-            AnchorPointable host = backer.getHolder(world);
-            if(host == null) return;
+            AnchorPointable<?> points = backer.getAnchorPoints(world);
+            if(points == null) return;
             if(getCurrentConnections() > 0)
-                host.getSurrogate().sync(world, null);
-            else host.getSurrogate().forget(world);
+                points.getSurrogate().sync(world, null);
+            else points.getSurrogate().forget(world);
         }
     }
 
@@ -84,7 +83,11 @@ public class AnchorPoint {
     }
 
     public Vec3 getPos(LevelReader world) {
-        return backer.getOffsetPos(world, offset.x, offset.y, offset.z);
+        return backer.getOffsetPos(world, 1, offset.x, offset.y, offset.z);
+    }
+
+    public Vec3 getPos(LevelReader world, float pTicks) {
+        return backer.getOffsetPos(world, pTicks, offset.x, offset.y, offset.z);
     }
 
     /**
@@ -126,21 +129,21 @@ public class AnchorPoint {
     }
 
     /**
-     * @return The amount of connections that this AnchorPoint is currently hosting
+     * @return The amount of connections that this AnchorPoint is currently pointsing
      */
     public int getCurrentConnections() {
         return data[4] + 128;
     }
 
     /**
-     * @return The maximum possible amount of connections that this AnchorPoint could host
+     * @return The maximum possible amount of connections that this AnchorPoint could points
      */
     public int getMaxConnections() {
         return data[5] + 128;
     }
 
     /**
-     * Sets the current number of connections hosted by this
+     * Sets the current number of connections pointsed by this
      * AnchorPoint to zero.
      */
     public void resetCurrentConnections() {
@@ -206,11 +209,11 @@ public class AnchorPoint {
     }
 
     public float distanceTo(LevelReader world, AnchorPoint other) {
-        return (float)getPos(world).distanceTo(other.getPos(world));
+        return (float)getPos(world, 1).distanceTo(other.getPos(world, 1));
     }
 
     public float distanceTo(Player player) {
-        return (float)player.getEyePosition().distanceTo(getPos(player.level()));
+        return (float)player.getEyePosition().distanceTo(getPos(player.level(), 1));
     }
 
     /**
@@ -285,14 +288,6 @@ public class AnchorPoint {
         tag.putInt("bm", bitmask);
         return tag;
     }
-
-
-
-
-
-
-
-
 
 
     /**

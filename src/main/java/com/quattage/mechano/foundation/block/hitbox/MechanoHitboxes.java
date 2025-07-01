@@ -1,8 +1,8 @@
+
 package com.quattage.mechano.foundation.block.hitbox;
 
 import javax.annotation.processing.Generated;
 
-import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.IEventBus;
 
 @SuppressWarnings("unused")
@@ -11,7 +11,6 @@ public class MechanoHitboxes {
 
 	public void register(IEventBus modBus) {}
 
-	
 	public static final LazyRotatableHitbox TEST_AXIS = new LazyRotatableHitbox(
 		VoxelShapeBuilder
 		.start(1.0, 0.0, 1.0, 3.0, 5.0, 3.0)

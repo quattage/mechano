@@ -27,8 +27,8 @@ public class AnchorArray {
         return new AnchorArray(new AnchorPoint[] {anchor});
     }
 
-    public static AnchorArray.Builder construct(AnchorPointable parent) {
-        return new Builder(parent);
+    public static AnchorArray.Builder construct(AnchorPointable<?> points) {
+        return new Builder(points);
     }
 
     private AnchorArray(AnchorPoint[] anchors) {
@@ -96,10 +96,10 @@ public class AnchorArray {
     public static class Builder {
         
         private ObjectArrayList<AnchorPoint.Builder> anchors = new ObjectArrayList<>(GridUUID.MAX_SHARED_OCCUPANCY);
-        private AnchorPointable parent;
+        private AnchorPointable<?> points;
 
-        public Builder(AnchorPointable parent) {
-            this.parent = parent;
+        public Builder(AnchorPointable<?> points) {
+            this.points = points;
         }
 
         protected void add(AnchorPoint.Builder newBuilder) {
@@ -113,13 +113,13 @@ public class AnchorArray {
         public AnchorArray confirm(BlockPos pos) {
             anchors.trim();
             if(anchors.isEmpty()) {
-                Mechano.LOGGER.warn("AnchorPoint array for " + parent + " - was built with no members!");
+                Mechano.LOGGER.warn("AnchorPoint array for " + points + " - was built with no members!");
                 return AnchorArray.EMPTY;
             }
             AnchorPoint[] builtAnchors = new AnchorPoint[anchors.size()];
             for(int x = 0; x < builtAnchors.length; x++) {
                 if(x >= GridUUID.MAX_SHARED_OCCUPANCY) {
-                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + parent + " - Max anchor occupancy (" + GridUUID.MAX_SHARED_OCCUPANCY + ") has been reached!");
+                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + points + " - Max anchor occupancy (" + GridUUID.MAX_SHARED_OCCUPANCY + ") has been reached!");
                     break;
                 } builtAnchors[x] = anchors.get(x).make(pos, x);
             } return new AnchorArray(builtAnchors);

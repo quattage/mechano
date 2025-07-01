@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.foundation.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -15,14 +15,13 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public abstract class ConnectorBlock<T extends PowerGridBlockEntity> extends CombinedOrientedBlock implements ConnectorHostOverridable, BERefreshable<T> {
+public abstract class ConnectorBlock<T extends GriddableBlockEntity> extends CombinedOrientedBlock implements ConnectorHostOverridable, BERefreshable<T> {
 
     protected static final VoxelShape ROOT_X = Block.box(0, 7, 7, 10, 9, 9);
     protected static final VoxelShape ROOT_Y = Block.box(7, 7, 0, 9, 9, 10);

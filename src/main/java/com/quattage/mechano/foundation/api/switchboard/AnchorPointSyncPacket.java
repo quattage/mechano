@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -15,7 +15,7 @@ import net.minecraft.network.codec.StreamCodec;
 public record AnchorPointSyncPacket(GridUUID addr, byte connections, boolean enabled) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, AnchorPointSyncPacket> STREAM_CODEC = StreamCodec.composite(
-        DiscriminatorData.STREAM_CODEC, AnchorPointSyncPacket::addr,
+        UUIDDiscriminator.STREAM_CODEC, AnchorPointSyncPacket::addr,
         ByteBufCodecs.BYTE, AnchorPointSyncPacket::connections,
         ByteBufCodecs.BOOL, AnchorPointSyncPacket::enabled,
         AnchorPointSyncPacket::new

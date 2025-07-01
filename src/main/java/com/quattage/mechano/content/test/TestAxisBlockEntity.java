@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.test;
 
-import com.quattage.mechano.foundation.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 
 import net.minecraft.core.BlockPos;
@@ -9,7 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class TestAxisBlockEntity extends PowerGridBlockEntity {
+public class TestAxisBlockEntity extends GriddableBlockEntity {
 
     public TestAxisBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);

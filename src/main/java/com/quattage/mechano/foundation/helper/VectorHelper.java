@@ -93,6 +93,16 @@ public class VectorHelper {
      * @param normal Offset towards the ending point (the direction of the ray)
      * @param c Color of the line to be drawn
      */
+    public static void drawDebugRay(Vec3 basis, Vec3 normal, Color c) {
+        Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x * 0.7f, normal.y * 0.7f, normal.z * 0.7f)).lineWidth(0.02f).disableCull().colored(c);
+    }
+
+    /**
+     * Draws the normal vector as a line in 3d space
+     * @param basis Position of the starting point
+     * @param normal Offset towards the ending point (the direction of the ray)
+     * @param c Color of the line to be drawn
+     */
     public static void drawDebugRay(Vec3 basis, Vector3f normal, Color c) {
         Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x * 0.3f, normal.y * 0.3f, normal.z * 0.3f)).lineWidth(0.02f).disableCull().colored(c);
     }
@@ -393,173 +403,124 @@ public class VectorHelper {
 
     // i dont care
     public static Vector3f rotate(Vector3f vec, CombinedOrientation dir) {
-        switch(dir) {
-            case DOWN_EAST:
-                return new Vector3f(
-                    inv(vec.z),
-                    inv(vec.y),
-                    inv(vec.x)
-                ); 
-
-            case DOWN_NORTH:
-                return new Vector3f(
-                    inv(vec.z),
-                    inv(vec.y),
-                    vec.x
-                ); 
-
-            case DOWN_SOUTH:
-                return new Vector3f(
-                    vec.x,
-                    inv(vec.y),
-                    inv(vec.z)
-                ); 
-
-            case DOWN_WEST:
-                return new Vector3f(
-                    vec.z,
-                    inv(vec.y),
-                    vec.x
-                ); 
-
-            case EAST_DOWN:
-                return new Vector3f(
-                    vec.y,
-                    vec.z,
-                    vec.x
-                ); 
-
-            case EAST_NORTH:
-                return new Vector3f(
-                    vec.y,
-                    inv(vec.x),
-                    vec.z
-                ); 
-                
-            case EAST_SOUTH:
-                return new Vector3f(
-                    vec.y,
-                    vec.x,
-                    inv(vec.z)
-                ); 
-                
-            case EAST_UP:
-                return new Vector3f(
-                    vec.y,
-                    inv(vec.z),
-                    inv(vec.x)
-                ); 
-
-            case NORTH_DOWN:
-                return new Vector3f(
-                    vec.x,
-                    vec.z,
-                    inv(vec.y)
-                ); 
-
-            case NORTH_EAST:
-                return new Vector3f(
-                    inv(vec.z),
-                    vec.x,
-                    inv(vec.y)
-                ); 
-
-            case NORTH_UP:
-                return new Vector3f(
-                    inv(vec.x),
-                    inv(vec.z),
-                    inv(vec.y)
-                ); 
-
-            case NORTH_WEST:
-                return new Vector3f(
-                    vec.z,
-                    inv(vec.x),
-                    inv(vec.y)
-                ); 
-
-            case SOUTH_DOWN:
-                return new Vector3f(
-                    inv(vec.x),
-                    vec.z,
-                    vec.y
-                ); 
-
-            case SOUTH_EAST:
-                return new Vector3f(
-                    inv(vec.z),
-                    inv(vec.x),
-                    vec.y
-                ); 
-
-            case SOUTH_UP:
-                return new Vector3f(
-                    vec.x,
-                    inv(vec.z),
-                    vec.y
-                ); 
-
-            case SOUTH_WEST:
-                return new Vector3f(
-                    vec.z,
-                    vec.x,
-                    vec.y
-                ); 
-
-            case UP_EAST:
-                return new Vector3f(
-                    inv(vec.z),
-                    vec.y,
-                    vec.x
-                ); 
-
-            case UP_NORTH:
-                return vec;
-                
-
-            case UP_SOUTH:
-                return new Vector3f(
-                    inv(vec.x),
-                    vec.y,
-                    inv(vec.z)
-                ); 
-
-            case UP_WEST:
-                return new Vector3f(
-                    vec.z,
-                    vec.y,
-                    inv(vec.x)
-                ); 
-
-            case WEST_DOWN:
-                return new Vector3f(
-                    inv(vec.y),
-                    vec.z,
-                    inv(vec.x)
-                ); 
-
-            case WEST_NORTH:
-                return new Vector3f(
-                    inv(vec.y),
-                    vec.x,
-                    vec.z
-                ); 
-
-            case WEST_SOUTH:
-                return new Vector3f(
-                    inv(vec.y),
-                    inv(vec.x),
-                    inv(vec.z)
-                ); 
-
-            case WEST_UP:
-                return new Vector3f(
-                    inv(vec.y),
-                    inv(vec.z),
-                    vec.x
-                ); 
-        }
-        return vec;
+        return switch (dir) {
+            case DOWN_EAST -> new Vector3f(
+                                inv(vec.z),
+                                inv(vec.y),
+                                inv(vec.x)
+                            );
+            case DOWN_NORTH -> new Vector3f(
+                                inv(vec.z),
+                                inv(vec.y),
+                                vec.x
+                            );
+            case DOWN_SOUTH -> new Vector3f(
+                                vec.x,
+                                inv(vec.y),
+                                inv(vec.z)
+                            );
+            case DOWN_WEST -> new Vector3f(
+                                vec.z,
+                                inv(vec.y),
+                                vec.x
+                            );
+            case EAST_DOWN -> new Vector3f(
+                                vec.y,
+                                vec.z,
+                                vec.x
+                            );
+            case EAST_NORTH -> new Vector3f(
+                                vec.y,
+                                inv(vec.x),
+                                vec.z
+                            );
+            case EAST_SOUTH -> new Vector3f(
+                                vec.y,
+                                vec.x,
+                                inv(vec.z)
+                            );
+            case EAST_UP -> new Vector3f(
+                                vec.y,
+                                inv(vec.z),
+                                inv(vec.x)
+                            );
+            case NORTH_DOWN -> new Vector3f(
+                                vec.x,
+                                vec.z,
+                                inv(vec.y)
+                            );
+            case NORTH_EAST -> new Vector3f(
+                                inv(vec.z),
+                                vec.x,
+                                inv(vec.y)
+                            );
+            case NORTH_UP -> new Vector3f(
+                                inv(vec.x),
+                                inv(vec.z),
+                                inv(vec.y)
+                            );
+            case NORTH_WEST -> new Vector3f(
+                                vec.z,
+                                inv(vec.x),
+                                inv(vec.y)
+                            );
+            case SOUTH_DOWN -> new Vector3f(
+                                inv(vec.x),
+                                vec.z,
+                                vec.y
+                            );
+            case SOUTH_EAST -> new Vector3f(
+                                inv(vec.z),
+                                inv(vec.x),
+                                vec.y
+                            );
+            case SOUTH_UP -> new Vector3f(
+                                vec.x,
+                                inv(vec.z),
+                                vec.y
+                            );
+            case SOUTH_WEST -> new Vector3f(
+                                vec.z,
+                                vec.x,
+                                vec.y
+                            );
+            case UP_EAST -> new Vector3f(
+                                inv(vec.z),
+                                vec.y,
+                                vec.x
+                            );
+            case UP_NORTH -> vec;
+            case UP_SOUTH -> new Vector3f(
+                                inv(vec.x),
+                                vec.y,
+                                inv(vec.z)
+                            );
+            case UP_WEST -> new Vector3f(
+                                vec.z,
+                                vec.y,
+                                inv(vec.x)
+                            );
+            case WEST_DOWN -> new Vector3f(
+                                inv(vec.y),
+                                vec.z,
+                                inv(vec.x)
+                            );
+            case WEST_NORTH -> new Vector3f(
+                                inv(vec.y),
+                                vec.x,
+                                vec.z
+                            );
+            case WEST_SOUTH -> new Vector3f(
+                                inv(vec.y),
+                                inv(vec.x),
+                                inv(vec.z)
+                            );
+            case WEST_UP -> new Vector3f(
+                                inv(vec.y),
+                                inv(vec.z),
+                                vec.x
+                            );
+        };
     }
 
 
@@ -571,173 +532,124 @@ public class VectorHelper {
 
     // still dont care
     public static Vec3 rotate(Vec3 vec, CombinedOrientation dir) {
-        switch(dir) {
-            case DOWN_EAST:
-                return new Vec3(
-                    inv(vec.z),
-                    inv(vec.y),
-                    inv(vec.x)
-                ); 
-
-            case DOWN_NORTH:
-                return new Vec3(
-                    inv(vec.z),
-                    inv(vec.y),
-                    vec.x
-                ); 
-
-            case DOWN_SOUTH:
-                return new Vec3(
-                    vec.x,
-                    inv(vec.y),
-                    inv(vec.z)
-                ); 
-
-            case DOWN_WEST:
-                return new Vec3(
-                    vec.z,
-                    inv(vec.y),
-                    vec.x
-                ); 
-
-            case EAST_DOWN:
-                return new Vec3(
-                    vec.y,
-                    vec.z,
-                    vec.x
-                ); 
-
-            case EAST_NORTH:
-                return new Vec3(
-                    vec.y,
-                    inv(vec.x),
-                    vec.z
-                ); 
-                
-            case EAST_SOUTH:
-                return new Vec3(
-                    vec.y,
-                    vec.x,
-                    inv(vec.z)
-                ); 
-                
-            case EAST_UP:
-                return new Vec3(
-                    vec.y,
-                    inv(vec.z),
-                    inv(vec.x)
-                ); 
-
-            case NORTH_DOWN:
-                return new Vec3(
-                    vec.x,
-                    vec.z,
-                    inv(vec.y)
-                ); 
-
-            case NORTH_EAST:
-                return new Vec3(
-                    inv(vec.z),
-                    vec.x,
-                    inv(vec.y)
-                ); 
-
-            case NORTH_UP:
-                return new Vec3(
-                    inv(vec.x),
-                    inv(vec.z),
-                    inv(vec.y)
-                ); 
-
-            case NORTH_WEST:
-                return new Vec3(
-                    vec.z,
-                    inv(vec.x),
-                    inv(vec.y)
-                ); 
-
-            case SOUTH_DOWN:
-                return new Vec3(
-                    inv(vec.x),
-                    vec.z,
-                    vec.y
-                ); 
-
-            case SOUTH_EAST:
-                return new Vec3(
-                    inv(vec.z),
-                    inv(vec.x),
-                    vec.y
-                ); 
-
-            case SOUTH_UP:
-                return new Vec3(
-                    vec.x,
-                    inv(vec.z),
-                    vec.y
-                ); 
-
-            case SOUTH_WEST:
-                return new Vec3(
-                    vec.z,
-                    vec.x,
-                    vec.y
-                ); 
-
-            case UP_EAST:
-                return new Vec3(
-                    inv(vec.z),
-                    vec.y,
-                    vec.x
-                ); 
-
-            case UP_NORTH:
-                return vec;
-                
-
-            case UP_SOUTH:
-                return new Vec3(
-                    inv(vec.x),
-                    vec.y,
-                    inv(vec.z)
-                ); 
-
-            case UP_WEST:
-                return new Vec3(
-                    vec.z,
-                    vec.y,
-                    inv(vec.x)
-                ); 
-
-            case WEST_DOWN:
-                return new Vec3(
-                    inv(vec.y),
-                    vec.z,
-                    inv(vec.x)
-                ); 
-
-            case WEST_NORTH:
-                return new Vec3(
-                    inv(vec.y),
-                    vec.x,
-                    vec.z
-                ); 
-
-            case WEST_SOUTH:
-                return new Vec3(
-                    inv(vec.y),
-                    inv(vec.x),
-                    inv(vec.z)
-                ); 
-
-            case WEST_UP:
-                return new Vec3(
-                    inv(vec.y),
-                    inv(vec.z),
-                    vec.x
-                ); 
-        }
-        return vec;
+        return switch (dir) {
+            case DOWN_EAST -> new Vec3(
+                                inv(vec.z),
+                                inv(vec.y),
+                                inv(vec.x)
+                            );
+            case DOWN_NORTH -> new Vec3(
+                                inv(vec.z),
+                                inv(vec.y),
+                                vec.x
+                            );
+            case DOWN_SOUTH -> new Vec3(
+                                vec.x,
+                                inv(vec.y),
+                                inv(vec.z)
+                            );
+            case DOWN_WEST -> new Vec3(
+                                vec.z,
+                                inv(vec.y),
+                                vec.x
+                            );
+            case EAST_DOWN -> new Vec3(
+                                vec.y,
+                                vec.z,
+                                vec.x
+                            );
+            case EAST_NORTH -> new Vec3(
+                                vec.y,
+                                inv(vec.x),
+                                vec.z
+                            );
+            case EAST_SOUTH -> new Vec3(
+                                vec.y,
+                                vec.x,
+                                inv(vec.z)
+                            );
+            case EAST_UP -> new Vec3(
+                                vec.y,
+                                inv(vec.z),
+                                inv(vec.x)
+                            );
+            case NORTH_DOWN -> new Vec3(
+                                vec.x,
+                                vec.z,
+                                inv(vec.y)
+                            );
+            case NORTH_EAST -> new Vec3(
+                                inv(vec.z),
+                                vec.x,
+                                inv(vec.y)
+                            );
+            case NORTH_UP -> new Vec3(
+                                inv(vec.x),
+                                inv(vec.z),
+                                inv(vec.y)
+                            );
+            case NORTH_WEST -> new Vec3(
+                                vec.z,
+                                inv(vec.x),
+                                inv(vec.y)
+                            );
+            case SOUTH_DOWN -> new Vec3(
+                                inv(vec.x),
+                                vec.z,
+                                vec.y
+                            );
+            case SOUTH_EAST -> new Vec3(
+                                inv(vec.z),
+                                inv(vec.x),
+                                vec.y
+                            );
+            case SOUTH_UP -> new Vec3(
+                                vec.x,
+                                inv(vec.z),
+                                vec.y
+                            );
+            case SOUTH_WEST -> new Vec3(
+                                vec.z,
+                                vec.x,
+                                vec.y
+                            );
+            case UP_EAST -> new Vec3(
+                                inv(vec.z),
+                                vec.y,
+                                vec.x
+                            );
+            case UP_NORTH -> vec;
+            case UP_SOUTH -> new Vec3(
+                                inv(vec.x),
+                                vec.y,
+                                inv(vec.z)
+                            );
+            case UP_WEST -> new Vec3(
+                                vec.z,
+                                vec.y,
+                                inv(vec.x)
+                            );
+            case WEST_DOWN -> new Vec3(
+                                inv(vec.y),
+                                vec.z,
+                                inv(vec.x)
+                            );
+            case WEST_NORTH -> new Vec3(
+                                inv(vec.y),
+                                vec.x,
+                                vec.z
+                            );
+            case WEST_SOUTH -> new Vec3(
+                                inv(vec.y),
+                                inv(vec.x),
+                                inv(vec.z)
+                            );
+            case WEST_UP -> new Vec3(
+                                inv(vec.y),
+                                inv(vec.z),
+                                vec.x
+                            );
+        };
     }
 
     private static double inv(double in) {

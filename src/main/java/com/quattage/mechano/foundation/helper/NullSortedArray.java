@@ -6,8 +6,6 @@ import java.util.Iterator;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
-import com.quattage.mechano.Mechano;
-
 /**
  * A wrapper for a primitive array that sorts nulls to the end
  * whenever it is changed.
@@ -75,7 +73,7 @@ public class NullSortedArray<T> implements Collection<T> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "hiding" })
     public <T> T[] toArray(T[] a) {
         return (T[]) backingArray;
     }
@@ -206,6 +204,7 @@ public class NullSortedArray<T> implements Collection<T> {
         }
     }
 
+    @Override
     public String toString() {
 
         String out = "NullSortedArray (length: " + size + ", [";

@@ -3,18 +3,6 @@ package com.quattage.mechano.foundation.catenary.meshing;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import net.createmod.catnip.theme.Color;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.BlockPos.MutableBlockPos;
-import net.minecraft.world.level.BlockAndTintGetter;
-import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.phys.Vec3;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -29,6 +17,18 @@ import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Thickness;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
+import net.createmod.catnip.theme.Color;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.BlockPos.MutableBlockPos;
+import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.Vec3;
+
 /**
  * This class is a central place for managing mutable vertex data
  * before it's pushed to a VertexConsumer.  
@@ -42,12 +42,17 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
  * This class will probably be abstracted or replaced when
  * I move over to flywheel and/or make use of compute shaders.
  * <p>
- * Since it's essentially just a wrapper for all kinds of data related
+ * Since this is essentially just a wrapper for all kinds of data related
  * to pushing vertices, geometric operations that use this class
  * can reap the benefits of significantly smaller method headers,
  * such as {@link MeshExtruder} and {@link Catenary#render}
  */
 public class CatenaryMesher extends CatenaryAttributeHolder {
+
+    /**
+     * A common pool for pushing catenary meshes
+     */
+    public static final CatenaryMesher REUSABLE = CatenaryMesher.asEmpty();
 
     public static CatenaryMesher as(TransmitterType<?> type) {
         return new CatenaryMesher(type);
@@ -94,12 +99,19 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         lightLookup = new MutableBlockPos();
     }
 
+    /**
+     * Inherits all defaulted properties of the given 
+     * TransmitterType, including tension, thickness, and material.
+     * @param type
+     * @return
+     */
     public CatenaryMesher withAppearance(TransmitterType<?> type) {
+        this.model = type.defaults.model;
         this.material = this.model.getShader(type);
         if(this.material == null)
-            throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - Typs type has no configured material!");
+            throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has no configured material!");
         this.thick = type.defaults.getThickness();
-        if(this.thick.equals(Thickness.ZERO))
+        if(Thickness.ZERO.equals(this.thick))
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has a thickness of zero!");
         this.data[0] = thick.half();
         data[41] = thick.getPixels();
@@ -108,6 +120,10 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return this;
     }
 
+    /**
+     * Sets the thickness of the resulting meshes
+     * that are drawn by this CatenaryMesher.
+     */
     @Override
     public CatenaryMesher withThickness(Thickness thick) {
         data[0] = thick.get() / 2f;
@@ -115,19 +131,38 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return this;
     }
 
+    /**
+     * Sets the tension of the resulting meshes
+     * that are drawn by this CatenaryMesher.
+     */
+    @Override
+    public CatenaryMesher withTension(Tension tension) {
+        return (CatenaryMesher)super.withTension(tension);
+    }
+
+    /**
+     * Binds this CatenaryMesher to the given world,
+     * so that meshes that are drawn can access
+     * block collision and light properties.
+     * @param world
+     * @return
+     */
     public CatenaryMesher in(BlockAndTintGetter world) {
         this.world = world;
         return this;
     } 
 
+    /**
+     * Sets the global basis of this CatenaryMesher
+     * to the given vector. The wire is drawn in its
+     * own local frame, then moved to this basis vector
+     * once finished.
+     * @param pos
+     * @return
+     */
     public CatenaryMesher at(Vec3 pos) {
         this.basis = pos;
         return this;
-    }
-
-    @Override
-    public CatenaryMesher withTension(Tension tension) {
-        return (CatenaryMesher)super.withTension(tension);
     }
 
     public CatenaryMesher useAtlas() {
@@ -156,6 +191,32 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         material = RenderType.SOLID;
         atlas = null;
         useTextureAtlas = false;
+    }
+
+    public void resetMatrix() {
+        data[1]  = 0; data[2]  = 0; data[3]  = 0; // right
+        data[4]  = 0; data[5]  = 0; data[6]  = 0; // up
+        data[7]  = 0; data[8]  = 0; data[9]  = 0;  // forward
+        data[10] = 0; data[11] = 0; data[12] = 0; // normA
+        data[13] = 0; data[14] = 0; data[15] = 0; // normB
+    }
+
+    public void resetVerts() {
+        data[16] = 0; data[17] = 0; data[18] = 0;
+        data[19] = 0; data[20] = 0; data[21] = 0;
+        data[22] = 0; data[23] = 0; data[24] = 0;
+        data[25] = 0; data[26] = 0; data[27] = 0;
+        data[28] = 0; data[29] = 0; data[30] = 0;
+        data[31] = 0; data[32] = 0; data[33] = 0;
+        data[34] = 0; data[35] = 0; data[36] = 0;
+        data[37] = 0; data[38] = 0; data[39] = 0;
+    }
+
+    public void resetUVs() {
+        data[40] = 0;
+        data[41] = 1;
+        data[42] = 0;
+        data[43] = 1;
     }
 
     /**
@@ -196,83 +257,23 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return render(buffers, matrixStack, model, null, pTicks);
     }
 
-    public void resetMatrix() {
-        data[1]  = 0; data[2]  = 0; data[3]  = 0; // right
-        data[4]  = 0; data[5]  = 0; data[6]  = 0; // up
-        data[7]  = 0; data[8]  = 0; data[9]  = 0;  // forward
-        data[10] = 0; data[11] = 0; data[12] = 0; // normA
-        data[13] = 0; data[14] = 0; data[15] = 0; // normB
-    }
-
-    public float radius() {
-        return data[0];
-    }
-
-    public float rightX() {
-        return data[1];
-    }
-
-    public float rightY() {
-        return data[2];
-    }
-
-    public float rightZ() {
-        return data[3];
-    }
-
-    public float upX() {
-        return data[4];
-    }
-
-    public float upY() {
-        return data[5];
-    }
-
-    public float upZ() {
-        return data[6];
-    }
-
-    public float normAX() {
-        return data[10];
-    }
-
-    public float normAY() {
-        return data[11];
-    }
-
-    public float normAZ() {
-        return data[12];
-    }
-
-    public float normBX() {
-        return data[13];
-    }
-
-    public float normBY() {
-        return data[14];
-    }
-
-    public float normBZ() {
-        return data[15];
-    }
-
-    public void resetVerts() {
-        data[16] = 0; data[17] = 0; data[18] = 0;
-        data[19] = 0; data[20] = 0; data[21] = 0;
-        data[22] = 0; data[23] = 0; data[24] = 0;
-        data[25] = 0; data[26] = 0; data[27] = 0;
-        data[28] = 0; data[29] = 0; data[30] = 0;
-        data[31] = 0; data[32] = 0; data[33] = 0;
-        data[34] = 0; data[35] = 0; data[36] = 0;
-        data[37] = 0; data[38] = 0; data[39] = 0;
-    }
-
-    public void resetUVs() {
-        data[40] = 0;
-        data[41] = 1;
-        data[42] = 0;
-        data[43] = 1;
-    }
+    public float radius() { return data[0]; }
+    public float rightX() { return data[1]; }
+    public float rightY() { return data[2]; }
+    public float rightZ() { return data[3]; }
+    public float upX() { return data[4]; }
+    public float upY() { return data[5]; }
+    public float upZ() { return data[6]; }
+    public float normAX() { return data[10]; }
+    public float normAY() { return data[11]; }
+    public float normAZ() { return data[12]; }
+    public float normBX() { return data[13]; }
+    public float normBY() { return data[14]; }
+    public float normBZ() { return data[15]; }
+    public int light0() { return (int)data[44]; }
+    public int light1() { return (int)data[45]; }
+    public BlockAndTintGetter world() { return world; }
+    public Vec3 basis() { return basis; }
 
     /**
      * Recomputes this extruder's internal matrix by using the average
@@ -556,15 +557,6 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, lightLookup), world.getBrightness(LightLayer.SKY, lightLookup));
     }
 
-
-    public int getLight0() {
-        return (int)data[44];
-    }
-
-    public int getLight1() {
-        return (int)data[45];
-    }
-
     public CatenaryMesher setLight0(int light) {
         data[44] = light;
         return this;
@@ -579,15 +571,6 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         data[44] = data[45];
         return this;
     }
-
-    public Vec3 getBasis() {
-        return basis;
-    }
-
-    public BlockAndTintGetter getWorld() {
-        return world;
-    }
-
 
     /**
      * Represents a singular point in 3D space
@@ -629,6 +612,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             this.pinned = false;
         }
 
+        @Override
         public String toString() {
             return"(" + String.format("%4.3f" , pos.x) + ", " +  String.format("%4.3f" , pos.y) + ", " +  String.format("%4.3f" , pos.z) + ")";
         }
@@ -665,7 +649,6 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             this.end = end;
             this.facing = new Vector3f();
             this.center = new Vector3f();
-            this.length = start.pos.distance(end.pos);
         }
 
         public Vector3f computeCenter() {
@@ -679,7 +662,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             facing.x = (float)(start.pos.x - end.pos.x);
             facing.y = (float)(start.pos.y - end.pos.y);
             facing.z = (float)(start.pos.z - end.pos.z);
-            this.length = facing.length();
+            this.length = facing.length() / 2f;
             return facing.normalize();
         }
 
@@ -695,6 +678,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             return end.lastPos.lerp(end.pos, pTicks, new Vector3f());
         }
 
+        @Override
         public String toString() {
             return "(" + String.format("%.2f", start.pos.x) + ", " + String.format("%.2f", start.pos.y) + ", " + String.format("%.2f", start.pos.z) + "  ->  " + String.format("%.2f", end.pos.x) + ", " + String.format("%.2f", end.pos.y) + ", " + String.format("%.2f", end.pos.z) + ")";
         }

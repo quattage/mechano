@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:item/generated",
+  "overrides": [
+    {
+      "model": "mechano:item/spool_empty",
+      "predicate": {
+        "mechano:full": 0.0
+      }
+    },
+    {
+      "model": "mechano:item/spool_hookup_empty",
+      "predicate": {
+        "mechano:full": 0.1
+      }
+    },
+    {
+      "model": "mechano:item/spool_hookup_depleted",
+      "predicate": {
+        "mechano:full": 0.5
+      }
+    },
+    {
+      "model": "mechano:item/spool_hookup_full",
+      "predicate": {
+        "mechano:full": 0.75
+      }
+    },
+    {
+      "model": "mechano:item/spool_hookup_full",
+      "predicate": {
+        "mechano:full": 0.999
+      }
+    }
+  ]
+}

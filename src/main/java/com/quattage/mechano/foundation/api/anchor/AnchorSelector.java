@@ -10,13 +10,12 @@ import org.apache.commons.lang3.function.TriConsumer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.PowerGridBlockEntity;
+import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
 import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.quattage.mechano.foundation.mixin.client.RenderBuffersAccessor;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
@@ -25,7 +24,6 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelReader;
@@ -35,11 +33,6 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderFrameEvent;
-import net.neoforged.neoforge.client.event.RenderHighlightEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
  * This class stores a queue containing {@link AnchorPoint AnchorPoints} 
@@ -51,43 +44,14 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * When AnchorPoints are processed, this class will automatically render hitboxes
  * and tooltip overlays. For additional control over tooltip contents and hitbox appearance, see
  * {@link Transmitable#onRenderTick}, {@link Transmitable#collectTooltipInfoAndResponse}
- * , and {@link PowerGridBlockEntity#collectTooltipInfo}
+ * , and {@link GriddableBlockEntity#collectTooltipInfo}
  * <p>
  * Additionally, the {@link AnchorSelector#selected <code>selected</code>} field always contains up-to-date
- * information about the AnchorPoint being targeted by the player, and the {@link PowerGridBlockEntity}
+ * information about the AnchorPoint being targeted by the player, and the {@link GriddableBlockEntity}
  * that anchor point belongs to. If the player isn't looking at an AnchorPoint, this field will be null.
  */
 @OnlyIn(Dist.CLIENT)
-@EventBusSubscriber
 public class AnchorSelector {
-
-
-    @SubscribeEvent // tick the selector at the game's frame rate
-    public static void onFrame(RenderFrameEvent.Post evt) {
-        AnchorSelector.INSTANCE.tick(Minecraft.getInstance().player, evt.getPartialTick());
-    }
-
-    @SubscribeEvent // Injects custom highlight box
-    public static void onRenderStageComplete(RenderLevelStageEvent evt) {
-
-        if(evt.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) 
-            return;
-
-        AnchorSelector.INSTANCE.drawTrackedAnchors(
-            evt.getCamera(), evt.getPoseStack(), 
-            ((RenderBuffersAccessor)evt.getLevelRenderer())
-                .mechano$getRenderBuffers()
-                .bufferSource()
-                .getBuffer(RenderType.lines()),
-            evt.getPartialTick()
-        );
-    }
-
-    @SubscribeEvent // Cancels the redundant select box if the player is looking at an AnchorPoint
-    public static void onRenderHighlight(RenderHighlightEvent.Block evt) {
-        evt.setCanceled(AnchorSelector.INSTANCE.hasSelection());
-    }
-
 
     /**
      * Singleton instance of {@link AnchorSelector}
@@ -105,9 +69,7 @@ public class AnchorSelector {
     public Transmitable.HoldingSummary playerHands = new HoldingSummary(null, null, null, null);
     private final Queue<Active> trackedEntries = new PriorityQueue<>();
 
-    // called by the event above
-    protected void tick(LocalPlayer player, DeltaTracker deltas) {
-
+    public void tick(LocalPlayer player, DeltaTracker deltas) {
         invalidateStaleTarget();
         if(player == null) { 
             reset(); 
@@ -127,24 +89,20 @@ public class AnchorSelector {
                 reset();
                 return;
             }
-            findTargetAndRun(player.level(), deltas, (holder, sel, distance) -> {
-                holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
-                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, holder, sel.anchor, playerHands);
+            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
+                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
+                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, points, sel.anchor, playerHands);
             });
         } else {
-            findTargetAndRun(player.level(), deltas, (holder, sel, distance) -> {
-                holder.writeTooltip(currentTooltip, playerHands, sel.anchor);
+            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
+                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
                 sel.response = Response.Anchor.NONE;
             });
         }
-
-        // gets rid of any transient entires that may not have been polled out by previous calls
-        // TODO figure out why this leaks sometimes
         trackedEntries.clear(); 
     }
 
-    // called by the event above
-    protected void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
+    public void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
 
         if(hasSelection() && lookedThisFrame) {
             if(!(selected.isDisabled() || Response.hidesAnchor(selected.response))) {
@@ -213,15 +171,15 @@ public class AnchorSelector {
      * Tells this AnchorSelector to track the provided AnchorPoint information
      * for evaluation at the end of the current render tick. This anchor will be 
      * cached until the end of the current frame's render cycle and then forgotten.
-     * @param owner {@link PowerGridBlockEntity} that the provided AnchorPoint belongs to
+     * @param owner {@link GriddableBlockEntity} that the provided AnchorPoint belongs to
      * @param anchor Anchor to track
      * @param distance Distance from the player to the anchor. Used for priority sorting when pulling AnchorPoints from the queue, 
      * so this distance value doesn't necessarily have to be coherent - you can just submit an abitrary number (like, for example, 0, 
      * if you want this anchor to be evaluated with the highest priority
      */
-    public void track(AnchorPointable holder, AnchorPoint anchor, float distance) {
-        if(holder == null || anchor == null || distance <= 0) return;
-        trackedEntries.add(new Active(holder, anchor, anchor.getAddress(), distance));
+    public void track(AnchorPointable<?> points, AnchorPoint anchor, float distance) {
+        if(points == null || anchor == null || distance <= 0) return;
+        trackedEntries.add(new Active(points, anchor, anchor.getAddress(), distance));
     }
 
     // updates the player's held item, raycast, and tooltip information for this frame
@@ -238,22 +196,22 @@ public class AnchorSelector {
 
     /**
      * Searches through nearby AnchorPoints and executes the provided consumer on the most relevent one.
-     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent holder,
+     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent points,
      * and the distance from the player will be passed to the provided consumer. The provided consumer
      * may not fire at all if the player isn't near any AnchorPoints or isn't targeting one directly.
      * This is used internally to handle tooltip aggregation and some basic event stuff.
      * @param cons Consumer that is executed when this 
      */
-    private void findTargetAndRun(LevelReader world, DeltaTracker delta, TriConsumer<AnchorPointable, AnchorSelector.Active, Float> cons) { 
+    private void findTargetAndRun(LevelReader world, DeltaTracker delta, TriConsumer<AnchorPointable<?>, AnchorSelector.Active, Float> cons) { 
         // TODO public access may be useful
         lookedThisFrame = false;
         while(!trackedEntries.isEmpty()) {
             final Active sel = trackedEntries.poll();
-            if(sel == null || sel.isInvalid() || !sel.holder.isInteractable()) continue;
+            if(sel == null || sel.isInvalid() || !sel.points.isInteractable()) continue;
             if(!sel.anchor.isIntersecting(world, lookingRay)) continue;
             lookedThisFrame = true;
             selected = sel;
-            cons.accept(sel.holder, sel, sel.distance);
+            cons.accept(sel.points, sel, sel.distance);
             break;
         }
         if(!lookedThisFrame) {
@@ -295,15 +253,15 @@ public class AnchorSelector {
      */
     public static class Active implements Comparable<Active> {
 
-        public final AnchorPointable holder; 
+        public final AnchorPointable<?> points; 
         public final AnchorPoint anchor;
         public final float distance;
         public final GridUUID address;
         public Response<?> response;
         private VoxelShape highlightShape;
 
-        public Active(AnchorPointable holder, AnchorPoint anchor, GridUUID address, float distance) {
-            this.holder = holder;
+        public Active(AnchorPointable<?> points, AnchorPoint anchor, GridUUID address, float distance) {
+            this.points = points;
             this.anchor = anchor;
             this.address = address;
             this.distance = distance;
@@ -319,7 +277,7 @@ public class AnchorSelector {
         }
 
         public boolean isInvalid() {
-            return holder == null || anchor == null || response == null || distance <= 0;
+            return points == null || anchor == null || response == null || distance <= 0;
         }
 
         @Override
@@ -351,7 +309,7 @@ public class AnchorSelector {
 
             Minecraft mc = Minecraft.getInstance();
             if(mc != null && !mc.level.getWorldBorder().isWithinBounds(basis)) return false;
-            Vec3 shapePos = anchor.getPos(holder.getWorld());
+            Vec3 shapePos = anchor.getPos(points.getWorld());
 
             matrix.pushPose();
             matrix.translate(shapePos.x - basis.x, shapePos.y - basis.y, shapePos.z - basis.z);
@@ -378,7 +336,7 @@ public class AnchorSelector {
          * Renders this wrapped AnchorPoint's AABB hitbox to the Create Outliner
          */
         public void renderComplexAABB(float ticks, boolean unique) {
-            AABB visual = anchor.makeHitbox(holder.getWorld(), false).inflate(anchor.getSize() * ticks);
+            AABB visual = anchor.makeHitbox(points.getWorld(), false).inflate(anchor.getSize() * ticks);
             Color col = Color.BLACK.mixWith(new Color(77, 253, 182), ticks);
             Outliner.getInstance().showAABB(unique ? anchor.hashCode() : 0xFFFFFFF, visual)
                 .disableCull()
@@ -389,7 +347,7 @@ public class AnchorSelector {
 
         @Override
         public String toString() {
-            return "[" + holder + ", " + anchor + ", " +  response + "]";
+            return "[" + points + ", " + anchor + ", " +  response + "]";
         }
     }
 }

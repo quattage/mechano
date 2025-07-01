@@ -1,7 +1,8 @@
 {
   "block.mechano.connector_single": "Connector Single",
   "block.mechano.test_axis": "Test Axis",
-  "item.mechano.hookup_spool": "Hookup Spool",
+  "item.mechano.spool_empty": "Spool Empty",
+  "item.mechano.spool_hookup": "Spool Hookup",
   "itemGroup.mechano.main": "Mechano",
   "mechano.generic.unit.gigawatthours": "GWh",
   "mechano.generic.unit.gigawatts": "GW",

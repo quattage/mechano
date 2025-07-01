@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
@@ -18,7 +19,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
-public interface AnchorPointable {
+public interface AnchorPointable<T> {
 
     public void constructAnchors(AnchorArray.Builder anchors);
 
@@ -26,6 +27,10 @@ public interface AnchorPointable {
 
     public default AnchorPoint getAnchor(int index) {
         return getAnchors().getByIndex(index);
+    }
+
+    public default AnchorPoint getAnchor() {
+        return getAnchors().getByIndex(0);
     }
 
     public default void refreshAnchors(BlockState newState) {
@@ -122,9 +127,11 @@ public interface AnchorPointable {
      * @param world World to operate within
      * @param connection The connection that was destroyed. Note that this method is called AFTER the GridLink is removed from the network, so this connection's reference is stale and should't be stored.
      */
-    public default void onConnectionBroken(Level world, GridLink connection) {
+    public default void onConnectionDestroyed(Level world, GridLink connection) {
         
     }
+
+    public abstract T getSource();
 
     /**
      * This method returns an arbitrary Item which can be 
@@ -137,6 +144,5 @@ public interface AnchorPointable {
     }
 
     public default boolean isInteractable() { return true; }
-
     public default boolean isVisible() { return true; }
 }

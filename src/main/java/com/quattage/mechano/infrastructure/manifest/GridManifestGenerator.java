@@ -51,9 +51,7 @@ public class GridManifestGenerator {
         if(now - tickTime >= 250L) {
             tickTime = now;
             requester.sendSystemMessage(Component.literal("Compiling grid manifest " + throbber.get())
-                .withStyle(style -> {
-                    return style.withColor(ChatFormatting.AQUA);
-                }), true);
+                .withStyle(style -> style.withColor(ChatFormatting.AQUA)), true);
         }
     }
 
@@ -68,14 +66,14 @@ public class GridManifestGenerator {
         }
         this.compiledManifestTask = CompletableFuture.supplyAsync(() -> {
             if(!isQueued()) return "";
-            String manifest = "▛▙▘▘■  Mechano ServerMatrix API manifest generator [" + MechanoBuildParameters.VERSION +  
+            String manifest = "▛▙▘▘■  Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
             "] ■▝▝▟▜\n\n⎙ Requested by: '" + getPlayerName() + "' at [" + getTime() + "]\n⌂ Attached to: '" + getDimensionName() + "'\n\n";
 
             int count = 0;
             for(ServerMatrix grid : active.matrices) {
-                manifest += "⣿ Subgrid " + grid.gridIndex  + ":\n";
+                manifest += "⣿ Matrix " + grid.gridIndex  + ":\n";
                 if(grid.nodes.isEmpty()) {
-                    manifest += "\t▸ Error (subgrid unpopulated)\n";
+                    manifest += "\t▸ Error (matrix unpopulated)\n";
                 }
                 for(GridNode node : grid.nodes) {
                     count++;
@@ -104,7 +102,6 @@ public class GridManifestGenerator {
                 .withStyle(ChatFormatting.GREEN), false);
             float elapsed = (System.currentTimeMillis() - this.requestTime) / 1000;
             result += " in " + elapsed + " seconds.         ■▗▗▜▟";
-
             unload();
             CatnipServices.NETWORK.sendToClient(requester, new ManifestResultPacket("\n" + result));
             Mechano.LOGGER.info("\n\n\n" + result);
@@ -116,39 +113,40 @@ public class GridManifestGenerator {
 
         String out = "\t┌ ▣ " + node.getAddress().toString(world) + ":  ";
         out += "\n\t┆\t" + (node.isValid() ? "☑ Valid" : "☒ Invalid (See below for details)");
-        out += "\n\t┆\t▸ Owned by Grid " + node.getOwner().gridIndex;
+        out += "\n\t┆\t▸ Owned by Matrix " + node.getOwner().gridIndex;
+        AnchorPointable<?> points = node.getAnchorPoints();
         out += "\n\t┆\t▸ Bound to: ";
-        AnchorPointable host = node.getHolder();
 
         if(node.getOwner() != null) {
-            String state = host.describeState();
+            String state = points.describeState();
             if(state == null || state.isEmpty())
-                out += "Error (Host '" + host + "' has not implemented describeState())";
+                out += "Error (Host '" + points + "' has not implemented describeState())";
+            else out += state;
         } else {
             out += "N/A - host invalidated, couldn't be reacquired. \n\t\t\t No further information available.";
             return out;
         }
 
+        out += "\n\t┆\t▸ Data scope: " + node.getAddress().getDataHolder(world).getClass().getSimpleName();
         out += "\n\t┆\t⌕ Dispatch: ";
-        out += "\n\t┆\t\t▸ Server Status: " + (host.getSurrogate().isSynced() ? ("Synced to Subgrid " + host.getSurrogate().owner.gridIndex) : "no accelerated reference");
+        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced() ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().gridIndex) : "no accelerated reference");
         out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());
         out += "\n\t┆\t☍ Links:";
 
-        if(node.links.isEmpty()) {
+        if(node.getLinkCount() <= 0)
             out += "\n\t┆\t\t⚠ Error (no links)";
-        } else {
-            for(GridLink link : node.links) {
+        else {
+            for(GridLink link : node) {
                 if(!link.startsWith(node.getAddress())) {
-                    out += "⚠ Error (unmatched source)\n";
+                    out += "\n\t┆\t\t⚠ (unmatched source) [" + link.getStart().toString(world) + "-> " + link.getEnd().toString(world) + "]";
                     continue;
                 }
                 ResourceLocation trnsKey = null;
-                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.getTransmitterType()); }
+                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.getTransmitter().getType()); }
                 catch(Exception e) { trnsKey = Mechano.asResource("transmitter_acquisition_error"); };
-                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEndNode().getAddress();
+                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEndNode().getAddress().toString(world);
             }
         }
-
         return out + "\n";
     }
 

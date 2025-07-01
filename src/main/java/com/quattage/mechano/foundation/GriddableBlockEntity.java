@@ -11,16 +11,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public abstract class PowerGridBlockEntity extends ElectricBlockEntity implements AnchorPointable {
+public abstract class GriddableBlockEntity extends ElectricBlockEntity implements AnchorPointable<BlockEntity> {
 
     // always empty on the server
     private AnchorArray anchors = AnchorArray.EMPTY;
     private final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
 
-    public PowerGridBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
         AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
         constructAnchors(unbuiltAnchors);
@@ -28,13 +29,8 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
         this.surrogate.nodeCount = this.anchors.size();
     }
 
-    public abstract void constructAnchors(AnchorArray.Builder anchors);
-
     @Override
-    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-        super.onRefresh(world, pos, oldState, newState);
-        anchors.updateOrientation(newState);
-    }
+    public abstract void constructAnchors(AnchorArray.Builder anchors);
 
     @Override
     public void tick() {
@@ -55,6 +51,12 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
     @Override
     public Level getWorld() {
         return getLevel();
+    }
+
+    @Override
+    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
+        super.onRefresh(world, pos, oldState, newState);
+        anchors.updateOrientation(newState);
     }
 
     @Override
@@ -80,11 +82,16 @@ public abstract class PowerGridBlockEntity extends ElectricBlockEntity implement
 
     @Override
     public String describeState() {
-        return getBlockState().getBlock().getName().toString();
+        return "Block '" + getBlockState().getBlock().getName().getString() + "'";
     }
 
     @Override
     public Item getVisual() {
         return getBlockState().getBlock().asItem();
+    }
+
+    @Override
+    public BlockEntity getSource() {
+        return this;
     }
 }

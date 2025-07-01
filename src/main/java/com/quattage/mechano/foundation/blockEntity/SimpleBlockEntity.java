@@ -1,7 +1,5 @@
 package com.quattage.mechano.foundation.blockEntity;
 
-import java.util.function.Consumer;
-
 import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.api.schematic.nbt.PartialSafeNBT;

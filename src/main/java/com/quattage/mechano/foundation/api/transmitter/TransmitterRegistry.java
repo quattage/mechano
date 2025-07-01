@@ -8,8 +8,8 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
+import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -182,10 +182,9 @@ public class TransmitterRegistry {
          * @return the maximum distance (in meters) that 
          * a single wire of this type can span
          */
-        public int getMaxDistance() {
+        public int getMaxLength() {
             return maxDistance;
         }
-
 
         /**
          * If this TransmitterType ignores limits, connections

@@ -14,7 +14,7 @@ public interface Tensionable {
         int ord = getTension().ordinal() - 1;
         if(ord < 0) return false;
         Tension trgt = Tension.values()[ord];
-        if(trgt.equals(Tension.STUPID_LOOSE))
+        if(Tension.STUPID_LOOSE.equals(trgt))
             return false;
         return setTension(trgt);
     }
@@ -24,7 +24,7 @@ public interface Tensionable {
     }
 
     public default boolean resetTension() {
-        if(this.getTension().equals(Tension.AVERAGE)) return false;
+        if(Tension.AVERAGE.equals(this.getTension())) return false;
         return setTension(Tension.AVERAGE);
     }
 
@@ -34,4 +34,16 @@ public interface Tensionable {
 
     public abstract Tension getTension();
     public abstract boolean setTension(Tension tension);
+
+    public float getLength();
+    public float getMaxLength();
+
+    public default void applyDistanceTension(float distance, float maxDistance) {
+        float frac = distance / maxDistance;
+        if(frac > 0.9) setTension(Tension.TAUT);
+        else if(frac > 0.8) setTension(Tension.TIGHT);
+        else if(frac > 0.6) setTension(Tension.AVERAGE);
+        else if(frac > 0.4) setTension(Tension.LOOSE);
+        else if(frac > 0.2) setTension(Tension.VERY_LOOSE);
+    }
 }

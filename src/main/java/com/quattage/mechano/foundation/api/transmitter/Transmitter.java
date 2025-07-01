@@ -12,7 +12,7 @@ import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.Trans
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterTypeBuilder;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 /**
@@ -95,7 +95,7 @@ public abstract class Transmitter<T extends Transmitter<?>> {
      * @param connection The connection about to be destroyed. 
      * @return <code>true</code> if removing the connection should proceed
      */
-    public abstract void onConnectionDestroyed(Level world, @Nullable Player destroyer, GridLink connection);
+    public abstract void onConnectionDestroyed(Level world, @Nullable Entity destroyer, GridLink connection);
 
     /**
      * Compare this Transmitter to another based on arbitrary characteristics
@@ -139,6 +139,7 @@ public abstract class Transmitter<T extends Transmitter<?>> {
         return this.hashCode() == type.hashCode();
     }
 
+    @Override
     public int hashCode() {
         return getType().hashCode();
     }

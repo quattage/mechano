@@ -17,29 +17,27 @@ import net.minecraft.util.StringRepresentable;
  */
 public enum VerticalOrientation implements StringRepresentable {
     // stores t
-    NORTH_UP("north_up", Direction.NORTH, true),            //0
-    NORTH_DOWN("north_down", Direction.NORTH, false),      //1
+    NORTH_UP(Direction.NORTH, true),            //0
+    NORTH_DOWN(Direction.NORTH, false),      //1
 
-    EAST_UP("east_up", Direction.EAST, true),               //2
-    EAST_DOWN("east_down", Direction.EAST, false),         //3
+    EAST_UP(Direction.EAST, true),               //2
+    EAST_DOWN(Direction.EAST, false),         //3
 
-    SOUTH_UP("south_up", Direction.SOUTH, true),            //4
-    SOUTH_DOWN("south_down", Direction.SOUTH, false),      //5
+    SOUTH_UP(Direction.SOUTH, true),            //4
+    SOUTH_DOWN(Direction.SOUTH, false),      //5
 
-    WEST_UP("west_up", Direction.WEST, true),               //6
-    WEST_DOWN("west_down", Direction.WEST, false);         //7
+    WEST_UP(Direction.WEST, true),               //6
+    WEST_DOWN(Direction.WEST, false);         //7
 
-    private final String name;
     private final Direction localFacing;
     private final boolean localVertical;
-    private static final Int2ObjectMap<VerticalOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), (boysmell) -> {
+    private static final Int2ObjectMap<VerticalOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), boysmell -> {
         for(VerticalOrientation direction : values()) {
             boysmell.put(lookupKey(direction.localFacing, direction.localVertical), direction);
         }
     });
 
-    private VerticalOrientation(String name, Direction localFacing, boolean localVertical) {
-        this.name = name;
+    private VerticalOrientation(Direction localFacing, boolean localVertical) {
         this.localFacing = localFacing;
         this.localVertical = localVertical;
     }

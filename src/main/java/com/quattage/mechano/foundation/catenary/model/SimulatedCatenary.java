@@ -24,23 +24,26 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
     // average accumulated velocity as of the last time the wire was simulated
     public float avgVelocity = 0;
 
+    private float segmentTF = 0f;
+
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
 
     public SimulatedCatenary() {}
 
     /**
-     * Initializes a Verlet Integration simulation for this WireModel. Calls to this 
-     * method populate this WireModel's internal points array to the size necessary 
+     * Initializes a Verlet Integration simulation for this Catenary. Calls to this 
+     * method populate this Catenary's internal points array to the size necessary 
      * to span across this wire's {@link #offset magnitude vector.} As a result of 
      * this call, each {@link Point} and {@link Stick} is aligned in a straight 
      * line. No offsets or simulated constraints are applied until at least one call 
      * to {@link #update} is made.
      * <p>
-     * Additionally, if any pre-existing vertex data exists for this WireModel, 
-     * that data will be cleared. This WireModel will return to its initial state.
-     * @return This WireModel for chaining calls
+     * Additionally, if any pre-existing vertex data exists for this Catenary, 
+     * that data will be cleared. This Catenary will return to its initial state.
+     * @return This Catenary for chaining calls
      */
+    @Override
     public SimulatedCatenary initialize() {
         assertHasOffset();
         int segments = getSegmentCount();
@@ -88,11 +91,17 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
     @Override
     public void calculateSegmentation() {
-
         this.length = offset.length();
-        if(!isInitialized()) return;
+        
+        if(!isInitialized()) {
+            this.segmentTF = 0.01f;
+            return;
+        }
+
         this.points.getFirst().clearPos();
         int segmentCount = getSegmentCount();
+        float ratio = (length / maxLength);
+        this.segmentTF = length < 2 ? 0.03f : Math.max(0.05f, Math.min(1, ratio * ratio * ratio));
 
         // grow or shrink the wire as needed
         if(segmentCount < this.points.size()) {
@@ -102,7 +111,7 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
             if(wasPinned) this.points.getLast().pin();
             this.points.trim();
             this.sticks.trim();
-        } else if(segmentCount > this.points.size()) {
+        } else if(segmentCount > this.points.size() && length < maxLength) {
             this.points.ensureCapacity(segmentCount);
             this.sticks.ensureCapacity(segmentCount - 1);
             addAdditionalSegments(segmentCount - this.points.size());
@@ -145,20 +154,17 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
      * to be called several times for results to display 
      * immediately. See  {@link #updateAhead} to automatically
      * call call this method multiple times.
-     * @throws IllegalStateException if this WireModel doesn't have {@link #setOffset an offset} or hasn't been {@link #initialize initialized} at least once.
+     * @throws IllegalStateException if this Catenary doesn't have {@link #setOffset an offset} or hasn't been {@link #initialize initialized} at least once.
     */
     @Override
     public void update(float delta) {
+        
         assertHasOffset();
         assertSimulatable();
-
         final Vector3f gravity = getGravity(points.size());
         final Vector3d lastPos = new Vector3d();
-
-        // Mechano.LOGGER.info("DELTA: " + timestep);
-
-        // apply velocity and gravity
         avgVelocity = 0;
+
         for(Point point : points) {
             if(point.pinned) continue;
             lastPos.set(point.pos);
@@ -171,19 +177,38 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
         avgVelocity /= points.size();
         if(Float.isNaN(avgVelocity)) {
-            Mechano.LOGGER.warn("Instability detected in " + this.toFullString() + " - The simulation has been reset");
+            Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
             initialize();
             return;
         }
 
-        float lengthAdj = getLengthAdjustment(sticks.size());
+        final Vector3f deltaPos = new Vector3f();
         for(int x = 0; x < CatenaryAttributes.SOLVER_STEPS; x++) {
             for(int s = sticks.size() - 1; s >= 0; s--) {
+
                 Stick stick = sticks.get(s);
                 stick.computeForward();
                 stick.computeCenter();
-                if(!stick.start.pinned) stick.start.pos.set(stick.center).add(stick.facing.x * lengthAdj, stick.facing.y * lengthAdj, stick.facing.z * lengthAdj);
-                if(!stick.end.pinned) stick.end.pos.set(stick.center).sub(stick.facing.x * lengthAdj, stick.facing.y * lengthAdj, stick.facing.z * lengthAdj);
+                stick.end.pos.sub(stick.start.pos, deltaPos);
+                float currentLength = deltaPos.length();
+                float diff = (currentLength - stick.length) / currentLength;
+                deltaPos.mul(segmentTF * diff);
+
+                if(!stick.start.pinned && !stick.end.pinned) {
+                    stick.start.pos.add(deltaPos);
+                    stick.end.pos.sub(deltaPos);
+                    continue;
+                }
+
+                if(!stick.start.pinned) {
+                    stick.start.pos.add(deltaPos.mul(2));
+                    continue;
+                } 
+
+                if(!stick.end.pinned) {
+                    stick.end.pos.sub(deltaPos.mul(2));
+                    continue;
+                }
             }
         }
     }
@@ -195,13 +220,13 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
             if(avgVelocity <= CatenaryAttributes.TENSION_EPSILON)
                 return;
         }
-        Mechano.LOGGER.warn("Simulated WireModel of (" + length + "m) couldn't reach a state of restitution in " + steps * 3 + " iterations.");
+        Mechano.LOGGER.warn("Catenary simulation (" + length + "m) couldn't reach a state of restitution in " + steps + " iterations.");
     }
 
     @Override
     public void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
         if(sticks.size() < 2) {
-            Mechano.LOGGER.error("Attempted to render SimulatedWireModel with invalid (< 2) size!");
+            Mechano.LOGGER.error("Attempted to render SimulatedCatenary with invalid (< 2) size!");
             return;
         }
         Stick previous = sticks.getFirst();
@@ -236,8 +261,8 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
     @Override
     public String toString() {
-        if(sticks == null) return "SimulatedWireModel[UNINITIALIZED]";
-        String out = "\nSimulatedWireModel[\n";
+        if(sticks == null) return "SimulatedCatenary[UNINITIALIZED]";
+        String out = "\nSimulatedCatenary[\n";
         for(int x = 0; x < sticks.size(); x++) {
             Stick stick = sticks.get(x);
             if(stick == null) {
@@ -259,12 +284,33 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
     // sanity checks for baked vs realtime state
     private void assertSimulatable() {
         if(points == null || sticks == null)
-            throw new IllegalStateException("Cannot integrate " + this + " - This WireModel has not been initialized!");
+            throw new IllegalStateException("Cannot integrate " + this + " - This Catenary has not been initialized!");
     }
 
     @Override
     public SimulatedCatenary toSimulated(boolean pinEnds) {
-        Mechano.LOGGER.warn("Attempted to convert a SimulatedWireModel to itself!");
+        Mechano.LOGGER.warn("Attempted to convert a SimulatedCatenary to itself!");
         return this;
+    }
+
+    @Override
+    public ParametricCatenary toParametric() {
+        ParametricCatenary parametric = new ParametricCatenary();
+        parametric.offset = this.offset;
+        parametric.tension = this.tension;
+        parametric.length = this.length;
+        this.points = null;
+        this.sticks = null;
+        return parametric;
+    }
+
+    @Override
+    public float getLength() {
+        return length;
+    }
+
+    @Override
+    public float getMaxLength() {
+        return maxLength;
     }
 }

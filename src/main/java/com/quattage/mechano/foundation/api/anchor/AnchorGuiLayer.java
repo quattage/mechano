@@ -18,7 +18,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -100,7 +99,7 @@ public class AnchorGuiLayer {
 			colorBorderBot.scaleAlpha(fade);
 		}
 
-		Item visual = AnchorSelector.INSTANCE.selected.holder.getVisual();
+		Item visual = AnchorSelector.INSTANCE.selected.points.getVisual();
 		if(visual != null) {
 		GuiGameElement.of(visual)
 			.at(posX + 10, posY - 16, 450)

@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 public class PerfectConductor extends Transmitter<PerfectConductor> {
@@ -35,9 +35,7 @@ public class PerfectConductor extends Transmitter<PerfectConductor> {
     }
 
     @Override
-    public void onConnectionDestroyed(Level world, @Nullable Player destroyer, GridLink connection) {
-
+    public void onConnectionDestroyed(Level world, @Nullable Entity destroyer, GridLink connection) {
+        
     }
-
-    
 }

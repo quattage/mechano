@@ -3,8 +3,9 @@ package com.quattage.mechano.foundation.catenary.model;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
@@ -15,7 +16,6 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.world.phys.Vec3;
 
 public class ParametricCatenary extends Catenary<ParametricCatenary> {
@@ -110,7 +110,7 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
 
     private void assertInitialized() {
         if(this.points == null)
-            throw new IllegalStateException("Cannot update " + this + " - This WireModel has not been initialized!");
+            throw new IllegalStateException("Cannot update " + this + " - This Catenary has not been initialized!");
     }
 
     @Override
@@ -128,8 +128,8 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
 
     @Override
     public String toString() {
-        if(points == null) return "ParametricWireModel[UNINITIALIZED]";
-        String out = "\nParametricWireModel[\n";
+        if(points == null) return "ParametricCatenary[UNINITIALIZED]";
+        String out = "\nParametricCatenary[\n";
         for(int x = 0; x < points.size(); x++) {
             Point p = points.get(x);
             if(p == null) out += "\t( NULL )\n";
@@ -138,6 +138,7 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
         return out + "]";
     }
 
+    @Override
     public SimulatedCatenary toSimulated(boolean pinEnds) {
         assertInitialized();
         assertHasOffset();
@@ -163,5 +164,21 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
         this.axisU = null;
         this.axisV = null;
         return simulated;
+    }
+
+    @Override
+    public ParametricCatenary toParametric() {
+        Mechano.LOGGER.warn("Attempted to convert a ParametricCatenary to itself!");
+        return this;
+    }
+
+    @Override
+    public float getLength() {
+        return length;
+    }
+
+    @Override
+    public float getMaxLength() {
+        return maxLength;
     }
 }

@@ -2,9 +2,12 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.landmark.DiscriminatorData;
+import com.quattage.mechano.foundation.api.landmark.Connection.ConnectionKey;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
@@ -17,8 +20,8 @@ import net.minecraft.world.level.LevelReader;
 public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolder lrh, TransmitterType<?> transmitter, Response.Task task) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, LinkResponsePacket> STREAM_CODEC = StreamCodec.composite(
-        DiscriminatorData.STREAM_CODEC, LinkResponsePacket::start,
-        DiscriminatorData.STREAM_CODEC, LinkResponsePacket::end,
+        UUIDDiscriminator.STREAM_CODEC, LinkResponsePacket::start,
+        UUIDDiscriminator.STREAM_CODEC, LinkResponsePacket::end,
         LinkResponseHolder.STREAM_CODEC, LinkResponsePacket::lrh,
         TransmitterType.STREAM_CODEC, LinkResponsePacket::transmitter,
         Response.Task.STREAM_CODEC, LinkResponsePacket::task,
@@ -32,43 +35,70 @@ public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolde
 
     @Override
     public void handle(LocalPlayer player) {
+
         LevelReader world = player.level();
-        AnchorPointable startHost = start.getHolder(world);
-        AnchorPointable endHost = end.getHolder(world);
-        if(task == Response.Task.CHUNK_LOAD) {
-            handleAsymmetric(world, startHost);
-            return;
+        AnchorPointable<?> startPoints = start.getAnchorPoints(world);
+        AnchorPointable<?> endPoints = end.getAnchorPoints(world);
+
+        AnchorPoint startAnchor = null;
+        AnchorPoint endAnchor = null;
+        if(startPoints != null) {
+            startPoints.getSurrogate().sync(world, null);
+            startAnchor = startPoints.getAnchor(start.getIndex());
+            if(startAnchor != null) startAnchor.sync(lrh.anchorData()[0], null);
         }
-        handleDoubleSided(world, startHost, endHost);
+        if(endPoints != null) {
+            endPoints.getSurrogate().sync(world, null);
+            endAnchor = endPoints.getAnchor(start.getIndex());
+            if(endAnchor != null) endAnchor.sync(lrh.anchorData()[1], null);
+        }
+
+        if(!lrh.response().indicatesSuccess()) return;
+
+        switch(task) {
+            case CREATE -> {
+                ConnectionKey key = new ConnectionKey(start, end);
+                GridCatenary cat = (GridCatenary)key.findIn(world);
+                if(cat == null) {
+                    if(!assertAnchorsExist(world, startAnchor, endAnchor)) return;
+                    cat = new GridCatenary(world, startAnchor, endAnchor, transmitter(), false);
+                }
+                cat.pushTo(world);
+            }
+            case SYNC -> {
+                ConnectionKey key = new ConnectionKey(start, end);
+                GridCatenary cat = (GridCatenary)key.findIn(world);
+                if(cat == null) {
+                    if(!assertAnchorsExist(world, startAnchor, endAnchor)) return;
+                    cat = new GridCatenary(world, startAnchor, endAnchor, transmitter(), false);
+                    cat.pushTo(world);
+                }
+                cat.prebuildWire(world);
+            }
+            case DESTROY, UNSYNC -> {
+                ConnectionKey key = new ConnectionKey(start, end);
+                GridCatenary cat = (GridCatenary)key.findIn(world);
+                if(cat == null) return;
+                cat.removeFrom(world);
+                cat.destroy();
+            }
+        }
     }
 
 
-    private void handleDoubleSided(LevelReader world, AnchorPointable startHost, AnchorPointable endHost) {
-        if(endHost == null && startHost != null) {
-            startHost.getSurrogate().sync(world, null);
-            startHost.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
-            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the ending address, got " + startHost);
-            return;
-        } else if(startHost == null && endHost != null) {
-            endHost.getSurrogate().sync(world, null);
-            endHost.getAnchors().getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
-            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address, got " + endHost);
-            return;
-        } else if(endHost == null && startHost == null) {
-            Mechano.LOGGER.error("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at either address!");
-            return;
+    private boolean assertAnchorsExist(LevelReader world, AnchorPoint startAnchor, AnchorPoint endAnchor) {
+        if(startAnchor == null && endAnchor == null) {
+            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed to handle - Context is missing both start and end AnchorPoints for link (" + start + " -> " + end.toString());
+            return false;
         }
-
-        startHost.getSurrogate().sync(world, null);
-        startHost.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
-        endHost.getSurrogate().sync(world, null);
-        endHost.getAnchors().getByIndex(end.getIndex()).sync(lrh.anchorData()[1], null);
-    }
-
-    private void handleAsymmetric(LevelReader world,  AnchorPointable host) {
-        if(host == null)
-            throw new NullPointerException("Couldn't handle LinkResponse '" + task + "' from " + start + " to " + end + " - No valid PGBE could be found at the starting address");
-        host.getSurrogate().sync(world, null);
-        host.getAnchors().getByIndex(start.getIndex()).sync(lrh.anchorData()[0], null);
+        if(startAnchor == null) {
+            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed due to missing both start and end points.");
+            return false;
+        }
+        if(endAnchor == null) {
+            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed due to missing both start and end points.");
+            return false;
+        }
+        return true;
     }
 }

@@ -3,8 +3,6 @@ package com.quattage.mechano.foundation.block.orientation;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
-import com.quattage.mechano.Mechano;
-
 import net.createmod.catnip.theme.Color;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
@@ -82,6 +80,7 @@ public class RelativeDirection {
         return rel;
     }
 
+    @Override
     public String toString() {
         return rel.name() + " -> '" + facingDir.name() + "'";
     }
@@ -92,6 +91,7 @@ public class RelativeDirection {
         return true;
     }
 
+    @Override
     public int hashCode() {
         return rel.ordinal();
     }

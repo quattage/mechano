@@ -7,7 +7,7 @@ import com.tterrag.registrate.providers.RegistrateDataProvider;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
-public class MechanoDataGen {
+public class MechanoDatagen {
 
     private static void addGenerators() {
         Mechano.REGISTRATE.addDataGenerator(ProviderType.LANG, DefaultLangProvider::generate);

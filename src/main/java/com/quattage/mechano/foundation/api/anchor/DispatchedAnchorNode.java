@@ -11,11 +11,9 @@ import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.NodeMap;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.DispatchSyncPacket;
-import com.quattage.mechano.foundation.api.switchboard.Response;
 
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.world.level.LevelReader;
 
 /**
@@ -31,7 +29,7 @@ import net.minecraft.world.level.LevelReader;
  * starting at this DispatchedNode's internally stored BlockEntity instance.
  * <li>Stores an {@link #owner accelerated reference} to the most relevent 
  * {@link ServerMatrix} containing an address that points to this
- * DispatchedNode's {@link #holder internal host},
+ * DispatchedNode's {@link #points internal host},
  * skipping the need to call {@link ServerGrid#lookup} and avoiding
  * brute-force iteration.
  *
@@ -47,7 +45,7 @@ public final class DispatchedAnchorNode {
      * on the server. A DispatchedNode with a null owner indicates
      * that this instance does not belong to a ServerMatrix. 
      */
-    public @Nullable ServerMatrix owner;
+    private @Nullable ServerMatrix owner;
 
     /**
      * A client-sided hint so that we can tell if this DispatchedNode
@@ -59,7 +57,7 @@ public final class DispatchedAnchorNode {
      * Never null, immutable - The host of this DispatchedNode
      * in the world. Used for getting BlockPos and level.
      */
-    private final AnchorPointable holder;
+    private final AnchorPointable<?> points;
 
     // lazily loaded from the holder
     public @Nullable GridUUID addr = null;
@@ -70,9 +68,9 @@ public final class DispatchedAnchorNode {
      */
     public int nodeCount = -1;
 
-    public DispatchedAnchorNode(AnchorPointable holder) {
-        Objects.requireNonNull(holder);
-        this.holder = holder;
+    public DispatchedAnchorNode(AnchorPointable<?> points) {
+        Objects.requireNonNull(points);
+        this.points = points;
     }
 
     /**
@@ -90,14 +88,24 @@ public final class DispatchedAnchorNode {
      * @param newOwner
      */
     public void sync(LevelReader world, @Nullable ServerMatrix newOwner) {
-        if(!world.isClientSide()) {
-            belongsToNetwork = true;
-            this.owner = newOwner;
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getOrMakeAddress(), Response.Task.SYNC));
+        belongsToNetwork = true;
+        this.owner = world.isClientSide() ? null : newOwner;
+        return;
+    }
+
+    /**
+     * Updates this DispatchedNode, binding it to the given 
+     * ServerMatrix.
+     * @param world
+     * @param newOwner
+     */
+    public void sync(DispatchedAnchorNode other) {
+        if(!other.isSynced()) {
+            Mechano.LOGGER.warn("Couldn't sync dispatched node against non-synced constituent!");
             return;
         }
         belongsToNetwork = true;
-        this.owner = null;
+        this.owner = other.owner.getWorld().isClientSide() ? null : other.owner;
         return;
     }
 
@@ -111,12 +119,6 @@ public final class DispatchedAnchorNode {
      * @param world
      */
     public void forget(LevelReader world) {
-        if(!world.isClientSide()) {
-            belongsToNetwork = false;
-            this.owner = null;
-            CatnipServices.NETWORK.sendToAllClients(new DispatchSyncPacket(getOrMakeAddress(), Response.Task.SYNC));
-            return;
-        }
         belongsToNetwork = false;
         this.owner = null;
         return;
@@ -133,18 +135,20 @@ public final class DispatchedAnchorNode {
      * instance valid so that it can be reused later.
      */
     public void destroy() {
-        if(holder.getWorld().isClientSide) return;
+        if(points.getWorld().isClientSide) return;
         if(!isSynced()) return;
-        forEachAddress((grid, addr) -> {
-            grid.removeNode(addr);
-        });
-        forget(holder.getWorld());
+        forEachAddress(ServerMatrix::removeNode);
+        forget(points.getWorld());
     }
 
     private GridUUID getOrMakeAddress() {
         if(this.addr != null) return this.addr;
-        this.addr = holder.createAddress();
+        this.addr = points.createAddress();
         return this.addr;
+    }
+
+    public ServerMatrix getOwnerMatrix() {
+        return owner;
     }
 
     /**
@@ -154,30 +158,24 @@ public final class DispatchedAnchorNode {
      * @param cons
      */
     public void forEachAddress(BiConsumer<ServerMatrix, GridUUID> cons) {
-        if(holder.getWorld().isClientSide()) return;
+        if(points.getWorld().isClientSide()) return;
         ServerMatrix grid = this.owner;
-        ServerGrid global = SidedGridDispatcher.server(holder.getWorld());
+        ServerGrid global = SidedGridDispatcher.server(points.getWorld());
         if(grid == null) {
             grid = global.lookup(getOrMakeAddress()).getFirst();
             Mechano.LOGGER.warn("Dispatch at " + getOrMakeAddress() + " had to re-acquire its parent grid.");
             if(grid == null) return;
         }
-        for(int x = 0; x < nodeCount; x++) {
-            GridUUID copy = getOrMakeAddress().indexedCopy(x);
-            cons.accept(grid, copy);
-        }
+        for(int x = 0; x < nodeCount; x++)
+            cons.accept(grid, getOrMakeAddress().indexedCopy(x));
     }
 
-    public ServerMatrix getOwner() {
-        return owner;
+    public NodeMap constituents() {
+        return owner == null ? new NodeMap() : owner.nodes == null ? new NodeMap() : owner.nodes;
     }
     
-    public DispatchedAnchorNode loadInto(ServerMatrix grid) {
-        this.owner = grid;
-        return this;
-    }
-
+    @Override
     public String toString() {
-        return "DispatchedNode(" + holder + ", " + (holder.getWorld().isClientSide ? "CLIENT" : "SERVER") + ", synced? : " + isSynced() + ")";
+        return "DispatchedNode(" + points + ", " + (points.getWorld().isClientSide ? "CLIENT" : "SERVER") + ", synced? : " + isSynced() + ")";
     }
 }

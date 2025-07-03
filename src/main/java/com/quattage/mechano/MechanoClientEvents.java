@@ -1,26 +1,28 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.SpoolItem;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.catenary.CatenariesAccessor;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
-import com.quattage.mechano.foundation.mixin.client.RenderBuffersAccessor;
+import com.quattage.mechano.foundation.item.LeftClickCapturable;
+import com.quattage.mechano.foundation.item.SpoolItem;
+import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
@@ -30,7 +32,6 @@ import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
@@ -49,8 +50,10 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static <T extends LivingEntity, M extends EntityModel<T>> void onRenderLiving(RenderLivingEvent.Pre<T, M> evt) {
         LivingEntity e = evt.getEntity();
-        for(GridCatenary cat : ((CatenariesAccessor)e).getCatenaries())
+        for(GridCatenary cat : ((CatenariesAccessor)e).getCatenaries()) {
+            if(!cat.hasPoints()) continue;
             cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
+        }
     }
 
     /**
@@ -66,8 +69,10 @@ public class MechanoClientEvents {
         LocalPlayer player = instance.player;
         if(player == null) return;
 
-        for(GridCatenary cat : ((CatenariesAccessor)player).getCatenaries())
+        for(GridCatenary cat : ((CatenariesAccessor)player).getCatenaries()) {
+            if(!cat.hasPoints()) continue;
             cat.renderDynamicFirstPerson(player, Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
+        }
     }
 
     /**
@@ -116,28 +121,21 @@ public class MechanoClientEvents {
         evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
     }
 
-    @SubscribeEvent
-    public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty evt) { onLeftClick(evt.getEntity()); }
 
     @SubscribeEvent
-    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock evt) { 
-        evt.setCanceled(onLeftClick(evt.getEntity()));
-    }
-
-    private static boolean onLeftClick(Player player) {
+    public static void onLeftClick(InputEvent.MouseButton.Pre evt) {
+        Minecraft instance = Minecraft.getInstance();
+        if(instance == null || instance.screen != null || evt.getButton() != 0 || evt.getAction() != 1) return;
+        LocalPlayer player = instance.player;
+        if(player == null) return;
         ItemStack stack = player.getMainHandItem();
-        if(stack.getItem() instanceof SpoolItem schpool) {
-            if(!player.level().isClientSide()) return true;
-            schpool.cancelAndReel(player, stack);
-            return false;
+        if(stack.getItem() instanceof LeftClickCapturable lcc) {
+            evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.MAIN_HAND));
+            return;
         }
         stack = player.getOffhandItem();
-        if(stack.getItem() instanceof SpoolItem schpool) {
-            if(!player.level().isClientSide()) return true;
-            schpool.cancelAndReel(player, stack);
-            return false;
-        }
-        return false;
+        if(stack.getItem() instanceof LeftClickCapturable lcc)
+            evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.OFF_HAND));
     }
 
     @EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)

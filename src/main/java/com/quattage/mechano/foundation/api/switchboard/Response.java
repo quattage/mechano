@@ -35,12 +35,6 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
     protected final byte code;
     private @Nullable Consumer<T> cons = null;
 
-    @SuppressWarnings("unchecked")
-    public void executeAdditional() {
-        if(cons == null) return;
-        cons.accept((T)this);
-    }
-
     protected Response(String name) {
         Response<?>[] copy = new Response<?>[responses.length + 1];
         System.arraycopy(responses, 0, copy, 0, responses.length);
@@ -59,6 +53,12 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         this.name = name;
         copy[responses.length] = this;
         responses = copy;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void executeAdditional() {
+        if(cons == null) return;
+        cons.accept((T)this);
     }
 
     @Override
@@ -133,6 +133,7 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         }
     }
 
+
     public static final class Link extends Response<Link>{
 
         public static final Response.Link FAIL_DESTINATION_UNSUPPORTED = new Link("destination_unsupported");
@@ -175,7 +176,8 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
         }
     }
 
-    public record LinkResponseHolder(Response<?> response, byte[] anchorData) {
+
+    public static record LinkResponseHolder(Response<?> response, byte[] anchorData) {
         public static final StreamCodec<ByteBuf, LinkResponseHolder> STREAM_CODEC = StreamCodec.composite(
             Response.STREAM_CODEC, LinkResponseHolder:: response,
             ByteBufCodecs.BYTE_ARRAY, LinkResponseHolder::anchorData,
@@ -194,6 +196,20 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
     }
 
 
+    public static record LinkResponseDoubleHolder(Response<?> response, byte[] anchorData) {
+        public static final StreamCodec<ByteBuf, LinkResponseDoubleHolder> STREAM_CODEC = StreamCodec.composite(
+            Response.STREAM_CODEC, LinkResponseDoubleHolder:: response,
+            ByteBufCodecs.BYTE_ARRAY, LinkResponseDoubleHolder::anchorData,
+            LinkResponseDoubleHolder::new
+        );
+        public static LinkResponseDoubleHolder of(@Nullable GridNode start, @Nullable GridNode end, @Nullable GridNode newEnd, Response<?> response) {
+            return new LinkResponseDoubleHolder(response, new byte[] {
+                start == null ? Byte.MIN_VALUE : (byte)(start.getLinkCount() - 128),
+                end == null ? Byte.MIN_VALUE : (byte)(end.getLinkCount() - 128),
+                newEnd == null ? Byte.MIN_VALUE : (byte)(newEnd.getLinkCount() - 128)
+            });
+        }
+    }
 
 
     public static final class Agnostic extends Response<Agnostic> {
@@ -210,15 +226,12 @@ public abstract sealed class Response<T> permits com.quattage.mechano.foundation
     }
 
 
-
-
-
-
     public static enum Task {
         CREATE,
         DESTROY,
         SYNC,
         UNSYNC,
+        RELEASE_END
         ;
 
         public static final StreamCodec<ByteBuf, Task> STREAM_CODEC = new StreamCodec<>() {

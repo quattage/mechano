@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.test;
 
-import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
+import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;

@@ -9,7 +9,6 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.Connection.InsertionMode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
@@ -17,10 +16,12 @@ import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseDoubleHolder;
 import com.quattage.mechano.foundation.api.switchboard.Response.LinkResponseHolder;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -121,7 +122,6 @@ public final class ServerGrid extends SidedGridDispatcher {
 
     @Override
     protected void onLoad() {
-        Mechano.LOGGER.info("deferred: " + deferred.toString());
         for(DeferredMember trgt : deferred) {
             if(trgt.root == null) createNodeAndMakeProvisionalLinks(world, trgt.instantiator, trgt.address, trgt.links, true);
             else loadLinksFor(trgt.root, trgt.instantiator, trgt.links, false);
@@ -322,25 +322,48 @@ public final class ServerGrid extends SidedGridDispatcher {
     }
 
     public LinkResponseHolder destroyLink(GridUUID start, GridUUID end) {
-        AnchorPointable<?> startPoints = start.getAnchorPoints(world);
-        AnchorPointable<?> endPoints = end.getAnchorPoints(world);
 
+        AnchorPointable<?> startPoints = start.getAnchorPoints(world);
         GridNode startNode = startPoints == null ? null 
             : startPoints.getSurrogate().isSynced() 
             ? startPoints.getSurrogate().getOwnerMatrix().nodes.get(start) 
             : null;
 
+        AnchorPointable<?> endPoints = end.getAnchorPoints(world);
         GridNode endNode = endPoints == null ? null 
             : endPoints.getSurrogate().isSynced() 
             ? endPoints.getSurrogate().getOwnerMatrix().nodes.get(end) 
             : null;
 
-        if(startNode != null)
-            startNode.removeLinksInvolving(null, end);
-        if(endNode != null)
-            endNode.removeLinksInvolving(null, start);
-
+        if(startNode != null) startNode.removeLinksInvolving(null, end);
+        if(endNode != null) endNode.removeLinksInvolving(null, start);
         return LinkResponseHolder.of(startNode, endNode, Response.SUCCESS);
+    }
+
+    public LinkResponseDoubleHolder destroyLink(GridUUID start, GridUUID end, GridUUID newEnd) {
+        
+        AnchorPointable<?> startPoints = start.getAnchorPoints(world);
+        GridNode startNode = startPoints == null ? null 
+            : startPoints.getSurrogate().isSynced() 
+            ? startPoints.getSurrogate().getOwnerMatrix().nodes.get(start) 
+            : null;
+
+        AnchorPointable<?> endPoints = end.getAnchorPoints(world);
+        GridNode endNode = endPoints == null ? null 
+            : endPoints.getSurrogate().isSynced() 
+            ? endPoints.getSurrogate().getOwnerMatrix().nodes.get(end) 
+            : null;
+
+        if(startNode != null) startNode.removeLinksInvolving(null, end);
+        if(endNode != null) endNode.removeLinksInvolving(null, start);
+
+        AnchorPointable<?> newEndPoints = newEnd.getAnchorPoints(world);
+        GridNode newEndNode = newEndPoints == null ? null 
+            : newEndPoints.getSurrogate().isSynced() 
+            ? newEndPoints.getSurrogate().getOwnerMatrix().nodes.get(end) 
+            : null;
+
+        return LinkResponseDoubleHolder.of(startNode, endNode, newEndNode, Response.SUCCESS);
     }
 
     /**

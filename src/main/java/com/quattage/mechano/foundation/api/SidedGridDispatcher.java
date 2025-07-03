@@ -12,10 +12,11 @@ import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.api.landmark.Connection;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.entity.GriddableEntity;
+import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -25,6 +26,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity.RemovalReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -346,13 +348,17 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
     public static final class LinkData {
         
         private ObjectOpenHashSet<Connection> contents = new ObjectOpenHashSet<>(2);
-        private LinkData(IAttachmentHolder holder) {}
+        public LinkData(IAttachmentHolder holder) {}
 
         public static void add(LevelReader world, Connection link) {
             IAttachmentHolder holder = link.getStart().getDataHolder(world);
             LinkData data = holder.getData(MechanoData.LINK_ATTACHMENT);
-            if(data.contents.add(link))
-                data.update(holder);
+            if(data.contents.add(link)) {
+                if(holder instanceof LevelChunk chunk)
+                    chunk.setUnsaved(true);
+                else if(holder instanceof BlockEntity be)
+                    be.setChanged();
+            }
         }
 
         public static @Nullable LinkData getFrom(IAttachmentHolder holder) {
@@ -367,28 +373,21 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
         }
 
         @ApiStatus.Internal
-        public static LinkData createNew(IAttachmentHolder holder) {
-            return new LinkData(holder);
-        }
-
-        @ApiStatus.Internal
         public static void remove(LevelReader world, GridUUID addr, Connection link) {
             IAttachmentHolder holder = addr.getDataHolder(world);
             LinkData data = holder.getData(MechanoData.LINK_ATTACHMENT);
-            data.assertNotRemoved();
-            data.contents.remove(link);
-            if(data.contents.isEmpty()) {
-                data.contents = null;
+            if(!data.contents.remove(link)) Mechano.LOGGER.warn("Failed to remove " + link + " for holder '" + holder.getClass().getSimpleName() + ",' found (" + data.contents + ")");
+            if(data.contents == null || data.contents.isEmpty()) {
                 holder.removeData(MechanoData.LINK_ATTACHMENT);
+                data.contents = null;
             }
-            data.update(holder);
-        }
-
-        private void update(IAttachmentHolder holder) {
             if(holder instanceof LevelChunk chunk)
                 chunk.setUnsaved(true);
             else if(holder instanceof BlockEntity be)
                 be.setChanged();
+            else if(holder instanceof GriddableEntity ge) {
+                ge.remove(RemovalReason.DISCARDED);
+            }
         }
 
         public ObjectSet<Connection> get() {

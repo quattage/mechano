@@ -4,12 +4,11 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
-import net.neoforged.neoforge.capabilities.EntityCapability;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
@@ -33,7 +32,7 @@ public class MechanoData {
     public static final Supplier<AttachmentType<SidedGridDispatcher.LinkData>> LINK_ATTACHMENT
         = ATTACHMENT_REGISTRY.register(
             Mechano.ID + "_chunk_data", () -> AttachmentType
-                .builder(SidedGridDispatcher.LinkData::createNew)
+                .builder(SidedGridDispatcher.LinkData::new)
                 .build()
         );
 
@@ -43,8 +42,6 @@ public class MechanoData {
                 .builder(GriddableEntityAttachment::new)
                 .build()
         );
-
-    public static EntityCapability<GriddableEntityAttachment, Void> ANCHOR_CAPABILITY = EntityCapability.createVoid(Mechano.asResource("anchor"), GriddableEntityAttachment.class);
 
     public static void register(IEventBus modBus) {
         ATTACHMENT_REGISTRY.register(modBus);

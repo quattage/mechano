@@ -1,18 +1,27 @@
 package com.quattage.mechano.foundation.api.landmark;
 
+import java.util.Objects;
+
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.Tensionable;
 
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public abstract class Connection implements Tensionable {
     
@@ -22,6 +31,21 @@ public abstract class Connection implements Tensionable {
 
     protected float length;
     protected Transmitter<?> trns;
+
+    public static void sendToClientsTracking(Connection link, CustomPacketPayload packet) {
+        if(link.isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet");
+        sendToClientsTracking(link.getStart(), link.getEnd(), packet);
+    }
+
+    public static void sendToClientsTracking(GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet) {
+        MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
+        for(ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if(start.isBeingTrackedBy(player))
+                CatnipServices.NETWORK.sendToClient(player, packet);
+            else if(end != null && end.isBeingTrackedBy(player))
+                CatnipServices.NETWORK.sendToClient(player, packet);
+        }
+    }
 
     public Connection(Transmitter<?> trns, float length) {
         this.trns = trns;
@@ -82,7 +106,10 @@ public abstract class Connection implements Tensionable {
         IAttachmentHolder startHolder = getStart().getDataHolder(world);
         LinkData startData = startHolder.getData(MechanoData.LINK_ATTACHMENT);
         Connection found = startData.get(this);
-        if(found != null) return found;
+        if(found != null) {
+            if(found.hasPoints()) return found;   
+            found.removeFrom(world);
+        }
 
         IAttachmentHolder endHolder = getEnd().getDataHolder(world);
         LinkData endData = endHolder.getData(MechanoData.LINK_ATTACHMENT);
@@ -91,7 +118,8 @@ public abstract class Connection implements Tensionable {
         if(found != null) {
             if(startData.isEmpty())
                 startHolder.removeData(MechanoData.LINK_ATTACHMENT);
-            return found;
+            if(found.hasPoints()) return found;
+            found.removeFrom(world);
         }
 
         if(startData.isEmpty())
@@ -107,6 +135,31 @@ public abstract class Connection implements Tensionable {
         LinkData.remove(world, getEnd(), this);
     }
 
+    /**
+     * Useful for any action that may change the start/endpoints of this Connection.
+     * The {@link SidedGridDispatcher.LinkData link data store} will need to be informed
+     * of any changes that may affect the value of this Connection's {@link #hashCode hash code}
+     * so that this Connection may re-assert themselves something something hashset buckets blah haha
+     * @param world
+     * @param action
+     */
+    public void reassertAndDo(LevelReader world, Runnable action) {
+        assertWorldly(world);
+        LinkData.remove(world, getStart(), this);
+        LinkData.remove(world, getEnd(), this);
+        try { action.run(); } 
+        catch(Exception e) {
+            Mechano.LOGGER.error("Failed executing reassertion task for " + this + ": ");
+            e.printStackTrace();
+            return;
+        }
+        pushTo(world);
+    }
+
+    /**
+     * Ensures that the given world is side-matched with this Connection instance.
+     * Throws if this is not the case.
+     */
     public void assertWorldly(LevelReader world) {
         if(world.isClientSide() == this.isClientSide()) return;
         if(world.isClientSide() && !this.isClientSide()) {
@@ -117,6 +170,13 @@ public abstract class Connection implements Tensionable {
             throw new IllegalArgumentException("Sided mismatch encountered while removing " 
                 + this + " - Client-sided links cannot be added to server holders!");
         }
+    }
+
+    /** 
+     * @return <code>true</code> if this Connection's start and end points are not <code>null.</code>
+     */
+    public boolean hasPoints() {
+        return getStart() != null && getEnd() != null;
     }
 
     public abstract Connection inverseCopy();
@@ -130,14 +190,15 @@ public abstract class Connection implements Tensionable {
 
     @Override
     public boolean equals(Object other) {
+        if(other == this) return true;
         if(!(other instanceof Connection that)) return false;
-        return getStart().equals(that.getStart()) && getEnd().equals(that.getEnd()) || 
-            getStart().equals(that.getEnd()) && getEnd().equals(that.getStart());
+        return (getStart().equals(that.getStart()) && getEnd().equals(that.getEnd())) || (getStart().equals(that.getEnd()) && getEnd().equals(that.getStart()));
     }
 
     @Override
     public int hashCode() { 
-        return getStart().hashCode() + getEnd().hashCode(); 
+        if(getStart().equals(getEnd())) return getStart().hashCode();
+        return getStart().hashCode() ^ getEnd().hashCode(); 
     }
 
     @Override

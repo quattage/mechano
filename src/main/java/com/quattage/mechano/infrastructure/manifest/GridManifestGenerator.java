@@ -18,12 +18,10 @@ import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
 
@@ -141,10 +139,7 @@ public class GridManifestGenerator {
                     out += "\n\t┆\t\t⚠ (unmatched source) [" + link.getStart().toString(world) + "-> " + link.getEnd().toString(world) + "]";
                     continue;
                 }
-                ResourceLocation trnsKey = null;
-                try { trnsKey = TransmitterRegistry.INSTANCE.getKey(link.getTransmitter().getType()); }
-                catch(Exception e) { trnsKey = Mechano.asResource("transmitter_acquisition_error"); };
-                out += "\n\t┆\t\t↪ '" + trnsKey.toString()  + "' to " + link.getEndNode().getAddress().toString(world);
+                out += "\n\t┆\t\t↪ '" + link.getTransmitter().getType()  + "' to " + link.getEndNode().getAddress().toString(world);
             }
         }
         return out + "\n";

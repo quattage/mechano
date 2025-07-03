@@ -145,4 +145,5 @@ public interface AnchorPointable<T> {
 
     public default boolean isInteractable() { return true; }
     public default boolean isVisible() { return true; }
+    public default boolean isLoose() { return false; }
 }

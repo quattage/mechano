@@ -244,6 +244,14 @@ public class TransmitterRegistry {
             return in;
         }
 
+        @Override
+        public String toString() {
+            ResourceLocation trnsKey = null;
+            try { trnsKey = TransmitterRegistry.INSTANCE.getKey(this); }
+            catch(Exception e) { return "mechano:transmission_acquisition_error@" + getClass().getSimpleName(); };
+            return trnsKey.toString();
+        }
+
         @OnlyIn(Dist.CLIENT)
         public ResourceLocation getTextureLocation() {
             return textureLocation != null ? textureLocation : CatenaryModelProvider.MISSING_TEX;

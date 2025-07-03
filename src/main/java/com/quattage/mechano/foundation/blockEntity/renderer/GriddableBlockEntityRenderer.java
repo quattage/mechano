@@ -2,26 +2,25 @@
 package com.quattage.mechano.foundation.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
-public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> extends SimpleBlockEntityRenderer<T> {
+public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implements BlockEntityRenderer<T> {
 
-    public GriddableBlockEntityRenderer(Context context) {
-        super(context);
-    }
     
+    public GriddableBlockEntityRenderer(Context context) {}
+
     @Override
     public void render(T pgbe, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
             int packedLight, int packedOverlay) {
-        super.render(pgbe, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
         LocalPlayer player = Minecraft.getInstance().player;
         if(player == null) return;
         double reach = player.getAttributes().getValue(Attributes.ENTITY_INTERACTION_RANGE);

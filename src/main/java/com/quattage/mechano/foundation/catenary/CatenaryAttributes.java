@@ -35,6 +35,7 @@ public class CatenaryAttributes {
     public static final float DRAW_RES = 1f;
 
     public static final float KINEMATIC_SOFT = 0.9f;
+    public static final float KINEMATIC_DAMP = 0.6f;
     public static final float DETACH_THRESHOLD = 0.6f;
 
     public static final int DRAW_MIN = 5;

@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.api.landmark;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -11,11 +12,13 @@ import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
+import com.quattage.mechano.foundation.item.SpoolItem;
 
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
@@ -77,12 +80,12 @@ public class GridCatenary extends Connection {
 
     @Override
     public GridUUID getStart() {
-        return start.getAddress();
+        return start == null ? null : start.getAddress();
     }
 
     @Override
     public GridUUID getEnd() {
-        return end.getAddress();
+        return start == null ? null : end.getAddress();
     }
 
     @Override
@@ -104,11 +107,6 @@ public class GridCatenary extends Connection {
         return !start.getAddress().canMoveDynamically() && !end.getAddress().canMoveDynamically();
     }
 
-    public void destroy() {
-        this.start = null;
-        this.end = null;
-        this.catenary = null;
-    }
 
     @Override
     public Tension getTension() {
@@ -155,6 +153,22 @@ public class GridCatenary extends Connection {
      * @param world World to use as a basis for acquiring additional information about both ends of this catenary
      */
     public void updateKinematics(LevelReader world) {
+        if(getEnd().getAnchorPoints(world).isLoose()) {
+            Vec3 reelDir = start.getPos(world).subtract(end.getPos(world)).normalize();
+            float dirDot = (float)getEnd().getAttachmentVelocity(world).normalize().dot(reelDir);
+            if(dirDot < 0) {
+                getEnd().setAttachmentVelocity(world, Vec3.ZERO);
+                removeFrom(world);
+                return;
+            }
+            Vec3 velocity = getEnd().getAttachmentVelocity(world);
+            Vec3 tangential = velocity.subtract(reelDir.scale(velocity.dot(reelDir)));
+            Vec3 force = reelDir.scale(CatenaryAttributes.KINEMATIC_SOFT);
+            force = force.subtract(tangential.scale(CatenaryAttributes.KINEMATIC_DAMP));
+            getEnd().applyForceToAttachment(world, force, true);
+            return;
+        }
+
         GridUUID[] ordered = orderedByWeight(world);
         if(!ordered[1].canMoveDynamically()) return;
         Vec3 diff = ordered[0].getPos(world).subtract(ordered[1].getPos(world));
@@ -163,6 +177,38 @@ public class GridCatenary extends Connection {
         ordered[1].applyForceToAttachment(world, diff.normalize().scale(
             0.1 * Math.min(1f, (length - softLength) / (catenary.maxLength - softLength))
         ));
+    }
+
+    public void adjustMaxLength(ItemStack stack) {
+        if(!(stack.getItem() instanceof SpoolItem<?> schpool)) {
+            Mechano.LOGGER.warn("Attempted to adjust maximum working length of " + this 
+                + " from invalid item '" + stack.getItem().getClass().getSimpleName() + "!'");
+            return;
+        }
+        if(!schpool.getTransmitterType().equals(trns.getType())) {
+            Mechano.LOGGER.warn("Attempted to adjust maximum working length of " + this 
+                + " from spool with mismatched transmitter (expected '" + trns.getType() + ",' got '" + schpool.getTransmitterType() + "')");
+            return;
+        }
+        catenary.maxLength = Math.min(trns.getType().getMaxLength(), (stack.getMaxDamage() - stack.getDamageValue()) / 2f);
+    }
+
+    /**
+     * Sets this GridCatenary's endpoint to the given AnchorPoint. If
+     * <code>newEnd</code>'s address matches this GridCatenary's current
+     * end point, nothing happens.
+     * @param world Level to opreate within (for reasserting this GridCatenary)
+     * @param newEnd AnchorPoint to set this GridCatenary's endpoint to
+     * @return this GridCatenary for chaining.
+     */
+    public GridCatenary rebindEndpoint(LevelReader world, AnchorPoint newEnd) {
+        if(this.end.getAddress().equals(newEnd.getAddress())) 
+            return this;
+        reassertAndDo(world, () -> {
+            this.end = newEnd;
+            updateShape(world, 1);
+        });
+        return this;
     }
 
     /**

@@ -1,11 +1,10 @@
-package com.quattage.mechano.foundation;
+package com.quattage.mechano.foundation.blockEntity;
 
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
-import com.quattage.mechano.foundation.blockEntity.ElectricBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.Item;

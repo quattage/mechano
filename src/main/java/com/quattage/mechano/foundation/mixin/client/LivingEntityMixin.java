@@ -44,7 +44,9 @@ public abstract class LivingEntityMixin implements CatenariesAccessor {
         }
         this.mechano$Catenaries = (ObjectOpenHashSet<GridCatenary>)(Object)data.get();
         for(GridCatenary cat : this.mechano$Catenaries) {
+            if(!cat.hasPoints()) continue;
             cat.updateShape(cast.level(), 1);
+            if(!cat.hasPoints()) continue;
             cat.updateKinematics(cast.level());
         }
     }

@@ -1,5 +1,8 @@
 package com.quattage.mechano.foundation.api.landmark.classifier;
 
+import java.util.List;
+import java.util.Objects;
+
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.Codec;
@@ -13,6 +16,8 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -46,7 +51,15 @@ public class VoxelUUID extends GridUUID {
         this.index = dyn.get("i").asInt(0);
     }
 
-    
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer player) {
+        List<ServerPlayer> playersNearby = ((ServerLevel)player.level())
+            .getChunkSource().chunkMap.getPlayers(new ChunkPos(getBlockPos(player.level())), false);
+        if(playersNearby == null || playersNearby.isEmpty()) return false;
+        for(ServerPlayer sp : playersNearby)
+            if(sp.getId() == player.getId()) return true;
+        return false;
+    }
 
     @Override
     public GridUUID indexedCopy(int index) {
@@ -178,8 +191,7 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public int hashCode() {
-        if(pos == null) return super.hashCode();
-        return super.hashCode() * 31 + pos.hashCode() * 31 + index;
+        return Objects.hash(getDiscriminatorType(), pos, index);
     }
 
 

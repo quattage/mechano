@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
+import com.quattage.mechano.foundation.api.landmark.Connection;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
@@ -26,7 +27,6 @@ import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
 
@@ -320,12 +320,13 @@ public class ServerMatrix {
                 if(linkToRemove.endsWith(address)) {
                     linksIter.remove();
                     linkToRemove.removeFrom(getWorld());
-                    CatnipServices.NETWORK.sendToAllClients(
-                        new LinkResponsePacket(
+                    Connection.sendToClientsTracking(
+                        link, new LinkResponsePacket(
                             link.getStart(), link.getEnd(), 
                             LinkResponseHolder.of(link, Response.SUCCESS), 
                             MechanoTransmissionTypes.PERFECT_CONDUCTOR, Response.Task.DESTROY
-                        ));
+                        )
+                    );
                     removeIfEmpty(linkToRemove.getStartNode());
                     removeIfEmpty(linkToRemove.getEndNode());
                 }

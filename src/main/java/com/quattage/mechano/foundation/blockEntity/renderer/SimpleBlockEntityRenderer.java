@@ -15,7 +15,6 @@ public class SimpleBlockEntityRenderer<T extends SimpleBlockEntity> implements B
 
     @Override
     public void render(T blockEntity, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-
+        
     }
-    
 }

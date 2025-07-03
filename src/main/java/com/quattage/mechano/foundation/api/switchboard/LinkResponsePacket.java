@@ -41,12 +41,13 @@ public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolde
         AnchorPointable<?> endPoints = end.getAnchorPoints(world);
 
         AnchorPoint startAnchor = null;
-        AnchorPoint endAnchor = null;
         if(startPoints != null) {
             startPoints.getSurrogate().sync(world, null);
             startAnchor = startPoints.getAnchor(start.getIndex());
             if(startAnchor != null) startAnchor.sync(lrh.anchorData()[0], null);
         }
+
+        AnchorPoint endAnchor = null;
         if(endPoints != null) {
             endPoints.getSurrogate().sync(world, null);
             endAnchor = endPoints.getAnchor(start.getIndex());
@@ -80,7 +81,9 @@ public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolde
                 GridCatenary cat = (GridCatenary)key.findIn(world);
                 if(cat == null) return;
                 cat.removeFrom(world);
-                cat.destroy();
+            }
+            case RELEASE_END -> {
+                Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed to handle - Task is not supported by this packet!");
             }
         }
     }
@@ -92,11 +95,11 @@ public record LinkResponsePacket(GridUUID start, GridUUID end, LinkResponseHolde
             return false;
         }
         if(startAnchor == null) {
-            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed due to missing both start and end points.");
+            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed to handle - Context is missing starting AnchorPoint for link (" + start + " -> " + end.toString());
             return false;
         }
         if(endAnchor == null) {
-            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed due to missing both start and end points.");
+            Mechano.LOGGER.error("LinkRepsonse packet with task '" + task + "' failed to handle - Context is missing ending AnchorPoint for link (" + start + " -> " + end.toString());
             return false;
         }
         return true;

@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.api.landmark.classifier;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
@@ -10,14 +11,17 @@ import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.anchor.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LevelReader;
@@ -48,6 +52,20 @@ public class EntityUUID extends GridUUID {
     public EntityUUID(Dynamic<?> dyn) {
         this.uuid = new UUID(dyn.get("uida").asLong(0), dyn.get("uidb").asLong(0));
         this.index = dyn.get("i").asInt(0);
+    }
+
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer player) {
+        getDataHolder(player.level());
+        if(!(player.level().getChunkSource() instanceof ServerChunkCache chunkCache)) return false;
+        ChunkMap.TrackedEntity tracked = chunkCache.chunkMap.entityMap.get(holder.getSource().getId());
+        if(tracked == null) return false;
+        return tracked.seenBy.contains(player.connection);
+    }
+
+    @Override
+    public GridUUID indexedCopy(int index) {
+        return new EntityUUID(this.uuid, index);
     }
 
     @Override
@@ -101,16 +119,21 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public void applyForceToAttachment(LevelReader world, Vec3 force) {
+    public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {
         if(getAnchorPoints(world) == null) return;
-        holder.getSource().setDeltaMovement(
-            holder.getSource().getDeltaMovement().add(force)
-        );
+        holder.getSource().setDeltaMovement(retainVelocity ? holder.getSource().getDeltaMovement().add(force) : force);
     }
 
     @Override
-    public GridUUID indexedCopy(int index) {
-        return new EntityUUID(this.uuid, index);
+    public Vec3 getAttachmentVelocity(LevelReader world) {
+        if(getAnchorPoints(world) == null) return Vec3.ZERO;
+        return holder.getSource().getDeltaMovement();
+    }
+
+    @Override
+    public void setAttachmentVelocity(LevelReader world, Vec3 vec) {
+        if(getAnchorPoints(world) == null) return;
+        holder.getSource().setDeltaMovement(vec);
     }
 
     @Override
@@ -177,14 +200,11 @@ public class EntityUUID extends GridUUID {
     public boolean equals(Object obj) {
         if(this == obj) return true;
         if(!(obj instanceof EntityUUID that)) return false;
-        if(this.uuid == null) return false;
         return this.uuid.equals(that.uuid) && this.index == that.index;
     }
 
     @Override
     public int hashCode() {
-        if(uuid == null) return super.hashCode();
-        return super.hashCode() * 31 + uuid.hashCode() * 31 + index;
+        return Objects.hash(getDiscriminatorType(), uuid, index);
     }
-
 }

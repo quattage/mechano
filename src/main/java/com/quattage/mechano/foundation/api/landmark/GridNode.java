@@ -13,7 +13,6 @@ import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator
 import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.entity.Entity;
@@ -121,8 +120,8 @@ public class GridNode implements Iterable<GridLink> {
     }
 
     public void notifyHost() {
-        if(points != null)
-            CatnipServices.NETWORK.sendToAllClients(new AnchorPointSyncPacket(address, (byte)(links.size() - 128), true));
+        if(points == null) return;
+        Connection.sendToClientsTracking(address, null, new AnchorPointSyncPacket(address, (byte)(links.size() - 128), true));
     }
 
     public int getLinkCount() {

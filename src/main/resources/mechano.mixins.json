@@ -10,7 +10,7 @@
 
     ],
     "client": [
-        "client.RenderBuffersAccessor",
+        "client.accessor.RenderBuffersAccessor",
         "client.LivingEntityMixin",
         "client.ItemInHandRendererMixin",
         "client.ItemInHandRendererInvoker",

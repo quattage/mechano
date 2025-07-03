@@ -13,6 +13,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
@@ -36,6 +37,8 @@ public abstract class GridUUID implements Comparable<GridUUID> {
         return index >= 0 && index < MAX_SHARED_OCCUPANCY;
     }
 
+    public abstract boolean isBeingTrackedBy(ServerPlayer player);
+
     public abstract UUIDDiscriminator getDiscriminatorType();
     public abstract BlockPos getBlockPos(LevelReader world);
     public abstract Vec3 getPos(LevelReader world);
@@ -46,7 +49,10 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
     public abstract boolean canMoveDynamically();
-    public void applyForceToAttachment(LevelReader world, Vec3 force) {}
+    public void applyForceToAttachment(LevelReader world, Vec3 force) { applyForceToAttachment(world, force, true); }
+    public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {}
+    public Vec3 getAttachmentVelocity(LevelReader world) { return Vec3.ZERO; }
+    public void setAttachmentVelocity(LevelReader world, Vec3 vec) {}
 
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
     public abstract @Nullable AnchorPointable<?> getAnchorPoints(LevelReader world);
@@ -105,17 +111,6 @@ public abstract class GridUUID implements Comparable<GridUUID> {
             + getBlockPos(world).getZ() + ", " 
             + getIndex() 
             + "]";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if(!(obj instanceof GridUUID that)) return false;
-        return this.getDiscriminatorType().equals(that.getDiscriminatorType());
-    }
-
-    @Override
-    public int hashCode() {
-        return this.getDiscriminatorType().ordinal();
     }
 
     @Override

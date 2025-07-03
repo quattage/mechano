@@ -4,7 +4,7 @@ import static com.quattage.mechano.Mechano.REGISTRATE;
 
 import com.quattage.mechano.content.spool.EmptySpoolItem;
 import com.quattage.mechano.content.spool.HookupSpoolItem;
-import com.quattage.mechano.foundation.SpoolItem;
+import com.quattage.mechano.foundation.item.SpoolItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 
 import net.neoforged.bus.api.IEventBus;

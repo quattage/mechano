@@ -4,17 +4,16 @@ import java.util.ArrayList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.lang3.function.TriConsumer;
+import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.Response;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
+import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.outliner.Outliner;
@@ -68,6 +67,18 @@ public class AnchorSelector {
     public ArrayList<Component> currentTooltip = new ArrayList<>();;
     public Transmitable.HoldingSummary playerHands = new HoldingSummary(null, null, null, null);
     private final Queue<Active> trackedEntries = new PriorityQueue<>();
+
+    public static @Nullable AnchorPoint getSelected() {
+        return INSTANCE == null ? null : INSTANCE.selected == null ? null : INSTANCE.selected.anchor;
+    }
+
+    public static boolean isSelectedGood() {
+        return getSelected() == null ? false : INSTANCE.selected.response.indicatesSuccess();
+    }
+
+    public static Response<?> getSelectedResponse() {
+        return getSelected() == null ? Response.FAIL_GENERIC : INSTANCE.selected.response;
+    }
 
     public void tick(LocalPlayer player, DeltaTracker deltas) {
         invalidateStaleTarget();

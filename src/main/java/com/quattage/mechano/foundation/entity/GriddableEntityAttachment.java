@@ -7,16 +7,16 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.api.landmark.classifier.EntityUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
@@ -34,21 +34,21 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * at the world-level, so despite being a Data Attachment, there are
  * no persistence features built into this class directly.
  */
-public class GriddableEntityAttachment implements AnchorPointable<Entity> {
+public class GriddableEntityAttachment implements Griddable<Entity> {
 
     private Entity entity;
     private AnchorArray anchor;
-    private final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
+    private final SurrogateNode surrogate = new SurrogateNode(this);
 
     @SuppressWarnings("unchecked")
-    public static <T extends Entity> @Nullable AnchorPointable<T> of(T e, boolean force) {
+    public static <T extends Entity> @Nullable Griddable<T> of(T e, boolean force) {
         if(e == null) {
-            Mechano.LOGGER.warn("Tried (and failed) to get AnchorPointable for null entity!");
+            Mechano.LOGGER.warn("Tried (and failed) to get Griddable for null entity!");
             return null;
         }
-        if(e instanceof AnchorPointable<?> ap) return (AnchorPointable<T>)ap;
+        if(e instanceof Griddable<?> ap) return (Griddable<T>)ap;
         if(!force && !e.hasData(MechanoData.ANCHOR_ATTACHMENT)) return null;
-        return (AnchorPointable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
+        return (Griddable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
     }
 
     /**
@@ -98,12 +98,12 @@ public class GriddableEntityAttachment implements AnchorPointable<Entity> {
     }
 
     @Override
-    public DispatchedAnchorNode getSurrogate() {
+    public SurrogateNode getSurrogate() {
         return surrogate;
     }
 
     @Override
-    public GridUUID createAddress() {
+    public GridUUID getOrCreateAddress() {
         return anchor.getByIndex(0).getAddress();
     }
 

@@ -4,57 +4,41 @@ import java.util.Objects;
 
 import javax.annotation.Nullable;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.Tensionable;
 
 import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-public abstract class Connection implements Tensionable {
+public abstract sealed class GridConnection implements Tensionable, TrackableStreamer permits GridLink, GridCatenary, ConnectionKey {
     
     public abstract GridUUID getStart();
     public abstract GridUUID getEnd();
     public abstract boolean isClientSide();
 
-    protected float length;
     protected Transmitter<?> trns;
-
-    public static void sendToClientsTracking(Connection link, CustomPacketPayload packet) {
-        if(link.isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet");
-        sendToClientsTracking(link.getStart(), link.getEnd(), packet);
-    }
-
-    public static void sendToClientsTracking(GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet) {
-        MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
-        for(ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if(start.isBeingTrackedBy(player))
-                CatnipServices.NETWORK.sendToClient(player, packet);
-            else if(end != null && end.isBeingTrackedBy(player))
-                CatnipServices.NETWORK.sendToClient(player, packet);
-        }
-    }
-
-    public Connection(Transmitter<?> trns, float length) {
-        this.trns = trns;
-        this.length = length;
-    }
-
-    public void updateShape(LevelReader world, float pTicks) {
-        this.length = getEuclideanDistance(world, getStart(), getEnd());
-    }
 
     public static float getEuclideanDistance(LevelReader world, GridUUID a, GridUUID b) {
         Vec3 aPos = a.getPos(world);
@@ -66,8 +50,70 @@ public abstract class Connection implements Tensionable {
         );
     }
 
-    public void pushTo(LevelReader world) { pushTo(world, InsertionMode.SYMMETRIC); }
-    public void pushTo(LevelReader world, InsertionMode mode) {
+    public static void sendToClientsTracking(GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet, InsertionPolicy mode) {
+        MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
+        if(mode == InsertionPolicy.SYMMETRIC) {
+            for(ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if(start.isBeingTrackedBy(player)) {
+                    if(end == null) {
+                        CatnipServices.NETWORK.sendToClient(player, packet);
+                        continue;
+                    }
+                    if(end.isBeingTrackedBy(player))
+                        CatnipServices.NETWORK.sendToClient(player, packet);
+                }
+            }
+            return;
+        }
+        if(mode == InsertionPolicy.SINGLE) {
+            for(ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if(start.isBeingTrackedBy(player))
+                    CatnipServices.NETWORK.sendToClient(player, packet);
+                else if(end != null && end.isBeingTrackedBy(player))
+                    CatnipServices.NETWORK.sendToClient(player, packet);
+            }
+            return;
+        }
+        throw new IllegalArgumentException("Unsupported InsertionPolicy '" + mode + "'");
+    }
+
+    public GridConnection(Transmitter<?> trns) {
+        this.trns = trns;
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT) 
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        return hasPoints() ? (getStart().isInFrustum(world, view) && getEnd().isInFrustum(world, view)) : false;
+    }
+
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer player) {
+        return hasPoints() ? (getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player)) : false;
+    }
+
+    @Override
+    public void sendToClientsTracking(CustomPacketPayload packet) {
+        if(isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet as a client! YOU CAN'T DO THAT!!!!");
+        sendToClientsTracking(getStart(), getEnd(), packet, InsertionPolicy.SYMMETRIC);
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, SectionPos section) {
+        return hasPoints() ? (getStart().isInsideOf(world, section) || getEnd().isInsideOf(world, section)) : false;
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
+        return hasPoints() ? (getStart().isInsideOf(world, chunk) || getEnd().isInsideOf(world, chunk)) : false;
+    }
+
+
+
+    public void updateShape(LevelReader world, float pTicks) {}
+
+    public void pushTo(LevelReader world) { pushTo(world, InsertionPolicy.SYMMETRIC); }
+    public void pushTo(LevelReader world, InsertionPolicy mode) {
         assertWorldly(world);
         switch(mode) {
             case SINGLE -> LinkData.add(world, this);
@@ -75,7 +121,7 @@ public abstract class Connection implements Tensionable {
                 LinkData.add(world, this);
                 LinkData.add(world, this.inverseCopy());
             }
-            case null, default -> { throw new UnsupportedOperationException("Insertion mode " + mode + " has not been implemented!"); }
+            case null, default -> { throw new IllegalArgumentException("Unsupported InsertionPolicy '" + mode + "'"); }
         }
     }
 
@@ -84,7 +130,6 @@ public abstract class Connection implements Tensionable {
         IAttachmentHolder startHolder = getStart().getDataHolder(world);
         LinkData startData = startHolder.getData(MechanoData.LINK_ATTACHMENT);
         if(startData.contains(this)) return true;
-
         IAttachmentHolder endHolder = getEnd().getDataHolder(world);
         LinkData endData = endHolder.getData(MechanoData.LINK_ATTACHMENT);
         
@@ -93,19 +138,17 @@ public abstract class Connection implements Tensionable {
                 startHolder.removeData(MechanoData.LINK_ATTACHMENT);
             return true;
         }
-
         if(startData.isEmpty())
             startHolder.removeData(MechanoData.LINK_ATTACHMENT);
         if(endData.isEmpty())
             endHolder.removeData(MechanoData.LINK_ATTACHMENT);
-
         return false;
     }
 
-    public @Nullable Connection findIn(LevelReader world) {
+    public @Nullable GridConnection findIn(LevelReader world) {
         IAttachmentHolder startHolder = getStart().getDataHolder(world);
         LinkData startData = startHolder.getData(MechanoData.LINK_ATTACHMENT);
-        Connection found = startData.get(this);
+        GridConnection found = startData.get(this);
         if(found != null) {
             if(found.hasPoints()) return found;   
             found.removeFrom(world);
@@ -135,18 +178,23 @@ public abstract class Connection implements Tensionable {
         LinkData.remove(world, getEnd(), this);
     }
 
+    public boolean isBeingTrackedBy(ServerPlayer player, InsertionPolicy mode) {
+        if(mode == InsertionPolicy.SINGLE) return getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player);
+        if(mode == InsertionPolicy.SYMMETRIC) return getStart().isBeingTrackedBy(player) && getEnd().isBeingTrackedBy(player);
+        return false;
+    }
+
     /**
      * Useful for any action that may change the start/endpoints of this Connection.
      * The {@link SidedGridDispatcher.LinkData link data store} will need to be informed
      * of any changes that may affect the value of this Connection's {@link #hashCode hash code}
-     * so that this Connection may re-assert themselves something something hashset buckets blah haha
+     * so that this the data store can rehash this value something something hash tables buckets blah haha
      * @param world
      * @param action
      */
     public void reassertAndDo(LevelReader world, Runnable action) {
         assertWorldly(world);
-        LinkData.remove(world, getStart(), this);
-        LinkData.remove(world, getEnd(), this);
+        removeFrom(world);
         try { action.run(); } 
         catch(Exception e) {
             Mechano.LOGGER.error("Failed executing reassertion task for " + this + ": ");
@@ -179,7 +227,7 @@ public abstract class Connection implements Tensionable {
         return getStart() != null && getEnd() != null;
     }
 
-    public abstract Connection inverseCopy();
+    public abstract GridConnection inverseCopy();
     public abstract CompoundTag writeTo(CompoundTag in);
     public abstract String getConnectionTypeName();
     public boolean canTraverse() { return getStart() != null && getEnd() != null && trns != null && trns.isEnabled(); }
@@ -191,7 +239,7 @@ public abstract class Connection implements Tensionable {
     @Override
     public boolean equals(Object other) {
         if(other == this) return true;
-        if(!(other instanceof Connection that)) return false;
+        if(!(other instanceof GridConnection that)) return false;
         return (getStart().equals(that.getStart()) && getEnd().equals(that.getEnd())) || (getStart().equals(that.getEnd()) && getEnd().equals(that.getStart()));
     }
 
@@ -210,8 +258,11 @@ public abstract class Connection implements Tensionable {
         // TODO traversal cost should vary depending on whether or not
         // the pathfinding gets closer or further away from the target
         if(!canTraverse()) return Float.MAX_VALUE;
-        return Math.max(0, length + trns.getCost());
+        return Math.max(0, getLength() + trns.getCost());
     }
+
+    @Override
+    public abstract float getLength();
         
     /**
      * Returns an array containing both UUIDs in this connection
@@ -249,17 +300,16 @@ public abstract class Connection implements Tensionable {
         return new GridUUID[] { start, end };
     }
 
-
-    public static final class ConnectionKey extends Connection {
+    public static final class ConnectionKey extends GridConnection {
 
         private final GridUUID start, end;
         public ConnectionKey(GridUUID start, GridUUID end) {
-            super(null, 0);
+            super(null);
             this.start = start;
             this.end = end;
         }
 
-        @Override public Connection inverseCopy() { return new ConnectionKey(end, start); }
+        @Override public GridConnection inverseCopy() { return new ConnectionKey(end, start); }
         @Override public GridUUID getStart() { return start; }
         @Override public GridUUID getEnd() { return end; }
         @Override public boolean isClientSide() { return false; }
@@ -279,10 +329,10 @@ public abstract class Connection implements Tensionable {
         }
 
         @Override
-        public void pushTo(LevelReader world, InsertionMode mode) {
+        public void pushTo(LevelReader world, InsertionPolicy mode) {
             throw new UnsupportedOperationException("ConnectionKeys have no implementation and cannot be pushed to data attachments!");
         }
-
+        
         @Override
         public void removeFrom(LevelReader world) {
             LinkData.remove(world, getStart(), this);
@@ -290,5 +340,5 @@ public abstract class Connection implements Tensionable {
         }
     }
 
-    public static enum InsertionMode { SINGLE, SYMMETRIC; }
+    public static enum InsertionPolicy { SINGLE, SYMMETRIC; }
 }

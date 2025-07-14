@@ -1,30 +1,50 @@
 package com.quattage.mechano.foundation.api.landmark;
 
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
+import java.util.Objects;
+
+import org.jetbrains.annotations.NotNull;
+
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.LevelReader;
 
-public class GridLink extends Connection {
+public final class GridLink extends GridConnection {
 
     private GridNode start;
     private GridNode end;
     private Tension tension;
+    private float length;
 
     public GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns) {
-        super(trns, Math.round(getEuclideanDistance(world, start.getAddress(), end.getAddress())));
+        super(trns); 
+        Objects.requireNonNull(world);
+        Objects.requireNonNull(start);
+        Objects.requireNonNull(end);
+
+        start.assertNotDestroyed("Failed to instantiate GridLink with invalid starting GridNode at" + start.getAddress().toString(world) + " - This node is invalid or has been previously destroyed!");
+        end.assertNotDestroyed("Failed to instantiate GridLink with invalid ending GridNode at" + end.getAddress().toString(world) + " - This node is invalid or has been previously destroyed!");
         if(start.getAddress().equals(end.getAddress()))
             throw new IllegalArgumentException("Can't instantiate a GridLink where both the start and end positions are the same!");
+        if(!start.getOwner().equals(end.getOwner()))
+            throw new IllegalStateException("Attempted to add two nodes that don't belong to the same grid, got start: " + start.getOwner() + ", and end: " + end.getOwner());
+            
+        this.length = Math.round(getEuclideanDistance(world, start.getAddress(), end.getAddress()));
+
         this.start = start;
         this.end = end;
         this.tension = trns.getType().defaults.getTension();
     }
 
     private GridLink(GridNode start, GridNode end, Transmitter<?> trns, Tension tension, float length) {
-        super(trns, length);
+        super(trns);
+        Objects.requireNonNull(start);
+        Objects.requireNonNull(end);
+        this.length = length;
         this.start = start;
         this.end = end;
         this.tension = tension;
@@ -54,7 +74,14 @@ public class GridLink extends Connection {
     @Override public GridUUID getStart() { return start.getAddress(); }
     @Override public GridUUID getEnd() { return end.getAddress(); }
     @Override public boolean isClientSide() { return false; }
-    @Override public String getConnectionTypeName() { return "GridLink"; }
+    @Override public String getConnectionTypeName() { 
+        return "GridLink(" + trns.getType() + ")";
+    }
+
+    @Override
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        throw new UnsupportedOperationException("Can't evalute frustum culling status of a server-sided GridLink! This method is only designed to work on clients!");
+    }
 
     @Override
     public Tension getTension() {

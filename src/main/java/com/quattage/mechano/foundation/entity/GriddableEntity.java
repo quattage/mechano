@@ -2,12 +2,12 @@ package com.quattage.mechano.foundation.entity;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.MechanoEntities;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.classifier.EntityUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -38,15 +38,15 @@ import net.neoforged.neoforge.fluids.FluidType;
 
 /**
  * This class is designed specifically to function as a singular, moveable, invisible
- * point in the world. This point does all of the things outlined by the {@link AnchorPointable} 
+ * point in the world. This point does all of the things outlined by the {@link Griddable} 
  * interface, and very little more. If you're looking to implement a more traditional 
  * LivingEntity that participates in the grid, take a look at the 
  * {@link GriddableEntityAttachment data attachment} instead of this class.<p>
  */
-public final class GriddableEntity extends Entity implements AnchorPointable<GriddableEntity> {
+public final class GriddableEntity extends Entity implements Griddable<GriddableEntity> {
 
     private AnchorArray anchor;
-    private final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
+    private final SurrogateNode surrogate = new SurrogateNode(this);
 
     public static GriddableEntity of(Level world, Vec3 pos) {
         GriddableEntity out = new GriddableEntity(MechanoEntities.ANCHOR.get(), world);
@@ -138,12 +138,12 @@ public final class GriddableEntity extends Entity implements AnchorPointable<Gri
     }
 
     @Override
-    public DispatchedAnchorNode getSurrogate() {
+    public SurrogateNode getSurrogate() {
         return surrogate;
     }
 
     @Override
-    public GridUUID createAddress() {
+    public GridUUID getOrCreateAddress() {
         if(anchor == null) return new EntityUUID(getUUID(), 0);
         return anchor.getByIndex(0).getAddress();
     }

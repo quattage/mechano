@@ -6,11 +6,10 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -18,7 +17,7 @@ import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.world.phys.Vec3;
 
-public class ParametricCatenary extends Catenary<ParametricCatenary> {
+public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
     
     private @Nullable ObjectArrayList<Point> points;
 
@@ -61,10 +60,8 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
         this.axisU.set(offset).normalize();
         this.axisV.set(CatenaryAttributes.UP).sub(axisU.mul(CatenaryAttributes.UP.dot(axisU), new Vector3f())).normalize();
 
-        if(!isInitialized()) return;
         int pointCount = getSegmentCount();
-        if(this.points == null) 
-            this.points = new ObjectArrayList<>(pointCount);
+        if(this.points == null) this.points = new ObjectArrayList<>(pointCount);
         if(pointCount < points.size()) {
             this.points.removeElements(pointCount, this.points.size());
             this.points.trim();
@@ -106,11 +103,6 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
     @Override
     public boolean isInitialized() {
         return this.points != null;
-    }
-
-    private void assertInitialized() {
-        if(this.points == null)
-            throw new IllegalStateException("Cannot update " + this + " - This Catenary has not been initialized!");
     }
 
     @Override
@@ -160,6 +152,8 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
         simulated.offset = this.offset;
         simulated.tension = this.tension;
         simulated.length = this.length;
+        simulated.maxLength = this.maxLength;
+        simulated.avgVelocity = this.avgVelocity;
         this.points = null;
         this.axisU = null;
         this.axisV = null;
@@ -173,6 +167,35 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
     }
 
     @Override
+    public BakedCatenary bake() {
+        assertInitialized();
+        assertHasOffset();
+        ObjectArrayList<Stick> sticks = new ObjectArrayList<>(this.points.size() - 1);
+        Point previous = null;
+        for(int x = 0; x < points.size(); x++) {
+            Point p = points.get(x);
+            p.lastPos.set(p.pos);
+            if(previous != null)
+                sticks.add(new Stick(previous, p));
+            previous = p;
+        }
+        BakedCatenary baked = new BakedCatenary(offset, sticks);
+        baked.tension = this.tension;
+        baked.length = this.length;
+        baked.maxLength = this.maxLength;
+        baked.avgVelocity = 0;
+        this.points = null;
+        this.axisU = null;
+        this.axisV = null;
+        return baked;
+    }
+
+    @Override
+    public boolean isMovable() {
+        return true;
+    }
+
+    @Override
     public float getLength() {
         return length;
     }
@@ -180,5 +203,12 @@ public class ParametricCatenary extends Catenary<ParametricCatenary> {
     @Override
     public float getMaxLength() {
         return maxLength;
+    }
+
+    @Override
+    public void destroy() {
+        this.points = null;
+        this.axisU = null;
+        this.axisV = null;
     }
 }

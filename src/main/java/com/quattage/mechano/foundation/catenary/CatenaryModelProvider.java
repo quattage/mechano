@@ -54,6 +54,6 @@ public class CatenaryModelProvider extends SimplePreparableReloadListener<Map<Tr
 
     @Override
     protected void apply(Map<TransmitterType<?>, ModelDefinition> map, ResourceManager manager, ProfilerFiller profiler) {
-        map.forEach((trns, entry) -> trns.applyResourceReloadResult(entry));
+        map.forEach(TransmitterType::applyResourceReloadResult);
     }
 }

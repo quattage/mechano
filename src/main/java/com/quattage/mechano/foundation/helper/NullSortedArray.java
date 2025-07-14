@@ -172,13 +172,11 @@ public class NullSortedArray<T> implements Collection<T> {
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'removeAll'");
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'retainAll'");
     }
 

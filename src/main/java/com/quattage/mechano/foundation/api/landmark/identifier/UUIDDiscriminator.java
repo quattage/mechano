@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmark.classifier;
+package com.quattage.mechano.foundation.api.landmark.identifier;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;

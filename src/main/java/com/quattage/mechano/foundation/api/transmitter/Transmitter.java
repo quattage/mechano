@@ -70,8 +70,7 @@ public abstract class Transmitter<T extends Transmitter<?>> {
      * validated and added to the relevent {@link ServerMatrix}. This means
      * that this GridLink instance does not yet exist in the ServerMatrix at the time of 
      * invocation. It's best not to store a reference to this instance anywhere, 
-     * as it can easily be made stale by internal systems or by returning 
-     * <code>false</code> here
+     * as it can easily be made stale by internal systems.
      * 
      * Only called on the server.
      * 

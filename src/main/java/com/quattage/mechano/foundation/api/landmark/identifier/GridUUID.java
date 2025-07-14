@@ -1,42 +1,51 @@
-package com.quattage.mechano.foundation.api.landmark.classifier;
+package com.quattage.mechano.foundation.api.landmark.identifier;
+
+import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * Barebones implementation template for hashables that need to reference
  * a block position and (optionally) an index value. 
  */
-public abstract class GridUUID implements Comparable<GridUUID> {
+public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreamer {
 
     public static final int MAX_SHARED_OCCUPANCY = 8; 
 
-    public static int clampIndex(int index) {
+    public static int clampIndex(int index) { return clampIndex(index, true); }
+    public static int clampIndex(int index, boolean warn) {
         int out = Math.max(0, Math.min(index, MAX_SHARED_OCCUPANCY - 1));
-        if(out != index)
-            Mechano.LOGGER.warn("Invalid GridUUID index '" + index + "' was clamped to conform to range (0 -> " + MAX_SHARED_OCCUPANCY + ")");
+        if(warn && out != index) {
+            Mechano.LOGGER.warn("Invalid GridUUID index '" + index 
+                + "' was clamped to conform to range (0 -> " + MAX_SHARED_OCCUPANCY + ")");
+        }
         return out;
     }
 
-    public static boolean isValidIndex(int index) {
-        return index >= 0 && index < MAX_SHARED_OCCUPANCY;
-    }
-
+    @Override
     public abstract boolean isBeingTrackedBy(ServerPlayer player);
 
     public abstract UUIDDiscriminator getDiscriminatorType();
@@ -55,11 +64,30 @@ public abstract class GridUUID implements Comparable<GridUUID> {
     public void setAttachmentVelocity(LevelReader world, Vec3 vec) {}
 
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
-    public abstract @Nullable AnchorPointable<?> getAnchorPoints(LevelReader world);
-    public abstract @Nullable DispatchedAnchorNode getSurrogate(LevelReader world);
+    public abstract @Nullable Griddable<?> getAnchorPoints(LevelReader world);
+    public abstract @Nullable SurrogateNode getSurrogate(LevelReader world);
     public abstract @Nullable IAttachmentHolder getDataHolder(LevelReader world);
     public abstract String describeDataHolder(LevelReader world);
     public abstract float getAttachedSizeFactor(LevelReader world);
+
+    @Override
+    public void sendToClientsTracking(CustomPacketPayload packet) {
+        MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
+        for(ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if(isBeingTrackedBy(player))
+                CatnipServices.NETWORK.sendToClient(player, packet);
+        }
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
+        return new ChunkPos(getBlockPos(world)).equals(chunk);
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, SectionPos section) {
+        return SectionPos.of(getBlockPos(world)).equals(section);
+    }
 
     public boolean isAttachedToPlayer(LevelReader world) {
         return false;
@@ -111,10 +139,5 @@ public abstract class GridUUID implements Comparable<GridUUID> {
             + getBlockPos(world).getZ() + ", " 
             + getIndex() 
             + "]";
-    }
-
-    @Override
-    public String toString() {
-        return "GridUUID[" + getDiscriminatorType().toString() + "]";
     }
 }

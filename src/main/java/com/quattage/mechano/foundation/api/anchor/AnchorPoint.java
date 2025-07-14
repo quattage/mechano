@@ -4,11 +4,10 @@ import static com.quattage.mechano.Mechano.lang;
 
 import java.util.List;
 
-import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -23,18 +22,19 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * An AnchorPoint is the client-sided mirror implementation of the
  * {@link com.quattage.mechano.foundation.api.landmark.GridNode GridNode},
- * built specifically to store transformation data. 
- * 
- * <p> The AnchorPoint
- * occupies physical space, where the GridNode does not.
+ * built specifically to store transformation and hitbox data in
+ * world-space.
  */
+@OnlyIn(Dist.CLIENT)
 public class AnchorPoint {
 
-    private GridUUID backer;
+    private final GridUUID backer;
     private byte[] data;
     private boolean enabled;
     private Vector3f offset;
@@ -62,15 +62,8 @@ public class AnchorPoint {
         return this;
     }
 
-    public void sync(byte connections, @Nullable LevelReader world) {
+    public void setConectionCount(byte connections) {
         this.data[4] = connections;
-        if(world != null) {
-            AnchorPointable<?> points = backer.getAnchorPoints(world);
-            if(points == null) return;
-            if(getCurrentConnections() > 0)
-                points.getSurrogate().sync(world, null);
-            else points.getSurrogate().forget(world);
-        }
     }
 
     public int getIndex() {
@@ -217,27 +210,14 @@ public class AnchorPoint {
     }
 
     /**
-     * Enables this AnchorPoint, which allows it to be seen
-     * and interacted with by the player.
-     * This method, along with {@link AnchorPoint#disable}, can
-     * be used to reflect BlockState or BlockEntity changes that
-     * may visually or functionally obscure AnchorPoints. 
+     * Enables/disables this AnchorPoint. A disabled AnchorPoint
+     * is hidden from view and cannot be interacted with by the player.
+     * Use this method as a way to update this AnchorPoint to reflect 
+     * BlockState or BlockEntity changes that may visually or functionally 
+     * obscure AnchorPoints. 
      */
-    public void enable() {
-        this.enabled = true;
-    }
-
-    /**
-     * Disables this AnchorPoint, which hides it from the world
-     * and prevents all player interaction with it. 
-     * This method, along with {@link AnchorPoint#enable}, can
-     * be used to reflect BlockState or BlockEntity changes that
-     * may visually or functionally obscure AnchorPoints. 
-     * Do note that calls to {@link AnchorPoint#disable} will <strong>not</strong>
-     * break wires or sever connections to/from this AnchorPoint.
-     */
-    public void disable() {
-        this.enabled = false;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     /**

@@ -121,7 +121,6 @@ public class MechanoClientEvents {
         evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
     }
 
-
     @SubscribeEvent
     public static void onLeftClick(InputEvent.MouseButton.Pre evt) {
         Minecraft instance = Minecraft.getInstance();

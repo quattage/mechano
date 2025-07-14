@@ -5,12 +5,12 @@ import static com.quattage.mechano.Mechano.lang;
 
 import java.util.List;
 
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
-import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
@@ -42,14 +42,14 @@ public interface Transmitable<T extends Transmitter<?>> {
      * @param held Container for information about the player and their held item stack
      * @return <code>AnchorResponse.GOOD</code> if the player may interact with this anchor.
      */
-    default Response<?> collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, AnchorPointable<?> points, AnchorPoint target, HoldingSummary held) {
+    default UpdateResponse collectTooltipInfoAndResponse(ClientLevel world, List<Component> tooltip, Griddable<?> points, AnchorPoint target, HoldingSummary held) {
         lang().text("hi >:)").forGoggles(tooltip);
         GridUUID prevAddress = held.stack.get(UUIDDiscriminator.ATTACHMENT);
         AnchorPoint prevAnchor = prevAddress == null ? null : prevAddress.getAnchor(world);
-        if(target.equals(prevAnchor)) return Response.Anchor.INCOMPATABLE.andHideAnchor();
-        if(!target.isCompatableWith(getTransmitterType())) return Response.Anchor.INCOMPATABLE;
-        if(!target.hasRoom()) return Response.Anchor.FULL;
-        return Response.SUCCESS;
+        if(target.equals(prevAnchor)) return UpdateResponse.FAIL_DUPLICATE;
+        if(!target.isCompatableWith(getTransmitterType())) return UpdateResponse.FAIL_HELD_INCOMPATIBLE;
+        if(!target.hasRoom()) return UpdateResponse.FAIL_DESTINATION_FULL;
+        return UpdateResponse.TASK_SELECT_SUCCESS;
     }
 
     /**

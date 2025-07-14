@@ -14,6 +14,7 @@ import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -74,8 +75,8 @@ public class TransmitterRegistry {
     public Transmitter<?> get(CompoundTag tag) {
         if(!isLoaded) throw new IllegalStateException("Attempted to access TransmitterRegistry before it has finished loading!");
         Objects.requireNonNull(tag);
-        if(!tag.contains("id")) throw new IllegalArgumentException("Couldn't find TransmitterType from tag " + tag + " - This tag doesn't contain a transmitter id!");
-        Transmitter<?> out = get(tag.getByte("id") + 128);
+        if(!tag.contains("trnsid")) throw new IllegalArgumentException("Couldn't find TransmitterType from tag " + tag + " - This tag doesn't contain a transmitter id!");
+        Transmitter<?> out = get(tag.getByte("trnsid") + 128);
         if(out.needsSerialization() && tag.contains("data"))
             out.loadFrom(tag.getCompound("data"));
         return out;
@@ -291,6 +292,10 @@ public class TransmitterRegistry {
         public void applyResourceReloadResult(CatenaryModelProvider.ModelDefinition model) {
             this.textureLocation = model.getTexture();
             this.atlasSprite = null;
+        }
+
+        public RenderType getMaterial() {
+            return defaults.getShaderFor(this);
         }
     }
 

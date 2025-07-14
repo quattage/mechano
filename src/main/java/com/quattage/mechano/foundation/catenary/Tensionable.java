@@ -37,13 +37,4 @@ public interface Tensionable {
 
     public float getLength();
     public float getMaxLength();
-
-    public default void applyDistanceTension(float distance, float maxDistance) {
-        float frac = distance / maxDistance;
-        if(frac > 0.9) setTension(Tension.TAUT);
-        else if(frac > 0.8) setTension(Tension.TIGHT);
-        else if(frac > 0.6) setTension(Tension.AVERAGE);
-        else if(frac > 0.4) setTension(Tension.LOOSE);
-        else if(frac > 0.2) setTension(Tension.VERY_LOOSE);
-    }
 }

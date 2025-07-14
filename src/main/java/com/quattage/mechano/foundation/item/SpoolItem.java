@@ -13,18 +13,19 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.Connection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.api.landmark.classifier.EntityUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.landmark.GridConnection;
+import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
+import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -74,11 +75,11 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
         if(!level.isClientSide) return InteractionResultHolder.pass(Transmitable.getHolding(player).stack());
         if(usedHand != InteractionHand.MAIN_HAND || !AnchorSelector.INSTANCE.hasSelection()) 
-            return InteractionResultHolder.fail(AnchorSelector.INSTANCE.playerHands.stack());
-        ItemStack stack = AnchorSelector.INSTANCE.playerHands.stack();
+            return InteractionResultHolder.fail(AnchorSelector.INSTANCE.getHeldStack());
+        ItemStack stack = AnchorSelector.INSTANCE.getHeldStack();
         if(!stack.has(UUIDDiscriminator.ATTACHMENT)) 
-            return handleFirstRightClick((LocalPlayer)player, stack, AnchorSelector.getSelected());
-        return handleSecondRightClick((LocalPlayer)player, stack, AnchorSelector.getSelected());
+            return handleFirstRightClick((LocalPlayer)player, stack, AnchorSelector.INSTANCE.getSelected());
+        return handleSecondRightClick((LocalPlayer)player, stack, AnchorSelector.INSTANCE.getSelected());
     }
 
     /**
@@ -86,21 +87,18 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * between the selected anchor and the player.
      */
     private InteractionResultHolder<ItemStack> handleFirstRightClick(LocalPlayer player, ItemStack stack, @Nullable AnchorPoint startAnchor) {
-
-        if(startAnchor == null || !AnchorSelector.isSelectedGood()) {
+        if(startAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-
-        AnchorPointable<?> playerPoints = GriddableEntityAttachment.of(player, true);
+        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
         if(playerPoints == null || !playerPoints.getAnchor().hasRoom()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-
-        Response<?> result = SidedGridDispatcher.client(player).requestLinkCreation(playerPoints.getAnchor(), startAnchor, getTransmitterType());
+        UpdateResponse result = SidedGridDispatcher.client(player).requestLinkCreation(playerPoints.getAnchor(), startAnchor, getTransmitterType(), true);
         startingDamage = stack.getDamageValue();
-        if(!result.indicatesSuccess()) {
+        if(!result.indicatesCompletion()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             Mechano.LOGGER.warn("Link request returned failure state '" + result + "' (Requested by '" + player.getName() + "', from " + startAnchor + " -> " + playerPoints.getAnchor() + ")");
             return InteractionResultHolder.fail(stack);
@@ -119,9 +117,9 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             return InteractionResultHolder.fail(stack);
         }
 
-        Response<?> initial = AnchorSelector.getSelectedResponse();
-        if(!initial.indicatesSuccess()) {
-            if(Response.shouldBail(initial)) {
+        UpdateResponse initialResponse = AnchorSelector.INSTANCE.getSelectedResponse();
+        if(!initialResponse.indicatesCompletion()) {
+            if(initialResponse.shouldFailHard()) {
                 onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
                 return InteractionResultHolder.fail(stack);
             }
@@ -138,14 +136,16 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(startAnchor.getAddress().equals(endAnchor.getAddress()))
             return InteractionResultHolder.pass(stack);
 
-        Response<?> result = SidedGridDispatcher.client(player).requestLinkCreation(startAnchor, endAnchor, getTransmitterType());
-        if(!result.indicatesSuccess()) {
-            if(Response.shouldBail(result)) {
+        UpdateResponse result = SidedGridDispatcher.client(player).requestLinkCreation(startAnchor, endAnchor, getTransmitterType(), true);
+        if(!result.indicatesCompletion()) {
+            if(result.shouldFailHard()) {
                 onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
                 return InteractionResultHolder.fail(stack);
             }
             return InteractionResultHolder.pass(stack);
         }
+        applyDurability(stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
+        startingDamage = -1;
         return InteractionResultHolder.success(stack);
     }
 
@@ -160,14 +160,14 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         EntityUUID addr = new EntityUUID(entity.getUUID(), 0);
         AnchorPoint startAnchor = startAddress.getAnchor((ClientLevel)world);
         if(startAnchor == null || !startAnchor.hasRoom()) {
-            cancelAwaitingConnection(addr, startAnchor.getAddress(), stack);
+            cancelAwaitingConnection(addr, null, stack);
             return;
         }
         LinkData links = LinkData.getFrom(entity);
         if(links == null) return;
         GridCatenary cat = (GridCatenary)links.get(new ConnectionKey(addr, startAddress));
         if(cat == null) return;
-        applyDurability(stack, cat.getLength(), cat.getMaxLength());
+        applyDurability(stack, cat.getLength());
         cat.adjustMaxLength(stack);
     }
 
@@ -176,12 +176,12 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
         if(startAddress == null || endAddress == null) return;
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAddress, endAddress, MechanoTransmissionTypes.PERFECT_CONDUCTOR, Response.Task.DESTROY));
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAddress, endAddress, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_DESTROY_LINK));
     }
 
 
     @Override
-    public boolean onLeftClick(LocalPlayer player, ItemStack stack, InteractionHand hand) {
+    public boolean onLeftClick(LocalPlayer player, ItemStack stack, @Nullable InteractionHand hand) {
 
         if(!stack.has(UUIDDiscriminator.ATTACHMENT)) return false;
         GridUUID addr = stack.get(UUIDDiscriminator.ATTACHMENT);
@@ -190,7 +190,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         AnchorPoint previous = addr.getAnchor((ClientLevel)player.level());
         if(previous == null) {
             GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-            CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.createAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, Response.Task.DESTROY));
+            CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_DESTROY_LINK));
             return true;
         }
 
@@ -198,9 +198,9 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         float faceDot = (float)player.getViewVector(1).dot(disp);
         if(faceDot < CatenaryAttributes.DETACH_THRESHOLD) return false;
         GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.createAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, Response.Task.RELEASE_END));
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_FREE_LINK));
         cancelAwaitingConnection(addr, null, stack);
-        player.swing(hand);
+        if(hand != null) player.swing(hand);
         return true;
     }
 
@@ -218,21 +218,9 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * @param length
      * @param maxLength
      */
-    private void applyDurability(ItemStack stack, float length, float maxLength) {
+    private void applyDurability(ItemStack stack, float length) {
         if(startingDamage < 0) return;
         stack.setDamageValue(Math.min(stack.getMaxDamage(), Math.max(1, startingDamage + (int)Math.ceil((length * 2f)))));
-    }
-
-    @Override
-    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
-        float max = (float)stack.getMaxDamage() / 2f;
-        float current = max - ((float)stack.getDamageValue() / 2f);
-        lang().text(String.format("%.1f", current) + "/" + String.format("%.1f", max) + "m").style(ChatFormatting.GRAY).forGoggles(tooltipComponents);
-    }
-
-    @Override
-    public Component getDescription() {
-        return super.getDescription();
     }
 
     /**
@@ -246,6 +234,13 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * for spools (by clarifying the unit as a meter)
      */
     public boolean hidesDefaultTooltip() { return true; }
+
+    @Override
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        float max = (float)stack.getMaxDamage() / 2f;
+        float current = max - ((float)stack.getDamageValue() / 2f);
+        lang().text(String.format("%.1f", current) + "/" + String.format("%.1f", max) + "m").style(ChatFormatting.GRAY).forGoggles(tooltipComponents);
+    }
 
     /**
      * Overrides the vanilla {@link ItemInHandRenderer} behaviour as invoked by the

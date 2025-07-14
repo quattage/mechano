@@ -1,41 +1,92 @@
 
-package com.quattage.mechano.foundation.api.anchor;
+package com.quattage.mechano.foundation.api;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.ServerMatrix;
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.anchor.AnchorArray;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
-public interface AnchorPointable<T> {
+/**
+ * Griddable grants implementations the ability to utilize the {@link SidedGridDispatcher GridAPI}
+ * to store and use {@link GridNode GridNodes,} {@link GridLink GridLinks,}
+ * and {@link AnchorPoint AnchorPoints}. 
+ * Implementations of this class should expect to handle both server and client sided logic
+ * in the same object. Methods that can't be called on the server are marked with the cooresponding
+ * <code>@OnlyIn</code> annotation.
+ */
+public interface Griddable<T> {
 
+    @OnlyIn(Dist.CLIENT)
     public void constructAnchors(AnchorArray.Builder anchors);
 
+    @OnlyIn(Dist.CLIENT)
     public AnchorArray getAnchors();
 
+    @OnlyIn(Dist.CLIENT)
     public default AnchorPoint getAnchor(int index) {
         return getAnchors().getByIndex(index);
     }
 
+    @OnlyIn(Dist.CLIENT)
     public default AnchorPoint getAnchor() {
         return getAnchors().getByIndex(0);
     }
 
+    @OnlyIn(Dist.CLIENT)
     public default void refreshAnchors(BlockState newState) {
         if(newState == null) return;
         getAnchors().updateOrientation(newState);
+    }
+
+
+    public static boolean assertPairExists(Griddable<?> startPoints, Griddable<?> endPoints, GridUUID start, GridUUID end) {
+        if(startPoints == null && endPoints == null) {
+            Mechano.LOGGER.error("An error occured while peforming an operation on a pair: " + start + ", and " + end 
+                + " - No valid Griddables could be found at both sides!");
+            return false;
+        }
+        if(startPoints == null) {
+            Mechano.LOGGER.error("An error occured while peforming an operation on a pair: " + start + ", and " + end 
+                + " - No valid Griddable could be found at the starting address!");
+            return false;
+        } else if(endPoints == null) {
+            Mechano.LOGGER.error("An error occured while peforming an operation on a pair: " + start + ", and " + end 
+                + " - No valid Griddable could be found at the ending address!");
+            return false;
+        }
+        return true;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public default boolean containsAnchor(AnchorPoint anchor) {
+        if(anchor == null || anchor.getAddress().getIndex() < 0 || anchor.getAddress().getIndex() >= getAnchors().size()) 
+            return false;
+        for(int x = 0; x < getAnchors().size(); x++) {
+            AnchorPoint other = getAnchor(x);
+            if(other == null) continue;
+            if(anchor.getAddress().equals(other.getAddress()))
+                return true;
+        }
+        return false;
     }
 
     public default CompoundTag writeTo(CompoundTag tag) {
@@ -55,20 +106,16 @@ public interface AnchorPointable<T> {
     }
 
     public Level getWorld();
-    public DispatchedAnchorNode getSurrogate();
-    public GridUUID createAddress();
+    public SurrogateNode getSurrogate();
 
-    public default boolean containsAnchor(AnchorPoint anchor) {
-        if(anchor == null || anchor.getAddress().getIndex() < 0 || anchor.getAddress().getIndex() >= getAnchors().size()) 
-            return false;
-        for(int x = 0; x < getAnchors().size(); x++) {
-            AnchorPoint other = getAnchor(x);
-            if(other == null) continue;
-            if(anchor.getAddress().equals(other.getAddress()))
-                return true;
-        }
-        return false;
-    }
+    /**
+     * Provides a new or preexisting {@link GridUUID}.
+     * Implementations may decide whether to create a new
+     * instance on the fly or 
+     * @return A new or preexisting GridUUID instance describing 
+     * the non-indexed location of this Griddable.
+     */
+    public GridUUID getOrCreateAddress();
 
     /**
      * A decorative string used for debugging for display in the 
@@ -109,7 +156,7 @@ public interface AnchorPointable<T> {
      * @param world World to operate within
      * @param grid The grid that this holder was added to
      */
-    public default void onAddedToGrid(Level world, ServerMatrix grid) {
+    public default void onAddedToMatrix(Level world, ServerMatrix grid) {
         
     }
 
@@ -134,16 +181,21 @@ public interface AnchorPointable<T> {
     public abstract T getSource();
 
     /**
-     * This method returns an arbitrary Item which can be 
-     * drawn to GUIs. It's used in the {@link com.quattage.mechano.foundation.api.anchor.AnchorGUILayer}
-     * to label the highlight tab.
+     * This method returns an arbitrary expression which is executed when drawing 
+     * {@link AnchorPoint AnchorPoints} belonging to this Griddable to the
+     * overlay. It's used in the {@link AnchorGUILayer} to add a label to the highligted
      * @return An Item that contains at least one item. This item can be drawn to GUI elements.
      */
-    public default Item getVisual() {
+    public default @Nullable Visual getVisual() {
         return null;
     }
 
     public default boolean isInteractable() { return true; }
     public default boolean isVisible() { return true; }
     public default boolean isLoose() { return false; }
+
+    @FunctionalInterface
+    public interface Visual {
+        public abstract void draw(AnchorPoint selected, ArrayList<Component> tooltip, int posX, int posY, GuiGraphics graphics);
+    }
 }

@@ -1,6 +1,8 @@
 package com.quattage.mechano.foundation.api;
 
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -11,10 +13,13 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.landmark.Connection;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.GridConnection;
+import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.entity.GriddableEntity;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
@@ -22,12 +27,18 @@ import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity.RemovalReason;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -36,8 +47,11 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
+import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
@@ -64,7 +78,7 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
                 SidedGridDispatcher deserializedInstance = null;
                 if(holder instanceof ClientLevel cl) deserializedInstance = ClientGrid.loadFrom(list, cl);
                 else if(holder instanceof ServerLevel sl) deserializedInstance = ServerGrid.loadFrom(list, sl);
-                else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got " + holder + "!");
+                else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got '" + holder.getClass().getSimpleName() + "!'");
                 deserializedInstance.log("Loaded pre-existing grid data");
                 return deserializedInstance;
             }
@@ -104,12 +118,92 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
 
     @SubscribeEvent
     public static void onLogout(PlayerLoggedOutEvent evt) {
-        AnchorPointable<?> points = GriddableEntityAttachment.of(evt.getEntity(), false);
+        Griddable<?> points = GriddableEntityAttachment.of(evt.getEntity(), false);
         if(points == null) return;
         points.destroySurrogate();
         LOGGER.debug("Destroyed a transient surrogate belonging to '" + evt.getEntity().getName().getString() + "'");
     }
 
+    // @SubscribeEvent
+    // public static void onEntityRemoved(EntityLeaveLevelEvent evt) {
+    //     Griddable<?> points = GriddableEntityAttachment.of(evt.getEntity(), false);
+    //     if(points == null) return;
+    //     points.destroySurrogate();
+    //     LOGGER.debug("Destroyed a transient surrogate belonging to '" + evt.getEntity().getName().getString() + "'");
+    // }
+
+    @SubscribeEvent
+    public static void onChunkWatched(ChunkWatchEvent.Sent evt) {
+        LinkData data = LinkData.getFrom(evt.getChunk());
+        if(data == null) return;
+        data.forEachLink(link -> {
+            if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SYMMETRIC)) return;
+            Mechano.LOGGER.info("Syncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
+            CatnipServices.NETWORK.sendToClient(
+                evt.getPlayer(), LinkResponsePacket.of(
+                    link.getStartNode(), link.getEndNode(), 
+                    link.getTransmitter(),
+                    UpdateResponse.TASK_SYNC_ANCHORS
+                ));
+        });
+    }
+
+    @SubscribeEvent
+    public static void onChunkUnwatched(ChunkWatchEvent.UnWatch evt) {
+        LinkData data = LinkData.getFrom(evt.getLevel(), evt.getPos());
+        if(data == null) return;
+        data.forEachLink(link -> {
+            Mechano.LOGGER.info("Unsyncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
+            CatnipServices.NETWORK.sendToClient(
+                evt.getPlayer(), LinkResponsePacket.of(
+                    link.getStartNode(), link.getEndNode(), 
+                    link.getTransmitter(),
+                    UpdateResponse.TASK_FORGET_ANCHORS
+                ));
+        });
+    }
+
+    @SubscribeEvent
+    public static void onEntityWatched(PlayerEvent.StartTracking evt) {
+        LinkData data = LinkData.getFrom(evt.getTarget());
+        if(data == null) return;
+        data.forEachLink(link -> {
+            if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
+            Mechano.LOGGER.info("Syncing " + link + " from (" + evt.getEntity().getClass().getSimpleName() + ")");
+            CatnipServices.NETWORK.sendToClient(
+                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
+                    link.getStartNode(), link.getEndNode(), 
+                    link.getTransmitter(),
+                    UpdateResponse.TASK_SYNC_ANCHORS
+                ));
+        });
+    }
+
+    @SubscribeEvent
+    public static void onEntityUnwatched(PlayerEvent.StopTracking evt) {
+        LinkData data = LinkData.getFrom(evt.getTarget());
+        if(data == null) return;
+        data.forEachLink(link -> {
+            Mechano.LOGGER.info("Unsyncing " + link + " from (" + evt.getTarget().getClass().getSimpleName() + ")");
+            CatnipServices.NETWORK.sendToClient(
+                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
+                    link.getStartNode(), link.getEndNode(), 
+                    link.getTransmitter(),
+                    UpdateResponse.TASK_FORGET_ANCHORS
+                ));
+        });
+    }
+
+
+    @SuppressWarnings("unchecked")
+    @SubscribeEvent
+    public static void onChunkMeshed(AddSectionGeometryEvent evt) {
+        SectionPos pos = SectionPos.of(evt.getSectionOrigin());
+        ClientLevel world = (ClientLevel)(Minecraft.getInstance().player.level());
+        LinkData data = LinkData.getFrom(world, evt.getSectionOrigin());
+        if(data == null) return;
+        evt.addRenderer(ctx -> GridCatenary.renderToSection(world, evt.getSectionOrigin(), pos, ctx, (ObjectSet<GridCatenary>)(Object)data.get()));
+    }
 
     /**
      * To be called by internal registries to populate the world with an initial data attachment
@@ -345,12 +439,12 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
         }
     }
 
-    public static final class LinkData {
+    public static final class LinkData implements Iterable<GridConnection> {
         
-        private ObjectOpenHashSet<Connection> contents = new ObjectOpenHashSet<>(2);
+        private ObjectOpenHashSet<GridConnection> contents = new ObjectOpenHashSet<>(2);
         public LinkData(IAttachmentHolder holder) {}
 
-        public static void add(LevelReader world, Connection link) {
+        public static void add(LevelReader world, GridConnection link) {
             IAttachmentHolder holder = link.getStart().getDataHolder(world);
             LinkData data = holder.getData(MechanoData.LINK_ATTACHMENT);
             if(data.contents.add(link)) {
@@ -372,11 +466,24 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
             return data;
         }
 
+        public static @Nullable LinkData getFrom(ServerLevel world, ChunkPos pos) {
+            if(world == null || pos == null) return null;
+            return getFrom(world.getChunk(pos.x, pos.z));
+        }
+
+        public static @Nullable LinkData getFrom(ClientLevel world, BlockPos pos) {
+            if(world == null || pos == null) return null;
+            return getFrom(world.getChunk(pos.getX(), pos.getZ()));
+        }
+
         @ApiStatus.Internal
-        public static void remove(LevelReader world, GridUUID addr, Connection link) {
+        public static void remove(LevelReader world, GridUUID addr, GridConnection link) {
             IAttachmentHolder holder = addr.getDataHolder(world);
             LinkData data = holder.getData(MechanoData.LINK_ATTACHMENT);
-            if(!data.contents.remove(link)) Mechano.LOGGER.warn("Failed to remove " + link + " for holder '" + holder.getClass().getSimpleName() + ",' found (" + data.contents + ")");
+            if(!data.contents.remove(link)) {
+                Mechano.LOGGER.warn("Failed to remove " + link + " for holder '" 
+                    + holder.getClass().getSimpleName() + ",' found (" + data.contents + ")");
+            }
             if(data.contents == null || data.contents.isEmpty()) {
                 holder.removeData(MechanoData.LINK_ATTACHMENT);
                 data.contents = null;
@@ -386,16 +493,17 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
             else if(holder instanceof BlockEntity be)
                 be.setChanged();
             else if(holder instanceof GriddableEntity ge) {
-                ge.remove(RemovalReason.DISCARDED);
+                if(data.contents == null || data.isEmpty()) 
+                    ge.remove(RemovalReason.DISCARDED);
             }
         }
 
-        public ObjectSet<Connection> get() {
+        public ObjectSet<GridConnection> get() {
             assertNotRemoved();
             return contents;
         }
 
-        public @Nullable Connection get(Connection link) {
+        public @Nullable GridConnection get(GridConnection link) {
             return contents.get(link);
         }
 
@@ -404,18 +512,49 @@ public abstract sealed class SidedGridDispatcher permits ClientGrid, ServerGrid 
             return contents.isEmpty();
         }
 
-        public boolean contains(Connection link) {
+        public boolean contains(GridConnection link) {
             return contents.contains(link);
         }
 
+        @Override
+        public Iterator<GridConnection> iterator() {
+            return contents.iterator();
+        }
+
+        /**
+         * Iterates over each GridLink in this LinkData object
+         * <p><strong>GridLinks only exist on server-sided LinkData objects!</strong>
+         * @param action
+         */
+        public void forEachLink(Consumer<GridLink> action) {
+            for(GridConnection c : contents) {
+                if(c instanceof GridLink link) {
+                    action.accept(link);
+                    continue;
+                }
+                if(c != null) throw new IllegalStateException("Can't acquire server-sided GridLink as a client!");
+            }
+        }
+        
+        /**
+         * Iterates over each GridCatenary in this LinkData object
+         * <p><strong>GridCatenaries only exist on client-sided LinkData objects!</strong>
+         * For server-sided implementation, see {@link #forEachLink the GridLink version}
+         * @param action
+         */
         public void forEachCatenary(Consumer<GridCatenary> action) {
-            for(Connection c : contents) {
+            for(GridConnection c : contents) {
                 if(c instanceof GridCatenary cat) {
                     action.accept(cat);
                     continue;
                 }
-                Mechano.LOGGER.warn("Connection " + c + " is not a catenary!");
+                if(c != null) throw new IllegalStateException("Can't acquire client-sided GridCatenary on the server!");
             }
+        }
+
+        @Override
+        public String toString() {
+            return "LinkData" + Arrays.toString(contents.toArray());
         }
 
         private void assertNotRemoved() {

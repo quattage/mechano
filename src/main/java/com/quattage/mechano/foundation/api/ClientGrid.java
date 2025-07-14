@@ -4,15 +4,18 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.ListTag;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
+@OnlyIn(Dist.CLIENT)
 public final class ClientGrid extends SidedGridDispatcher {
 
     private final CatenaryMesher mesher;
@@ -44,40 +47,42 @@ public final class ClientGrid extends SidedGridDispatcher {
      * client-sided sanity checks and sents a packet to the 
      * {@link ServerGrid server-sided} version of this 
      * instance. 
-     * @param startBE the BlockEntity hosting the starting node
-     * @param startAnchor the address of the starting node
-     * @param endBE the BlockEntiity hosting the ending node
-     * @param endAnchor The address of the ending node
+     * @param startAnchor The starting point
+     * @param endAnchor The ending point
      * @param type The type of transmitter that the resulting link will host
-     * @return {@link Response}
+     * @param validate <code>true</code> if this method should verify the existence of <code>startAnchor</code> and <code>endAnchor</code>
+     * before proceeding
+     * @return {@link UpdateResponser}
      */
-    public Response<?> requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type) {
+    public UpdateResponse requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type, boolean verify) {
 
-        if(!startAnchor.existsIn(world)) {
-            Mechano.LOGGER.warn("Failed to create link from " + startAnchor.getAddress() + " and " + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
-            return Response.Link.FAIL_SYNC_OUTDATED.andBailout();
-        }
+        if(verify) {
+            if(!startAnchor.existsIn(world)) {
+                Mechano.LOGGER.warn("Failed to create link from " + startAnchor.getAddress() + " and " + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
+                return UpdateResponse.FAIL_OUTDATED;
+            }
 
-        if(!endAnchor.existsIn(world)) {
-            Mechano.LOGGER.warn("Failed to create link from " + startAnchor + " and " + endAnchor + " - No valid PGBE could be found at the ending address");
-            return Response.Link.FAIL_SYNC_OUTDATED.andBailout();
+            if(!endAnchor.existsIn(world)) {
+                Mechano.LOGGER.warn("Failed to create link from " + startAnchor + " and " + endAnchor + " - No valid PGBE could be found at the ending address");
+                return UpdateResponse.FAIL_OUTDATED;
+            }
         }
 
         if(!type.ignoresLimits()) {
-            if(!endAnchor.hasRoom()) return Response.Link.FAIL_DESTINATION_FULL;
-            if(!endAnchor.isCompatableWith(type)) return Response.Link.FAIL_DESTINATION_UNSUPPORTED;
+            if(!endAnchor.hasRoom()) return UpdateResponse.FAIL_DESTINATION_FULL;
+            if(!endAnchor.isCompatableWith(type)) return UpdateResponse.FAIL_DESTINATION_UNSUPPORTED;
         }
 
         if(!type.supportsSameBlockConnections())
-            if(endAnchor.equals(startAnchor)) return Response.Link.FAIL_DUPLICATE;    
-        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return Response.Link.FAIL_DUPLICATE;
+            if(endAnchor.equals(startAnchor)) return UpdateResponse.FAIL_DUPLICATE;    
+        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return UpdateResponse.FAIL_DUPLICATE;
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
-        if(linkDistance < type.getMinDistance()) return Response.Link.FAIL_TOO_CLOSE;
-        if(linkDistance > type.getMaxLength()) return Response.Link.FAIL_TOO_FAR;
+        if(linkDistance < type.getMinDistance()) return UpdateResponse.FAIL_TOO_CLOSE;
+        if(linkDistance > type.getMaxLength()) return UpdateResponse.FAIL_TOO_FAR;
 
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, Response.Task.CREATE));
-        return Response.SUCCESS;
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, UpdateResponse.TASK_CREATE_LINK));
+        return UpdateResponse.TASK_CREATE_LINK;
     }
 
     @Override

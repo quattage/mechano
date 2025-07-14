@@ -1,19 +1,21 @@
-package com.quattage.mechano.foundation.catenary;
+package com.quattage.mechano.foundation.catenary.model;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
-import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
-import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
+import com.quattage.mechano.foundation.catenary.Tensionable;
 
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -36,19 +38,46 @@ import net.minecraft.world.phys.Vec3;
  * by applying a basis vector and/or translating the PoseStack, depending on what context you're rendering from.
  * 
  */
-public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
+public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensionable {
 
-    // TODO FLYWHEEL
+    // TODO flywheel and caching
 
     @Nullable
     public Vector3f offset;
     public Tension tension = Tension.AVERAGE;
 
+    // average accumulated velocity as of the last time the wire's shape was updated
+    protected float avgVelocity = 0f;
     public float length = 0f;
     public float maxLength = 32f;
 
+    /**
+     * Dumps the given catenary, nullifying its internal references
+     * and destroying it.
+     * @param cat
+     */
+    public static void dispose(CatenaryModel<?> cat) {
+        if(cat == null) return;
+        cat.offset = null;
+        cat.tension = null;
+        cat.avgVelocity = 0;
+        cat.length = 0;
+        cat.maxLength = 0;
+        cat.destroy();
+        // also nullify flywheel stuff and cache info if i ever do that in the future
+    }
+
     public static Vec3 getLocalizedOffset(LivingEntity e, float pTicks) {
         return e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
+    }
+
+    public static Vec3 getLocalizedOffset(LevelReader world, BlockPos sectionCenter, AnchorPoint anchor) {
+        Vec3 realPos = anchor.getPos(world);
+        return new Vec3(
+            realPos.x - sectionCenter.getX(),
+            realPos.y - sectionCenter.getY(),
+            realPos.z - sectionCenter.getZ()
+        );
     }
 
     public Vec3 getEnd(Vec3 basis) {
@@ -58,7 +87,6 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     public Vector3f getOffset() {
         return offset;
     }
-
 
     /**
      * Changes the offset of this Catenary, which will
@@ -77,15 +105,6 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
      * @return This Catenary for chaining
      */
     public abstract T setOffset(Vec3 start, Vec3 end);
-
-    @SuppressWarnings("unchecked")
-    public T setOffset(AnchorSelector selector) {
-        if(selector == null) return (T)this;
-        if(!selector.hasSelection()) return (T)this;
-        if(AnchorSelector.INSTANCE.lookingRay == null) return (T)this;
-        return setOffset(AnchorSelector.INSTANCE.selected.anchor.getPos(selector.playerHands.player().level()), AnchorSelector.INSTANCE.lookingRay.end);
-    }
-
 
     /**
      * Sets this Catenary's offset to the inverse of
@@ -274,6 +293,23 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
             throw new IllegalStateException("Cannot perform operation on " + this + " - This Catenary is missing a start or end position! (It was either never populated or this Catenary instance was destroyed.)");
     }
 
+
+    /**
+     * throws when this Catenary is not in its initialized state
+     * @throws IllegalStateException 
+     */
+    protected void assertInitialized() {
+        if(!isInitialized())
+            throw new IllegalStateException("Cannot update " + this + " - This Catenary has not been initialized!");
+    }
+
+    /**
+     * @return The average velocity of each point in this Catenary
+     */
+    public float getAverageVelocity() {
+        return avgVelocity;
+    }
+
     @Override
     public Tension getTension() {
         return tension;
@@ -299,9 +335,37 @@ public abstract class Catenary<T extends Catenary<?>> implements Tensionable {
     public abstract SimulatedCatenary toSimulated(boolean pinEnds);
 
     /**
-     * Converts this Catenary to its {@link ParametricCatenary bakeable version}
-     * if possible.
+     * Converts this Catenary to its {@link ParametricCatenary non-simulated version}
+     * if possible. Successful calls to this method will <strong>uninitialize</strong> 
+     * this catenary, making it unusable.
      * @return A (new or preexisting) ParametricCatenary instance
      */
     public abstract ParametricCatenary toParametric();
+
+    /**
+     * Converts this Catenary to its {@link BakedCatenary baked version}
+     * if possible. Successful calls to this method will <strong>uninitialize</strong> 
+     * this catenary, making it unusable.
+     * @return A new BakedCatenary instance
+     */
+    public abstract BakedCatenary bake();
+
+    /**
+     * @return <code>true</code> if this Catenary is 
+     * can be moved at any time without special considerations
+     */
+    public abstract boolean isMovable();
+
+    /**
+     * Determines whether or not this Catenary has reached a state of
+     * restitution. If <code>false</code>, this Catenary is moving
+     * or could move at any time, and should not be baked.
+     * @return <code>true</code> if this Catenary is completely still.
+     */
+    public boolean isResting() {
+        if(!isMovable()) return true;
+        return this.avgVelocity <= CatenaryAttributes.RESTITUTION_VELOCITY;
+    }
+
+    protected abstract void destroy();
 }

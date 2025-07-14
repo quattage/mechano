@@ -4,20 +4,18 @@ import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.MechanoClientEvents;
-import com.quattage.mechano.foundation.api.switchboard.Response;
+import com.quattage.mechano.foundation.api.Griddable.Visual;
 import com.simibubi.create.foundation.gui.RemovedGuiUtils;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.simibubi.create.infrastructure.config.CClient;
 
 import net.createmod.catnip.gui.element.BoxElement;
-import net.createmod.catnip.gui.element.GuiGameElement;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -57,16 +55,16 @@ public class AnchorGuiLayer {
 		poseStack.pushPose();
 
 		int tooltipTextWidth = 0; 
-		for (FormattedText textLine : AnchorSelector.INSTANCE.currentTooltip) {
+		for (FormattedText textLine : AnchorSelector.INSTANCE.getTooltip()) {
 			int textLineWidth = mc.font.width(textLine);
 			if (textLineWidth > tooltipTextWidth)
 				tooltipTextWidth = textLineWidth;
 		}
 
 		int tooltipHeight = 8;
-		if (AnchorSelector.INSTANCE.currentTooltip.size() > 1) {
+		if (AnchorSelector.INSTANCE.getTooltip().size() > 1) {
 			tooltipHeight += 2;
-			tooltipHeight += (AnchorSelector.INSTANCE.currentTooltip.size() - 1) * 10;
+			tooltipHeight += (AnchorSelector.INSTANCE.getTooltip().size() - 1) * 10;
 		}
 
 		int width = graphics.guiWidth();
@@ -99,28 +97,21 @@ public class AnchorGuiLayer {
 			colorBorderBot.scaleAlpha(fade);
 		}
 
-		Item visual = AnchorSelector.INSTANCE.selected.points.getVisual();
-		if(visual != null) {
-		GuiGameElement.of(visual)
-			.at(posX + 10, posY - 16, 450)
-			.render(graphics);
-		}
-
+		Visual vis = AnchorSelector.INSTANCE.getSelectedVisual();
+		if(vis != null) vis.draw(AnchorSelector.INSTANCE.getSelected(), AnchorSelector.INSTANCE.getTooltip(), posX, posY, graphics);
+		
 		poseStack.popPose();
-		RemovedGuiUtils.drawHoveringText(graphics, AnchorSelector.INSTANCE.currentTooltip, posX, posY, width, height, -1, colorBackground.getRGB(),
+		RemovedGuiUtils.drawHoveringText(graphics, AnchorSelector.INSTANCE.getTooltip(), posX, posY, width, height, -1, colorBackground.getRGB(),
 			colorBorderTop.getRGB(), colorBorderBot.getRGB(), mc.font);
 	}
 
 
 	public static boolean shouldRenderOverlay(Minecraft mc) {
-
 		if(MechanoClientEvents.shouldRenderOverlay(mc) 
-			&& AnchorSelector.INSTANCE.hasSelection()
+			&& AnchorSelector.INSTANCE.isSelectedGood()
 			&& AnchorSelector.INSTANCE.hasTooltip() 
-			&& !Response.hidesAnchor(AnchorSelector.INSTANCE.selected.response)
-			&& AnchorSelector.INSTANCE.lookedThisFrame)
+			&& AnchorSelector.INSTANCE.hasLookedThisFrame())
 				return true;
-
 		hoverTicks = 0;
 		lastTarget = null;
 		return false;

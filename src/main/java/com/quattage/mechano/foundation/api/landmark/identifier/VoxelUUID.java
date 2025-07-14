@@ -1,19 +1,22 @@
-package com.quattage.mechano.foundation.api.landmark.classifier;
+package com.quattage.mechano.foundation.api.landmark.identifier;
 
 import java.util.List;
 import java.util.Objects;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -24,6 +27,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class VoxelUUID extends GridUUID {
@@ -33,12 +38,12 @@ public class VoxelUUID extends GridUUID {
 
     public VoxelUUID(BlockPos pos, int index) {
         this.pos = pos;
-        this.index = index;
+        this.index = clampIndex(index);
     }
 
     public VoxelUUID(CompoundTag tag) {
         this.pos = new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
-        this.index = tag.getByte("i");
+        this.index = clampIndex(tag.getByte("i"));
     }
 
     public VoxelUUID(ByteBuf buffer) {
@@ -48,7 +53,7 @@ public class VoxelUUID extends GridUUID {
 
     public VoxelUUID(Dynamic<?> dyn) {
         this.pos = new BlockPos(dyn.get("x").asInt(0), dyn.get("y").asInt(0), dyn.get("z").asInt(0));
-        this.index = dyn.get("i").asInt(0);
+        this.index = clampIndex(dyn.get("i").asInt(0));
     }
 
     @Override
@@ -59,6 +64,15 @@ public class VoxelUUID extends GridUUID {
         for(ServerPlayer sp : playersNearby)
             if(sp.getId() == player.getId()) return true;
         return false;
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be == null) return true;
+        if(!(be instanceof GriddableBlockEntity gbe)) return false;
+        return view.isVisible(gbe.getRenderBoundingBox());
     }
 
     @Override
@@ -108,22 +122,22 @@ public class VoxelUUID extends GridUUID {
     @Override
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
         BlockEntity be = world.getBlockEntity(getBlockPos(world));
-        if(!(be instanceof AnchorPointable aph)) return null;
+        if(!(be instanceof Griddable aph)) return null;
         if(getIndex() < 0 || getIndex() > aph.getAnchors().size()) 
             return null;
         return aph.getAnchor(getIndex());
     }
 
     @Override
-    public @Nullable AnchorPointable<?> getAnchorPoints(LevelReader world) {
+    public @Nullable Griddable<?> getAnchorPoints(LevelReader world) {
         BlockEntity be = world.getBlockEntity(pos);
-        return be instanceof AnchorPointable aph ? aph : null;
+        return be instanceof Griddable aph ? aph : null;
     }
 
     @Override
-    public @Nullable DispatchedAnchorNode getSurrogate(LevelReader world) {
+    public @Nullable SurrogateNode getSurrogate(LevelReader world) {
         BlockEntity be = world.getBlockEntity(pos);
-        if(!(be instanceof AnchorPointable aph)) return null;
+        if(!(be instanceof Griddable aph)) return null;
         return aph.getSurrogate();
     }
 
@@ -194,5 +208,8 @@ public class VoxelUUID extends GridUUID {
         return Objects.hash(getDiscriminatorType(), pos, index);
     }
 
-
+    @Override
+    public String toString() {
+        return "VoxelUUID[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + index + "]";
+    }
 }

@@ -1,21 +1,23 @@
-package com.quattage.mechano.foundation.api.landmark.classifier;
+package com.quattage.mechano.foundation.api.landmark.identifier;
 
 import java.util.Objects;
 import java.util.UUID;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ChunkMap;
@@ -26,41 +28,52 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class EntityUUID extends GridUUID {
 
     private UUID uuid;
     private int index;
-    private @Nullable AnchorPointable<? extends Entity> holder;
+    private @Nullable Griddable<? extends Entity> points;
 
     public EntityUUID(UUID uuid, int index) {
         this.uuid = uuid;
-        this.index = index;
+        this.index = clampIndex(index);
     }
 
     public EntityUUID(CompoundTag tag) {
         this.uuid = tag.getUUID("uid");
-        this.index = tag.getByte("i");
+        this.index = clampIndex(tag.getByte("i"));
     }
 
     public EntityUUID(ByteBuf buffer) {
         this.uuid = new UUID(buffer.readLong(), buffer.readLong());
-        this.index = buffer.readByte();
+        this.index = clampIndex(buffer.readByte());
     }
 
     public EntityUUID(Dynamic<?> dyn) {
         this.uuid = new UUID(dyn.get("uida").asLong(0), dyn.get("uidb").asLong(0));
-        this.index = dyn.get("i").asInt(0);
+        this.index = clampIndex(dyn.get("i").asInt(0));
     }
 
     @Override
     public boolean isBeingTrackedBy(ServerPlayer player) {
         getDataHolder(player.level());
-        if(!(player.level().getChunkSource() instanceof ServerChunkCache chunkCache)) return false;
-        ChunkMap.TrackedEntity tracked = chunkCache.chunkMap.entityMap.get(holder.getSource().getId());
+        if(!(player.level().getChunkSource()instanceof ServerChunkCache chunkCache)) return false;
+        if(points.getSource() instanceof ServerPlayer otherPlayer)
+            if(otherPlayer.getId() == player.getId()) return true;
+        ChunkMap.TrackedEntity tracked = chunkCache.chunkMap.entityMap.get(points.getSource().getId());
         if(tracked == null) return false;
         return tracked.seenBy.contains(player.connection);
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        getDataHolder(world);
+        return points == null ? false : view.isVisible(points.getSource().getBoundingBox());
     }
 
     @Override
@@ -74,24 +87,24 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public @Nullable AnchorPointable<? extends Entity> getAnchorPoints(LevelReader world) {
-        if(holder == null) {
+    public @Nullable Griddable<? extends Entity> getAnchorPoints(LevelReader world) {
+        if(points == null) {
             Entity e = world.isClientSide() 
                 ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
                 : ((ServerLevel)world).getEntity(uuid);
-            holder = GriddableEntityAttachment.of(e, true);
+            points = GriddableEntityAttachment.of(e, true);
         }
-        return holder;
+        return points;
     }
 
     @Override
-    public @Nullable DispatchedAnchorNode getSurrogate(LevelReader world) {
+    public @Nullable SurrogateNode getSurrogate(LevelReader world) {
         return getAnchorPoints(world) == null ? null : getAnchorPoints(world).getSurrogate();
     }
 
     @Override
     public @Nullable IAttachmentHolder getDataHolder(LevelReader world) {
-        return getAnchorPoints(world) == null ? null : holder.getSource();
+        return getAnchorPoints(world) == null ? null : points.getSource();
     }
 
     @Override
@@ -110,30 +123,30 @@ public class EntityUUID extends GridUUID {
 
     @Override
     public float getAttachedSizeFactor(LevelReader world) {
-        return getAnchorPoints(world) == null ? 0 : (float)holder.getSource().getBoundingBox().getSize();
+        return getAnchorPoints(world) == null ? 0 : (float)points.getSource().getBoundingBox().getSize();
     }
 
     @Override
     public boolean isAttachedToPlayer(LevelReader world) {
-        return getAnchorPoints(world) == null ? false : holder.getSource() instanceof Player;
+        return getAnchorPoints(world) == null ? false : points.getSource() instanceof Player;
     }
 
     @Override
     public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {
         if(getAnchorPoints(world) == null) return;
-        holder.getSource().setDeltaMovement(retainVelocity ? holder.getSource().getDeltaMovement().add(force) : force);
+        points.getSource().setDeltaMovement(retainVelocity ? points.getSource().getDeltaMovement().add(force) : force);
     }
 
     @Override
     public Vec3 getAttachmentVelocity(LevelReader world) {
         if(getAnchorPoints(world) == null) return Vec3.ZERO;
-        return holder.getSource().getDeltaMovement();
+        return points.getSource().getDeltaMovement();
     }
 
     @Override
     public void setAttachmentVelocity(LevelReader world, Vec3 vec) {
         if(getAnchorPoints(world) == null) return;
-        holder.getSource().setDeltaMovement(vec);
+        points.getSource().setDeltaMovement(vec);
     }
 
     @Override
@@ -153,7 +166,7 @@ public class EntityUUID extends GridUUID {
 
     @Override
     public Vec3 getPos(LevelReader world, float pTicks) {
-        return getAnchorPoints(world) == null ? Vec3.ZERO : holder.getSource().getPosition(pTicks);
+        return getAnchorPoints(world) == null ? Vec3.ZERO : points.getSource().getPosition(pTicks);
     }
 
     @Override
@@ -163,7 +176,7 @@ public class EntityUUID extends GridUUID {
 
     @Override
     public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) {
-        return getAnchorPoints(world) == null ? Vec3.ZERO : holder.getSource().getRopeHoldPosition(pTicks);
+        return getAnchorPoints(world) == null ? Vec3.ZERO : points.getSource().getRopeHoldPosition(pTicks);
     }
 
     @Override
@@ -192,11 +205,6 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public String toString() {
-        return "EntityUUID[" + uuid + ", " + index + "]";
-    }
-
-    @Override
     public boolean equals(Object obj) {
         if(this == obj) return true;
         if(!(obj instanceof EntityUUID that)) return false;
@@ -206,5 +214,10 @@ public class EntityUUID extends GridUUID {
     @Override
     public int hashCode() {
         return Objects.hash(getDiscriminatorType(), uuid, index);
+    }
+
+    @Override
+    public String toString() {
+        return "EntityUUID[" + uuid + ", " + index + "]";
     }
 }

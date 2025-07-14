@@ -1,7 +1,7 @@
 
 package com.quattage.mechano.foundation.catenary;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -11,17 +11,21 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
-import com.quattage.mechano.foundation.catenary.meshing.MeshExtruder;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Stick;
+import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
+import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
+import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import net.minecraft.Util;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.data.models.blockstates.PropertyDispatch.QuadFunction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.LevelReader;
 
 public class CatenaryAttributes {
 
@@ -37,11 +41,13 @@ public class CatenaryAttributes {
     public static final float KINEMATIC_SOFT = 0.9f;
     public static final float KINEMATIC_DAMP = 0.6f;
     public static final float DETACH_THRESHOLD = 0.6f;
+    public static final float RESTITUTION_VELOCITY = 0.004f;
 
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
-    public static final Function<TransmitterType<?>, RenderType> SOLID_MATERIAL = Util.memoize(trns -> {
+    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL = Util.memoize((trns, chunk) -> {
+        if(chunk) return RenderType.SOLID;
         RenderType.CompositeState composite = RenderType.CompositeState.builder()
             .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
             .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
@@ -55,7 +61,8 @@ public class CatenaryAttributes {
         return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
     });
 
-    public static final Function<TransmitterType<?>, RenderType> CUTOUT_MATERIAL = Util.memoize(trns -> {
+    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> CUTOUT_MATERIAL = Util.memoize((trns, chunk) -> {
+        if(chunk) return RenderType.CUTOUT;
         RenderType.CompositeState composite = RenderType.CompositeState.builder()
             .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_CUTOUT_SHADER)
             .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
@@ -78,6 +85,56 @@ public class CatenaryAttributes {
             .as(ModelType.SQUARE)
             .withThickness(Thickness.TRIPLE)
             .withTension(Tension.AVERAGE);
+
+
+
+    public static enum Initializer {
+        FRESH_PARMETRIC((world, start, end, trns) -> {
+            CatenaryModel<?> output = new ParametricCatenary()
+                .setOffset(start.getPos(world), end.getPos(world));
+            output.maxLength = trns.getMaxLength();
+            output.setTension(trns.defaults.getTension());
+            output.update();
+            return output;
+        }),
+        FRESH_SIMULATION((world, start, end, trns) -> {
+            CatenaryModel<?> output = new SimulatedCatenary()
+                .setOffset(start.getPos(world), end.getPos(world))
+                .initialize();
+            output.maxLength = trns.getMaxLength();
+            output.setTension(trns.defaults.getTension());
+            return output;
+        }),
+        RESTING_SIMULATION((world, start, end, trns) -> {
+            CatenaryModel<?> output = new ParametricCatenary()
+                .setOffset(start.getPos(world), end.getPos(world));
+            output.maxLength = trns.getMaxLength();
+            output.setTension(trns.defaults.getTension());
+            output.update();
+            output = output.toSimulated(true);
+            output.updateAhead(256);
+            return output;
+        }),
+        RESTING_SIMULATION_BAKED((world, start, end, trns) -> {
+            CatenaryModel<?> output = new ParametricCatenary()
+                .setOffset(start.getPos(world), end.getPos(world));
+            output.maxLength = trns.getMaxLength();
+            output.setTension(trns.defaults.getTension());
+            output.update();
+            output = output.toSimulated(true);
+            output.updateAhead(256);
+            output = output.bake();
+            return output;
+        });
+
+        private final QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func;
+        private Initializer(QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func) { 
+            this.func = func; 
+        }
+        public CatenaryModel<?> make(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns) { 
+            return func.apply(world, start, end, trns); 
+        }
+    }
 
     public static enum ModelType {
 
@@ -106,32 +163,36 @@ public class CatenaryAttributes {
         NO_DRAW(null, null);
 
         public final @Nullable MeshExtruder profile;
-        private final @Nullable Function<TransmitterType<?>, RenderType> mat;
+        private final @Nullable BiFunction<TransmitterType<?>, Boolean, RenderType> mat;
 
-        private ModelType(Function<TransmitterType<?>, RenderType> materialGetter, MeshExtruder extruder) {
+        private ModelType(BiFunction<TransmitterType<?>, Boolean, RenderType> materialGetter, MeshExtruder extruder) {
             this.profile = extruder;
             this.mat = Util.memoize(materialGetter);
         }
 
-        public @Nullable RenderType getShader(TransmitterType<?> type) {
+        public @Nullable RenderType getMaterial(TransmitterType<?> type) {
+            return getMaterial(type, false);
+        }
+
+        public @Nullable RenderType getMaterial(TransmitterType<?> type, boolean chunk) {
             if(profile == null) return null;
-            if(type == null) return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+            if(type == null) return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR, chunk);
             ResourceLocation loc = TransmitterRegistry.INSTANCE.getKey(type);
             if(mat == null) {
                 Mechano.LOGGER.warn("No valid RenderType could be found for transmitter '" + loc + "' (Model type '" + this + "')");
-                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR, chunk);
             }
-            RenderType shader = mat.apply(type);
+            RenderType shader = mat.apply(type, chunk);
             if(shader == null) {
                 Mechano.LOGGER.warn("No valid RenderType could be found for transmitter '" + loc + "'");
-                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR);
+                return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR, chunk);
             }
             return shader;
         }
 
         public MeshExtruder getProfile() {
             if(profile == null)
-                throw new UnsupportedOperationException("Extruder for " + this.name() + " has not yet been implemented!");
+                Mechano.LOGGER.warn("Attempted to get extruder with no implementation for member '" + this.name() + "'");
             return profile;
         }
     }
@@ -179,7 +240,7 @@ public class CatenaryAttributes {
         }
 
         public @Nullable RenderType getShaderFor(TransmitterType<?> type) {
-            return model.getShader(type);
+            return model == null ? RenderType.SOLID : model.getMaterial(type);
         }
     }
 

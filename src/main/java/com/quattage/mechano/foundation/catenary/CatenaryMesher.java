@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -9,12 +9,11 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.catenary.Catenary;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.ModelType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Thickness;
+import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.theme.Color;
@@ -28,6 +27,7 @@ import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
 /**
  * This class is a central place for managing mutable vertex data
@@ -45,7 +45,7 @@ import net.minecraft.world.phys.Vec3;
  * Since this is essentially just a wrapper for all kinds of data related
  * to pushing vertices, geometric operations that use this class
  * can reap the benefits of significantly smaller method headers,
- * such as {@link MeshExtruder} and {@link Catenary#render}
+ * such as {@link MeshExtruder} and {@link CatenaryModel#render}
  */
 public class CatenaryMesher extends CatenaryAttributeHolder {
 
@@ -107,7 +107,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
      */
     public CatenaryMesher withAppearance(TransmitterType<?> type) {
         this.model = type.defaults.model;
-        this.material = this.model.getShader(type);
+        this.material = this.model.getMaterial(type);
         if(this.material == null)
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has no configured material!");
         this.thick = type.defaults.getThickness();
@@ -174,6 +174,30 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return this;
     }
 
+    /**
+     * Inherits all defaulted properties of the given 
+     * TransmitterType, including tension, thickness, and material.
+     * Configures atlas and material settings for compatability with
+     * chunk injection.
+     * @param type
+     * @return
+     */
+    public CatenaryMesher withAppearanceForChunkRendering(TransmitterType<?> type) {
+        this.model = type.defaults.model;
+        this.material = this.model.getMaterial(type, true);
+        if(this.material == null)
+            throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has no configured material!");
+        this.thick = type.defaults.getThickness();
+        if(Thickness.ZERO.equals(this.thick))
+            throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has a thickness of zero!");
+        this.data[0] = thick.half();
+        data[41] = thick.getPixels();
+        this.tension = type.defaults.getTension();
+        this.atlas = type.getSprite();
+        useAtlas();
+        return this;
+    }
+
     public CatenaryMesher ignoreAtlas() {
         this.useTextureAtlas = false;
         return this;
@@ -231,7 +255,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, Vec3 localOffset, float pTicks) {
+    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, CatenaryModel<?> model, Vec3 localOffset, float pTicks) {
         if(localOffset == null) localOffset = new Vec3(0, 0, 0);
         VertexConsumer buffer = buffers.getBuffer(material);
         matrixStack.pushPose();
@@ -253,7 +277,31 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
      * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
      * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
      */
-    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, Catenary<?> model, float pTicks) {
+    public CatenaryMesher render(SectionRenderingContext ctx, CatenaryModel<?> model, Vec3 localOffset, float pTicks) {
+        if(localOffset == null) localOffset = new Vec3(0, 0, 0);
+        if(!model.isInitialized()) throw new IllegalStateException("Couldn't render Catenary " + model + " - This model is not initialized!");
+        VertexConsumer buffer = ctx.getOrCreateChunkBuffer(material);
+        PoseStack matrixStack = ctx.getPoseStack();
+        matrixStack.pushPose();
+        matrixStack.translate(localOffset.x, localOffset.y, localOffset.z);
+        model.render(buffer, matrixStack.last(), this, pTicks);
+        matrixStack.popPose();
+        return this;
+    }
+
+    /**
+     * Renders the geometry in this holder to the {@link RenderType} from the provided
+     * {@link TransmitterRegistry Transmitter}. Vertices are automatically
+     * submitted to the buffer associated with the supplied transmitter.
+     * <p> For rendering to the chunk with BlockAtlas support, see {@link #renderFromAtlas}
+     * 
+     * @param buffers Buffers to render to. 
+     * @param matrixStack matrixStack to use for transformations
+     * @param model WireModel to render. This model must be initialized to render properly.
+     * @param localOffset (Optional) The local offset of the model relative to <code>matrixStack.last()</code>.
+     * @param pTicks Partial ticks, usually accessible from a higher-level rendering context.
+     */
+    public CatenaryMesher render(MultiBufferSource buffers, PoseStack matrixStack, CatenaryModel<?> model, float pTicks) {
         return render(buffers, matrixStack, model, null, pTicks);
     }
 
@@ -579,7 +627,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
      * All coordinates for both Points and Sticks fall within the parent
      * wire's Local frame of reference. This point's position vector
      * does NOT represent a point in the world. For more information, 
-     * read the javadoc attached to {@link Catenary}
+     * read the javadoc attached to {@link CatenaryModel}
      */
     public static class Point {
 
@@ -635,7 +683,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
      * <h2>Important Note:</h2>
      * All coordinates for both Points and Sticks fall within the parent
      * wire's Local frame of reference. For more information, 
-     * read the javadoc attached to {@link Catenary}
+     * read the javadoc attached to {@link CatenaryModel}
      */
     public static class Stick {
 

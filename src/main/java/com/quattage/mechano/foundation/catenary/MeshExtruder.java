@@ -1,25 +1,25 @@
-package com.quattage.mechano.foundation.catenary.meshing;
+package com.quattage.mechano.foundation.catenary;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Stick;
 
 @FunctionalInterface
 public interface MeshExtruder {
     /**
-     * Defines a scheme/paradigm for winding a {@link Stick} into an 
-     * extruded geometric profile. Implementations define the particular 
-     * shape and winding order of the resulting geometry. The resulting 
-     * quads are pushed to the given <code>buffer</code>. The stick, 
-     * called <code>current</code>, has 4 or more vertices placed at 
-     * each of its endpoints. The offset positions of these vertices are 
-     * averaged across the adjacent sticks, <code>previous</code> and 
-     * <code>next</code>, so that adjacent profiles line up exactly at 
-     * their ends. Alternatively, endpoint averaging can be ignored by 
-     * simply passing  <code>null</code> in place of either adjacent 
-     * stick.
+     * Defines a method for lofting a profile across a  given 
+     * {@link Stick}. Implementations can define unique geometry,
+     * lighting, and normal behaviours for the resulting geometry.
+     * The stick, called <code>current</code>, has 4 or more 
+     * vertices placed at each of its endpoints. The offset 
+     * positions of these vertices are averaged across the 
+     * adjacent sticks, <code>previous</code> and 
+     * <code>next</code>, so that adjacent profiles line up 
+     * exactly at their ends. Alternatively, endpoint averaging 
+     * can be ignored by simply passing  <code>null</code> in 
+     * place of either adjacent stick.
      * @param buffer VertexConsumer to push geometry to
      * @param pose Pose to use for transforming
      * @param geo {@link CatenaryMesher} to store and process vertex data

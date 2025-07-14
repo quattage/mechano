@@ -7,11 +7,10 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.catenary.Catenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Point;
-import com.quattage.mechano.foundation.catenary.meshing.CatenaryMesher.Stick;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
+import com.quattage.mechano.foundation.catenary.CatenaryMesher.Stick;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -19,10 +18,7 @@ import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.world.phys.Vec3;
 
-public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
-
-    // average accumulated velocity as of the last time the wire was simulated
-    public float avgVelocity = 0;
+public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     private float segmentTF = 0f;
 
@@ -170,13 +166,13 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
             lastPos.set(point.pos);
             Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
             vel.sub(gravity);
-            avgVelocity += vel.length();
+            this.avgVelocity += vel.length();
             point.pos.add(vel);
             point.lastPos.set(lastPos);
         }
 
-        avgVelocity /= points.size();
-        if(Float.isNaN(avgVelocity)) {
+        this.avgVelocity /= points.size();
+        if(Float.isNaN(this.avgVelocity)) {
             Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
             initialize();
             return;
@@ -217,10 +213,11 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
     public void updateAhead(int steps) {
         for(int x = 0; x < steps; x++) {
             update();
-            if(avgVelocity <= CatenaryAttributes.TENSION_EPSILON)
-                return;
+            if(isResting()) return;
         }
-        Mechano.LOGGER.warn("Catenary simulation (" + length + "m) couldn't reach a state of restitution in " + steps + " iterations.");
+        float arclength = 0;
+        for(Stick s : sticks) arclength += s.length;
+        Mechano.LOGGER.warn("Catenary simulation (" + length + " meters, " + arclength + " arcmeters) couldn't reach a state of restitution in " + steps + " iterations.");
     }
 
     @Override
@@ -281,7 +278,6 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
         return out;
     }
 
-    // sanity checks for baked vs realtime state
     private void assertSimulatable() {
         if(points == null || sticks == null)
             throw new IllegalStateException("Cannot integrate " + this + " - This Catenary has not been initialized!");
@@ -295,13 +291,36 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
 
     @Override
     public ParametricCatenary toParametric() {
+        assertHasOffset();
+        assertInitialized();
         ParametricCatenary parametric = new ParametricCatenary();
         parametric.offset = this.offset;
         parametric.tension = this.tension;
         parametric.length = this.length;
+        parametric.maxLength = this.maxLength;
+        parametric.avgVelocity = this.avgVelocity;
         this.points = null;
         this.sticks = null;
         return parametric;
+    }
+
+    @Override
+    public BakedCatenary bake() {
+        assertHasOffset();
+        assertInitialized();
+        BakedCatenary baked = new BakedCatenary(offset, sticks);
+        baked.length = this.length;
+        baked.tension = this.tension;
+        baked.maxLength = this.maxLength;
+        baked.avgVelocity = 0;
+        this.points = null;
+        this.sticks = null;
+        return baked;
+    }
+
+    @Override
+    public boolean isMovable() {
+        return true;
     }
 
     @Override
@@ -312,5 +331,12 @@ public class SimulatedCatenary extends Catenary<SimulatedCatenary> {
     @Override
     public float getMaxLength() {
         return maxLength;
+    }
+
+    @Override
+    public void destroy() {
+        this.points = null;
+        this.sticks = null;
+        this.segmentTF = 0;
     }
 }

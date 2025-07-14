@@ -15,7 +15,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implements BlockEntityRenderer<T> {
 
-    
     public GriddableBlockEntityRenderer(Context context) {}
 
     @Override
@@ -46,7 +45,7 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
         pgbe.getAnchors().forEach(anchor -> {
             float distance = (float)anchor.distanceTo(player);
             if(distance > reach * 1.5f) return;
-            AnchorSelector.INSTANCE.track(pgbe, anchor, distance);
+            AnchorSelector.INSTANCE.trackForThisFrame(pgbe, anchor, distance);
         });
     }
 }

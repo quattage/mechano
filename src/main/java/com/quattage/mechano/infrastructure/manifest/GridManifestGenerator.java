@@ -11,13 +11,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBuildParameters;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -110,9 +110,9 @@ public class GridManifestGenerator {
     private String collectNodeInfo(LevelReader world, GridNode node) {
 
         String out = "\t┌ ▣ " + node.getAddress().toString(world) + ":  ";
-        out += "\n\t┆\t" + (node.isValid() ? "☑ Valid" : "☒ Invalid (See below for details)");
+        out += "\n\t┆\t" + (node.hasLinks() ? "☑ Valid" : "☒ Invalid (See below for details)");
         out += "\n\t┆\t▸ Owned by Matrix " + node.getOwner().gridIndex;
-        AnchorPointable<?> points = node.getAnchorPoints();
+        Griddable<?> points = node.getAnchorPoints();
         out += "\n\t┆\t▸ Bound to: ";
 
         if(node.getOwner() != null) {
@@ -127,7 +127,7 @@ public class GridManifestGenerator {
 
         out += "\n\t┆\t▸ Data scope: " + node.getAddress().getDataHolder(world).getClass().getSimpleName();
         out += "\n\t┆\t⌕ Dispatch: ";
-        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced() ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().gridIndex) : "no accelerated reference");
+        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced(world) ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().gridIndex) : "no accelerated reference");
         out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());
         out += "\n\t┆\t☍ Links:";
 

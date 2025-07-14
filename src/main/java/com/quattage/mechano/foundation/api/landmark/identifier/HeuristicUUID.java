@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.landmark.classifier;
+package com.quattage.mechano.foundation.api.landmark.identifier;
 
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 

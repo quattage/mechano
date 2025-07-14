@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.foundation.api.ServerMatrix;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.nbt.CompoundTag;
@@ -33,6 +33,10 @@ public class NodeMap implements Iterable<GridNode> {
         this.map = nodes;
     }
 
+    public NodeMap(int preload) {
+        this.map = new Object2ObjectOpenHashMap<>(preload);
+    }
+
     @Override
     public boolean equals(Object o) {
         if(o == this) return true;
@@ -48,7 +52,7 @@ public class NodeMap implements Iterable<GridNode> {
     public ListTag write() {
         ListTag output = new ListTag();
         for(GridNode node : map.values()) {
-            if(node == null || !node.isValid()) continue;
+            if(node == null) continue;
             output.add(node.writeTo(new CompoundTag()));
         }
         return output;
@@ -68,8 +72,6 @@ public class NodeMap implements Iterable<GridNode> {
      * @return <code>true</code> if this NodeMap didn't already contain the given node
      */
     public boolean add(GridNode node) {
-        if(!node.isValid())
-            throw new IllegalArgumentException("Attempted to add invalid node " + node + " to NodeMap!");
         return map.put(node.getAddress(), node) != null;
     }
 

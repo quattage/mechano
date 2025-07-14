@@ -6,6 +6,10 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
+/**
+ * funny lil thing
+ * TODO what happens if the player rebinds left click lol
+ */
 public interface LeftClickCapturable {
     /**
      * Fired by the {@link MechanoClientEvents#onLeftClick client event}

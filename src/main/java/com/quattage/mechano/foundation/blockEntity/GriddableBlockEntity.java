@@ -1,24 +1,24 @@
 package com.quattage.mechano.foundation.blockEntity;
 
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.anchor.DispatchedAnchorNode;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.VoxelUUID;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 
+import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public abstract class GriddableBlockEntity extends ElectricBlockEntity implements AnchorPointable<BlockEntity> {
+public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity> {
 
     // always empty on the server
     private AnchorArray anchors = AnchorArray.EMPTY;
-    private final DispatchedAnchorNode surrogate = new DispatchedAnchorNode(this);
+    private final SurrogateNode surrogate = new SurrogateNode(this);
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -70,12 +70,12 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    public GridUUID createAddress() {
+    public GridUUID getOrCreateAddress() {
         return new VoxelUUID(getBlockPos(), 0);
     }
 
     @Override
-    public DispatchedAnchorNode getSurrogate() {
+    public SurrogateNode getSurrogate() {
         return surrogate;
     }
 
@@ -85,8 +85,12 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    public Item getVisual() {
-        return getBlockState().getBlock().asItem();
+    public Visual getVisual() {
+        return (selected, tooltip, posX, posY, graphics) -> {
+            GuiGameElement.of(getBlockState().getBlock().asItem())
+			.at(posX + 10, posY - 16, 450)
+			.render(graphics);
+		};
     }
 
     @Override

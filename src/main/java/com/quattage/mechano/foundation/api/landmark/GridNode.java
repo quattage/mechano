@@ -2,113 +2,162 @@ package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.ServerMatrix;
-import com.quattage.mechano.foundation.api.anchor.AnchorPointable;
-import com.quattage.mechano.foundation.api.landmark.classifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.classifier.UUIDDiscriminator;
-import com.quattage.mechano.foundation.api.switchboard.AnchorPointSyncPacket;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.UpdateResponse.AnchorSyncHolder;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.LevelReader;
 
 /**
- * A GridNode is a functional implementation of {@link GridIdentifier} and provides 
- * access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
- * Nodes are hashed by <code>X, Y, Z, and I</code>, where <code>XYZ</code> describes the 
- * position in the world, and <code>I</code> is the index of the node at that block 
- * position. Multiple nodes may occupy the same block.
+ * A GridNode is the primary functional element of the {@link SidedGridDispatcher Grid API} 
+ * and provides access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
  */
 public class GridNode implements Iterable<GridLink> {
 
+    private final ServerMatrix owner;
+
     // all fields are null if this GridNode has been destroyed
-    private @Nullable ServerMatrix owner;
-    private @Nullable AnchorPointable<?> points;
+    private @Nullable Griddable<?> host;
     private @Nullable GridUUID address;
     private @Nullable ObjectArrayList<GridLink> links = new ObjectArrayList<>();
 
 
-    public GridNode(ServerMatrix owner, AnchorPointable<?> points, GridUUID address) {
-        Objects.requireNonNull(owner);
+    public static @Nullable GridNode getFrom(LevelReader world, GridUUID addr, @Nullable Griddable<?> points) {
+        Objects.requireNonNull(world);
+        Objects.requireNonNull(addr);
+        if(world.isClientSide()) return null;
+        if(points == null) return null;
+        SurrogateNode surrogate = points.getSurrogate();
+        if(surrogate == null) return null;
+        if(!surrogate.isSynced(world)) return null;
+        ServerMatrix matrix = surrogate.getOwnerMatrix();
+        if(matrix == null || matrix.nodes == null) return null;
+        return matrix.nodes.get(addr);
+    }
+
+    /**
+     * Gets the node at the given address, or creates a new one if
+     * no node at this address exists.
+     * <p>
+     * Note that if the returned GridNode is newly created, it will be blank. 
+     * Blank GridNodes that have no links should not persist in the LocalMatrix 
+     * for long, since they represent dead ends.
+     * @param instantiator The ServerMatrix that is responsible for calling this method. This matrix will be searched
+     * for the provided address.
+     * @param address Address to get or add (Compatable with any type outlined by {@link NodeMap#get})
+     * @param log <code>true</code> if calls to this method should produce error logs when things go wrong
+     * @return A (new or preexisting) GridNode at the specified address.
+     * @throws NullPointerException if any field is null
+     * @throws IllegalStateException if <code>instantiator</code> has been {@link ServerMatrix#destroy destroyed.}
+     */
+    public static @Nullable GridNode getOrCreateOnLoad(ServerMatrix instantiator, GridUUID address, boolean log) {
+        Objects.requireNonNull(instantiator);
+        Objects.requireNonNull(address);
+        instantiator.assertNotDestroyed();
+        GridNode node = instantiator.nodes.get(address);
+        if(node != null) return node;
+        Griddable<?> points = address.getAnchorPoints(instantiator.getWorld());
+        if(points == null) {
+            if(log) Mechano.LOGGER.error("Failed to instantiate provisional node at " + address 
+                + " - No in-world reference to this address could be found!");
+            return null;
+        }
+        node = new GridNode(instantiator, points, address);
+        instantiator.nodes.add(node);
+        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        AnchorSyncHolder.of(node).sendToClients();
+        return node;
+    }
+
+    /**
+     * Gets the node at the given address, or creates a new one if
+     * no node at this address exists. Takes in a reference to 
+     * a constituent {@link Griddable} to search for pre-existing nodes.
+     * <p>
+     * Note that if the returned GridNode is newly created, it will be blank. 
+     * Blank GridNodes that have no links should not persist in the LocalMatrix 
+     * for long, since they represent dead ends.
+     * @param instantiator The ServerMatrix that is responsible for calling this method. This matrix will be searched
+     * for the provided address.
+     * @param address Address to get or add (Compatable with any type outlined by {@link NodeMap#get})
+     * @return A (new or preexisting) GridNode at the specified address.
+     * @throws NullPointerException if any field is null
+     * @throws IllegalStateException if the ServerMatrix belonging to <code>points</code> has been {@link ServerMatrix#destroy destroyed.}
+     * @throws IllegalArgumentException if <code>points</code> is not synced or has no valid surrogate
+     */
+    public static @Nullable GridNode getOrCreate(ServerMatrix instantiator, Griddable<?> points, GridUUID address) {
         Objects.requireNonNull(points);
         Objects.requireNonNull(address);
+        if(points.getSurrogate() == null || !points.getSurrogate().isSynced(points.getWorld())) {
+            throw new IllegalArgumentException("Failed while retrieving GridNode at " + (points.getWorld() == null ? address.toString() 
+            : address.toString(points.getWorld())) + " - The Griddable instance provided is not synced!");
+        }
+        instantiator.assertNotDestroyed("Failed while retrieving GridNode at " + (points.getWorld() == null ? address.toString() 
+            : address.toString(points.getWorld())) + " - The matrix bound to the provided surrogate has been destroyed!");
+        GridNode node = instantiator.nodes.get(address);
+        if(node != null) return node;
+        node = new GridNode(instantiator, points, address);
+        instantiator.nodes.add(node);
+        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        AnchorSyncHolder.of(node).sendToClients();
+        return node;
+    }
+
+    public static GridNode createNew(ServerMatrix instantiator, Griddable<?> points, GridUUID address) {
+        Objects.requireNonNull(instantiator);
+        Objects.requireNonNull(address);
+        Objects.requireNonNull(points);
+        GridNode node = new GridNode(instantiator, points, address);
+        instantiator.nodes.add(node);
+        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        return node;
+    }
+
+    private GridNode(ServerMatrix owner, Griddable<?> points, GridUUID address) {
         this.owner = owner;
-        this.points = points;
+        this.host = points;
         this.address = address;
     }
 
-    public GridNode(ServerMatrix owner, AnchorPointable<?> points) {
-        Objects.requireNonNull(owner);
-        Objects.requireNonNull(points);
-        Objects.requireNonNull(address);
-        this.owner = owner;
-        this.points = points;
-        this.address = points.createAddress();
-    }
-
-    /**
-     * Removes all links from this GridNode that point to the given
-     * ending address
-     * @param destroyer Entity responsible for removing the links
-     * @param address
-     */
-    public void removeLinksInvolving(@Nullable Entity destroyer, GridUUID address) {
+    public void syncToClients() {
         assertNotDestroyed();
-        Iterator<GridLink> linksIterator = links.iterator();
-        while(linksIterator.hasNext()) {
-            GridLink link = linksIterator.next();
-            if(link.endsWith(address) || !link.startsWith(this.getAddress())) {
-                linksIterator.remove();
-                link.getTransmitter().onConnectionDestroyed(owner.getWorld(), destroyer, link);
-                points.onConnectionDestroyed(owner.getWorld(), link);
-            }
-        }
-        if(links.isEmpty()) points.getSurrogate().destroy();
+        AnchorSyncHolder.of(this).sendToClients();
     }
 
-    /**
-     * Removes every link that involves this GridNode, from both itself
-     * and all other GridNodes that reference this one.
-     * @param notify
-     */
-    public void wipeLinks(boolean notify) {
+    public int getLinkCount() {
         assertNotDestroyed();
-        Iterator<GridLink> linksIterator = links.iterator();
-        while(linksIterator.hasNext()) {
-            GridLink link = linksIterator.next();
-            linksIterator.remove();
-            if(!notify) continue;
-            link.getTransmitter().onConnectionDestroyed(owner.getWorld(), null, link);
-            points.onConnectionDestroyed(owner.getWorld(), link);
-        }
-        points.getSurrogate().destroy();
+        return links == null ? 0 : links.size();
     }
 
-    public CompoundTag writeTo(CompoundTag in) {
+    public GridNode prime(int size) {
         assertNotDestroyed();
-        UUIDDiscriminator.write(address, in);
-        ListTag serializedLinks = new ListTag();
-        for(GridLink link : links)
-            serializedLinks.add(link.writeTo(new CompoundTag()));
-        in.put("links", serializedLinks);
-        return in;
+        links.ensureCapacity(size);
+        return this;
     }
 
-    public boolean isValid() {
-        return true;
+    public GridNode trim() {
+        assertNotDestroyed();
+        links.trim();
+        return this;
     }
 
     public ServerMatrix getOwner() {
         return owner;
     }
 
-    public AnchorPointable<?> getAnchorPoints() {
-        return points;
+    public Griddable<?> getAnchorPoints() {
+        return host;
     }
 
     public GridUUID getAddress() {
@@ -116,35 +165,7 @@ public class GridNode implements Iterable<GridLink> {
     }
 
     public boolean hasLinks() {
-        return links.size() > 0;
-    }
-
-    public void notifyHost() {
-        if(points == null) return;
-        Connection.sendToClientsTracking(address, null, new AnchorPointSyncPacket(address, (byte)(links.size() - 128), true));
-    }
-
-    public int getLinkCount() {
-        return links == null ? 0 : links.size();
-    }
-
-    public GridNode prime(int size) {
-        links.ensureCapacity(size);
-        return this;
-    }
-
-    public GridNode trim() {
-        links.trim();
-        return this;
-    }
-
-    public void addLink(GridLink link) {
-        if(link.getStart().equals(this.getAddress())) {
-            links.add(link);
-            return;
-        }
-        throw new IllegalArgumentException("Attempted to add invalid link [" + link.getStart().toString(owner.getWorld()) 
-            + " -> " + link.getEnd().toString(owner.getWorld()) + "] - Unmatched source for GridNode at " + getAddress().toString(owner.getWorld()));
+        return links != null && links.size() > 0;
     }
 
     public boolean hasLink(GridLink link) {
@@ -157,21 +178,41 @@ public class GridNode implements Iterable<GridLink> {
         return links.iterator();
     }
 
-    public void forEachLink(Consumer<GridLink> cons) {
-        assertNotDestroyed();
-        for(int x = 0; x < links.size(); x++)
-            cons.accept(links.get(x));
+    public void assertNotDestroyed() {
+        assertNotDestroyed("An operation attempted to run on a GridNode that has already been destroyed. (This Node has potentially leaked!)");
     }
 
-    private void assertNotDestroyed() {
-        if(owner == null || points == null || links == null)
-            throw new IllegalStateException("An operation attempted to run on a GridNode that has already been destroyed. (This Node has potentially leaked!)");
+    protected void assertNotDestroyed(String message) {
+        if(host == null || links == null)
+            throw new IllegalStateException(message);
     }
 
     public void nullify() {
-        this.owner = null;
-        this.points = null;
+        this.host = null;
         this.links = null;
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        assertNotDestroyed();
+        UUIDDiscriminator.write(address, in);
+        ListTag serializedLinks = new ListTag();
+        for(GridLink link : links)
+            serializedLinks.add(link.writeTo(new CompoundTag()));
+        in.put("links", serializedLinks);
+        return in;
+    }
+
+    public void addLink(GridLink link) {
+        assertNotDestroyed();
+        if(!link.getStart().equals(this.getAddress())) {
+            throw new IllegalArgumentException("Attempted to add invalid link [" + link.getStart().toString(owner.getWorld()) 
+            + " -> " + link.getEnd().toString(owner.getWorld()) + "] - Unmatched source for GridNode at " + getAddress().toString(owner.getWorld()));
+        }
+        if(links.contains(link)) {
+            Mechano.LOGGER.warn("Skipped the addition of a repeat link [" + link.getStart().toString(owner.getWorld()) + " -> " + link.getEnd().toString(owner.getWorld()) + "]");
+            return;
+        }
+        links.add(link);
     }
 
     @Override

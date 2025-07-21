@@ -5,7 +5,7 @@ import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.catenary.CatenariesAccessor;
+import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
@@ -50,7 +50,7 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static <T extends LivingEntity, M extends EntityModel<T>> void onRenderLiving(RenderLivingEvent.Pre<T, M> evt) {
         LivingEntity e = evt.getEntity();
-        for(GridCatenary cat : ((CatenariesAccessor)e).getCatenaries()) {
+        for(GridCatenary cat : ((CatenaryAccessor)e).getCatenaries()) {
             if(!cat.hasPoints()) continue;
             cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
         }
@@ -69,7 +69,7 @@ public class MechanoClientEvents {
         LocalPlayer player = instance.player;
         if(player == null) return;
 
-        for(GridCatenary cat : ((CatenariesAccessor)player).getCatenaries()) {
+        for(GridCatenary cat : ((CatenaryAccessor)player).getCatenaries()) {
             if(!cat.hasPoints()) continue;
             cat.renderDynamicFirstPerson(player, Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
         }

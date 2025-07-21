@@ -10,14 +10,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
@@ -148,37 +147,28 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @param end
      */
     public void destroyLink(GridUUID start, GridUUID end) {
-        
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
         if(start.equals(end)) {
             throw new IllegalArgumentException("A call to destroyLink() was made with identical start and end points! (" 
                 + start + ") - For now, this condition results in a hard throw, so report this if you see it thanks" );
         }
-
         Griddable<?> startPoints = start.getAnchorPoints(world);
         Griddable<?> endPoints = end.getAnchorPoints(world);
-
         if(!Griddable.assertPairExists(startPoints, endPoints, start, end))
             return;
-
         GridNode startNode = GridNode.getFrom(getWorld(), start, startPoints);
         GridNode endNode = GridNode.getFrom(getWorld(), end, endPoints);
-
-        final ConnectionKey link = new ConnectionKey(start, end);        
-        final Set<GridUUID> empties = new HashSet<>();
-
         if(startNode == null && endNode == null) {
             Mechano.LOGGER.error("Failed to destroy a link from " + start.toString(getWorld()) + " to " 
                 + end.toString(getWorld()) + " - Neither address contains an in-world Griddable!");
             return;
-        } 
-        
-        startNode.getOwner().removeLinksInvolving(endNode, empties, false);
-        endNode.getOwner().removeLinksInvolving(startNode, empties, false);
-        link.removeFrom(getWorld());
-        link.sendToClientsTracking(LinkResponsePacket.of(startNode, endNode, null, UpdateResponse.TASK_DESTROY_LINK));
-        endNode.getOwner().cleanup(empties, true);
+        }
+        final Set<GridUUID> empties = new HashSet<>();
+        GridLink removed = startNode.getOwner().deLink(startNode, endNode, empties);
+        LinkDataStorable.remove(getWorld(), removed);
+        removed.broadcast(GridResponse.TASK_DESTROY_LINK);
+        startNode.getOwner().cleanup(empties, true);
     }
 
     /**
@@ -188,9 +178,10 @@ public final class ServerGrid extends SidedGridDispatcher {
      * so if you want to add a link directly, you can use {@link #linkUnsafe} 
      * for lower-level access. Note that this method and its consituents all send packets
      * to the client themselves, so this shouldn't be done externally.
-     * @param start
-     * @param end
-     * @param type
+     * @param start The starting point of the link
+     * @param end The ending point of the link
+     * @param type The {@link TransmitterType} to use, which will supply a new 
+     * {@link Transmitter} instance to the resulting link internally.
      */
     public void createLink(GridUUID start, GridUUID end, TransmitterType<?> type) {
 
@@ -208,12 +199,14 @@ public final class ServerGrid extends SidedGridDispatcher {
         if(!Griddable.assertPairExists(startPoints, endPoints, start, end)) 
             return;
 
-        // nodes both belong to grids
-        if(startPoints.getSurrogate().isSynced(getWorld()) && endPoints.getSurrogate().isSynced(getWorld())) {
+        boolean isStartSynced = startPoints.getSurrogate().isSynced(getWorld());
+        boolean isEndSynced = endPoints.getSurrogate().isSynced(getWorld());
+        Mechano.LOGGER.info(start + " synced? " + isStartSynced);
+        Mechano.LOGGER.info(end + " synced? " + isEndSynced);
 
+        if(isStartSynced && isEndSynced) {
             ServerMatrix startPG = startPoints.getSurrogate().getOwnerMatrix();
             ServerMatrix endPG = endPoints.getSurrogate().getOwnerMatrix();
-
             // nodes both belong to the same grid
             if(startPG.equals(endPG)) {
                 endPG = null;
@@ -223,17 +216,14 @@ public final class ServerGrid extends SidedGridDispatcher {
                 startPoints.getSurrogate().sync(world, startPG);
                 endPoints.getSurrogate().sync(world, startPG);
                 if(startNode.hasLink(newLink)) {
-                    newLink.sendToClientsTracking(
-                        LinkResponsePacket.of(newLink, UpdateResponse.FAIL_DUPLICATE)
-                    );
+                    newLink.sendToClientsTracking(LinkResponsePacket.of(newLink, GridResponse.FAIL_DUPLICATE));
                     return;
                 }
                 linkUnsafe(newLink, true);
                 return;
             }
-
             // nodes both belong to different grids
-            ServerMatrix merged = mergeGrids(startPG.gridIndex, endPG.gridIndex);
+            ServerMatrix merged = mergeMatrices(startPG, endPG);
             GridNode startNode = GridNode.getOrCreate(merged, startPoints, start);
             GridNode endNode = GridNode.getOrCreate(merged, endPoints, end);
             startPoints.getSurrogate().sync(world, merged);
@@ -242,8 +232,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
-        // start belongs to grid, but end doesn't
-        if(startPoints.getSurrogate().isSynced(getWorld()) && !endPoints.getSurrogate().isSynced(getWorld())) {
+        if(isStartSynced && !isEndSynced) {
             GridNode startNode = startPoints.getSurrogate().constituents().get(start);
             GridNode endNode = GridNode.getOrCreate(startPoints.getSurrogate().getOwnerMatrix(), endPoints, end);
             startPoints.getSurrogate().constituents().add(endNode);
@@ -253,8 +242,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
-        // end belongs to grid, but start doesn't
-        if(!startPoints.getSurrogate().isSynced(getWorld()) && endPoints.getSurrogate().isSynced(getWorld())) {
+        if(!isStartSynced && isEndSynced) {
             GridNode startNode = GridNode.getOrCreate(endPoints.getSurrogate().getOwnerMatrix(), startPoints, start); 
             GridNode endNode = endPoints.getSurrogate().constituents().get(end);
             endPoints.getSurrogate().constituents().add(startNode);
@@ -264,14 +252,15 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
-        // neither belongs to grid
-        if(!startPoints.getSurrogate().isSynced(getWorld()) && !endPoints.getSurrogate().isSynced(getWorld())) {
+        if(!isStartSynced && !isEndSynced) {
             ServerMatrix newNodes = ServerMatrix.createAndPrepare(this);
             GridNode startNode = GridNode.createNew(newNodes, startPoints, start);
             GridNode endNode = GridNode.createNew(newNodes, endPoints, end);
             linkUnsafe(startNode, endNode, type.make(), true);
             return;
         }
+
+        throw new IllegalStateException("bruh i got nothin lmao");
     }
 
     /**
@@ -301,13 +290,9 @@ public final class ServerGrid extends SidedGridDispatcher {
         link.getStartNode().addLink(link);
         GridLink inverse = link.inverseCopy();
         link.getEndNode().addLink(inverse);
-        link.pushTo(getWorld(), InsertionPolicy.SINGLE);
-        inverse.pushTo(getWorld(), InsertionPolicy.SINGLE);
-        if(!broadcast) return link;
-        link.getTransmitter().onConnectionCreated(getWorld(), link);
-        link.getStartNode().getAnchorPoints().onConnectionMade(world, link);
-        link.getEndNode().getAnchorPoints().onConnectionMade(world, link);
-        link.sendToClientsTracking(LinkResponsePacket.of(link, UpdateResponse.TASK_CREATE_LINK));
+        LinkDataStorable.put(getWorld(), link, InsertionPolicy.SINGLE);
+        LinkDataStorable.put(getWorld(), inverse, InsertionPolicy.SINGLE);
+        if(broadcast) link.broadcast(GridResponse.TASK_CREATE_LINK);
         return link;
     }
 
@@ -323,52 +308,32 @@ public final class ServerGrid extends SidedGridDispatcher {
      * Additionally, if the merge is successful, this call will immediately mark 
      * the the grid belonging to the higher index for removal. If this ServerMatrix 
      * instance is stored anywhere, its reference should be nullified to prevent 
-     * a leak. Only use the ServerMatrix returned from this method.
+     * bad access. Only use the ServerMatrix returned from this method.
      * 
-     * @param index1 The index of the first ServerMatrix to merge
-     * @param index2 The index of the second ServerMatrix to merge
+     * @param matrixA the first matrix
+     * @param matrixB the second matrix
      * @return A reference to the resulting ServerMatrix. This reference will be 
      * identical to the ServerMatrix found at the lower of the two provided indices, 
      * but it will contain the contents of both grids.
      * @throws ArrayIndexOutOfBoundsException if the indices provided are outside the bounds of the subgrids list.
      */
-    public ServerMatrix mergeGrids(int index1, int index2) {
-        if(index1 < 0 || index1 >= matrices.size()) {
-            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index 1 '" + index1 
-                + "' is out of bounds for a ServerGrid with " + matrices.size() + " subgrids!");
+    public ServerMatrix mergeMatrices(ServerMatrix matrixA, ServerMatrix matrixB) {
+        if(matrixA.getIndex() < matrixB.getIndex()) {
+            matrices.remove(matrixB.getIndex());
+            matrixA.addAll(matrixB.nodes);
+            matrixB.destroy();
+            updateGridIndices(matrixA.getIndex());
+            return matrixA;
         }
-        if(index2 < 0 || index2 >= matrices.size()) {
-            throw new ArrayIndexOutOfBoundsException("Failed to merge grids - Index 2 '" + index2 
-                + "' is out of bounds for a ServerGrid with " + matrices.size() + " subgrids!");
+        if(matrixA.getIndex() > matrixB.getIndex()) {
+            matrices.remove(matrixA.getIndex());
+            matrixB.addAll(matrixA.nodes);
+            matrixA.destroy();
+            updateGridIndices(matrixB.getIndex());
+            return matrixB;
         }
-        if(index1 == index2) {
-            Mechano.LOGGER.warn("Skiping merge of two identical matrices.");
-            return matrices.get(index1);
-        }
-
-        // merge 2 into 1
-        if(index1 < index2) {
-            ServerMatrix grid1 = matrices.get(index1);
-            grid1.gridIndex = index1;
-            ServerMatrix grid2 = matrices.remove(index2);
-            grid1.addAll(grid2.nodes);
-            grid2.destroy();
-            updateGridIndices(index1);
-            return grid1;
-        }
-
-        // merge 1 into 2
-        if(index2 < index1) {
-            ServerMatrix grid2 = matrices.get(index2);
-            grid2.gridIndex = index2;
-            ServerMatrix grid1 = matrices.remove(index1);
-            grid2.addAll(grid1.nodes);
-            grid1.destroy();
-            updateGridIndices(index2);
-            return grid2;
-        }
-
-        throw new UnsupportedOperationException("...what? the fuck?");
+        Mechano.LOGGER.warn("Attempted to merge matrices with the same index '" + matrixA.getIndex() + "'");
+        return matrixA;
     }
 
     /**
@@ -379,7 +344,7 @@ public final class ServerGrid extends SidedGridDispatcher {
      */
     public void updateGridIndices(int startingIndex) {
         for(int x = startingIndex; x < matrices.size(); x++)
-            matrices.get(x).gridIndex = x;
+            matrices.get(x).setIndex(x);
     }
 
     /**
@@ -405,7 +370,7 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @return <code>true</code> if this ServerGrid was modified as a result of this call
      */
     public boolean destroyMatrix(ServerMatrix matrix) {
-        int index = matrix.gridIndex;
+        int index = matrix.getIndex();
         if(index < 0 || index >= matrices.size())
             index = matrices.indexOf(matrix);
         if(index < 0) {

@@ -25,7 +25,6 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
         constructAnchors(unbuiltAnchors);
         this.anchors = unbuiltAnchors.confirm(getBlockPos());
-        this.surrogate.nodeCount = this.anchors.size();
     }
 
     @Override

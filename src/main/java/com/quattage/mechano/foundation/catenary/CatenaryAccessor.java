@@ -8,7 +8,7 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public interface CatenariesAccessor {
+public interface CatenaryAccessor {
     @OnlyIn(Dist.CLIENT)
     public abstract @NotNull ObjectSet<GridCatenary> getCatenaries();
 }

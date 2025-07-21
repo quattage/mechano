@@ -165,7 +165,7 @@ public interface Griddable<T> {
      * @param world World to operate within
      * @param connection The GridLink representing the connection that was added
      */
-    public default void onConnectionMade(Level world, GridLink connection) {
+    public default void onConnectionCreated(Level world, GridLink connection) {
         
     }
 
@@ -175,6 +175,18 @@ public interface Griddable<T> {
      * @param connection The connection that was destroyed. Note that this method is called AFTER the GridLink is removed from the network, so this connection's reference is stale and should't be stored.
      */
     public default void onConnectionDestroyed(Level world, GridLink connection) {
+        
+    }
+
+    /**
+     * This method can be used as a way to tack on additional logic to the
+     * {@link SidedGridDispatcher GridAPI} syncing cycle whenever 
+     * connections are made or {@link GridNode GridNodes} are updated. 
+     * Called on both logical sides.
+     * @param world World to operate within
+     * @param index The index of the AnchorPoint that was updated.
+     */
+    public default void onAnchorSynced(Level world, int index) {
         
     }
 

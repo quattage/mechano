@@ -13,7 +13,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.Griddable.Visual;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
@@ -109,8 +109,8 @@ public class AnchorSelector {
         return hasSelection() && selected.response.indicatesCompletion();
     }
 
-    public UpdateResponse getSelectedResponse() {
-        return hasSelection() ? selected.response : UpdateResponse.NONE;
+    public GridResponse getSelectedResponse() {
+        return hasSelection() ? selected.response : GridResponse.NONE;
     }
 
     public boolean hasTooltip() {
@@ -189,7 +189,7 @@ public class AnchorSelector {
         } else {
             findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
                 points.writeTooltip(currentTooltip, playerHands, sel.anchor);
-                sel.response = UpdateResponse.NONE;
+                sel.response = GridResponse.NONE;
             });
         }
         trackedEntries.clear(); 
@@ -291,7 +291,7 @@ public class AnchorSelector {
         private final Griddable<?> points; 
         private final AnchorPoint anchor;
         private final float distance;
-        private UpdateResponse response;
+        private GridResponse response;
         private VoxelShape highlightShape;
 
         public Active(Griddable<?> points, AnchorPoint anchor, GridUUID address, float distance) {
@@ -303,7 +303,7 @@ public class AnchorSelector {
             this.points = points;
             this.anchor = anchor;
             this.distance = distance;
-            this.response = UpdateResponse.NONE;
+            this.response = GridResponse.NONE;
             float size = anchor.getSize();
             highlightShape = Shapes.create(-size, -size, -size, size, size, size);
         }

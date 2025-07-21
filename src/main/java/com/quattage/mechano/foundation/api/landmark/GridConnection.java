@@ -7,9 +7,8 @@ import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
@@ -108,75 +107,21 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         return hasPoints() ? (getStart().isInsideOf(world, chunk) || getEnd().isInsideOf(world, chunk)) : false;
     }
 
+    @Override
+    public int getSectionY(LevelReader world) {
+        assertWorldly(world);
+        if(!hasPoints()) throw new IllegalStateException("Can't get sectionY for connection with null point(s)!");
+        return getStart().getSectionY(world);
+    }
 
+    @Override
+    public IAttachmentHolder getDataStorageHolder(LevelReader world) {
+        assertWorldly(world);
+        if(!hasPoints()) throw new IllegalStateException("Can't get data storage holder for connection with null point(s)");
+        return getStart().getDataStorageHolder(world);
+    }
 
     public void updateShape(LevelReader world, float pTicks) {}
-
-    public void pushTo(LevelReader world) { pushTo(world, InsertionPolicy.SYMMETRIC); }
-    public void pushTo(LevelReader world, InsertionPolicy mode) {
-        assertWorldly(world);
-        switch(mode) {
-            case SINGLE -> LinkData.add(world, this);
-            case SYMMETRIC -> {
-                LinkData.add(world, this);
-                LinkData.add(world, this.inverseCopy());
-            }
-            case null, default -> { throw new IllegalArgumentException("Unsupported InsertionPolicy '" + mode + "'"); }
-        }
-    }
-
-    public boolean existsIn(LevelReader world) {
-
-        IAttachmentHolder startHolder = getStart().getDataHolder(world);
-        LinkData startData = startHolder.getData(MechanoData.LINK_ATTACHMENT);
-        if(startData.contains(this)) return true;
-        IAttachmentHolder endHolder = getEnd().getDataHolder(world);
-        LinkData endData = endHolder.getData(MechanoData.LINK_ATTACHMENT);
-        
-        if(endData.contains(this)) {
-            if(startData.isEmpty())
-                startHolder.removeData(MechanoData.LINK_ATTACHMENT);
-            return true;
-        }
-        if(startData.isEmpty())
-            startHolder.removeData(MechanoData.LINK_ATTACHMENT);
-        if(endData.isEmpty())
-            endHolder.removeData(MechanoData.LINK_ATTACHMENT);
-        return false;
-    }
-
-    public @Nullable GridConnection findIn(LevelReader world) {
-        IAttachmentHolder startHolder = getStart().getDataHolder(world);
-        LinkData startData = startHolder.getData(MechanoData.LINK_ATTACHMENT);
-        GridConnection found = startData.get(this);
-        if(found != null) {
-            if(found.hasPoints()) return found;   
-            found.removeFrom(world);
-        }
-
-        IAttachmentHolder endHolder = getEnd().getDataHolder(world);
-        LinkData endData = endHolder.getData(MechanoData.LINK_ATTACHMENT);
-        found = endData.get(this);
-        
-        if(found != null) {
-            if(startData.isEmpty())
-                startHolder.removeData(MechanoData.LINK_ATTACHMENT);
-            if(found.hasPoints()) return found;
-            found.removeFrom(world);
-        }
-
-        if(startData.isEmpty())
-            startHolder.removeData(MechanoData.LINK_ATTACHMENT);
-        if(endData.isEmpty())
-            endHolder.removeData(MechanoData.LINK_ATTACHMENT);
-        return null;
-    }
-
-    public void removeFrom(LevelReader world) {
-        assertWorldly(world);
-        LinkData.remove(world, getStart(), this);
-        LinkData.remove(world, getEnd(), this);
-    }
 
     public boolean isBeingTrackedBy(ServerPlayer player, InsertionPolicy mode) {
         if(mode == InsertionPolicy.SINGLE) return getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player);
@@ -186,7 +131,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
 
     /**
      * Useful for any action that may change the start/endpoints of this Connection.
-     * The {@link SidedGridDispatcher.LinkData link data store} will need to be informed
+     * The {@link SidedGridDispatcher.LinkDataStorable link data store} will need to be informed
      * of any changes that may affect the value of this Connection's {@link #hashCode hash code}
      * so that this the data store can rehash this value something something hash tables buckets blah haha
      * @param world
@@ -194,14 +139,14 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
      */
     public void reassertAndDo(LevelReader world, Runnable action) {
         assertWorldly(world);
-        removeFrom(world);
+        LinkDataStorable.remove(world, this);
         try { action.run(); } 
         catch(Exception e) {
             Mechano.LOGGER.error("Failed executing reassertion task for " + this + ": ");
             e.printStackTrace();
             return;
         }
-        pushTo(world);
+        LinkDataStorable.put(world, this);
     }
 
     /**
@@ -326,17 +271,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         @Override
         public float getMaxLength() {
             return -1;
-        }
-
-        @Override
-        public void pushTo(LevelReader world, InsertionPolicy mode) {
-            throw new UnsupportedOperationException("ConnectionKeys have no implementation and cannot be pushed to data attachments!");
-        }
-        
-        @Override
-        public void removeFrom(LevelReader world) {
-            LinkData.remove(world, getStart(), this);
-            LinkData.remove(world, getEnd(), this);
         }
     }
 

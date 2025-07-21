@@ -3,8 +3,9 @@ package com.quattage.mechano.foundation.api;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
+import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 
@@ -54,35 +55,56 @@ public final class ClientGrid extends SidedGridDispatcher {
      * before proceeding
      * @return {@link UpdateResponser}
      */
-    public UpdateResponse requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type, boolean verify) {
+    public GridResponse requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type, boolean verify) {
 
         if(verify) {
             if(!startAnchor.existsIn(world)) {
-                Mechano.LOGGER.warn("Failed to create link from " + startAnchor.getAddress() + " and " + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
-                return UpdateResponse.FAIL_OUTDATED;
+                Mechano.LOGGER.warn("Failed to create link between " + startAnchor.getAddress() + " and " 
+                    + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
+                return GridResponse.FAIL_OUTDATED;
             }
 
             if(!endAnchor.existsIn(world)) {
-                Mechano.LOGGER.warn("Failed to create link from " + startAnchor + " and " + endAnchor + " - No valid PGBE could be found at the ending address");
-                return UpdateResponse.FAIL_OUTDATED;
+                Mechano.LOGGER.warn("Failed to create link between " + startAnchor.getAddress() + " and " 
+                    + endAnchor.getAddress() + " - No valid PGBE could be found at the ending address");
+                return GridResponse.FAIL_OUTDATED;
             }
         }
 
         if(!type.ignoresLimits()) {
-            if(!endAnchor.hasRoom()) return UpdateResponse.FAIL_DESTINATION_FULL;
-            if(!endAnchor.isCompatableWith(type)) return UpdateResponse.FAIL_DESTINATION_UNSUPPORTED;
+            if(!endAnchor.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
+            if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;
         }
 
         if(!type.supportsSameBlockConnections())
-            if(endAnchor.equals(startAnchor)) return UpdateResponse.FAIL_DUPLICATE;    
-        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return UpdateResponse.FAIL_DUPLICATE;
+            if(endAnchor.equals(startAnchor)) return GridResponse.FAIL_DUPLICATE;    
+        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return GridResponse.FAIL_DUPLICATE;
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
-        if(linkDistance < type.getMinDistance()) return UpdateResponse.FAIL_TOO_CLOSE;
-        if(linkDistance > type.getMaxLength()) return UpdateResponse.FAIL_TOO_FAR;
+        if(linkDistance < type.getMinDistance()) return GridResponse.FAIL_TOO_CLOSE;
+        if(linkDistance > type.getMaxLength()) return GridResponse.FAIL_TOO_FAR;
 
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, UpdateResponse.TASK_CREATE_LINK));
-        return UpdateResponse.TASK_CREATE_LINK;
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, GridResponse.TASK_CREATE_LINK));
+        return GridResponse.TASK_CREATE_LINK;
+    }
+
+    public GridResponse requestLinkDestruction(AnchorPoint startAnchor, AnchorPoint endAnchor, boolean verify) {
+        if(startAnchor == null || endAnchor == null) return GridResponse.FAIL_GENERIC;
+        if(verify) {
+            if(!startAnchor.existsIn(world)) {
+                Mechano.LOGGER.warn("Failed to destroy link between " + startAnchor.getAddress() + " and " 
+                    + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
+                return GridResponse.FAIL_OUTDATED;
+            }
+
+            if(!endAnchor.existsIn(world)) {
+                Mechano.LOGGER.warn("Failed to destroy link between " + startAnchor.getAddress() + " and " 
+                    + endAnchor.getAddress() + " - No valid PGBE could be found at the ending address");
+                return GridResponse.FAIL_OUTDATED;
+            }
+        }
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
+        return GridResponse.TASK_DESTROY_LINK;
     }
 
     @Override

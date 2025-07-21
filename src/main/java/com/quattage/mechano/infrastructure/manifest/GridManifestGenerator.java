@@ -30,7 +30,6 @@ public class GridManifestGenerator {
     private static final Format DATE_FT = new SimpleDateFormat("HH:mm:ss MM/dd/yyyy");
 
     private Throbber throbber = new Throbber();
-
     private long requestTime = 0L;
     private long tickTime = 0L;
 
@@ -64,12 +63,12 @@ public class GridManifestGenerator {
         }
         this.compiledManifestTask = CompletableFuture.supplyAsync(() -> {
             if(!isQueued()) return "";
-            String manifest = "▛▙▘▘■  Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
-            "] ■▝▝▟▜\n\n⎙ Requested by: '" + getPlayerName() + "' at [" + getTime() + "]\n⌂ Attached to: '" + getDimensionName() + "'\n\n";
+            String manifest = "▛▙▘▘■   Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
+            "]   ■▝▝▟▜\n\n⎙ Requested by: '" + getPlayerName() + "' at [" + getTime() + "]\n⌂ Attached to: '" + getDimensionName() + "'\n\n";
 
             int count = 0;
             for(ServerMatrix grid : active.matrices) {
-                manifest += "⣿ Matrix " + grid.gridIndex  + ":\n";
+                manifest += "⣿ Matrix " + grid.getIndex()  + ":\n";
                 if(grid.nodes.isEmpty()) {
                     manifest += "\t▸ Error (matrix unpopulated)\n";
                 }
@@ -111,8 +110,8 @@ public class GridManifestGenerator {
 
         String out = "\t┌ ▣ " + node.getAddress().toString(world) + ":  ";
         out += "\n\t┆\t" + (node.hasLinks() ? "☑ Valid" : "☒ Invalid (See below for details)");
-        out += "\n\t┆\t▸ Owned by Matrix " + node.getOwner().gridIndex;
-        Griddable<?> points = node.getAnchorPoints();
+        out += "\n\t┆\t▸ Owned by Matrix " + node.getOwner().getIndex();
+        Griddable<?> points = node.getGriddable();
         out += "\n\t┆\t▸ Bound to: ";
 
         if(node.getOwner() != null) {
@@ -125,9 +124,9 @@ public class GridManifestGenerator {
             return out;
         }
 
-        out += "\n\t┆\t▸ Data scope: " + node.getAddress().getDataHolder(world).getClass().getSimpleName();
+        out += "\n\t┆\t▸ Data scope: " + node.getAddress().getDataStorageHolder(world).getClass().getSimpleName();
         out += "\n\t┆\t⌕ Dispatch: ";
-        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced(world) ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().gridIndex) : "no accelerated reference");
+        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced(world) ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().getIndex()) : "no accelerated reference");
         out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());
         out += "\n\t┆\t☍ Links:";
 

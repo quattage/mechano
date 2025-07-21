@@ -3,6 +3,7 @@ package com.quattage.mechano.foundation.catenary;
 
 import java.util.function.BiFunction;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -12,6 +13,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
@@ -20,12 +22,19 @@ import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.Util;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.data.models.blockstates.PropertyDispatch.QuadFunction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
+import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
 public class CatenaryAttributes {
 
@@ -46,46 +55,70 @@ public class CatenaryAttributes {
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
-    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL = Util.memoize((trns, chunk) -> {
-        if(chunk) return RenderType.SOLID;
-        RenderType.CompositeState composite = RenderType.CompositeState.builder()
-            .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
-            .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
-            .setOverlayState(RenderType.OVERLAY)
-            .setLightmapState(RenderType.LIGHTMAP)
-            .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
-            .setOutputState(RenderType.MAIN_TARGET)
-            .setCullState(RenderType.CULL)
-            .createCompositeState(false); 
-        // TODO maybe switch to triangle strips for better performance 
-        return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
-    });
+    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL 
+        = Util.memoize((trns, chunk) -> {
+            if(chunk) return RenderType.SOLID;
+            RenderType.CompositeState composite = RenderType.CompositeState.builder()
+                .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
+                .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
+                .setOverlayState(RenderType.OVERLAY)
+                .setLightmapState(RenderType.LIGHTMAP)
+                .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
+                .setOutputState(RenderType.MAIN_TARGET)
+                .setCullState(RenderType.CULL)
+                .createCompositeState(false); 
+            // TODO maybe switch to triangle strips for better performance 
+            return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
+        });
 
-    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> CUTOUT_MATERIAL = Util.memoize((trns, chunk) -> {
-        if(chunk) return RenderType.CUTOUT;
-        RenderType.CompositeState composite = RenderType.CompositeState.builder()
-            .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_CUTOUT_SHADER)
-            .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
-            .setOverlayState(RenderType.OVERLAY)
-            .setLightmapState(RenderType.LIGHTMAP)
-            .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-            .setOutputState(RenderType.TRANSLUCENT_TARGET)
-            .setCullState(RenderType.CULL)
-            .createCompositeState(false);
-        return RenderType.create("catenary_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
-    });
+    public static final BiFunction<TransmitterType<?>, Boolean, RenderType> CUTOUT_MATERIAL 
+        = Util.memoize((trns, chunk) -> {
+            if(chunk) return RenderType.CUTOUT;
+            RenderType.CompositeState composite = RenderType.CompositeState.builder()
+                .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_CUTOUT_SHADER)
+                .setTextureState(new RenderStateShard.TextureStateShard(trns.getTextureLocation(), false, TEX_USE_MIPS))
+                .setOverlayState(RenderType.OVERLAY)
+                .setLightmapState(RenderType.LIGHTMAP)
+                .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                .setOutputState(RenderType.TRANSLUCENT_TARGET)
+                .setCullState(RenderType.CULL)
+                .createCompositeState(false);
+            return RenderType.create("catenary_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
+        });
 
-    public static final  CatenaryAttributeHolder INVISIBLE
-        = CatenaryAttributes
-            .as(ModelType.NO_DRAW)
-            .withThickness(Thickness.ZERO);
 
-    public static final CatenaryAttributeHolder DEFAULT 
-        = CatenaryAttributes
-            .as(ModelType.SQUARE)
-            .withThickness(Thickness.TRIPLE)
-            .withTension(Tension.AVERAGE);
 
+    public static final class SectionRenderer implements AddSectionGeometryEvent.AdditionalSectionRenderer {
+
+        private final ClientLevel world;
+        private final BlockPos sectionOrigin;
+        private final SectionPos sectionPos;
+
+        private final @Nullable ObjectSet<GridCatenary> catenaries;
+
+        public SectionRenderer(ClientLevel world, BlockPos sectionOrigin, SectionPos sectionPos, @NotNull ObjectSet<GridCatenary> catenaries) {
+            this.world = world;
+            this.sectionOrigin = sectionOrigin;
+            this.sectionPos = sectionPos;
+            this.catenaries = catenaries;
+        }
+
+        @Override
+        public void render(SectionRenderingContext context) {
+            for(GridCatenary cat : catenaries) {
+                if(cat == null || !cat.hasPoints() || cat.canMove()) continue;
+                AnchorPoint point = cat.getPrimaryRenderer(world);
+                if(point == null || point.getAddress().isInsideOf(world, sectionPos)) continue;
+                Vec3 startPos = cat.getStart().getPos(world, 1f);
+                cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION_BAKED);
+                CatenaryMesher.REUSABLE
+                    .at(startPos).in(context.getRegion())
+                    .withAppearanceForChunkRendering(cat.getTransmitter().getType())
+                    .render(context, cat.getModel(), CatenaryModel.getLocalizedOffset(world, sectionOrigin, point), 1f);
+                CatenaryMesher.REUSABLE.reset();
+            }
+        }
+    }
 
 
     public static enum Initializer {
@@ -138,8 +171,8 @@ public class CatenaryAttributes {
 
     public static enum ModelType {
 
-        SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals,
-            float pTicks) -> {
+        SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
+            int iteration, boolean faceNormals, float pTicks) -> {
                 if(previous == null) geo.computeMatrix(current.getForward());
                 else geo.computeMatrix(previous.getForward(), current.getForward());
                 if(faceNormals) {
@@ -200,6 +233,21 @@ public class CatenaryAttributes {
     public static CatenaryAttributeHolder as(ModelType type) {
         return new CatenaryAttributeHolder(type);
     }
+
+
+
+
+    public static final  CatenaryAttributeHolder INVISIBLE
+        = CatenaryAttributes
+            .as(ModelType.NO_DRAW)
+            .withThickness(Thickness.ZERO);
+
+    public static final CatenaryAttributeHolder DEFAULT 
+        = CatenaryAttributes
+            .as(ModelType.SQUARE)
+            .withThickness(Thickness.TRIPLE)
+            .withTension(Tension.AVERAGE);
+
 
     public static class CatenaryAttributeHolder {
 

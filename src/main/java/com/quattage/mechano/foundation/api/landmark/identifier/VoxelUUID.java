@@ -122,10 +122,10 @@ public class VoxelUUID extends GridUUID {
     @Override
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
         BlockEntity be = world.getBlockEntity(getBlockPos(world));
-        if(!(be instanceof Griddable aph)) return null;
-        if(getIndex() < 0 || getIndex() > aph.getAnchors().size()) 
+        if(!(be instanceof Griddable host)) return null;
+        if(getIndex() < 0 || getIndex() > host.getAnchors().size()) 
             return null;
-        return aph.getAnchor(getIndex());
+        return host.getAnchor(getIndex());
     }
 
     @Override
@@ -142,13 +142,13 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public @Nullable IAttachmentHolder getDataHolder(LevelReader world) {
+    public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) {
         return world.getChunk(getBlockPos(world));
     }
 
     @Override
     public String describeDataHolder(LevelReader world) {
-        IAttachmentHolder holder = getDataHolder(world);
+        IAttachmentHolder holder = getDataStorageHolder(world);
         if(holder instanceof LevelChunk chunk) {
             ChunkPos pos = chunk.getPos();
             return "LevelChunk[" + pos.x + ", " + pos.z + "]";

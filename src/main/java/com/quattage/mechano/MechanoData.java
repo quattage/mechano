@@ -3,7 +3,9 @@ package com.quattage.mechano;
 
 import java.util.function.Supplier;
 
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 
 import net.minecraft.core.registries.Registries;
@@ -29,10 +31,10 @@ public class MechanoData {
                 .build()
         );
 
-    public static final Supplier<AttachmentType<SidedGridDispatcher.LinkData>> LINK_ATTACHMENT
+    public static final Supplier<AttachmentType<LinkDataStorable<GridConnection>>> LINK_ATTACHMENT
         = ATTACHMENT_REGISTRY.register(
             Mechano.ID + "_chunk_data", () -> AttachmentType
-                .builder(SidedGridDispatcher.LinkData::new)
+                .builder(LinkDataStorable::make)
                 .build()
         );
 

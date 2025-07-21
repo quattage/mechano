@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -15,11 +16,8 @@ import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.item.SpoolItem;
 
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,7 +28,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
 @OnlyIn(Dist.CLIENT)
 public final class GridCatenary extends GridConnection {
@@ -39,22 +36,6 @@ public final class GridCatenary extends GridConnection {
     private AnchorPoint end;
     private CatenaryModel<?> catenary;
     private AABB box = AABB.INFINITE;
-
-    public static void renderToSection(LevelReader world, BlockPos sectionCenter, SectionPos section, SectionRenderingContext ctx, ObjectSet<GridCatenary> catenaries) {
-        for(GridCatenary cat : catenaries) {
-            if(!cat.hasPoints()) continue;
-            AnchorPoint point = cat.getPrimaryRenderer(world);
-            if(!point.getAddress().isInsideOf(world, section)) continue;
-            Vec3 startPos = cat.start.getPos(world, 1f);
-            cat.reinitializeModel(world, CatenaryAttributes.Initializer.FRESH_SIMULATION);
-            CatenaryMesher.REUSABLE
-                .at(startPos).in(world)
-                .withAppearanceForChunkRendering(cat.trns.getType())
-                .render(ctx, cat.getModel(), CatenaryModel.getLocalizedOffset(world, sectionCenter, point), 1f);
-            Mechano.LOGGER.info("drew " + cat.getModel());
-            CatenaryMesher.REUSABLE.reset();
-        }
-    }
 
     public GridCatenary(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns, @Nullable CatenaryAttributes.Initializer init) {
         super(trns.make());
@@ -80,14 +61,14 @@ public final class GridCatenary extends GridConnection {
     public @Nullable AnchorPoint getPrimaryRenderer(LevelReader world) {
         GridUUID start = getStart();
         GridUUID end = getEnd();
-        final boolean isStartVisible = start.isVisibleOnScreen(world);
-        final boolean isEndVisible = end.isVisibleOnScreen(world);
-        if(isStartVisible && !isEndVisible) return this.start;
-        if(isEndVisible && !isStartVisible) return this.end;
         final boolean canStartMove = start.canMoveDynamically();
         final boolean canEndMove = end.canMoveDynamically();
         if(canStartMove && !canEndMove) return this.start;
         if(canEndMove && !canStartMove) return this.end;
+        final boolean isStartVisible = start.isVisibleOnScreen(world);
+        final boolean isEndVisible = end.isVisibleOnScreen(world);
+        if(isStartVisible && !isEndVisible) return this.start;
+        if(isEndVisible && !isStartVisible) return this.end;
         if(start.hashCode() > end.hashCode()) return this.start;
         return this.end;
     }
@@ -173,9 +154,11 @@ public final class GridCatenary extends GridConnection {
     }
 
     public boolean isMoving() {
-        return catenary != null 
-            && (catenary.isMovable() && !catenary.isResting()) 
-            && (start.getAddress().canMoveDynamically() || !end.getAddress().canMoveDynamically());
+        return canMove() && !catenary.isResting();
+    }
+
+    public boolean canMove() {
+        return catenary != null && catenary.isMovable() && (start.getAddress().canMoveDynamically() || end.getAddress().canMoveDynamically());
     }
 
     @Override
@@ -252,7 +235,7 @@ public final class GridCatenary extends GridConnection {
             float dirDot = (float)getEnd().getAttachmentVelocity(world).normalize().dot(reelDir);
             if(dirDot < 0) {
                 getEnd().setAttachmentVelocity(world, Vec3.ZERO);
-                removeFrom(world);
+                LinkDataStorable.remove(world, this);
                 return;
             }
             Vec3 velocity = getEnd().getAttachmentVelocity(world);

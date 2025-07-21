@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse.AnchorSyncHolder;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
@@ -14,5 +14,7 @@ public record AnchorSyncPacket(AnchorSyncHolder anchor) implements ClientboundPa
         AnchorSyncPacket::new
     );
     @Override public PacketTypeProvider getTypeProvider() { return MechanoPackets.ANCHOR_SYNC_S2C; }
-    @Override public void handle(LocalPlayer player) { anchor.applyAndGet(player.level()); }
+    @Override public void handle(LocalPlayer player) { 
+        anchor.applyAndGet(player.level(), true); 
+    }
 }

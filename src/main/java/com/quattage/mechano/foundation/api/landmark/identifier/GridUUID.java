@@ -24,7 +24,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
@@ -66,7 +65,6 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreame
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
     public abstract @Nullable Griddable<?> getAnchorPoints(LevelReader world);
     public abstract @Nullable SurrogateNode getSurrogate(LevelReader world);
-    public abstract @Nullable IAttachmentHolder getDataHolder(LevelReader world);
     public abstract String describeDataHolder(LevelReader world);
     public abstract float getAttachedSizeFactor(LevelReader world);
 
@@ -81,12 +79,19 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreame
 
     @Override
     public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
-        return new ChunkPos(getBlockPos(world)).equals(chunk);
+        BlockPos pos = getBlockPos(world);
+        return SectionPos.blockToSectionCoord(pos.getX()) == chunk.x 
+            && SectionPos.blockToSectionCoord(pos.getZ()) == chunk.z;
     }
 
     @Override
     public boolean isInsideOf(LevelReader world, SectionPos section) {
         return SectionPos.of(getBlockPos(world)).equals(section);
+    }
+
+    @Override
+    public int getSectionY(LevelReader world) {
+        return SectionPos.blockToSectionCoord(getBlockPos(world).getY());
     }
 
     public boolean isAttachedToPlayer(LevelReader world) {

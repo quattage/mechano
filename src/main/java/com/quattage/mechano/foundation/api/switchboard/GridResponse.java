@@ -26,11 +26,12 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
-public enum UpdateResponse implements StringRepresentable {
+public enum GridResponse implements StringRepresentable {
 
     TASK_CREATE_LINK(true, false, true),
     TASK_DESTROY_LINK(true, false, true),
@@ -50,17 +51,18 @@ public enum UpdateResponse implements StringRepresentable {
     FAIL_GENERIC(false, true, false),
     NONE(false, false, false);
 
-
-    public static final StreamCodec<ByteBuf, UpdateResponse> STREAM_CODEC = new StreamCodec<>() {
-        @Override public UpdateResponse decode(ByteBuf buffer) { return UpdateResponse.values()[buffer.readByte()]; }
-        @Override public void encode(ByteBuf buffer, UpdateResponse value) { buffer.writeByte(value.ordinal()); }
+    public static final StreamCodec<ByteBuf, GridResponse> STREAM_CODEC = new StreamCodec<>() {
+        @Override public GridResponse decode(ByteBuf buffer) { return GridResponse.values()[buffer.readByte()]; }
+        @Override public void encode(ByteBuf buffer, GridResponse value) { buffer.writeByte(value.ordinal()); }
     };
 
     private final boolean isTask;
     private final boolean shouldFailHard;
     private final boolean showsTarget;
 
-    private UpdateResponse(boolean isTask, boolean shouldFailHard, boolean showsTarget) { 
+    
+
+    private GridResponse(boolean isTask, boolean shouldFailHard, boolean showsTarget) { 
         this.isTask = isTask; 
         this.shouldFailHard = shouldFailHard;
         this.showsTarget = showsTarget;
@@ -117,7 +119,7 @@ public enum UpdateResponse implements StringRepresentable {
         private final byte connections;
         private final boolean enabled;
 
-        public static boolean assertAnchorsExist(UpdateResponse response, AnchorPoint startAnchor, AnchorPoint endAnchor) {
+        public static boolean assertAnchorsExist(GridResponse response, AnchorPoint startAnchor, AnchorPoint endAnchor) {
             if(startAnchor == null && endAnchor == null) {
                 Mechano.LOGGER.error("Assertion failed for response '" + response 
                     + "' - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
@@ -179,8 +181,8 @@ public enum UpdateResponse implements StringRepresentable {
             return enabled;
         }
 
-        public @Nullable AnchorPoint applyAndGet(LevelReader world) { return applyAndGet(world, false); }
-        public @Nullable AnchorPoint applyAndGet(LevelReader world, boolean shutup) {
+        public @Nullable AnchorPoint applyAndGet(Level world) { return applyAndGet(world, false); }
+        public @Nullable AnchorPoint applyAndGet(Level world, boolean shutup) {
             Objects.requireNonNull(world);
             if(!world.isClientSide())
                 throw new IllegalStateException("Cannot apply AnchorSyncHolder on a server-sided world!");
@@ -212,7 +214,8 @@ public enum UpdateResponse implements StringRepresentable {
             }
             if(point.getCurrentConnections() > 0)
                 surrogate.sync(world, null);
-            else surrogate.forget(world);
+            else surrogate.forgetIfNeeded(world);
+            points.onAnchorSynced(world, getIndex());
             return point;
         }
 
@@ -221,7 +224,7 @@ public enum UpdateResponse implements StringRepresentable {
         @Override public @Nullable AnchorPoint getAnchor(ClientLevel world) { return addr.getAnchor(world); }
         @Override public @Nullable Griddable<?> getAnchorPoints(LevelReader world) { return addr.getAnchorPoints(world); }
         @Override public @Nullable SurrogateNode getSurrogate(LevelReader world) { return addr.getSurrogate(world); }
-        @Override public @Nullable IAttachmentHolder getDataHolder(LevelReader world) { return addr.getDataHolder(world); }
+        @Override public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) { return addr.getDataStorageHolder(world); }
         @Override public boolean isInFrustum(LevelReader world, @NotNull Frustum view) { return addr.isInFrustum(world, view); }
         @Override public boolean isBeingTrackedBy(ServerPlayer player) { return addr.isBeingTrackedBy(player); }
         @Override public boolean canMoveDynamically() { return addr.canMoveDynamically(); }

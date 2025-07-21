@@ -16,13 +16,13 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 
-public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?> transmitter, UpdateResponse task) implements ServerboundPacketPayload {
+public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?> transmitter, GridResponse task) implements ServerboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, LinkRequestPacket> STREAM_CODEC = StreamCodec.composite(
         UUIDDiscriminator.STREAM_CODEC, LinkRequestPacket::start,
         UUIDDiscriminator.STREAM_CODEC, LinkRequestPacket::end,
         TransmitterType.STREAM_CODEC, LinkRequestPacket::transmitter,
-        UpdateResponse.STREAM_CODEC, LinkRequestPacket::task,
+        GridResponse.STREAM_CODEC, LinkRequestPacket::task,
         LinkRequestPacket::new
     );
 
@@ -40,6 +40,7 @@ public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?>
             case TASK_CREATE_LINK -> global.createLink(start, end, transmitter);
             case TASK_DESTROY_LINK -> global.destroyLink(start, end);
             case TASK_FREE_LINK -> {
+                // TODO implement this
                 global.destroyLink(start, end);
             }
             case null, default -> Mechano.LOGGER.warn("No valid response could be provided for link task '" + task + "!'");

@@ -4,8 +4,11 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
@@ -48,6 +51,32 @@ public final class GridLink extends GridConnection {
         this.start = start;
         this.end = end;
         this.tension = tension;
+    }
+
+    @Override
+    public void broadast() { broadcast(GridResponse.TASK_CREATE_LINK); }
+
+    @Override
+    public void broadcast(GridResponse response) {
+        switch(response) {
+            case TASK_CREATE_LINK -> {
+                start.broadcast(response);
+                end.broadcast(response);
+                start.getGriddable().onConnectionCreated(start.getOwner().getWorld(), this);
+                end.getGriddable().onConnectionCreated(end.getOwner().getWorld(), this);
+                trns.onConnectionCreated(end.getOwner().getWorld(), this);
+                sendToClientsTracking(LinkResponsePacket.of(start, end, trns, response));
+            }
+            case TASK_DESTROY_LINK -> {
+                start.broadcast(response);
+                end.broadcast(response);
+                start.getGriddable().onConnectionDestroyed(start.getOwner().getWorld(), this);
+                end.getGriddable().onConnectionDestroyed(end.getOwner().getWorld(), this);
+                trns.onConnectionDestroyed(end.getOwner().getWorld(), null, this);
+                sendToClientsTracking(LinkResponsePacket.of(start, end, trns, response));
+            }
+            case null, default -> Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
+        }
     }
 
     @Override

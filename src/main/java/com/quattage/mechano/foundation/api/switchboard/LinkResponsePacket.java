@@ -4,13 +4,14 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse.AnchorSyncHolder;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
@@ -20,15 +21,15 @@ import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.Level;
 
-public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> transmitter, UpdateResponse response) implements ClientboundPacketPayload {
+public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> transmitter, GridResponse response) implements ClientboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, LinkResponsePacket> STREAM_CODEC = StreamCodec.composite(
         AnchorSyncHolder.STREAM_CODEC, LinkResponsePacket::start,
         AnchorSyncHolder.STREAM_CODEC, LinkResponsePacket::end,
         TransmitterType.STREAM_CODEC, LinkResponsePacket::transmitter,
-        UpdateResponse.STREAM_CODEC, LinkResponsePacket::response,
+        GridResponse.STREAM_CODEC, LinkResponsePacket::response,
         LinkResponsePacket::new
     );
 
@@ -37,7 +38,7 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
             AnchorSyncHolder.of(start),
             AnchorSyncHolder.of(end),
             MechanoTransmissionTypes.PERFECT_CONDUCTOR,
-            UpdateResponse.TASK_DESTROY_LINK
+            GridResponse.TASK_DESTROY_LINK
         );
     }
 
@@ -46,11 +47,11 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
             AnchorSyncHolder.of(start),
             AnchorSyncHolder.of(end),
             MechanoTransmissionTypes.PERFECT_CONDUCTOR,
-            UpdateResponse.TASK_DESTROY_LINK
+            GridResponse.TASK_DESTROY_LINK
         );
     }
 
-    public static LinkResponsePacket of(GridNode start, GridNode end, @Nullable Transmitter<?> trns, UpdateResponse response) {
+    public static LinkResponsePacket of(GridNode start, GridNode end, @Nullable Transmitter<?> trns, GridResponse response) {
         return new LinkResponsePacket(
             AnchorSyncHolder.of(start),
             AnchorSyncHolder.of(end),
@@ -59,7 +60,7 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
         );
     }
 
-    public static LinkResponsePacket of(GridLink link, UpdateResponse response) {
+    public static LinkResponsePacket of(GridLink link, GridResponse response) {
         if(!link.hasPoints()) throw new IllegalArgumentException("Can't create a LinkResponsePacket from a link with missing points!");
         return new LinkResponsePacket(
             AnchorSyncHolder.of(link.getStartNode()),
@@ -78,7 +79,7 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
     public void handle(LocalPlayer player) {
 
         if(!response.indicatesCompletion()) return;
-        LevelReader world = player.level();
+        Level world = player.level();
         AnchorPoint startAnchor;
         AnchorPoint endAnchor;
 
@@ -86,23 +87,19 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
             case TASK_CREATE_LINK -> {
                 startAnchor = start.applyAndGet(world);
                 endAnchor = end.applyAndGet(world);
-                ConnectionKey key = new ConnectionKey(start, end);
-                GridCatenary cat = (GridCatenary)key.findIn(world);
-                if(cat == null) {
-                    if(!AnchorSyncHolder.assertAnchorsExist(response, startAnchor, endAnchor)) return;
-                    cat = new GridCatenary(world, startAnchor, endAnchor, transmitter(), CatenaryAttributes.Initializer.FRESH_SIMULATION);
-                }
-                cat.pushTo(world);
+                Mechano.LOGGER.info("PUSHING " + startAnchor.getAddress() + " -> " + endAnchor.getAddress());
+                GridCatenary cat = new GridCatenary(world, startAnchor, endAnchor, transmitter(), CatenaryAttributes.Initializer.FRESH_SIMULATION);
+                LinkDataStorable.put(world, cat);
             }
             case TASK_SYNC_ANCHORS -> {
                 startAnchor = start.applyAndGet(world);
                 endAnchor = end.applyAndGet(world);
                 ConnectionKey key = new ConnectionKey(start, end);
-                GridCatenary cat = (GridCatenary)key.findIn(world);
+                GridCatenary cat = LinkDataStorable.getAsClient(world, key);
                 if(cat == null) {
                     if(!AnchorSyncHolder.assertAnchorsExist(response, startAnchor, endAnchor)) return;
                     cat = new GridCatenary(world, startAnchor, endAnchor, transmitter(), CatenaryAttributes.Initializer.RESTING_SIMULATION);
-                    cat.pushTo(world);
+                    LinkDataStorable.put(world, cat);
                 }
                 else cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
             } 
@@ -110,7 +107,7 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
                 startAnchor = start.applyAndGet(world, true);
                 endAnchor = end.applyAndGet(world, true);
                 ConnectionKey key = new ConnectionKey(start, end);
-                key.removeFrom(world);
+                LinkDataStorable.remove(world, key);
             }
             case TASK_FREE_LINK -> {
                 Mechano.LOGGER.error("TODO IMPLEMENT TASK_FREE_LINK DUMBASS");

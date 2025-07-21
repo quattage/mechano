@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.api.anchor;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -38,18 +39,12 @@ public final class SurrogateNode {
      * Never null, immutable - The host of this SurrogateNode
      * in the world. Used for getting BlockPos and level.
      */
-    private final Griddable<?> points;
+    private final Griddable<?> host;
     private @Nullable GridUUID addr = null;
-
-    /**
-     * Indicates (on both the server and client) the
-     * amount of AnchorPoints represented by the PGBE
-     */
-    public int nodeCount = -1;
 
     public SurrogateNode(Griddable<?> points) {
         Objects.requireNonNull(points);
-        this.points = points;
+        this.host = points;
     }
 
     /**
@@ -69,10 +64,24 @@ public final class SurrogateNode {
      */
     public void sync(LevelReader world, @Nullable ServerMatrix newOwner) {
         if(world.isClientSide()) {
-            belongsToNetwork = newOwner != null;
+            belongsToNetwork = true;
             return;
         }
         this.owner = newOwner;
+    }
+
+    /**
+     * Runs {@link #forget} only if this SurrogateNode has no 
+     * links. This is useful for severing the persistent data
+     * associated with a {@link GridNode} whenever all connections
+     * leading to/from a Griddable are destroyed.
+     * @param world
+     * @return
+     */
+    public boolean forgetIfNeeded(LevelReader world) {
+        if(hasLinks(world)) return false;
+        forget(world);
+        return true;
     }
 
     /**
@@ -83,7 +92,8 @@ public final class SurrogateNode {
      * result in stale references in the ServerMatrix if not 
      * used carefully.
      * <p> 
-     * When in doubt, use {@link SurrogateNode#destroy()} instead.
+     * When in doubt, use {@link SurrogateNode#destroy()} instead, 
+     * which calls {@link #forgetIfNeeded} internally.
      * @param world
      */
     public void forget(LevelReader world) {
@@ -103,17 +113,17 @@ public final class SurrogateNode {
      * instance valid so that it can be reused later.
      */
     public void destroy() {
-        if(points.getWorld().isClientSide) return;
-        if(!isSynced(points.getWorld())) {
-            forget(points.getWorld());
+        if(host.getWorld().isClientSide) return;
+        if(!isSynced(host.getWorld())) {
+            forget(host.getWorld());
             return;
         }
-        this.owner.destroyNodeAt(getOrMakeAddress(), nodeCount);
+        this.owner.destroy(getOrMakeAddress());
     }
 
     private GridUUID getOrMakeAddress() {
         if(this.addr != null) return this.addr;
-        this.addr = points.getOrCreateAddress();
+        this.addr = host.getOrCreateAddress();
         return this.addr;
     }
 
@@ -121,12 +131,45 @@ public final class SurrogateNode {
         return owner;
     }
 
-    public NodeMap constituents() {
-        return owner == null ? new NodeMap() : owner.nodes == null ? new NodeMap() : owner.nodes;
+    public boolean hasLinks(LevelReader world) {
+        if(world.isClientSide()) {
+            for(int x = 0; x < host.getAnchors().size(); x++) {
+                AnchorPoint anchor = host.getAnchor(x);
+                if(anchor.getCurrentConnections() >= 0) return true;
+            }
+            return false;
+        }
+        NodeMap friends = constituents();
+        if(!isSynced(world))
+        if(friends == null || friends.isEmpty()) return false;
+        GridUUID walkingAddress = getOrMakeAddress();
+        for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
+            walkingAddress = walkingAddress.indexedCopy(x);
+            GridNode node = friends.get(walkingAddress);
+            if(node == null) continue;
+            if(node.hasLinks()) return true;
+        }
+        return false;
+    }
+
+    public void forEachAttached(Consumer<GridNode> action) {
+        NodeMap friends = constituents();
+        if(friends == null || friends.isEmpty()) return;
+        GridUUID walkingAddress = getOrMakeAddress();
+        for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
+            walkingAddress = walkingAddress.indexedCopy(x);
+            GridNode node = friends.get(walkingAddress);
+            if(node == null) continue;
+            action.accept(node);
+        }
+    }
+
+    public @Nullable NodeMap constituents() {
+        return owner == null ? null : owner.nodes == null ? null : owner.nodes;
     }
     
     @Override
     public String toString() {
-        return "SurrogateNode(" + points + ", " + (points.getWorld().isClientSide ? "CLIENT" : "SERVER") + ", synced? : " + isSynced(points.getWorld()) + ")";
+        return "SurrogateNode(" + host + ", " + (host.getWorld().isClientSide ? "CLIENT" : "SERVER") + ", synced? : " + isSynced(host.getWorld()) + ")";
     }
 }

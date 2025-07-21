@@ -60,7 +60,7 @@ public class EntityUUID extends GridUUID {
 
     @Override
     public boolean isBeingTrackedBy(ServerPlayer player) {
-        getDataHolder(player.level());
+        getDataStorageHolder(player.level());
         if(!(player.level().getChunkSource()instanceof ServerChunkCache chunkCache)) return false;
         if(points.getSource() instanceof ServerPlayer otherPlayer)
             if(otherPlayer.getId() == player.getId()) return true;
@@ -72,7 +72,7 @@ public class EntityUUID extends GridUUID {
     @Override
     @OnlyIn(Dist.CLIENT)
     public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
-        getDataHolder(world);
+        getDataStorageHolder(world);
         return points == null ? false : view.isVisible(points.getSource().getBoundingBox());
     }
 
@@ -103,13 +103,13 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public @Nullable IAttachmentHolder getDataHolder(LevelReader world) {
+    public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) {
         return getAnchorPoints(world) == null ? null : points.getSource();
     }
 
     @Override
     public String describeDataHolder(LevelReader world) {
-        if(getDataHolder(world) instanceof Entity e) {
+        if(getDataStorageHolder(world) instanceof Entity e) {
             Vec3 pos = e.getPosition(1);
             return e.getClass().getSimpleName() + "['" +  e.getName().getString() + ",' " + pos.x + ", " + pos.y + ", " + pos.z + "]";
         }

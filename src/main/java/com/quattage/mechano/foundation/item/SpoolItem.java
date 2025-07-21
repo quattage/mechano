@@ -13,9 +13,10 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
@@ -24,8 +25,8 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -96,7 +97,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-        UpdateResponse result = SidedGridDispatcher.client(player).requestLinkCreation(playerPoints.getAnchor(), startAnchor, getTransmitterType(), true);
+        GridResponse result = SidedGridDispatcher.client(player).requestLinkCreation(playerPoints.getAnchor(), startAnchor, getTransmitterType(), true);
         startingDamage = stack.getDamageValue();
         if(!result.indicatesCompletion()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
@@ -117,7 +118,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             return InteractionResultHolder.fail(stack);
         }
 
-        UpdateResponse initialResponse = AnchorSelector.INSTANCE.getSelectedResponse();
+        GridResponse initialResponse = AnchorSelector.INSTANCE.getSelectedResponse();
         if(!initialResponse.indicatesCompletion()) {
             if(initialResponse.shouldFailHard()) {
                 onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
@@ -136,7 +137,8 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(startAnchor.getAddress().equals(endAnchor.getAddress()))
             return InteractionResultHolder.pass(stack);
 
-        UpdateResponse result = SidedGridDispatcher.client(player).requestLinkCreation(startAnchor, endAnchor, getTransmitterType(), true);
+        ClientGrid grid = SidedGridDispatcher.client(player);
+        GridResponse result = grid.requestLinkCreation(startAnchor, endAnchor, getTransmitterType(), true);
         if(!result.indicatesCompletion()) {
             if(result.shouldFailHard()) {
                 onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
@@ -144,11 +146,13 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             }
             return InteractionResultHolder.pass(stack);
         }
+        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
+        result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchor(), true);
         applyDurability(stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
+        stack.remove(UUIDDiscriminator.ATTACHMENT);
         startingDamage = -1;
         return InteractionResultHolder.success(stack);
     }
-
 
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
@@ -157,15 +161,17 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         GridUUID startAddress = stack.get(UUIDDiscriminator.ATTACHMENT);
         if(startAddress == null) return;
 
-        EntityUUID addr = new EntityUUID(entity.getUUID(), 0);
+        EntityUUID playerAddress = new EntityUUID(entity.getUUID(), 0);
         AnchorPoint startAnchor = startAddress.getAnchor((ClientLevel)world);
-        if(startAnchor == null || !startAnchor.hasRoom()) {
-            cancelAwaitingConnection(addr, null, stack);
+        if(startAnchor == null || (startAnchor.getCurrentConnections() > startAnchor.getMaxConnections())) {
+            Mechano.LOGGER.warn("Connection to " + startAnchor + " was cancelled prematurely.");
+            cancelAwaitingConnection(startAnchor.getAddress(), playerAddress, stack);
             return;
         }
-        LinkData links = LinkData.getFrom(entity);
-        if(links == null) return;
-        GridCatenary cat = (GridCatenary)links.get(new ConnectionKey(addr, startAddress));
+
+        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        if(storage == null) return;
+        GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
         if(cat == null) return;
         applyDurability(stack, cat.getLength());
         cat.adjustMaxLength(stack);
@@ -176,13 +182,12 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
         if(startAddress == null || endAddress == null) return;
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAddress, endAddress, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_DESTROY_LINK));
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAddress, endAddress, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
     }
 
 
     @Override
     public boolean onLeftClick(LocalPlayer player, ItemStack stack, @Nullable InteractionHand hand) {
-
         if(!stack.has(UUIDDiscriminator.ATTACHMENT)) return false;
         GridUUID addr = stack.get(UUIDDiscriminator.ATTACHMENT);
         if(addr == null) return false;
@@ -190,7 +195,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         AnchorPoint previous = addr.getAnchor((ClientLevel)player.level());
         if(previous == null) {
             GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-            CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_DESTROY_LINK));
+            CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
             return true;
         }
 
@@ -198,9 +203,12 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         float faceDot = (float)player.getViewVector(1).dot(disp);
         if(faceDot < CatenaryAttributes.DETACH_THRESHOLD) return false;
         GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, UpdateResponse.TASK_FREE_LINK));
+        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_FREE_LINK));
         cancelAwaitingConnection(addr, null, stack);
-        if(hand != null) player.swing(hand);
+        if(hand != null) {
+            player.swing(hand);
+            player.swingTime = 1;
+        }
         return true;
     }
 

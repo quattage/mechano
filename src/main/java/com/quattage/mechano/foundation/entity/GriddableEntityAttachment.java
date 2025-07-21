@@ -8,8 +8,8 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher.LinkData;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
@@ -18,6 +18,7 @@ import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.world.entity.Entity;
@@ -34,7 +35,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * at the world-level, so despite being a Data Attachment, there are
  * no persistence features built into this class directly.
  */
-public class GriddableEntityAttachment implements Griddable<Entity> {
+public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAccessor {
 
     private Entity entity;
     private AnchorArray anchor;
@@ -62,7 +63,6 @@ public class GriddableEntityAttachment implements Griddable<Entity> {
             throw new IllegalArgumentException("EntityAnchorPointHosts can only be attached to entities, got " + holder + "!");
         this.entity = entity;
         constructAnchors(null);
-        surrogate.nodeCount = anchor.size();
     }
 
     @Override
@@ -70,16 +70,12 @@ public class GriddableEntityAttachment implements Griddable<Entity> {
         anchor = AnchorArray.ofSingle((new AnchorPoint(new EntityUUID(entity.getUUID(), 0), 0, 0, 0, 1.7f, true, 2)));
     }
 
-    @SuppressWarnings("unchecked")
+    @Override
     public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         if(!entity.level().isClientSide) return null;
         if(!entity.hasData(MechanoData.LINK_ATTACHMENT)) return null;
-        LinkData data = entity.getData(MechanoData.LINK_ATTACHMENT);
-        if(data.isEmpty()) {
-            entity.removeData(MechanoData.LINK_ATTACHMENT);
-            return null;
-        }
-        return (ObjectSet<GridCatenary>)(Object)data.get();
+        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        return storage == null ? null : storage.getAll();
     }
 
     @Override

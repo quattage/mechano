@@ -11,7 +11,6 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
@@ -19,9 +18,8 @@ import com.quattage.mechano.foundation.api.landmark.GridPath;
 import com.quattage.mechano.foundation.api.landmark.NodeMap;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.HeuristicUUID;
-import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse;
-import com.quattage.mechano.foundation.api.switchboard.UpdateResponse.AnchorSyncHolder;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse;
+import com.quattage.mechano.foundation.helper.Worldly;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -32,17 +30,17 @@ import net.minecraft.server.level.ServerLevel;
  * Represents a single localized cluster made of nodes and links,
  * where each node has continuity with every other node in the cluster.
  */
-public class ServerMatrix {
+public class ServerMatrix implements Worldly {
 
     private ServerGrid globalGrid;
-    public int gridIndex = -1;
+    private int index = -1;
     public NodeMap nodes;
 
     public static ServerMatrix createAndPrepare(ServerGrid parent) {
         Objects.requireNonNull(parent);
         if(!parent.isValid()) throw new IllegalArgumentException("Can't instantiate a new ServerMatrix - The parent matrix is invalid!");
         ServerMatrix matrix = new ServerMatrix(parent, new NodeMap(2));
-        matrix.gridIndex = parent.matrices.size();
+        matrix.index = parent.matrices.size();
         parent.matrices.add(matrix);
         return matrix;
     }
@@ -52,7 +50,7 @@ public class ServerMatrix {
         Objects.requireNonNull(nodes);
         this.globalGrid = parent;
         this.nodes = nodes;
-        this.gridIndex = parent.matrices.size();
+        this.index = parent.matrices.size();
     }
 
     /**
@@ -71,9 +69,9 @@ public class ServerMatrix {
         if(original.globalGrid == null) 
             throw new IllegalArgumentException("Tried to clone a ServerMatrix from one with bad data!");
         this.globalGrid = original.globalGrid;
-        this.gridIndex = original.gridIndex;
+        this.index = original.index;
         this.nodes = newContents == null ? new NodeMap() : newContents;
-        this.globalGrid.matrices.set(gridIndex, this);
+        this.globalGrid.matrices.set(index, this);
     }
 
     /**
@@ -96,7 +94,7 @@ public class ServerMatrix {
                     continue;
                 }
                 SurrogateNode surrogate = node.getAddress().getSurrogate(parent.getWorld());
-                if(surrogate != null) surrogate.forget(parent.getWorld());
+                if(surrogate != null) surrogate.forgetIfNeeded(parent.getWorld());
                 node.nullify();
             }
         }
@@ -105,7 +103,7 @@ public class ServerMatrix {
             return;
         }
         this.globalGrid = parent;
-        this.gridIndex = globalGrid.matrices.size();
+        this.index = globalGrid.matrices.size();
         globalGrid.matrices.add(this);
     }
 
@@ -231,6 +229,7 @@ public class ServerMatrix {
         this.nodes.ensureCapacity(oldSize + otherNodes.size());
         otherNodes.forEach(node -> {
             this.nodes.add(node);
+            node.swapOwner(this);
         });
         return oldSize != this.nodes.size();
     }
@@ -245,8 +244,8 @@ public class ServerMatrix {
      * @return <code>true</code> if this LocalMatrix was modified as a result
      * of this call.
      */
-    public boolean destroyNodeAt(GridUUID address) {
-        return destroyNodeAt(address, GridUUID.MAX_SHARED_OCCUPANCY);
+    public boolean destroy(GridUUID address) {
+        return destroy(address, GridUUID.MAX_SHARED_OCCUPANCY);
     }
 
     /**
@@ -259,7 +258,7 @@ public class ServerMatrix {
      * @return <code>true</code> if this LocalMatrix was modified as a result
      * of this call.
      */
-    public boolean destroyNodeAt(GridUUID address, int expectedCount) {
+    public boolean destroy(GridUUID address, int expectedCount) {
         assertNotDestroyed();
         Objects.requireNonNull(address);
         boolean modified = false;
@@ -268,7 +267,7 @@ public class ServerMatrix {
             GridUUID addr = address.indexedCopy(x);
             GridNode removed = nodes.remove(addr);
             if(removed == null ) continue;
-            removeLinksInvolving(removed, empties, true);
+            isolate(removed, empties, true);
             modified = true;
         }
         // TODO increase specificity so that cleanup is called only when it needs to be
@@ -283,7 +282,7 @@ public class ServerMatrix {
      * @param node
      * @param empties A set of GridUUIDs to collect empty nodes. 
      */
-    protected void removeLinksInvolving(GridNode node, @Nullable Set<GridUUID> empties, boolean broadcast) {
+    protected void isolate(GridNode node, Set<GridUUID> empties, boolean broadcast) {
         if(!node.hasLinks()) return;
         for(GridLink link : node) {
             GridNode destination = link.getEndNode();
@@ -292,28 +291,13 @@ public class ServerMatrix {
                 GridLink linkToTest = linksIterator.next();
                 if(linkToTest.endsWith(node.getAddress())) {
                     linksIterator.remove();
-                    if(broadcast) {
-                        if(node.getOwner().getWorld() == null) {
-                            Mechano.LOGGER.warn("Couldn't broadcast updates for removal of node at " 
-                                + node.getAddress()  + " because this address has no world!");
-                        } else link.getTransmitter().onConnectionDestroyed(node.getOwner().getWorld(), null, link);
-                        if(node.getAnchorPoints() == null) {
-                            Mechano.LOGGER.warn("Couldn't broadcast updates for removal of Griddable at " 
-                                + node.getAddress()  + " because the removed node has no Griddable!");
-                        } else node.getAnchorPoints().onConnectionDestroyed(node.getOwner().getWorld(), link);
-                        link.sendToClientsTracking(
-                            LinkResponsePacket.of(
-                                link.getStartNode(), link.getEndNode(),
-                                null, UpdateResponse.TASK_DESTROY_LINK
-                            ));
-                    }
+                    if(broadcast) link.broadcast(GridResponse.TASK_DESTROY_LINK);
                 }
             }
-            if(!destination.hasLinks() && empties != null) 
+            if(!destination.hasLinks()) 
                 empties.add(destination.getAddress());
         }
-        if(empties != null)
-            empties.add(node.getAddress());
+        empties.add(node.getAddress());
     }
 
     /**
@@ -321,46 +305,41 @@ public class ServerMatrix {
      * @param start
      * @param end
      */
-    public void removeSingularLink(GridUUID start, GridUUID end) {
-        final Set<GridUUID> empties = new HashSet<>();
+    public GridLink deLink(GridNode start, GridNode end, Set<GridUUID> empties) {
         GridNode startNode = nodes.get(start);
         GridNode endNode = nodes.get(end);
-        boolean startRemoved = startNode == null ? false : removeLink(startNode, end, empties);
-        boolean endRemoved = endNode == null ? false : removeLink(endNode, start, empties);
-        if(startRemoved || endRemoved)
-            cleanup(empties, true);
+        GridLink removedStart = startNode == null ? null : removeLink(startNode, end.getAddress(), empties);
+        GridLink removedEnd = endNode == null ? null : removeLink(endNode, start.getAddress(), empties);
+        return removedStart == null ? removedEnd : removedStart;
     }
 
-    private boolean removeLink(GridNode fromNode, GridUUID toAddress, @Nullable Set<GridUUID> empties) {
-        Iterator<GridLink> linksIterator = fromNode.iterator();
-        boolean modified = false;
+    private @Nullable GridLink removeLink(GridNode fromNode, GridUUID toAddress, @Nullable Set<GridUUID> empties) {
+        if(!fromNode.hasLinks()) 
+            return null;
+        /**
+         * I'm looping over the entire iterator here with no early return just in case there
+         * are duplicates. For now, we can incur the cost of iterative stuff like this until 
+         * the GridAPI is proven to be watertight.
+         */
+        final Iterator<GridLink> linksIterator = fromNode.iterator();
+        GridLink firstRemoved = null;
         while(linksIterator.hasNext()) {
             GridLink link = linksIterator.next();
-            if(link.endsWith(toAddress)) {
-
+            if(!link.endsWith(toAddress))
+                continue;
+            if(firstRemoved != null) {
                 linksIterator.remove();
-                modified = true;
-
-                if(fromNode.getOwner().getWorld() == null) {
-                    Mechano.LOGGER.warn("Couldn't broadcast updates for removal of connection at " 
-                        + fromNode.getAddress() + " -> " + toAddress + " because this address has no world!");
-                } else link.getTransmitter().onConnectionDestroyed(fromNode.getOwner().getWorld(), null, link);
-
-                if(fromNode.getAnchorPoints() == null) {
-                    Mechano.LOGGER.warn("Couldn't broadcast updates for removal of Griddable at " 
-                        + fromNode.getAddress()  + " -> " + toAddress + " because the removed node has no Griddable!");
-                } else fromNode.getAnchorPoints().onConnectionDestroyed(fromNode.getOwner().getWorld(), link);
-
-                link.sendToClientsTracking(
-                    LinkResponsePacket.of(
-                        link.getStartNode(), link.getEndNode(), 
-                        null, UpdateResponse.TASK_DESTROY_LINK
-                    ));
+                continue;
             }
-            if(!link.getEndNode().hasLinks()) 
-                empties.add(link.getEndNode().getAddress());
+            linksIterator.remove();
+            firstRemoved = link;
         }
-        return modified;
+        if(firstRemoved == null) return null;
+        if(!fromNode.hasLinks())
+            empties.add(fromNode.getAddress());
+        if(!firstRemoved.getEndNode().hasLinks()) 
+            empties.add(firstRemoved.getEndNode().getAddress());
+        return firstRemoved;
     }
 
     /**
@@ -379,10 +358,7 @@ public class ServerMatrix {
             for(GridUUID addr : forRemoval) {
                 GridNode node = nodes.remove(addr);
                 if(node == null) continue;
-                if(node.getAnchorPoints() != null) {
-                    node.getAnchorPoints().getSurrogate().forget(getWorld());
-                    AnchorSyncHolder.of(node).sendToClients();
-                }
+                node.broadcast(GridResponse.TASK_FORGET_ANCHORS);
                 node.nullify();
             }
         }
@@ -395,10 +371,7 @@ public class ServerMatrix {
         if(nodes.size() < 2) {
             for(GridNode node : nodes) {
                 if(node == null) continue;
-                if(node.getAnchorPoints() != null) {
-                    node.getAnchorPoints().getSurrogate().forget(getWorld());
-                    AnchorSyncHolder.of(node).sendToClients();
-                }
+                node.broadcast(GridResponse.TASK_FORGET_ANCHORS);
                 node.nullify();
             }
             globalGrid.destroyMatrix(this);
@@ -415,6 +388,19 @@ public class ServerMatrix {
         }
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    /**
+     * Only called by the {@Link ServerGrid}
+     * when {@link ServerGrid#updateGridIndices 
+     * operations shift the array. }
+     * @param index
+     */
+    protected void setIndex(int index) {
+        this.index = index;
+    }
 
     /**
      * Nullifies references in this LocalMatrix for when it is removed.<p>
@@ -426,7 +412,7 @@ public class ServerMatrix {
      * used, all hell will break lose.
      */
     public void destroy() {
-        gridIndex = -1;
+        index = -1;
         nodes = null;
     }
 
@@ -445,6 +431,7 @@ public class ServerMatrix {
             throw new IllegalStateException(message + " (Caused by: Destruction of parent ServerGrid)");
     }
 
+    @Override
     public ServerLevel getWorld() {
         assertNotDestroyed();
         return (ServerLevel)globalGrid.getWorld();
@@ -453,11 +440,18 @@ public class ServerMatrix {
     @Override
     public boolean equals(Object obj) {
         if(!(obj instanceof ServerMatrix that)) return false;
-        return this.gridIndex == that.gridIndex && this.globalGrid.getDimensionName().equals(that.globalGrid.getDimensionName());
+        if(this.isDestroyed() && that.isDestroyed())
+            return this.index == that.index;
+        return this.index == that.index && Worldly.areWorldsEqual(this.getWorld(), that.getWorld());
+    }
+
+    @Override
+    public int hashCode() {
+        return index;
     }
 
     @Override
     public String toString() {
-        return "ServerMatrix[index " + this.gridIndex + ", dim '" + this.globalGrid == null ? "N/A" : this.globalGrid.getDimensionName() + "']";
+        return "ServerMatrix[index " + this.index + ", dim '" + this.globalGrid == null ? "N/A" : this.globalGrid.getDimensionName() + "']";
     }
 }

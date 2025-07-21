@@ -15,6 +15,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
  * Handler for LOD-adjacent functionality on both the client and the server.
@@ -45,6 +46,8 @@ public interface TrackableStreamer {
     public abstract boolean isBeingTrackedBy(ServerPlayer player);
     public abstract boolean isInsideOf(LevelReader world, ChunkPos chunk);
     public abstract boolean isInsideOf(LevelReader world, SectionPos section);
+    public abstract int getSectionY(LevelReader world);
+    public abstract IAttachmentHolder getDataStorageHolder(LevelReader world);
 
     @OnlyIn(Dist.CLIENT)
     public abstract boolean isInFrustum(LevelReader world, @NotNull Frustum view);
@@ -58,5 +61,13 @@ public interface TrackableStreamer {
     @OnlyIn(Dist.CLIENT)
     public default boolean isVisibleOnScreen(LevelReader world, Frustum view) {
         return view == null ? false : isInFrustum(world, view);
+    }
+
+
+    public default void broadast() {
+        broadcast(GridResponse.values()[0]);
+    }
+    public default void broadcast(GridResponse response) {
+        throw new UnsupportedOperationException("'" + this.getClass().getSimpleName() + "' can't broadcast!");
     }
 }

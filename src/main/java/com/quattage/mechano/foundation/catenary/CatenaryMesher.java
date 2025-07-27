@@ -11,7 +11,6 @@ import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.ModelType;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Thickness;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -24,6 +23,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
@@ -115,8 +115,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has a thickness of zero!");
         this.data[0] = thick.half();
         data[41] = thick.getPixels();
-        this.tension = type.defaults.getTension();
-        this.atlas = type.getSprite();
+        this.atlas = type.getAtlasSprite();
         return this;
     }
 
@@ -129,15 +128,6 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         data[0] = thick.get() / 2f;
         data[41] = thick.getPixels();
         return this;
-    }
-
-    /**
-     * Sets the tension of the resulting meshes
-     * that are drawn by this CatenaryMesher.
-     */
-    @Override
-    public CatenaryMesher withTension(Tension tension) {
-        return (CatenaryMesher)super.withTension(tension);
     }
 
     /**
@@ -174,6 +164,11 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         return this;
     }
 
+    public CatenaryMesher ignoreAtlas() {
+        this.useTextureAtlas = false;
+        return this;
+    }
+
     /**
      * Inherits all defaulted properties of the given 
      * TransmitterType, including tension, thickness, and material.
@@ -192,14 +187,8 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
             throw new IllegalArgumentException("Can't create a CatenaryGeometry builder from transmitter '" + TransmitterRegistry.INSTANCE.getKey(type) + "' - This type has a thickness of zero!");
         this.data[0] = thick.half();
         data[41] = thick.getPixels();
-        this.tension = type.defaults.getTension();
-        this.atlas = type.getSprite();
+        this.atlas = type.getAtlasSprite();
         useAtlas();
-        return this;
-    }
-
-    public CatenaryMesher ignoreAtlas() {
-        this.useTextureAtlas = false;
         return this;
     }
 
@@ -562,29 +551,29 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
 
     public float u0() {
         return useTextureAtlas && atlas != null
-            ? atlas.getU(data[40]) : data[40] / 16f;
+            ? atlas.getU(data[40] / 16f) : data[40] / 16f;
     }
 
     public float u1() {
         return useTextureAtlas && atlas != null
-            ? atlas.getU(data[41]) : data[41] / 16f;
+            ? atlas.getU(data[41] / 16f) : data[41] / 16f;
     }
 
     public float v0() {
         return useTextureAtlas && atlas != null
-            ? atlas.getU(data[42]) : data[42] / 16f;
+            ? atlas.getV(data[42] / 16f) : data[42] / 16f;
     }
 
     public float v1() {
         return useTextureAtlas && atlas != null
-            ? atlas.getU(data[43]) : data[43] / 16f;
+            ? atlas.getV(data[43] / 16f) : data[43] / 16f;
     }
 
-    public CatenaryMesher walkUVs(Stick stick, int iteration) {
-        data[42] = (stick.length * 2f) * (float)iteration;
-        data[43] = data[42] + (stick.length) * 4;
+    public CatenaryMesher walkUVs(Stick stick, float arclength) {
+        data[42] = arclength;
+        data[42] %= CatenaryAttributes.TEX_DIMS[1];
+        data[43] = data[42] + (stick.length) * 8;
         if(atlas == null || !useTextureAtlas) return this;
-        // TODO atlas clipping
         return this;
     }
 
@@ -599,10 +588,13 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
     public int getLight(Vector3f pos) {
         if(world == null)
             return LightTexture.FULL_BRIGHT;
-        lightLookup.setX((int)Math.floor(pos.x + basis.x)); 
-        lightLookup.setY((int)Math.floor(pos.y + basis.y)); 
-        lightLookup.setZ((int)Math.floor(pos.z + basis.z));
-        return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, lightLookup), world.getBrightness(LightLayer.SKY, lightLookup));
+        lightLookup.setX((int)Math.round(pos.x + basis.x)); 
+        lightLookup.setY((int)Math.round(pos.y + basis.y)); 
+        lightLookup.setZ((int)Math.round(pos.z + basis.z));
+        int blocklight = world.getBrightness(LightLayer.BLOCK, lightLookup);
+        if(CatenaryAttributes.CLAMP_BLOCKLIGHT_SHADOWS)
+            blocklight = Mth.clamp(blocklight, 3, 15);
+        return LightTexture.pack(blocklight, world.getBrightness(LightLayer.SKY, lightLookup));
     }
 
     public CatenaryMesher setLight0(int light) {
@@ -642,22 +634,13 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         }
 
         public void clearPos() {
-            this.pos = new Vector3f();
-            this.lastPos = new Vector3f();
+            this.pos.set(0, 0, 0);
+            this.lastPos.set(0, 0, 0);
         }
 
         public void setPos(Vector3f pos) {
-            this.lastPos = new Vector3f(this.pos);
-            this.pos = new Vector3f(pos);
-        }
-
-        public void pin() {
-            this.pinned = true;
-            lastPos = new Vector3f(pos);
-        }
-
-        public void unpin() {
-            this.pinned = false;
+            this.lastPos.set(this.pos);
+            this.pos.set(pos);
         }
 
         @Override

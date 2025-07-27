@@ -111,7 +111,7 @@ public final class GriddableEntity extends Entity implements Griddable<Griddable
     }
 
     @Override
-    public boolean isLoose() {
+    public boolean isMovable() {
         return true;
     }
     

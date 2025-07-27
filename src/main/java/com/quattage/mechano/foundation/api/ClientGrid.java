@@ -1,12 +1,16 @@
 package com.quattage.mechano.foundation.api;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
+import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -71,6 +75,7 @@ public final class ClientGrid extends SidedGridDispatcher {
             }
         }
 
+
         if(!type.ignoresLimits()) {
             if(!endAnchor.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
             if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;
@@ -82,7 +87,7 @@ public final class ClientGrid extends SidedGridDispatcher {
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
         if(linkDistance < type.getMinDistance()) return GridResponse.FAIL_TOO_CLOSE;
-        if(linkDistance > type.getMaxLength()) return GridResponse.FAIL_TOO_FAR;
+        if(linkDistance > type.getMaximumSpan()) return GridResponse.FAIL_TOO_FAR;
 
         CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, GridResponse.TASK_CREATE_LINK));
         return GridResponse.TASK_CREATE_LINK;
@@ -105,6 +110,61 @@ public final class ClientGrid extends SidedGridDispatcher {
         }
         CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
         return GridResponse.TASK_DESTROY_LINK;
+    }
+
+    /**
+     * Creates a new {@link GridCatenary} from <code>start</code> to <code>end</code>
+     * and store that catenary in the relevent {@link DataScope scope} for rendering
+     * into LevelChunk, BlockEntity, or LivingEntity geometry. Calls to this method
+     * will sendBlockUpdated when necessary to ensure that chunks get refreshed.
+     * @see #handleCatenaryDestruction
+     * @param start
+     * @param end
+     * @param trns
+     * @return The {@link GridCatenary} that was created
+     */
+    public GridCatenary handleCatenaryCreation(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
+        AnchorPoint[] points = GridCatenary.orderedByRenderPriority(world, start.applyAndGet(world), end.applyAndGet(world));
+        GridCatenary cat = new GridCatenary(world, points[1], points[0], trns);
+        LinkDataStorable.put(world, cat);
+        cat.sendLevelUpdates(world);
+        return cat;
+    }
+
+
+    /**
+     * Destroys any {@link GridCatenary} instances that span between <code>start</code> 
+     * and <code>end</code>, while ensuring all associated data gets removed properly.
+     * @see #handleCatenaryCreation
+     * @param start
+     * @param end
+     */
+    public void handleCatenaryDestruction(AnchorSyncHolder start, AnchorSyncHolder end) {
+        start.applyAndGet(world, true);
+        end.applyAndGet(world, true);
+        GridCatenary cat = LinkDataStorable.popAsClient(world, new ConnectionKey(start, end));
+        if(cat != null) cat.sendLevelUpdates(world);
+    }
+
+    /**
+     * Indicates neither the creation of a new link, nor the destruction of an old one.
+     * Callls to this method are used to reinitialize any pre-existing 
+     * @param start
+     * @param end
+     * @param trns
+     */
+    public void handleCatenarySync(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        GridCatenary cat = LinkDataStorable.getAsClient(world, new ConnectionKey(start, end));
+        if(cat == null) {
+            if(!AnchorSyncHolder.assertAnchorsExist(startAnchor, endAnchor)) return;
+            cat = new GridCatenary(world, startAnchor, endAnchor, trns);
+            LinkDataStorable.put(world, cat);
+            cat.sendLevelUpdates(world);
+        }
+        else cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
+
     }
 
     @Override

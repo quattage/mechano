@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -18,12 +19,13 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
     public GriddableBlockEntityRenderer(Context context) {}
 
     @Override
-    public void render(T pgbe, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
+    public void render(T be, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
             int packedLight, int packedOverlay) {
         LocalPlayer player = Minecraft.getInstance().player;
         if(player == null) return;
         double reach = player.getAttributes().getValue(Attributes.ENTITY_INTERACTION_RANGE);
-        tickAnchors(player, pgbe, reach);
+        tickAnchors(player, be, reach);
+        renderMovingWires(be, bufferSource, poseStack, partialTick);
     }
 
     /**
@@ -39,13 +41,22 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
      * The visibility and interaction status of each anchor is evaluated in the {@link AnchorSelector#INSTANCE Anchor Selector}
      * @param be
      */
-    public void tickAnchors(LocalPlayer player, T pgbe, double reach) {
-        if(player == null) return;
-        if(!pgbe.isVisible()) return;
-        pgbe.getAnchors().forEach(anchor -> {
+    public void tickAnchors(LocalPlayer player, T be, double reach) {
+        if(!be.isVisible()) return;
+        be.getAnchors().forEach(anchor -> {
             float distance = (float)anchor.distanceTo(player);
             if(distance > reach * 1.5f) return;
-            AnchorSelector.INSTANCE.trackForThisFrame(pgbe, anchor, distance);
+            AnchorSelector.INSTANCE.trackForThisFrame(be, anchor, distance);
+        });
+    }
+
+    public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
+        be.forEachCatenary(cat -> {
+            if(!CatenaryAttributes.DO_IT_JIGGLE && !cat.isMoving())
+                return;
+            if(!be.containsAnchor(cat.getPrimaryRenderer(null)))
+                return;
+            cat.renderDynamic(be, bufferSource, matrixStack, pTicks);
         });
     }
 }

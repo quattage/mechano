@@ -10,10 +10,11 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.helper.Worldly;
 import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
@@ -149,7 +150,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         if(storage == null) return;
         storage.forEach(link -> {
             if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
-            Mechano.LOGGER.info("Syncing " + link + " from (" + evt.getEntity().getClass().getSimpleName() + ")");
             CatnipServices.NETWORK.sendToClient(
                 (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
                     link.getStartNode(), link.getEndNode(), 
@@ -164,7 +164,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
         storage.forEach(link -> {
-            Mechano.LOGGER.info("Unsyncing " + link + " from (" + evt.getTarget().getClass().getSimpleName() + ")");
             CatnipServices.NETWORK.sendToClient(
                 (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
                     link.getStartNode(), link.getEndNode(), 
@@ -174,16 +173,21 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         });
     }
 
-
+    /**
+     * This is the hook where {@link CatenaryModel} instances get rendered
+     * to chunks if both ends of said model are attached to immovable,
+     * voxel-adjacent elements. This event collects links attached to
+     * the section via the registered {@link LinkDataStorable data attachment}.
+     */
     @SubscribeEvent
-    public static void onChunkMeshed(AddSectionGeometryEvent evt) {
+    public static void onSectionMeshed(AddSectionGeometryEvent evt) {
         SectionPos pos = SectionPos.of(evt.getSectionOrigin());
         ClientLevel world = (ClientLevel)evt.getLevel(); 
         LinkDataStorable.ClientSectionable storage = LinkDataStorable.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
         if(storage == null) return;
         LinkDataStorable.Client section = storage.getStorageInSection(pos.getY());
         if(section == null) return;
-        evt.addRenderer(new CatenaryAttributes.SectionRenderer(world, evt.getSectionOrigin(), pos, section.getAll()));
+        evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
     }
 
     /**

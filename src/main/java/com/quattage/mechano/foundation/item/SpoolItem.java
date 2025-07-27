@@ -165,7 +165,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         AnchorPoint startAnchor = startAddress.getAnchor((ClientLevel)world);
         if(startAnchor == null || (startAnchor.getCurrentConnections() > startAnchor.getMaxConnections())) {
             Mechano.LOGGER.warn("Connection to " + startAnchor + " was cancelled prematurely.");
-            cancelAwaitingConnection(startAnchor.getAddress(), playerAddress, stack);
+            cancelAwaitingConnection(startAnchor == null ? null : startAnchor.getAddress(), playerAddress, stack);
             return;
         }
 
@@ -173,8 +173,8 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(storage == null) return;
         GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
         if(cat == null) return;
-        applyDurability(stack, cat.getLength());
-        cat.adjustMaxLength(stack);
+        applyDurability(stack, cat.getSpan());
+        cat.adjustSpan(world, (stack.getMaxDamage() - stack.getDamageValue()) / 2f);
     }
 
     private void cancelAwaitingConnection(@Nullable GridUUID startAddress, @Nullable GridUUID endAddress, ItemStack stack) {

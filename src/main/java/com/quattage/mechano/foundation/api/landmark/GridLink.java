@@ -5,12 +5,12 @@ import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
@@ -20,8 +20,7 @@ public final class GridLink extends GridConnection {
 
     private GridNode start;
     private GridNode end;
-    private Tension tension;
-    private float length;
+    private final float[] lengths;
 
     public GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns) {
         super(trns); 
@@ -35,22 +34,20 @@ public final class GridLink extends GridConnection {
             throw new IllegalArgumentException("Can't instantiate a GridLink where both the start and end positions are the same!");
         if(!start.getOwner().equals(end.getOwner()))
             throw new IllegalStateException("Attempted to add two nodes that don't belong to the same grid, got start: " + start.getOwner() + ", and end: " + end.getOwner());
-            
-        this.length = Math.round(getEuclideanDistance(world, start.getAddress(), end.getAddress()));
-
+        this.lengths = new float[2];
+        this.lengths[0] = Math.round(getEuclideanDistance(world, start.getAddress(), end.getAddress()));
+        this.lengths[1] = trns.getType().getMaximumSpan();
         this.start = start;
         this.end = end;
-        this.tension = trns.getType().defaults.getTension();
     }
 
-    private GridLink(GridNode start, GridNode end, Transmitter<?> trns, Tension tension, float length) {
+    private GridLink(GridNode start, GridNode end, Transmitter<?> trns, float[] lengths) {
         super(trns);
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
-        this.length = length;
+        this.lengths = lengths;
         this.start = start;
         this.end = end;
-        this.tension = tension;
     }
 
     @Override
@@ -81,7 +78,7 @@ public final class GridLink extends GridConnection {
 
     @Override
     public GridLink inverseCopy() {
-        return new GridLink(end, start, this.getTransmitter(), getTension(), this.length);
+        return new GridLink(end, start, this.getTransmitter(), this.lengths);
     }
 
     @Override
@@ -89,7 +86,6 @@ public final class GridLink extends GridConnection {
         UUIDDiscriminator.write(end.getAddress(), in);
         end.getAddress().writeTo(in);
         trns.getType().writeTo(in);
-        in.putByte("ten", (byte)tension.ordinal());
         if(trns.needsSerialization()) {
             CompoundTag extras = new CompoundTag();
             trns.writeTo(extras);
@@ -113,33 +109,33 @@ public final class GridLink extends GridConnection {
     }
 
     @Override
-    public Tension getTension() {
-        return tension;
+    public float getSpan() {
+        return lengths[0];
     }
 
     @Override
-    public boolean setTension(Tension tension) {
-        if(tension == null) return setTension();
-        if(this.tension.equals(tension)) return false;
-        this.tension = tension;
-        return true;
+    public float getMaximumSpan() {
+        return trns.getType().getMaximumSpan();
     }
 
     @Override
-    public boolean resetTension() {
-        Tension defaultTension = trns.getType().defaults.getTension();
-        if(tension == defaultTension) return false;
-        this.tension = defaultTension;
-        return true;
+    public void adjustSpan(LevelReader world, float length) {
+        this.lengths[1] = length;
     }
 
     @Override
-    public float getLength() {
-        return length;
+    public String describeDataScope(LevelReader world) {
+        if(!hasPoints()) return "Destroyed";
+        return "ServerGrid '" + start.getOwner().getDimensionName() + "'";
     }
 
     @Override
-    public float getMaxLength() {
-        return trns.getType().getMaxLength();
+    public DataScope getDataScope() {
+        return DataScope.SERVER_UNKNOWN;
+    }
+
+    @Override
+    public void setDataScope(DataScope scope) {
+        return;
     }
 }

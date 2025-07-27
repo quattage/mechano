@@ -1,12 +1,13 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
+import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
@@ -42,6 +43,7 @@ public class MechanoClientEvents {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
     }
 
+
     /**
      * Renders catenaries belonging to the event's entity as part of that entity.
      * This allows catenaries to be visible and inherit the same culling behaviour
@@ -50,10 +52,15 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static <T extends LivingEntity, M extends EntityModel<T>> void onRenderLiving(RenderLivingEvent.Pre<T, M> evt) {
         LivingEntity e = evt.getEntity();
-        for(GridCatenary cat : ((CatenaryAccessor)e).getCatenaries()) {
-            if(!cat.hasPoints()) continue;
+        Griddable<?> holder = GriddableEntityAttachment.of(e, false);
+        if(holder == null) return;
+        ((CatenaryAccessor)e).forEachCatenary(cat -> {
+            if(cat == null || !cat.hasPoints() || !cat.canMoveDynamically()) return;
+            AnchorPoint point = cat.getPrimaryRenderer(null);
+            if(point == null || !holder.containsAnchor(cat.getPrimaryRenderer(null))) 
+                return;
             cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
-        }
+        });
     }
 
     /**
@@ -68,11 +75,9 @@ public class MechanoClientEvents {
         if(!instance.options.getCameraType().isFirstPerson()) return;
         LocalPlayer player = instance.player;
         if(player == null) return;
-
-        for(GridCatenary cat : ((CatenaryAccessor)player).getCatenaries()) {
-            if(!cat.hasPoints()) continue;
+        ((CatenaryAccessor)player).forEachCatenary(cat -> {
             cat.renderDynamicFirstPerson(player, Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
-        }
+        });
     }
 
     /**

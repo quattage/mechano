@@ -80,13 +80,15 @@ public interface Griddable<T> {
     public default boolean containsAnchor(AnchorPoint anchor) {
         if(anchor == null || anchor.getAddress().getIndex() < 0 || anchor.getAddress().getIndex() >= getAnchors().size()) 
             return false;
-        for(int x = 0; x < getAnchors().size(); x++) {
-            AnchorPoint other = getAnchor(x);
-            if(other == null) continue;
-            if(anchor.getAddress().equals(other.getAddress()))
-                return true;
-        }
-        return false;
+
+        return getOrCreateAddress().isVeryApproximately(getWorld(), anchor.getAddress());
+        // for(int x = 0; x < getAnchors().size(); x++) {
+        //     AnchorPoint other = getAnchor(x);
+        //     if(other == null) continue;
+        //     if(anchor.getAddress().equals(other.getAddress()))
+        //         return true;
+        // }
+        // return false;
     }
 
     public default CompoundTag writeTo(CompoundTag tag) {
@@ -192,19 +194,20 @@ public interface Griddable<T> {
 
     public abstract T getSource();
 
+    public default boolean isInteractable() { return true; }
+    public default boolean isVisible() { return true; }
+    public default boolean isMovable() { return false; }
+
     /**
-     * This method returns an arbitrary expression which is executed when drawing 
-     * {@link AnchorPoint AnchorPoints} belonging to this Griddable to the
-     * overlay. It's used in the {@link AnchorGUILayer} to add a label to the highligted
+     * This method returns an arbitrary expression (a {@link Visial} which is executed when drawing 
+     * {@link AnchorPoint AnchorPoints} belonging to this Griddable to the overlay. It's used in 
+     * the {@link AnchorGUILayer} to add an image of anything you want to the highlighted tooltip.
+     * This image is used in place of the goggle item that appears in standard Create google tooltips.
      * @return An Item that contains at least one item. This item can be drawn to GUI elements.
      */
     public default @Nullable Visual getVisual() {
         return null;
     }
-
-    public default boolean isInteractable() { return true; }
-    public default boolean isVisible() { return true; }
-    public default boolean isLoose() { return false; }
 
     @FunctionalInterface
     public interface Visual {

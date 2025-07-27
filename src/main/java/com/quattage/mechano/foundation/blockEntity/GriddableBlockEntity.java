@@ -1,11 +1,17 @@
 package com.quattage.mechano.foundation.blockEntity;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
+import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.createmod.catnip.gui.element.GuiGameElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -13,8 +19,10 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity> {
+public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity>, CatenaryAccessor {
 
     // always empty on the server
     private AnchorArray anchors = AnchorArray.EMPTY;
@@ -30,9 +38,14 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @Override
     public abstract void constructAnchors(AnchorArray.Builder anchors);
 
+
     @Override
     public void tick() {
         if(!getLevel().isClientSide) return;
+        if(!surrogate.belongsToNetwork()) return;
+        forEachCatenary(cat -> {
+            cat.updateShapeFixed(this, level);
+        });
     }
 
     @Override
@@ -76,6 +89,15 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @Override
     public SurrogateNode getSurrogate() {
         return surrogate;
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
+        if(!level.isClientSide()) return null;
+        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(this, false);
+        if(storage == null) return null;
+        return storage.getAll();
     }
 
     @Override

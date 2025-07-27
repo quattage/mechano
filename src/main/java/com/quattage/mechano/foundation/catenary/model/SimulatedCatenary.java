@@ -16,11 +16,16 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
 public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     private float segmentTF = 0f;
+    private float[] restitutionError = new float[3];
+
+    private final Vector3f randomKick = new Vector3f(0, 0, 0);
 
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
@@ -43,20 +48,21 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     public SimulatedCatenary initialize() {
         assertHasOffset();
         int segments = getSegmentCount();
+        if(segments == 0) return this;
         this.points = new ObjectArrayList<Point>(segments + 1);
         this.sticks = new ObjectArrayList<Stick>(segments);
         Point previous = null;
         Vector3f trgt = new Vector3f();
-        for(int x = 0; x < segments; x++) {
-            float spanProgress = 1f - ((float)x / (float)segments);
+        for(int x = 0; x < segments + 1; x++) {
+            float spanProgress = (float)x / (float)segments;
             Point newPoint = new Point(quicklerp(trgt, spanProgress));
             points.add(x, newPoint);
             if(previous != null)
                 sticks.add(x - 1, new Stick(previous, newPoint));
             previous = newPoint;
         }
-        points.getFirst().pin();
-        points.getLast().pin();
+        points.getFirst().pinned = true;
+        points.getLast().pinned = true;
         return this;
     }
 
@@ -70,7 +76,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         Point previous = points.getLast();
         boolean wasPinned = false;
         if(previous.pinned) {
-            previous.unpin();
+            previous.pinned = false;
             wasPinned = true;
         }
         int totalSegments = points.size() + additionalSegments;
@@ -82,16 +88,16 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             previous = newPoint;
         }
         if(wasPinned)
-            points.getLast().pin();
+            points.getLast().pinned = true;
     }
 
     @Override
-    public void calculateSegmentation() {
+    public SimulatedCatenary calculateSegmentation() {
         this.length = offset.length();
         
         if(!isInitialized()) {
             this.segmentTF = 0.01f;
-            return;
+            return this;
         }
 
         this.points.getFirst().clearPos();
@@ -104,7 +110,11 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             boolean wasPinned = this.points.getLast().pinned;
             this.points.removeElements(segmentCount, this.points.size());
             this.sticks.removeElements(segmentCount - 1, this.sticks.size());
-            if(wasPinned) this.points.getLast().pin();
+            if(wasPinned) {
+                Point p = this.points.getLast();
+                p.pinned = true;
+                p.lastPos.set(p.pos);
+            }
             this.points.trim();
             this.sticks.trim();
         } else if(segmentCount > this.points.size() && length < maxLength) {
@@ -112,30 +122,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             this.sticks.ensureCapacity(segmentCount - 1);
             addAdditionalSegments(segmentCount - this.points.size());
         }
-        this.points.getLast().setPos(offset);
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return this.points != null && this.sticks != null;
-    }
-
-
-    @Override
-    public SimulatedCatenary setOffset(Vector3f offset) {
-        if(this.offset == null)
-            this.offset = new Vector3f(offset.x, offset.y, offset.z);
-        else this.offset.set(offset);
-        calculateSegmentation();
-        return this;
-    }
-
-    @Override
-    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
-        if(this.offset == null)
-            this.offset = new Vector3f();
-        this.offset.set((float)(end.x - start.x), (float)(end.y - start.y), (float)(end.z - start.z));
-        calculateSegmentation();
         return this;
     }
 
@@ -161,6 +147,16 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         final Vector3d lastPos = new Vector3d();
         avgVelocity = 0;
 
+        Point p = points.getFirst();
+        if(p.pinned)
+            p.clearPos();
+        p = points.getLast();
+        if(p.pinned) {
+            lastPos.set(p.pos);
+            p.pos.set(offset);
+            p.lastPos.set(lastPos);
+        }
+
         for(Point point : points) {
             if(point.pinned) continue;
             lastPos.set(point.pos);
@@ -175,12 +171,14 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         if(Float.isNaN(this.avgVelocity)) {
             Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
             initialize();
+            calculateSegmentation();
             return;
         }
 
+        float constraintError = 0f;
         final Vector3f deltaPos = new Vector3f();
         for(int x = 0; x < CatenaryAttributes.SOLVER_STEPS; x++) {
-            for(int s = sticks.size() - 1; s >= 0; s--) {
+            for(int s = 0; s < sticks.size(); s++) {
 
                 Stick stick = sticks.get(s);
                 stick.computeForward();
@@ -193,53 +191,75 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 if(!stick.start.pinned && !stick.end.pinned) {
                     stick.start.pos.add(deltaPos);
                     stick.end.pos.sub(deltaPos);
-                    continue;
-                }
-
-                if(!stick.start.pinned) {
+                } else if(!stick.start.pinned)
                     stick.start.pos.add(deltaPos.mul(2));
-                    continue;
-                } 
-
-                if(!stick.end.pinned) {
+                else if(!stick.end.pinned)
                     stick.end.pos.sub(deltaPos.mul(2));
-                    continue;
-                }
+
+                constraintError += Math.abs(stick.start.pos.distance(stick.end.pos) - currentLength);
             }
         }
+
+        restitutionError[0] = restitutionError[1];
+        restitutionError[1] = constraintError / (float)this.sticks.size();
     }
 
     @Override
-    public void updateAhead(int steps) {
-        for(int x = 0; x < steps; x++) {
-            update();
-            if(isResting()) return;
-        }
-        float arclength = 0;
-        for(Stick s : sticks) arclength += s.length;
-        Mechano.LOGGER.warn("Catenary simulation (" + length + " meters, " + arclength + " arcmeters) couldn't reach a state of restitution in " + steps + " iterations.");
-    }
-
-    @Override
-    public void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
+    public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
         if(sticks.size() < 2) {
             Mechano.LOGGER.error("Attempted to render SimulatedCatenary with invalid (< 2) size!");
-            return;
+            return this;
         }
         Stick previous = sticks.getFirst();
         geo.setLight0(geo.getLight(previous.start.pos));
         geo.setLight1(geo.getLight(previous.end.pos));
-        geo.model.profile.make(buffer, pose, geo, null, previous, sticks.get(1), 0, true, pTicks);
+        float arclength = 0;
+        geo.model.extruder.make(buffer, pose, geo, null, previous, sticks.get(1), arclength, true, pTicks);
         for(int x = 1; x < sticks.size() - 1; x++) {
             Stick current = sticks.get(x);
+            arclength += current.length;
             geo.setLight1(geo.getLight(current.start.pos));
-            geo.model.profile.make(buffer, pose, geo, previous, current, sticks.get(x + 1), x, true, pTicks);
+            geo.model.extruder.make(buffer, pose, geo, previous, current, sticks.get(x + 1), arclength, true, pTicks);
             previous = current;
             geo.walkLight();
         }
         Stick last = sticks.getLast();
         geo.setLight1(geo.getLight(last.end.pos));
-        geo.model.profile.make(buffer, pose, geo, previous, last, null, sticks.size(), true, pTicks);
+        geo.model.extruder.make(buffer, pose, geo, previous, last, null, arclength, true, pTicks);
+        return this;
+    }
+
+    @Override
+    public SimulatedCatenary setOffset(Vector3f offset) {
+        if(this.offset == null)
+            this.offset = new Vector3f(offset.x, offset.y, offset.z);
+        else this.offset.set(offset);
+        calculateSegmentation();
+        return this;
+    }
+
+    @Override
+    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
+        if(this.offset == null)
+            this.offset = new Vector3f();
+        this.offset.set((float)(end.x - start.x), (float)(end.y - start.y), (float)(end.z - start.z));
+        calculateSegmentation();
+        return this;
+    }
+
+    @Override
+    public SimulatedCatenary fixEndpoints() {
+        if(this.points == null) return this;
+        Point p = null;
+        p = this.points.getFirst();
+        p.pos.set(0, 0, 0);
+        p.lastPos.set(0, 0, 0);
+        p.pinned = true;
+        p = this.points.getLast();
+        p.pos.set(offset.x, offset.y, offset.z);
+        p.lastPos.set(offset.x, offset.y, offset.z);
+        p.pinned = true;
+        return this;
     }
 
     @Override
@@ -254,6 +274,74 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 basis.add(stick.end.pos.x, stick.end.pos.y, stick.end.pos.z))
                     .lineWidth(0.02f).disableCull().colored(Color.GREEN);
         }
+    }
+
+    @Override
+    public ParametricCatenary toParametric() {
+        assertHasOffset();
+        assertInitialized();
+        ParametricCatenary parametric = new ParametricCatenary();
+        parametric.offset = this.offset;
+        parametric.length = this.length;
+        parametric.maxLength = this.maxLength;
+        parametric.avgVelocity = this.avgVelocity;
+        this.points = null;
+        this.sticks = null;
+        return parametric;
+    }
+
+    @Override
+    public BakedCatenary bake() {
+        assertHasOffset();
+        assertInitialized();
+        BakedCatenary baked = new BakedCatenary(offset, sticks);
+        baked.length = this.length;
+        baked.maxLength = this.maxLength;
+        baked.avgVelocity = 0;
+        this.points = null;
+        this.sticks = null;
+        return baked;
+    }
+
+    /**
+     * Apply an upward force to the middle of the wire
+     * to add some extra visual interest when the wire is 
+     * created.
+     */
+    public void kick(float strength) {
+        assertInitialized();
+        int index = Math.round(this.points.size() / 2);
+        Point kickPoint = this.points.get(index);
+        if(kickPoint == null) return;
+        kickPoint.lastPos.set(kickPoint.pos);
+        kickPoint.pos.y += strength;
+    }
+
+    public void randomKick(RandomSource random) {
+        
+    }
+
+    @Override
+    public boolean isResting() {
+        if(super.isResting() && (Math.abs(restitutionError[1] - restitutionError[0]) < 1e-4f)) {
+            if(restitutionError[2] > 42)
+                return true;
+            restitutionError[2]++;
+            return false;
+        } 
+        restitutionError[2] = 0;
+        return false;
+    }
+
+    @Override
+    public void updateAhead(int steps) {
+        for(int x = 0; x < steps; x++) {
+            update();
+            if(isResting()) return;
+        }
+        float arclength = 0;
+        for(Stick s : sticks) arclength += s.length;
+        Mechano.LOGGER.warn("Catenary simulation (" + length + " meters, " + arclength + " arcmeters) couldn't reach a state of restitution in " + steps + " iterations.");
     }
 
     @Override
@@ -284,52 +372,28 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary toSimulated(boolean pinEnds) {
+    public SimulatedCatenary toSimulated() {
         Mechano.LOGGER.warn("Attempted to convert a SimulatedCatenary to itself!");
         return this;
     }
 
     @Override
-    public ParametricCatenary toParametric() {
-        assertHasOffset();
-        assertInitialized();
-        ParametricCatenary parametric = new ParametricCatenary();
-        parametric.offset = this.offset;
-        parametric.tension = this.tension;
-        parametric.length = this.length;
-        parametric.maxLength = this.maxLength;
-        parametric.avgVelocity = this.avgVelocity;
-        this.points = null;
-        this.sticks = null;
-        return parametric;
+    public boolean isInitialized() {
+        return this.points != null && this.sticks != null;
     }
 
     @Override
-    public BakedCatenary bake() {
-        assertHasOffset();
-        assertInitialized();
-        BakedCatenary baked = new BakedCatenary(offset, sticks);
-        baked.length = this.length;
-        baked.tension = this.tension;
-        baked.maxLength = this.maxLength;
-        baked.avgVelocity = 0;
-        this.points = null;
-        this.sticks = null;
-        return baked;
+    public void adjustSpan(LevelReader world, float length) {
+        this.maxLength = length;
     }
 
     @Override
-    public boolean isMovable() {
-        return true;
-    }
-
-    @Override
-    public float getLength() {
+    public float getSpan() {
         return length;
     }
 
     @Override
-    public float getMaxLength() {
+    public float getMaximumSpan() {
         return maxLength;
     }
 

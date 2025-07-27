@@ -16,15 +16,20 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 
-public class CatenaryModelProvider extends SimplePreparableReloadListener<Map<TransmitterType<?>, com.quattage.mechano.foundation.catenary.CatenaryModelProvider.ModelDefinition>> {
+public class CatenaryModelProvider extends SimplePreparableReloadListener<Map<TransmitterType<?>, CatenaryModelProvider.ModelDefinition>> {
 
     public static final ResourceLocation MISSING_TEX = Mechano.asResource("textures/block/catenary/missing.png");
+    public static final ResourceLocation MISSING_ATLAS = Mechano.asResource("block/catenary/missing");
 
     public static final class ModelDefinition {
         public String texture;
         public ResourceLocation getTexture() {
             ResourceLocation rl = ResourceLocation.bySeparator(texture, ':');
             return ResourceLocation.fromNamespaceAndPath(rl.getNamespace(), rl.getPath() + ".png");
+        }
+        public ResourceLocation getAtlas() {
+            ResourceLocation rl = ResourceLocation.bySeparator(texture.replace("textures/", ""), ':');
+            return ResourceLocation.fromNamespaceAndPath(rl.getNamespace(), rl.getPath());
         }
     }
 
@@ -33,7 +38,7 @@ public class CatenaryModelProvider extends SimplePreparableReloadListener<Map<Tr
         Map<TransmitterType<?>, ModelDefinition> out = new HashMap<>();
         TransmitterRegistry.INSTANCE.forEachEntry((loc, trns) -> {
             trns.unloadResource();
-            if(trns.defaults.model.profile == null) return;
+            if(trns.defaults.model.extruder == null) return;
             ResourceLocation location = ResourceLocation.fromNamespaceAndPath(loc.getNamespace(), "models/block/catenary/" + loc.getPath() + ".json");
             manager.getResource(location).ifPresentOrElse(resource -> {
                 try(Reader reader = new InputStreamReader(resource.open(), StandardCharsets.UTF_8)) {

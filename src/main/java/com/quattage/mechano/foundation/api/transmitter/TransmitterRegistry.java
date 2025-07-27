@@ -15,7 +15,6 @@ import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.nbt.CompoundTag;
@@ -140,6 +139,7 @@ public class TransmitterRegistry {
         public final CatenaryAttributeHolder defaults;
         
         private ResourceLocation textureLocation = null;
+        private ResourceLocation atlasLocation = null;
         private TextureAtlasSprite atlasSprite = null;
 
         public static final StreamCodec<ByteBuf, TransmitterType<?>> STREAM_CODEC = new StreamCodec<>() {
@@ -183,7 +183,7 @@ public class TransmitterRegistry {
          * @return the maximum distance (in meters) that 
          * a single wire of this type can span
          */
-        public int getMaxLength() {
+        public int getMaximumSpan() {
             return maxDistance;
         }
 
@@ -260,12 +260,8 @@ public class TransmitterRegistry {
 
         @OnlyIn(Dist.CLIENT)
         @SuppressWarnings("deprecation")
-        public TextureAtlasSprite getSprite() {
-            if(atlasSprite == null) {
-                if(textureLocation == null)
-                    atlasSprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(MissingTextureAtlasSprite.getLocation());
-                else atlasSprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(getTextureLocation());
-            }
+        public TextureAtlasSprite getAtlasSprite() {
+            atlasSprite = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(atlasLocation);
             return atlasSprite;
         }
 
@@ -279,6 +275,7 @@ public class TransmitterRegistry {
         @OnlyIn(Dist.CLIENT)
         public void unloadResource() {
             this.textureLocation = null; 
+            this.atlasLocation = null;
             this.atlasSprite = null;
         }
 
@@ -291,6 +288,7 @@ public class TransmitterRegistry {
         @OnlyIn(Dist.CLIENT)
         public void applyResourceReloadResult(CatenaryModelProvider.ModelDefinition model) {
             this.textureLocation = model.getTexture();
+            this.atlasLocation = model.getAtlas();
             this.atlasSprite = null;
         }
 

@@ -57,19 +57,142 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class AnchorSelector {
 
     /**
-     * Singleton instance of {@link AnchorSelector}
+     * {@link AnchorSelector singleton}
      */
     public static AnchorSelector INSTANCE = new AnchorSelector();
 
     // both may be null for a brief moment before the first tick is fired
     @Nullable public Active selected;
     @Nullable private VectorHelper.Ray lookingRay; // TODO instance.hitresult with additional clipping?
-    protected float selectedTicks = 0;
-
-    private boolean lookedThisFrame = false;
+    
     private ArrayList<Component> currentTooltip = new ArrayList<>();;
     private Transmitable.HoldingSummary playerHands = new HoldingSummary(null, null, null, null);
     private final Queue<Active> trackedEntries = new PriorityQueue<>();
+
+    protected float selectedTicks = 0;
+    private boolean lookedThisFrame = false;
+
+
+    public void tick(LocalPlayer player, DeltaTracker deltas) {
+        if(selected != null && !selected.anchor.existsIn(playerHands.player().level()))
+            resetCompletely();
+        if(player == null) { 
+            resetCompletely(); 
+            return; 
+        }
+        this.lookingRay = VectorHelper.getLookingRay(player, deltas.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
+        this.playerHands = Transmitable.getHolding(player);
+        this.currentTooltip = new ArrayList<>();
+        if(trackedEntries.isEmpty()) {
+            resetCompletely();
+            return;
+        }
+        if(playerHands.isHoldingReleventItem()) {
+            if(!playerHands.implementingItem().onRenderTick(player.level(), playerHands, deltas)) {
+                resetCompletely();
+                return;
+            }
+            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
+                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
+                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, points, sel.anchor, playerHands);
+            });
+        } else {
+            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
+                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
+                sel.response = GridResponse.NONE;
+            });
+        }
+        trackedEntries.clear(); 
+    }
+
+    public void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
+
+        if(hasSelection() && lookedThisFrame) {
+            if(!selected.anchor.isEnabled()) {
+                if(selected.response.showsTarget()) {
+                    if(selected.response.indicatesCompletion()) {
+                        if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
+                        selectedTicks = Math.min(1, selectedTicks);
+                        selected.renderComplexAABB(selectedTicks, false);
+                    } else if(selectedTicks > 0) {
+                        selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
+                        selectedTicks = Math.max(0, selectedTicks);
+                        selected.renderComplexAABB(selectedTicks, false);
+                    } else {
+                        selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
+                        selectedTicks = 0;
+                    }
+                }
+            } else if(selectedTicks > 0) {
+                selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
+                selectedTicks = Math.max(0, selectedTicks);
+                selected.renderComplexAABB(selectedTicks, false);
+            }
+        }
+
+        if(!playerHands.isHoldingReleventItem()) return;
+        for(Active entry : trackedEntries) {
+            if(entry == null || entry.equals(selected) 
+                || entry.anchor.isEnabled() || !entry.response.showsTarget()) 
+                    continue;
+            entry.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
+        }
+    }
+
+    /**
+     * Searches through nearby AnchorPoints and executes the provided consumer on the most relevent one.
+     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent points,
+     * and the distance from the player will be passed to the provided consumer. The provided consumer
+     * may not fire at all if the player isn't near any AnchorPoints or isn't targeting one directly.
+     * This is used internally to handle tooltip aggregation and some basic event stuff.
+     * @param cons Consumer that is executed when this 
+     */
+    private void findTargetAndRun(LevelReader world, DeltaTracker delta, TriConsumer<Griddable<?>, AnchorSelector.Active, Float> cons) { 
+        // TODO public access may be useful
+        lookedThisFrame = false;
+        while(!trackedEntries.isEmpty()) {
+            final Active sel = trackedEntries.poll();
+            if(sel == null || !sel.points.isInteractable()) continue;
+            if(!sel.anchor.isIntersecting(world, lookingRay)) continue;
+            lookedThisFrame = true;
+            selected = sel;
+            cons.accept(sel.points, sel, sel.distance);
+            break;
+        }
+        if(!lookedThisFrame) {
+            if(hasSelection() && selectedTicks > 0) {
+                selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
+                selected.renderComplexAABB(selectedTicks, false);
+            } else resetCompletely();
+        }
+    }
+
+    /**
+     * Tells this AnchorSelector to track the provided AnchorPoint information
+     * for evaluation at the end of the current render tick. This anchor will be 
+     * cached until the end of the current frame's render cycle and then forgotten.
+     * @param owner {@link GriddableBlockEntity} that the provided AnchorPoint belongs to
+     * @param anchor Anchor to track
+     * @param distance Distance from the player to the anchor. Used for priority sorting when pulling AnchorPoints from the queue, 
+     * so this distance value doesn't necessarily have to be coherent - you can just submit an abitrary number (like, for example, 0, 
+     * if you want this anchor to be evaluated with the highest priority
+     */
+    public void trackForThisFrame(Griddable<?> points, AnchorPoint anchor, float distance) {
+        if(points == null || anchor == null || distance <= 0) return;
+        trackedEntries.add(new Active(points, anchor, anchor.getAddress(), distance));
+    }
+
+    /**
+     * Resets this selector to its default state and clears its 
+     * currently queued entries for this frame
+     */
+    public void resetCompletely() {
+        lookedThisFrame = false;
+        selectedTicks = 0;
+        selected = null;
+        currentTooltip = new ArrayList<>();
+        trackedEntries.clear();
+    }
 
     /**
      * Each BlockEntity that contains AnchorPoints submits their AnchorPoints
@@ -145,141 +268,15 @@ public class AnchorSelector {
         return playerHands == null ? null : playerHands.stack();
     }
 
-    /**
-     * Tells this AnchorSelector to track the provided AnchorPoint information
-     * for evaluation at the end of the current render tick. This anchor will be 
-     * cached until the end of the current frame's render cycle and then forgotten.
-     * @param owner {@link GriddableBlockEntity} that the provided AnchorPoint belongs to
-     * @param anchor Anchor to track
-     * @param distance Distance from the player to the anchor. Used for priority sorting when pulling AnchorPoints from the queue, 
-     * so this distance value doesn't necessarily have to be coherent - you can just submit an abitrary number (like, for example, 0, 
-     * if you want this anchor to be evaluated with the highest priority
-     */
-    public void trackForThisFrame(Griddable<?> points, AnchorPoint anchor, float distance) {
-        if(points == null || anchor == null || distance <= 0) return;
-        trackedEntries.add(new Active(points, anchor, anchor.getAddress(), distance));
-    }
-
-
-
-
-    public void tick(LocalPlayer player, DeltaTracker deltas) {
-        if(selected != null && !selected.anchor.existsIn(playerHands.player().level()))
-            resetCompletely();
-        if(player == null) { 
-            resetCompletely(); 
-            return; 
-        }
-        this.lookingRay = VectorHelper.getLookingRay(player, deltas.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
-        this.playerHands = Transmitable.getHolding(player);
-        this.currentTooltip = new ArrayList<>();
-        if(trackedEntries.isEmpty()) {
-            resetCompletely();
-            return;
-        }
-        if(playerHands.isHoldingReleventItem()) {
-            if(!playerHands.implementingItem().onRenderTick(player.level(), playerHands, deltas)) {
-                resetCompletely();
-                return;
-            }
-            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
-                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
-                sel.response = playerHands.implementingItem().collectTooltipInfoAndResponse((ClientLevel)player.level(), currentTooltip, points, sel.anchor, playerHands);
-            });
-        } else {
-            findTargetAndRun(player.level(), deltas, (points, sel, distance) -> {
-                points.writeTooltip(currentTooltip, playerHands, sel.anchor);
-                sel.response = GridResponse.NONE;
-            });
-        }
-        trackedEntries.clear(); 
-    }
-
-    public void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
-
-        if(hasSelection() && lookedThisFrame) {
-            if(!selected.anchor.isEnabled()) {
-                if(selected.response.showsTarget()) {
-                    if(selected.response.indicatesCompletion()) {
-                        if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
-                        selectedTicks = Math.min(1, selectedTicks);
-                        selected.renderComplexAABB(selectedTicks, false);
-                    } else if(selectedTicks > 0) {
-                        selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                        selectedTicks = Math.max(0, selectedTicks);
-                        selected.renderComplexAABB(selectedTicks, false);
-                    } else {
-                        selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
-                        selectedTicks = 0;
-                    }
-                }
-            } else if(selectedTicks > 0) {
-                selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                selectedTicks = Math.max(0, selectedTicks);
-                selected.renderComplexAABB(selectedTicks, false);
-            }
-        }
-
-        if(!playerHands.isHoldingReleventItem()) return;
-        for(Active entry : trackedEntries) {
-            if(entry == null || entry.equals(selected) 
-                || entry.anchor.isEnabled() || !entry.response.showsTarget()) 
-                    continue;
-            entry.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
-        }
-    }
-
-    /**
-     * Resets this selector to its default state and clears its 
-     * currently queued entries for this frame
-     */
-    public void resetCompletely() {
-        lookedThisFrame = false;
-        selectedTicks = 0;
-        selected = null;
-        currentTooltip = new ArrayList<>();
-        trackedEntries.clear();
-    }
-
-
-
-
-    /**
-     * Searches through nearby AnchorPoints and executes the provided consumer on the most relevent one.
-     * If the player is looking directly at a nearby AnchorPoint, that AnchorPoint, its parent points,
-     * and the distance from the player will be passed to the provided consumer. The provided consumer
-     * may not fire at all if the player isn't near any AnchorPoints or isn't targeting one directly.
-     * This is used internally to handle tooltip aggregation and some basic event stuff.
-     * @param cons Consumer that is executed when this 
-     */
-    private void findTargetAndRun(LevelReader world, DeltaTracker delta, TriConsumer<Griddable<?>, AnchorSelector.Active, Float> cons) { 
-        // TODO public access may be useful
-        lookedThisFrame = false;
-        while(!trackedEntries.isEmpty()) {
-            final Active sel = trackedEntries.poll();
-            if(sel == null || !sel.points.isInteractable()) continue;
-            if(!sel.anchor.isIntersecting(world, lookingRay)) continue;
-            lookedThisFrame = true;
-            selected = sel;
-            cons.accept(sel.points, sel, sel.distance);
-            break;
-        }
-        if(!lookedThisFrame) {
-            if(hasSelection() && selectedTicks > 0) {
-                selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                selected.renderComplexAABB(selectedTicks, false);
-            } else resetCompletely();
-        }
-    }
-
-
-
-    
-
     @Override
     public String toString() {
         return playerHands + (hasSelection() ? ", and is targeting " + selected : " and has no target");
     }
+
+
+
+
+
 
 
     /**

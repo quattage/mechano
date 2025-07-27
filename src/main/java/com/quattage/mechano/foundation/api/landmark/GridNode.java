@@ -5,10 +5,12 @@ import java.util.Objects;
 
 import javax.annotation.Nullable;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
@@ -16,7 +18,7 @@ import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
-import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -26,6 +28,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
@@ -33,7 +36,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * A GridNode is the primary functional element of the {@link SidedGridDispatcher Grid API} 
  * and provides access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
  */
-public class GridNode implements Iterable<GridLink>, TrackableStreamer {
+public class GridNode implements Iterable<GridLink>, TrackedStreamable {
 
     /**
      * The only time this can be reassigned is if 
@@ -79,6 +82,10 @@ public class GridNode implements Iterable<GridLink>, TrackableStreamer {
     public static @Nullable GridNode getOrCreateOnLoad(ServerMatrix instantiator, GridUUID address, boolean log) {
         Objects.requireNonNull(instantiator);
         Objects.requireNonNull(address);
+        // i have no idea how, but very rarely the nodemap is null here during 
+        // world load and this fix appears to have no adverse side effects.
+        if(instantiator.nodes == null)
+            instantiator.nodes = new NodeMap(2);
         GridNode node = instantiator.nodes.get(address);
         if(node != null) return node;
         Griddable<?> points = address.getAnchorPoints(instantiator.getWorld());
@@ -168,6 +175,12 @@ public class GridNode implements Iterable<GridLink>, TrackableStreamer {
         }
     }
 
+    @Override
+    public void sendLevelUpdates(Level world) {
+        assertNotDestroyed();
+        address.sendLevelUpdates(world);
+    }
+
     public void addLink(GridLink link) {
         assertNotDestroyed();
         if(!link.getStart().equals(this.getAddress())) {
@@ -187,13 +200,17 @@ public class GridNode implements Iterable<GridLink>, TrackableStreamer {
     }
 
     public GridNode prime(int size) {
-        assertNotDestroyed();
+        if(links == null) {
+            Mechano.LOGGER.warn("Skipped priming destroyed GridNode at " + address);
+            return this;
+        }
         links.ensureCapacity(size);
         return this;
     }
 
     public GridNode trim() {
-        assertNotDestroyed();
+        if(links == null) 
+            return this;
         links.trim();
         return this;
     }
@@ -215,12 +232,13 @@ public class GridNode implements Iterable<GridLink>, TrackableStreamer {
     }
 
     /**
-     * Called whenever ownership of this 
-     * GridNode is transfered to another
-     * {@link ServerMatrix}, especially
-     * for {@link ServerMatrix#addAll}.
+     * Called whenever a pre-existing {@link ServerMatrix}
+     * takes ownership of this GridNode. This method is only
+     * to be used internally, especially during calls to 
+     * {@link ServerMatrix#addAll}.
      * @param owner
      */
+    @ApiStatus.Internal
     public void swapOwner(ServerMatrix owner) {
         this.owner = owner;
         host.getSurrogate().sync(owner.getWorld(), owner);
@@ -309,5 +327,22 @@ public class GridNode implements Iterable<GridLink>, TrackableStreamer {
     @Override
     public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
         throw new UnsupportedOperationException("Frustum checks can only be called on the client!");
+    }
+
+    @Override
+    public DataScope getDataScope() {
+        assertNotDestroyed();
+        return address.getDataScope();
+    }
+
+    @Override
+    public void setDataScope(DataScope scope) {
+        assertNotDestroyed();
+        address.setDataScope(scope);
+    }
+
+    @Override
+    public String describeDataScope(LevelReader world) {
+        return address.describeDataScope(world) + " (Queried from active GridNode)";
     }
 }

@@ -15,12 +15,12 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
 public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
     
     private @Nullable ObjectArrayList<Point> points;
-
     private @Nullable Vector3f axisU;
     private @Nullable Vector3f axisV;
 
@@ -52,7 +52,7 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
     }
 
     @Override
-    public void calculateSegmentation() {
+    public ParametricCatenary calculateSegmentation() {
 
         this.length = offset.length();
         if(axisU == null) axisU = new Vector3f();
@@ -73,9 +73,16 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
 
         // length, height, corrective, offset
         accelerator[0] = offset.dot(axisU); 
-        accelerator[1] = getApproximateTension();
+        accelerator[1] = 0.76f;
         accelerator[2] = accelerator[1] / (2f * (a * (float)StrictMath.cosh(length / (2f * a)) - a));
         accelerator[3] = accelerator[2] * (a * (float)StrictMath.cosh(-(length / 2) /  a) - a);
+
+        return this;
+    }
+
+    @Override
+    public void adjustSpan(LevelReader world, float length) {
+        this.maxLength = length;
     }
 
     @Override
@@ -96,42 +103,7 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
     }
 
     @Override
-    public void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
-        
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return this.points != null;
-    }
-
-    @Override
-    public void drawDebug(Vec3 basis) {
-        if(points == null) return;
-        Vector3f last = null;
-        for(int x = 0; x < points.size(); x++) {
-            Vector3f current = points.get(x).pos;
-            VectorHelper.drawDebugBox(basis.add(current.x, current.y, current.z), 0.007f, Color.BLACK, "para_point_" + x);
-            if(last != null)
-                Outliner.getInstance().showLine("para_stick_" + x, basis.add(last.x, last.y, last.z), basis.add(current.x, current.y, current.z)).lineWidth(0.02f).disableCull().colored(Color.PURPLE);
-            last = current;
-        }
-    }
-
-    @Override
-    public String toString() {
-        if(points == null) return "ParametricCatenary[UNINITIALIZED]";
-        String out = "\nParametricCatenary[\n";
-        for(int x = 0; x < points.size(); x++) {
-            Point p = points.get(x);
-            if(p == null) out += "\t( NULL )\n";
-            out += "\t(" + String.format("%.2f", p.pos.x) + ", " + String.format("%.2f", p.pos.y) + ", " + String.format("%.2f", p.pos.z) + ")\n";
-        }
-        return out + "]";
-    }
-
-    @Override
-    public SimulatedCatenary toSimulated(boolean pinEnds) {
+    public SimulatedCatenary toSimulated() {
         assertInitialized();
         assertHasOffset();
         SimulatedCatenary simulated = new SimulatedCatenary();
@@ -145,12 +117,7 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
                 simulated.sticks.add(new Stick(previous, p));
             previous = p;
         }
-        if(pinEnds) {
-            simulated.points.getFirst().pin();
-            simulated.points.getLast().pin();
-        }
         simulated.offset = this.offset;
-        simulated.tension = this.tension;
         simulated.length = this.length;
         simulated.maxLength = this.maxLength;
         simulated.avgVelocity = this.avgVelocity;
@@ -158,12 +125,6 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
         this.axisU = null;
         this.axisV = null;
         return simulated;
-    }
-
-    @Override
-    public ParametricCatenary toParametric() {
-        Mechano.LOGGER.warn("Attempted to convert a ParametricCatenary to itself!");
-        return this;
     }
 
     @Override
@@ -180,7 +141,6 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
             previous = p;
         }
         BakedCatenary baked = new BakedCatenary(offset, sticks);
-        baked.tension = this.tension;
         baked.length = this.length;
         baked.maxLength = this.maxLength;
         baked.avgVelocity = 0;
@@ -191,19 +151,71 @@ public class ParametricCatenary extends CatenaryModel<ParametricCatenary> {
     }
 
     @Override
-    public boolean isMovable() {
-        return true;
+    public float getMaximumSpan() {
+        return maxLength;
     }
 
     @Override
-    public float getLength() {
+    public ParametricCatenary fixEndpoints() {
+        if(this.points == null) return this;
+        Point p = null;
+        p = this.points.getFirst();
+        p.pos.set(0, 0, 0);
+        p.lastPos.set(0, 0, 0);
+        p.pinned = true;
+        p = this.points.getLast();
+        p.pos.set(offset.x, offset.y, offset.z);
+        p.lastPos.set(offset.x, offset.y, offset.z);
+        p.pinned = true;
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        if(points == null) return "ParametricCatenary[UNINITIALIZED]";
+        String out = "\nParametricCatenary[\n";
+        for(int x = 0; x < points.size(); x++) {
+            Point p = points.get(x);
+            if(p == null) out += "\t( NULL )\n";
+            out += "\t(" + String.format("%.2f", p.pos.x) + ", " + String.format("%.2f", p.pos.y) + ", " + String.format("%.2f", p.pos.z) + ")\n";
+        }
+        return out + "]";
+    }
+
+    @Override
+    public void drawDebug(Vec3 basis) {
+        if(points == null) return;
+        Vector3f last = null;
+        for(int x = 0; x < points.size(); x++) {
+            Vector3f current = points.get(x).pos;
+            VectorHelper.drawDebugBox(basis.add(current.x, current.y, current.z), 0.007f, Color.BLACK, "para_point_" + x);
+            if(last != null)
+                Outliner.getInstance().showLine("para_stick_" + x, basis.add(last.x, last.y, last.z), basis.add(current.x, current.y, current.z)).lineWidth(0.02f).disableCull().colored(Color.PURPLE);
+            last = current;
+        }
+    } 
+
+    @Override
+    public ParametricCatenary toParametric() {
+        Mechano.LOGGER.warn("Attempted to convert a ParametricCatenary to itself!");
+        return this;
+    }
+
+    @Override
+    public ParametricCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
+        throw new UnsupportedOperationException("Parametric catenaries cannot be rendered! They must either be baked first or converted to a simulation!");
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return this.points != null;
+    }
+
+    @Override
+    public float getSpan() {
         return length;
     }
 
-    @Override
-    public float getMaxLength() {
-        return maxLength;
-    }
 
     @Override
     public void destroy() {

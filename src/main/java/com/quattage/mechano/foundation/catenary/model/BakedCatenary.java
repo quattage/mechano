@@ -15,10 +15,12 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
 public class BakedCatenary extends CatenaryModel<BakedCatenary> {
 
+    // TODO convert to primative array
     private @Nullable ObjectArrayList<Stick> sticks;
 
     /**
@@ -34,38 +36,10 @@ public class BakedCatenary extends CatenaryModel<BakedCatenary> {
         this.sticks = sticks;
     }
 
-    @Override public BakedCatenary initialize() { return this; }
-    @Override public boolean isInitialized() { return this.sticks != null; }
-    @Override public float getLength() { return length; }
-    @Override public float getMaxLength() { return length; }
-    @Override public BakedCatenary setOffset(Vector3f offset) { return this; }
-    @Override public BakedCatenary setOffset(Vec3 start, Vec3 end) { return this; }
-    @Override public void update(float delta) { return; }
-    @Override public void calculateSegmentation() { return; }
-    @Override public void destroy() { this.sticks = null; }
-    @Override public boolean isMovable() { return false; }
-
-
+    // TODO implement
     @Override
-    public void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
-        if(sticks.size() < 2) {
-            Mechano.LOGGER.error("Attempted to render BakedCatenary with invalid (< 2) size!");
-            return;
-        }
-        Stick previous = sticks.getFirst();
-        geo.setLight0(geo.getLight(previous.start.pos));
-        geo.setLight1(geo.getLight(previous.end.pos));
-        geo.model.profile.make(buffer, pose, geo, null, previous, sticks.get(1), 0, true, pTicks);
-        for(int x = 1; x < sticks.size() - 1; x++) {
-            Stick current = sticks.get(x);
-            geo.setLight1(geo.getLight(current.start.pos));
-            geo.model.profile.make(buffer, pose, geo, previous, current, sticks.get(x + 1), x, true, pTicks);
-            previous = current;
-            geo.walkLight();
-        }
-        Stick last = sticks.getLast();
-        geo.setLight1(geo.getLight(last.end.pos));
-        geo.model.profile.make(buffer, pose, geo, previous, last, null, sticks.size(), true, pTicks);
+    public BakedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
+        return this;
     }
 
     @Override
@@ -83,7 +57,7 @@ public class BakedCatenary extends CatenaryModel<BakedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary toSimulated(boolean pinEnds) {
+    public SimulatedCatenary toSimulated() {
         assertInitialized();
         assertHasOffset();
         SimulatedCatenary simulated = new SimulatedCatenary();
@@ -95,12 +69,7 @@ public class BakedCatenary extends CatenaryModel<BakedCatenary> {
             simulated.points.add(s.start);
             simulated.points.add(s.end);
         }
-        if(pinEnds) {
-            simulated.points.getFirst().pin();
-            simulated.points.getLast().pin();
-        }
         simulated.offset = this.offset;
-        simulated.tension = this.tension;
         simulated.length = this.length;
         simulated.maxLength = this.maxLength;
         this.sticks = null;
@@ -113,11 +82,21 @@ public class BakedCatenary extends CatenaryModel<BakedCatenary> {
         assertHasOffset();
         ParametricCatenary parametric = new ParametricCatenary();
         parametric.offset = this.offset;
-        parametric.tension = this.tension;
         parametric.length = this.length;
         parametric.maxLength = this.maxLength;
         this.sticks = null;
         return parametric;
+    }
+
+    @Override
+    public boolean isResting() {
+        return true;
+    }
+
+    @Override
+    public BakedCatenary fixEndpoints() {
+        Mechano.LOGGER.warn("Attempted to fix the endpoints of a BakedCatenary!");
+        return this;
     }
 
     @Override
@@ -126,5 +105,14 @@ public class BakedCatenary extends CatenaryModel<BakedCatenary> {
         return this;
     }
 
-
+    @Override public BakedCatenary initialize() { return this; }
+    @Override public boolean isInitialized() { return this.sticks != null; }
+    @Override public float getSpan() { return length; }
+    @Override public float getMaximumSpan() { return length; }
+    @Override public void adjustSpan(LevelReader world, float length) { return; }
+    @Override public BakedCatenary setOffset(Vector3f offset) { return this; }
+    @Override public BakedCatenary setOffset(Vec3 start, Vec3 end) { return this; }
+    @Override public void update(float delta) { return; }
+    @Override public BakedCatenary calculateSegmentation() { return this; }
+    @Override public void destroy() { this.sticks = null; }
 }

@@ -5,7 +5,6 @@ import com.quattage.mechano.content.spool.HookupTransmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.ModelType;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Thickness;
 
 import net.neoforged.bus.api.IEventBus;
@@ -39,7 +38,6 @@ public class MechanoTransmissionTypes {
             .maximumSpannedDistance(32)
             .withAttributes(CatenaryAttributes
                 .as(ModelType.SQUARE)
-                .withTension(Tension.AVERAGE)
                 .withThickness(Thickness.TRIPLE)
             ).build()
     );

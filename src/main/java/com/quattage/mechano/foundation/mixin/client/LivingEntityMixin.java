@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.mixin.client;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -27,7 +26,7 @@ public abstract class LivingEntityMixin implements CatenaryAccessor {
 
     @Override
     @OnlyIn(Dist.CLIENT)
-    public @NotNull ObjectSet<GridCatenary> getCatenaries() {
+    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         return mechano$Catenaries;
     }
 

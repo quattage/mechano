@@ -6,14 +6,11 @@ import javax.annotation.Nullable;
 
 import org.jetbrains.annotations.NotNull;
 
-import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.Tensionable;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -24,6 +21,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -31,7 +29,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-public abstract sealed class GridConnection implements Tensionable, TrackableStreamer permits GridLink, GridCatenary, ConnectionKey {
+public abstract sealed class GridConnection implements Tensionable, TrackedStreamable permits GridLink, GridCatenary, ConnectionKey {
     
     public abstract GridUUID getStart();
     public abstract GridUUID getEnd();
@@ -109,7 +107,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
 
     @Override
     public int getSectionY(LevelReader world) {
-        assertWorldly(world);
         if(!hasPoints()) throw new IllegalStateException("Can't get sectionY for connection with null point(s)!");
         return getStart().getSectionY(world);
     }
@@ -127,26 +124,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         if(mode == InsertionPolicy.SINGLE) return getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player);
         if(mode == InsertionPolicy.SYMMETRIC) return getStart().isBeingTrackedBy(player) && getEnd().isBeingTrackedBy(player);
         return false;
-    }
-
-    /**
-     * Useful for any action that may change the start/endpoints of this Connection.
-     * The {@link SidedGridDispatcher.LinkDataStorable link data store} will need to be informed
-     * of any changes that may affect the value of this Connection's {@link #hashCode hash code}
-     * so that this the data store can rehash this value something something hash tables buckets blah haha
-     * @param world
-     * @param action
-     */
-    public void reassertAndDo(LevelReader world, Runnable action) {
-        assertWorldly(world);
-        LinkDataStorable.remove(world, this);
-        try { action.run(); } 
-        catch(Exception e) {
-            Mechano.LOGGER.error("Failed executing reassertion task for " + this + ": ");
-            e.printStackTrace();
-            return;
-        }
-        LinkDataStorable.put(world, this);
     }
 
     /**
@@ -172,6 +149,11 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         return getStart() != null && getEnd() != null;
     }
 
+    /**
+     * Creates a shallow copy of this GridConnection retaining all internal 
+     * data, but with its start and end addresses swapped.
+     * @return A new GridConnection instance
+     */
     public abstract GridConnection inverseCopy();
     public abstract CompoundTag writeTo(CompoundTag in);
     public abstract String getConnectionTypeName();
@@ -180,6 +162,18 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
     public boolean startsWith(GridUUID address) { return getStart().equals(address); }
     public boolean endsWith(GridUUID address) { return getEnd().equals(address); }
     public boolean involves(GridUUID address) { return startsWith(address) || endsWith(address); }
+
+    @Override
+    public void sendLevelUpdates(Level world) {
+        // if(!hasPoints() || getStart().canMoveDynamically() || getEnd().canMoveDynamically()) 
+        //     return;
+        // if(getStart().isInsideOf(world, new ChunkPos(getEnd().getBlockPos(world)))) {
+        //     getEnd().sendChunkUpdates(world);
+        //     return;
+        // }
+        getStart().sendLevelUpdates(world);
+        getEnd().sendLevelUpdates(world);
+    }
 
     @Override
     public boolean equals(Object other) {
@@ -203,11 +197,11 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         // TODO traversal cost should vary depending on whether or not
         // the pathfinding gets closer or further away from the target
         if(!canTraverse()) return Float.MAX_VALUE;
-        return Math.max(0, getLength() + trns.getCost());
+        return Math.max(0, getSpan() + trns.getCost());
     }
 
     @Override
-    public abstract float getLength();
+    public abstract float getSpan();
         
     /**
      * Returns an array containing both UUIDs in this connection
@@ -260,17 +254,31 @@ public abstract sealed class GridConnection implements Tensionable, TrackableStr
         @Override public boolean isClientSide() { return false; }
         @Override public CompoundTag writeTo(CompoundTag in) { return in; }
         @Override public String getConnectionTypeName() { return "ConnectionKey"; }
-        @Override public Tension getTension() { return Tension.AVERAGE; }
-        @Override public boolean setTension(Tension tension) { return false; }
+        @Override public void adjustSpan(LevelReader world, float length) { return; }
 
         @Override
-        public float getLength() {
+        public float getSpan() {
             return -1;
         }
 
         @Override
-        public float getMaxLength() {
+        public float getMaximumSpan() {
             return -1;
+        }
+
+        @Override
+        public String describeDataScope(LevelReader world) {
+            return "Key";
+        }
+
+        @Override
+        public DataScope getDataScope() {
+            return DataScope.MOVING_ENTITY;
+        }
+
+        @Override
+        public void setDataScope(DataScope scope) {
+            return;
         }
     }
 

@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.joml.Vector3f;
 
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
@@ -34,14 +36,14 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class AnchorPoint {
 
-    private final GridUUID backer;
+    private final GridUUID address;
     private byte[] data;
     private boolean enabled;
     private Vector3f offset;
     public int bitmask;
 
     public AnchorPoint(GridUUID pos, float px, float py, float pz, float size, boolean enabled, int maxc) {
-        this.backer = pos;
+        this.address = pos;
         this.data = new byte[]{
             packMeasurement(px),
             packMeasurement(py),
@@ -67,20 +69,20 @@ public class AnchorPoint {
     }
 
     public int getIndex() {
-        return backer.getIndex();
+        return address.getIndex();
     }
 
     public boolean existsIn(LevelReader world) {
         if(world == null || !world.isClientSide()) return false;
-        return backer.hasAnchorIn((ClientLevel)world);
+        return address.hasAnchorIn((ClientLevel)world);
     }
 
     public Vec3 getPos(LevelReader world) {
-        return backer.getOffsetPos(world, 1, offset.x, offset.y, offset.z);
+        return address.getOffsetPos(world, 1, offset.x, offset.y, offset.z);
     }
 
     public Vec3 getPos(LevelReader world, float pTicks) {
-        return backer.getOffsetPos(world, pTicks, offset.x, offset.y, offset.z);
+        return address.getOffsetPos(world, pTicks, offset.x, offset.y, offset.z);
     }
 
     /**
@@ -89,6 +91,34 @@ public class AnchorPoint {
      */
     public Vec3 getOffset() {
         return new Vec3(offset.x, offset.y, offset.z);
+    }
+
+    /**
+     * Ensures that this AnchorPoint's {@link GridUUID} can move,
+     * regardless of whether or not its owner can. This is used to
+     * allow attached wires and other rendering features to refresh
+     * dynamically in cases where they would otherwise automatically 
+     * freeze to save performance. 
+     * 
+     * <h3>Broadcasting with Data Scopes</h3>
+     * Any {@link GridCatenary} attached to this AnchorPoint
+     * at the time of invocation will need to be reasserted
+     * in order for changes to be reflected correctly. 
+     * This is because this method call changes the 
+     * {@link DataScope} of this AnchorPoint's address,
+     * which will change where the {@link GridCatenary}
+     * is stored in the {@Link LinkDataStorable}.
+     * This is done automatically by calling 
+     * 
+     * {@link GridCatenary#startMoving} or {@link GridCatenary#freezeInPlace}
+     * 
+     * <p> Calls to this method
+     * will result in no change of this AnchorPoint's address
+     * already belongs to movable construct, such as an entity.
+     */
+    public void makeLocallyDynamic() {
+        if(address.getDataScope() == DataScope.STATIC_CHUNK)
+            address.setDataScope(DataScope.BLOCKENTITY);
     }
 
     /**
@@ -181,7 +211,7 @@ public class AnchorPoint {
      */
     public AABB makeHitbox(LevelReader world, boolean useSize) {
         float size = useSize ? getSize() : 0;
-        BlockPos pos = backer.getBlockPos(world);
+        BlockPos pos = address.getBlockPos(world);
         return new AABB(
             (pos.getX() + offset.x) - size,
             (pos.getY() + offset.y) - size,
@@ -198,7 +228,7 @@ public class AnchorPoint {
     }
 
     public GridUUID getAddress() {
-        return backer;
+        return address;
     }
 
     public float distanceTo(LevelReader world, AnchorPoint other) {
@@ -253,12 +283,12 @@ public class AnchorPoint {
 
     @Override
     public boolean equals(Object obj) {
-        return backer.equals(obj);
+        return address.equals(obj);
     }
 
     @Override
     public int hashCode() {
-        return backer.hashCode();
+        return address.hashCode();
     }
 
     public CompoundTag writeTo(CompoundTag tag) {

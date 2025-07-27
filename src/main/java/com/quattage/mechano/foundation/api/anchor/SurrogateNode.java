@@ -167,6 +167,10 @@ public final class SurrogateNode {
     public @Nullable NodeMap constituents() {
         return owner == null ? null : owner.nodes == null ? null : owner.nodes;
     }
+
+    public boolean belongsToNetwork() {
+        return belongsToNetwork;
+    }
     
     @Override
     public String toString() {

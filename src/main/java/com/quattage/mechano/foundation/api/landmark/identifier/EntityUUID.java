@@ -10,6 +10,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
@@ -26,6 +27,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -108,12 +110,17 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public String describeDataHolder(LevelReader world) {
+    public String describeDataScope(LevelReader world) {
         if(getDataStorageHolder(world) instanceof Entity e) {
             Vec3 pos = e.getPosition(1);
             return e.getClass().getSimpleName() + "['" +  e.getName().getString() + ",' " + pos.x + ", " + pos.y + ", " + pos.z + "]";
         }
         return "not_applicable";
+    }
+
+    @Override
+    public void sendLevelUpdates(Level world) {
+        return;
     }
 
     @Override
@@ -219,5 +226,15 @@ public class EntityUUID extends GridUUID {
     @Override
     public String toString() {
         return "EntityUUID[" + uuid + ", " + index + "]";
+    }
+
+    @Override
+    public DataScope getDataScope() {
+        return DataScope.MOVING_ENTITY;
+    }
+
+    @Override
+    public void setDataScope(DataScope scope) {
+        return;
     }
 }

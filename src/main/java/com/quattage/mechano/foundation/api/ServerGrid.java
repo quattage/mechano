@@ -22,7 +22,6 @@ import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.nbt.CompoundTag;
@@ -54,7 +53,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         for(int x = 0; x < subgrids.size(); x++) {
             ListTag writtens = subgrids.getList(x);
             if(writtens.isEmpty()) continue;
-            ServerMatrix freshLocal = new ServerMatrix(writtens.size());
+            ServerMatrix freshLocal = new ServerMatrix(freshGlobal, writtens.size());
             for(int y = 0; y < writtens.size(); y++) {
                 CompoundTag node = writtens.getCompound(y);
                 freshGlobal.createNodeAndMakeProvisionalLinks(world, freshLocal, UUIDDiscriminator.read(node), node.getList("links", Tag.TAG_COMPOUND), false);
@@ -105,7 +104,6 @@ public final class ServerGrid extends SidedGridDispatcher {
                 continue;
             }
             GridLink newLink = new GridLink(world, newStart, newEnd, TransmitterRegistry.INSTANCE.get(serializedLink));
-            newLink.setTension(Tension.values()[serializedLink.getByte("ten")]);
             if(newLink.getTransmitter().needsSerialization()) {
                 CompoundTag data = serializedLink.getCompound("data");
                 if(!data.isEmpty()) newLink.getTransmitter().loadFrom(data);
@@ -166,7 +164,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         }
         final Set<GridUUID> empties = new HashSet<>();
         GridLink removed = startNode.getOwner().deLink(startNode, endNode, empties);
-        LinkDataStorable.remove(getWorld(), removed);
+        LinkDataStorable.popAsServer(getWorld(), removed);
         removed.broadcast(GridResponse.TASK_DESTROY_LINK);
         startNode.getOwner().cleanup(empties, true);
     }
@@ -201,8 +199,6 @@ public final class ServerGrid extends SidedGridDispatcher {
 
         boolean isStartSynced = startPoints.getSurrogate().isSynced(getWorld());
         boolean isEndSynced = endPoints.getSurrogate().isSynced(getWorld());
-        Mechano.LOGGER.info(start + " synced? " + isStartSynced);
-        Mechano.LOGGER.info(end + " synced? " + isEndSynced);
 
         if(isStartSynced && isEndSynced) {
             ServerMatrix startPG = startPoints.getSurrogate().getOwnerMatrix();
@@ -343,6 +339,7 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @param startingIndex Index to start from. Normally, this would be the index that was removed.
      */
     public void updateGridIndices(int startingIndex) {
+        if(startingIndex < 0) startingIndex = 0;
         for(int x = startingIndex; x < matrices.size(); x++)
             matrices.get(x).setIndex(x);
     }

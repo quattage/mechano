@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
@@ -57,7 +58,8 @@ public class ServerMatrix implements Worldly {
      * Unique constructor used by {@link ServerGrid#loadFrom}
      * @param preload
      */
-    protected ServerMatrix(int preload) {
+    protected ServerMatrix(ServerGrid parent, int preload) {
+        this.globalGrid = parent;
         this.nodes = new NodeMap(new Object2ObjectOpenHashMap<>(preload));
     }
 
@@ -72,6 +74,9 @@ public class ServerMatrix implements Worldly {
         this.index = original.index;
         this.nodes = newContents == null ? new NodeMap() : newContents;
         this.globalGrid.matrices.set(index, this);
+        // TOOD find some way to do this non-iteratively
+        for(GridNode node : nodes)
+            node.swapOwner(this);
     }
 
     /**
@@ -230,7 +235,9 @@ public class ServerMatrix implements Worldly {
         otherNodes.forEach(node -> {
             this.nodes.add(node);
             node.swapOwner(this);
+            Mechano.LOGGER.info("node " + node.getAddress() + " owner swapped to " + this.getIndex());
         });
+        this.nodes.trim();
         return oldSize != this.nodes.size();
     }
 
@@ -432,9 +439,8 @@ public class ServerMatrix implements Worldly {
     }
 
     @Override
-    public ServerLevel getWorld() {
-        assertNotDestroyed();
-        return (ServerLevel)globalGrid.getWorld();
+    public @Nullable ServerLevel getWorld() {
+        return globalGrid == null ? null : (ServerLevel)globalGrid.getWorld();
     }
 
     @Override

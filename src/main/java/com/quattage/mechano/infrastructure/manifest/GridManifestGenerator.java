@@ -124,7 +124,7 @@ public class GridManifestGenerator {
             return out;
         }
 
-        out += "\n\t┆\t▸ Data scope: " + node.getAddress().getDataStorageHolder(world).getClass().getSimpleName();
+        out += "\n\t┆\t▸ Data scope: " + node.getAddress().describeDataScope(world);
         out += "\n\t┆\t⌕ Dispatch: ";
         out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced(world) ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().getIndex()) : "no accelerated reference");
         out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());

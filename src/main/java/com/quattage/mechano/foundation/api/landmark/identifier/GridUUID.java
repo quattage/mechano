@@ -9,7 +9,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.api.switchboard.TrackableStreamer;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
@@ -30,7 +30,7 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * Barebones implementation template for hashables that need to reference
  * a block position and (optionally) an index value. 
  */
-public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreamer {
+public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamable {
 
     public static final int MAX_SHARED_OCCUPANCY = 8; 
 
@@ -56,7 +56,6 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreame
     public abstract int getIndex();
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
-    public abstract boolean canMoveDynamically();
     public void applyForceToAttachment(LevelReader world, Vec3 force) { applyForceToAttachment(world, force, true); }
     public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {}
     public Vec3 getAttachmentVelocity(LevelReader world) { return Vec3.ZERO; }
@@ -65,7 +64,6 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreame
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
     public abstract @Nullable Griddable<?> getAnchorPoints(LevelReader world);
     public abstract @Nullable SurrogateNode getSurrogate(LevelReader world);
-    public abstract String describeDataHolder(LevelReader world);
     public abstract float getAttachedSizeFactor(LevelReader world);
 
     @Override
@@ -100,6 +98,10 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackableStreame
 
     public boolean isApproximately(LevelReader world, GridUUID that) {
         return VectorHelper.approxEqual(this.getPos(world), that.getPos(world));
+    }
+
+    public boolean isVeryApproximately(LevelReader world, GridUUID other) {
+        return this.getBlockPos(world).equals(other.getBlockPos(world));
     }
 
     public boolean hasAnchorIn(ClientLevel world) {

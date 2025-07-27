@@ -1,40 +1,14 @@
 package com.quattage.mechano.foundation.catenary;
 
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
+import net.minecraft.world.level.LevelReader;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public interface Tensionable {
-
-    public default boolean increaseTension() {
-        int ord = getTension().ordinal() + 1;
-        if(ord >= Tension.values().length) return false;
-        return setTension(Tension.values()[ord]);
-    }
-
-    public default boolean decreaseTension() {
-        int ord = getTension().ordinal() - 1;
-        if(ord < 0) return false;
-        Tension trgt = Tension.values()[ord];
-        if(Tension.STUPID_LOOSE.equals(trgt))
-            return false;
-        return setTension(trgt);
-    }
-
-    public default boolean setTension() {
-        return resetTension();
-    }
-
-    public default boolean resetTension() {
-        if(Tension.AVERAGE.equals(this.getTension())) return false;
-        return setTension(Tension.AVERAGE);
-    }
-
-    public default boolean setTension(int tension) {
-        return setTension(Tension.values()[Math.max(0, Math.min(Tension.values().length - 1, tension))]);
-    }
-
-    public abstract Tension getTension();
-    public abstract boolean setTension(Tension tension);
-
-    public float getLength();
-    public float getMaxLength();
+    @OnlyIn(Dist.CLIENT)
+    public abstract float getSpan();
+    @OnlyIn(Dist.CLIENT)
+    public abstract float getMaximumSpan();
+    @OnlyIn(Dist.CLIENT)
+    public abstract void adjustSpan(LevelReader world, float length);
 }

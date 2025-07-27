@@ -6,10 +6,13 @@ import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity;
 import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -51,6 +54,18 @@ public abstract class ConnectorBlock<T extends GriddableBlockEntity> extends Com
         }
 
 		return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public void animateTick(BlockState state, Level world, BlockPos pos, RandomSource random) {
+        if(!CatenaryAttributes.DO_IT_JIGGLE) return;
+        BlockEntity be = world.getBlockEntity(pos);
+        if(be == null) return;
+        if(!(be instanceof GriddableBlockEntity gbe)) return;
+        gbe.forEachCatenary(cat -> {
+            if(cat.canMoveDynamically() && cat.getModel() instanceof SimulatedCatenary scat)
+                scat.randomKick(random);
+        });
     }
 
     @Override

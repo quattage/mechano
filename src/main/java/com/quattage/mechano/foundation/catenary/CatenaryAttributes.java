@@ -1,9 +1,9 @@
 
+
 package com.quattage.mechano.foundation.catenary;
 
 import java.util.function.BiFunction;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -13,7 +13,6 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
@@ -22,19 +21,12 @@ import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.catenary.model.ParametricCatenary;
 import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.Util;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.data.models.blockstates.PropertyDispatch.QuadFunction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
-import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
 public class CatenaryAttributes {
 
@@ -46,14 +38,22 @@ public class CatenaryAttributes {
     public static final float POINT_MASS = 3f;
     public static final float TENSION_EPSILON = 1e-3f;
     public static final float DRAW_RES = 1f;
+    public static final boolean CLAMP_BLOCKLIGHT_SHADOWS = true;
 
     public static final float KINEMATIC_SOFT = 0.9f;
     public static final float KINEMATIC_DAMP = 0.6f;
     public static final float DETACH_THRESHOLD = 0.6f;
-    public static final float RESTITUTION_VELOCITY = 0.004f;
+    public static final float RESTITUTION_VELOCITY = 0.1f;
 
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
+
+    /**
+     * do it?
+     */
+    public static boolean DO_IT_JIGGLE = true;
+
+
 
     public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL 
         = Util.memoize((trns, chunk) -> {
@@ -87,75 +87,57 @@ public class CatenaryAttributes {
         });
 
 
-
-    public static final class SectionRenderer implements AddSectionGeometryEvent.AdditionalSectionRenderer {
-
-        private final ClientLevel world;
-        private final BlockPos sectionOrigin;
-        private final SectionPos sectionPos;
-
-        private final @Nullable ObjectSet<GridCatenary> catenaries;
-
-        public SectionRenderer(ClientLevel world, BlockPos sectionOrigin, SectionPos sectionPos, @NotNull ObjectSet<GridCatenary> catenaries) {
-            this.world = world;
-            this.sectionOrigin = sectionOrigin;
-            this.sectionPos = sectionPos;
-            this.catenaries = catenaries;
-        }
-
-        @Override
-        public void render(SectionRenderingContext context) {
-            for(GridCatenary cat : catenaries) {
-                if(cat == null || !cat.hasPoints() || cat.canMove()) continue;
-                AnchorPoint point = cat.getPrimaryRenderer(world);
-                if(point == null || point.getAddress().isInsideOf(world, sectionPos)) continue;
-                Vec3 startPos = cat.getStart().getPos(world, 1f);
-                cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION_BAKED);
-                CatenaryMesher.REUSABLE
-                    .at(startPos).in(context.getRegion())
-                    .withAppearanceForChunkRendering(cat.getTransmitter().getType())
-                    .render(context, cat.getModel(), CatenaryModel.getLocalizedOffset(world, sectionOrigin, point), 1f);
-                CatenaryMesher.REUSABLE.reset();
-            }
-        }
-    }
-
-
     public static enum Initializer {
-        FRESH_PARMETRIC((world, start, end, trns) -> {
+        FRESH_PARAMETRIC((world, start, end, trns) -> {
             CatenaryModel<?> output = new ParametricCatenary()
                 .setOffset(start.getPos(world), end.getPos(world));
-            output.maxLength = trns.getMaxLength();
-            output.setTension(trns.defaults.getTension());
-            output.update();
+            output.maxLength = trns.getMaximumSpan();
+            output.calculateSegmentation()
+                .fixEndpoints()
+                .update();
             return output;
         }),
         FRESH_SIMULATION((world, start, end, trns) -> {
-            CatenaryModel<?> output = new SimulatedCatenary()
-                .setOffset(start.getPos(world), end.getPos(world))
-                .initialize();
-            output.maxLength = trns.getMaxLength();
-            output.setTension(trns.defaults.getTension());
+            CatenaryModel<?> output = new SimulatedCatenary();
+            output.maxLength = trns.getMaximumSpan();
+            output.setOffset(start.getPos(world), end.getPos(world))
+                .initialize()
+                .calculateSegmentation()
+                .fixEndpoints();
+            output.update();
+            return output;
+        }),
+        FRESH_SIMULATION_EXPRESSIVE((world, start, end, trns) -> {
+            SimulatedCatenary output = new SimulatedCatenary();
+            output.maxLength = trns.getMaximumSpan();
+            output.setOffset(start.getPos(world), end.getPos(world))
+                .initialize()
+                .calculateSegmentation()
+                .fixEndpoints();
+            output.update();
+            output.kick(1);
             return output;
         }),
         RESTING_SIMULATION((world, start, end, trns) -> {
-            CatenaryModel<?> output = new ParametricCatenary()
-                .setOffset(start.getPos(world), end.getPos(world));
-            output.maxLength = trns.getMaxLength();
-            output.setTension(trns.defaults.getTension());
-            output.update();
-            output = output.toSimulated(true);
-            output.updateAhead(256);
+            CatenaryModel<?> output = new SimulatedCatenary();
+            output.maxLength = trns.getMaximumSpan();
+            output.setOffset(start.getPos(world), end.getPos(world))
+                .initialize()
+                .calculateSegmentation()
+                .fixEndpoints();
+            output.updateAhead(512);
             return output;
         }),
         RESTING_SIMULATION_BAKED((world, start, end, trns) -> {
-            CatenaryModel<?> output = new ParametricCatenary()
-                .setOffset(start.getPos(world), end.getPos(world));
-            output.maxLength = trns.getMaxLength();
-            output.setTension(trns.defaults.getTension());
-            output.update();
-            output = output.toSimulated(true);
-            output.updateAhead(256);
+            CatenaryModel<?> output = new ParametricCatenary();
+            output.maxLength = trns.getMaximumSpan();
+            output.initialize()
+                .setOffset(start.getPos(world), end.getPos(world))
+                .update();
+            output = output.toSimulated();
+            output.calculateSegmentation()
+                .fixEndpoints()
+                .updateAhead(512);
             output = output.bake();
             return output;
         });
@@ -172,34 +154,34 @@ public class CatenaryAttributes {
     public static enum ModelType {
 
         SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
-            int iteration, boolean faceNormals, float pTicks) -> {
+            float loftLength, boolean recomputeNormals, float pTicks) -> {
                 if(previous == null) geo.computeMatrix(current.getForward());
                 else geo.computeMatrix(previous.getForward(), current.getForward());
-                if(faceNormals) {
+                if(recomputeNormals) {
                     geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
                         .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
                 }
                 geo.place4Verts(current.start(pTicks), 0);
                 if(next != null) geo.computeMatrix(current.getForward(), next.getForward());
                 geo.place4Verts(current.end(pTicks), 4);
-                geo.walkUVs(current, iteration);
+                geo.walkUVs(current, loftLength);
                 geo.emitQuad(buffer, pose, geo.normAX(), geo.normAY(), geo.normAZ(), 0, 4, 5, 1);
                 geo.emitQuad(buffer, pose, -geo.normAX(), -geo.normAY(), -geo.normAZ(), 2, 6, 7, 3);
                 geo.shiftUVs();
                 geo.emitQuad(buffer, pose, geo.normBX(), geo.normBY(), geo.normBZ(), 3, 7, 4, 0);
                 geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 6, 2);
-        }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.profile),
+        }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.extruder),
 
 
         CROSS(null, null), CROSS_CUTOUT(null, null),
         BILLBOARD(null, null), BILLBOARD_CUTOUT(null, null),
         NO_DRAW(null, null);
 
-        public final @Nullable MeshExtruder profile;
+        public final @Nullable MeshExtruder extruder;
         private final @Nullable BiFunction<TransmitterType<?>, Boolean, RenderType> mat;
 
         private ModelType(BiFunction<TransmitterType<?>, Boolean, RenderType> materialGetter, MeshExtruder extruder) {
-            this.profile = extruder;
+            this.extruder = extruder;
             this.mat = Util.memoize(materialGetter);
         }
 
@@ -208,7 +190,7 @@ public class CatenaryAttributes {
         }
 
         public @Nullable RenderType getMaterial(TransmitterType<?> type, boolean chunk) {
-            if(profile == null) return null;
+            if(extruder == null) return null;
             if(type == null) return SOLID_MATERIAL.apply(MechanoTransmissionTypes.PERFECT_INSULATOR, chunk);
             ResourceLocation loc = TransmitterRegistry.INSTANCE.getKey(type);
             if(mat == null) {
@@ -223,10 +205,10 @@ public class CatenaryAttributes {
             return shader;
         }
 
-        public MeshExtruder getProfile() {
-            if(profile == null)
+        public MeshExtruder getExtruder() {
+            if(extruder == null)
                 Mechano.LOGGER.warn("Attempted to get extruder with no implementation for member '" + this.name() + "'");
-            return profile;
+            return extruder;
         }
     }
 
@@ -245,15 +227,13 @@ public class CatenaryAttributes {
     public static final CatenaryAttributeHolder DEFAULT 
         = CatenaryAttributes
             .as(ModelType.SQUARE)
-            .withThickness(Thickness.TRIPLE)
-            .withTension(Tension.AVERAGE);
+            .withThickness(Thickness.TRIPLE);
 
 
     public static class CatenaryAttributeHolder {
 
         public @Nullable ModelType model;
         protected @Nullable Thickness thick = Thickness.TRIPLE;
-        protected @Nullable Tension tension = null;
 
         protected CatenaryAttributeHolder(ModelType model) {
             this.model = model;
@@ -265,12 +245,6 @@ public class CatenaryAttributes {
             return this;
         }
 
-        public CatenaryAttributeHolder withTension(Tension tension) {
-            if(tension == null) return this;
-            this.tension = tension;
-            return this;
-        }
-
         protected ModelType getModelType() {
             return model;
         }
@@ -279,13 +253,6 @@ public class CatenaryAttributes {
             return thick == null ? Thickness.TRIPLE : thick;
         }
 
-        public Tension getTension() {
-            return tension == null ? Tension.AVERAGE : tension;
-        }
-
-        protected float getNumericalTension() {
-            return tension == null ? Tension.AVERAGE.get() : tension.get();
-        }
 
         public @Nullable RenderType getShaderFor(TransmitterType<?> type) {
             return model == null ? RenderType.SOLID : model.getMaterial(type);
@@ -318,34 +285,6 @@ public class CatenaryAttributes {
 
         public float half() {
             return thick / 2f;
-        }
-    }
-
-    public static enum Tension {
-
-        TAUT(1f),
-        TIGHT(0.99f),
-        AVERAGE(0.76f),
-        LOOSE(0.60f),
-        VERY_LOOSE(0.50f),
-        STUPID_LOOSE(0.40f);
-        
-        private final float t;
-
-        private Tension(float t) {
-            this.t = t;
-        }
-
-        public float get(float mul) {
-            return t * mul;
-        }
-
-        public float get() {
-            return t;
-        }
-
-        public float getSquared() {
-            return t * t;
         }
     }
 }

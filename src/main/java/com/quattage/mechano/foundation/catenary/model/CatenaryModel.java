@@ -5,16 +5,13 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes.Tension;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
 import com.quattage.mechano.foundation.catenary.Tensionable;
 
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,9 +39,10 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
 
     // TODO flywheel and caching
 
+    protected static final float fudge = 0.76f;
+
     @Nullable
     public Vector3f offset;
-    public Tension tension = Tension.AVERAGE;
 
     // average accumulated velocity as of the last time the wire's shape was updated
     protected float avgVelocity = 0f;
@@ -59,25 +57,11 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     public static void dispose(CatenaryModel<?> cat) {
         if(cat == null) return;
         cat.offset = null;
-        cat.tension = null;
         cat.avgVelocity = 0;
         cat.length = 0;
         cat.maxLength = 0;
         cat.destroy();
         // also nullify flywheel stuff and cache info if i ever do that in the future
-    }
-
-    public static Vec3 getLocalizedOffset(LivingEntity e, float pTicks) {
-        return e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
-    }
-
-    public static Vec3 getLocalizedOffset(LevelReader world, BlockPos sectionCenter, AnchorPoint anchor) {
-        Vec3 realPos = anchor.getPos(world);
-        return new Vec3(
-            realPos.x - sectionCenter.getX(),
-            realPos.y - sectionCenter.getY(),
-            realPos.z - sectionCenter.getZ()
-        );
     }
 
     public Vec3 getEnd(Vec3 basis) {
@@ -107,15 +91,15 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     public abstract T setOffset(Vec3 start, Vec3 end);
 
     /**
-     * Sets this Catenary's offset to the inverse of
-     * what it currently is. This is useful if you've 
-     * swapped its start and end points and need some way to
-     * reflect that change here without causing jittering.
+     * A helper call that sets the first and last
+     * {@link Point} in this CatenaryModel to 
+     * <code>0, 0, 0</code> and <code>offset</code>
+     * respectively. Additionally, this method
+     * will pin these points in-place and wipe their
+     * interpolation data so that they are physically
+     * anchored and cannot move.
      */
-    public void invertOffset() {
-        if(offset != null)
-            setOffset(offset.mul(-1));
-    }
+    public abstract CatenaryModel<T> fixEndpoints();
 
     /**
      * Updates this Catenary. May bake, simulate, or otherwise
@@ -192,7 +176,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * for Catenary implementations that require it, but this method can still
      * be invoked manually in circumstances where doing so is useful.
      */
-    public abstract void calculateSegmentation();
+    public abstract CatenaryModel<T> calculateSegmentation();
 
     /**
      * Renders this Catenary to the provided stack. For more 
@@ -200,7 +184,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * primarily intended to be accessed via the
      * {@link CatenaryMesher#render geometry dispatcher}
      */
-    public abstract void render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks);
+    public abstract CatenaryModel<T> render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks);
 
     /**
      * Initializes this Catenary, telling it to
@@ -235,11 +219,26 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      */
     protected Vector3f quicklerp(Vector3f trgt, float t) {
         trgt.set(
-            Math.fma(-offset.x, t, offset.x),
-            Math.fma(-offset.y, t, offset.y),
-            Math.fma(-offset.z, t, offset.z)
+            Mth.lerp(t, 0, offset.x),
+            Mth.lerp(t, 0, offset.y),
+            Mth.lerp(t, 0, offset.z)
         );
         return trgt;
+    }
+
+    @Override
+    public float getSpan() {
+        return length;
+    }
+
+    @Override
+    public float getMaximumSpan() {
+        return maxLength;
+    }
+
+    @Override
+    public void adjustSpan(LevelReader world, float length) {
+        this.maxLength = length;
     }
 
     /**
@@ -251,11 +250,11 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     }   
 
     public Vector3f getGravity(int points) {
-        return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * (1 - tension.get()), new Vector3f());
+        return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * 0.3f, new Vector3f());
     }
 
     public Vector3f getGravity(int points, DeltaTracker delta) {
-        return CatenaryAttributes.UP.mul(((CatenaryAttributes.POINT_MASS / (float)points) * (1 - tension.get())) * delta.getGameTimeDeltaTicks(), new Vector3f());
+        return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * delta.getGameTimeDeltaTicks(), new Vector3f());
     }
 
     /**
@@ -268,7 +267,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * @param segmentCount the amount of segments in the wire
      */
     public float getSegmentLength(int segmentCount) {
-        return Math.max(0.0015f, (length / segmentCount) + CatenaryAttributes.TENSION_EPSILON) / (Math.max(1f, tension.get(16f)));
+        return Math.max(0.0015f, (length / segmentCount) + CatenaryAttributes.TENSION_EPSILON) / (Math.max(1f, (fudge * 16)));
     }
 
     /**
@@ -280,7 +279,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * numbers and achieve similar visual results.
      */
     public float getApproximateTension() {
-        return (1 - tension.get()) * ((Math.abs(offset.x) + Math.abs(offset.z)) / (128 * (tension.getSquared())));
+        return (1 - fudge) * ((Math.abs(offset.x) + Math.abs(offset.z)) / (128 * (fudge * fudge)));
     }
 
     /**
@@ -310,29 +309,14 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
         return avgVelocity;
     }
 
-    @Override
-    public Tension getTension() {
-        return tension;
-    }
-
-    @Override
-    public boolean setTension(Tension tension) {
-        if(tension == null) return setTension();
-        if(this.tension.equals(tension)) return false;
-        this.tension = tension;
-        return true;
-    }
-
     /**
      * Converts this Catenary to its {@link SimulatedCatenary simulatable version}
      * if possible. Calls to this method will <strong>uninitialize</strong> this
      * Catenary instance during the process of creating a SimulatedCatenary,
      * transfering its {@link Point point data} over without copying.
-     * @param pinEnds <code>true</code> if the resulting SimulatedCatenary
-     * should have its ends pinned during its initialization phase
      * @return A (new or preexisting) SimulatedCatenary instance
      */
-    public abstract SimulatedCatenary toSimulated(boolean pinEnds);
+    public abstract SimulatedCatenary toSimulated();
 
     /**
      * Converts this Catenary to its {@link ParametricCatenary non-simulated version}
@@ -351,19 +335,12 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     public abstract BakedCatenary bake();
 
     /**
-     * @return <code>true</code> if this Catenary is 
-     * can be moved at any time without special considerations
-     */
-    public abstract boolean isMovable();
-
-    /**
      * Determines whether or not this Catenary has reached a state of
      * restitution. If <code>false</code>, this Catenary is moving
      * or could move at any time, and should not be baked.
      * @return <code>true</code> if this Catenary is completely still.
      */
     public boolean isResting() {
-        if(!isMovable()) return true;
         return this.avgVelocity <= CatenaryAttributes.RESTITUTION_VELOCITY;
     }
 

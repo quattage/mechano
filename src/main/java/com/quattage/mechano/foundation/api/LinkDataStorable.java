@@ -1,5 +1,6 @@
 package com.quattage.mechano.foundation.api;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -16,18 +17,28 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
+/**
+ * A data store containing {@link GridConnection} instances registered as a data attachment
+ * ensuring that grid data is only one hash lookup away in most contexts, expecially for 
+ * rendering on the client. LevelChunk, Entity, and BlockEntity attachment holders are 
+ * explicitly supported. Attempts to push link data to any other IAttachmentHolder type
+ * will result in thrown exceptions.
+ */
 public sealed interface LinkDataStorable<T extends GridConnection> permits Client, Server, ClientSectionable, ServerSectionable {
 
     @SuppressWarnings("unchecked")
@@ -40,6 +51,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         }
         if(holder instanceof Entity entity) {
             if(entity.level().isClientSide())
+                return (LinkDataStorable<T>) new Client();
+            return (LinkDataStorable<T>) new Server();
+        }
+        if(holder instanceof BlockEntity be) {
+            if(be.getLevel().isClientSide())
                 return (LinkDataStorable<T>) new Client();
             return (LinkDataStorable<T>) new Server();
         }
@@ -66,9 +82,16 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         return getAsServer((ChunkAccess)chunk, force);
     }
 
+    public static @Nullable Server getAsServer(BlockEntity be, boolean force) {
+        Objects.requireNonNull(be);
+        assertSided(be, false);
+        LinkDataStorable<?> data = getUnsided(be, force);
+        return (Server)data;
+    }
+
     public static @Nullable ServerSectionable getAsServer(ChunkAccess chunk, boolean force) {
         Objects.requireNonNull(chunk);
-        assertSided(chunk, true);
+        assertSided(chunk, false);
         LinkDataStorable<?> data = getUnsided(chunk, force);
         return (ServerSectionable)data;
     }
@@ -93,6 +116,10 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
             Server data = getAsServer(e, false);
             return data == null ? null : data.get(world, key);
         }
+        if(holder instanceof BlockEntity be) {
+            Server data = getAsServer(be, false);
+            return data == null ? null : data.get(world, key);
+        }
         throwBadHolderType(holder);
         return null;
     }
@@ -101,19 +128,61 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, false);
-        IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
+
+        GridLink removed = null;
+        IAttachmentHolder holder = key.getEnd().getDataStorageHolder(world);
+
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, false);
-            if(data == null) return null;
-            return data.pop(world, key);
-        }
-        if(holder instanceof Entity e) {
+            if(data != null) removed = data.pop(world, key);
+        } else if(holder instanceof Entity e) {
             Server data = getAsServer(e, false);
-            if(data == null) return null;
-            return data.pop(world, key);
+            if(data != null) removed = data.pop(world, key);
+        } else if (holder instanceof BlockEntity be) {
+            Server data = getAsServer(be, false);
+            if(data != null) removed = data.pop(world, key);
+        } else if(holder != null) throwBadHolderType(holder);
+
+        // we don't need to make an inverse copy of the key here since the equals and 
+        // hashcode implementations for GridConnection are logically symmetrical
+        holder = key.getStart().getDataStorageHolder(world);
+        if(holder instanceof LevelChunk chunk) {
+            ServerSectionable data = getAsServer(chunk, false);
+            if(data != null) data.pop(world, key);
+        } else if(holder instanceof Entity e) {
+            Server data = getAsServer(e, false);
+            if(data != null) data.pop(world, key);
+        } else if(holder instanceof BlockEntity be) {
+            Server data = getAsServer(be, false);
+            if(data != null) data.pop(world, key);
+        } else if(holder != null) throwBadHolderType(holder);
+        return removed;
+    }
+
+    private static boolean pushAsServer(LevelReader world, GridLink link, InsertionPolicy mode) {
+        switch(mode) {
+            case SINGLE -> {
+                IAttachmentHolder holder = link.getStart().getDataStorageHolder(world);
+                if(holder instanceof LevelChunk chunk) {
+                    ServerSectionable data = getAsServer(chunk, true);
+                    return data.add(world, link);
+                }
+                if(holder instanceof Entity e) {
+                    Server data = getAsServer(e, true);
+                    return data.add(world, link);
+                }
+                if(holder instanceof BlockEntity be) {
+                    Server data = getAsServer(be, true);
+                    return data.add(world, link);
+                } 
+                throwBadHolderType(holder);
+            }
+            case SYMMETRIC -> {
+                pushAsServer(world, link, InsertionPolicy.SINGLE);
+                return pushAsServer(world, link.inverseCopy(), InsertionPolicy.SINGLE);
+            }
         }
-        throwBadHolderType(holder);
-        return null;
+        return false;
     }
 
     public static @Nullable ClientSectionable getAsClient(LevelReader world, ChunkPos pos, boolean force) {
@@ -140,10 +209,18 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         return (Client)data;
     }
 
+    public static @Nullable Client getAsClient(BlockEntity e, boolean force) {
+        Objects.requireNonNull(e);
+        assertSided(e, true);
+        LinkDataStorable<?> data = getUnsided(e, force);
+        return (Client)data;
+    }
+
     public static @Nullable GridCatenary getAsClient(LevelReader world, GridConnection key) {
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, true);
+
         IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, false);
@@ -151,6 +228,10 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         }
         if(holder instanceof Entity e) {
             Client data = getAsClient(e, false);
+            return data == null ? null : data.get(world, key);
+        }
+        if(holder instanceof BlockEntity be) {
+            Client data = getAsClient(be, false);
             return data == null ? null : data.get(world, key);
         }
         throwBadHolderType(holder);
@@ -161,57 +242,61 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, true);
+
+        GridCatenary removed = null;
         IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
+
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, false);
-            if(data == null) return null;
-            return data.pop(world, key);
-        }
-        if(holder instanceof Entity e) {
+            if(data != null) removed = data.pop(world, key);
+        } else if(holder instanceof Entity e) {
             Client data = getAsClient(e, false);
-            if(data == null) return null;
-            return data.pop(world, key);
-        }
-        throwBadHolderType(holder);
-        return null;
+            if(data != null) removed = data.pop(world, key);
+        } else if(holder instanceof BlockEntity be) {
+            Client data = getAsClient(be, false);
+            if(data != null) removed = data.pop(world, key);
+        } else if(holder != null) throwBadHolderType(holder);
+
+        // we don't need to make an inverse copy of the key here since the equals and 
+        // hashcode implementations for GridConnection are logically symmetrical
+        holder = key.getEnd().getDataStorageHolder(world);
+        if(holder instanceof LevelChunk chunk) {
+            ClientSectionable data = getAsClient(chunk, false);
+            if(data != null) data.pop(world, key);
+        } else if(holder instanceof Entity e) {
+            Client data = getAsClient(e, false);
+            if(data != null) data.pop(world, key);
+        }else if(holder instanceof BlockEntity be) {
+            Client data = getAsClient(be, false);
+            if(data != null) data.pop(world, key);
+        } else if(holder != null) throwBadHolderType(holder);
+        return removed;
     }
 
-    private static void pushAsClient(LevelReader world, GridCatenary cat, InsertionPolicy mode) {
+    private static boolean pushAsClient(LevelReader world, GridCatenary cat, InsertionPolicy mode) {
         switch(mode) {
             case SINGLE -> {
                 IAttachmentHolder holder = cat.getStart().getDataStorageHolder(world);
                 if(holder instanceof LevelChunk chunk) {
                     ClientSectionable data = getAsClient(chunk, true);
-                    data.add(world, cat);
-                } else if(holder instanceof Entity e) {
+                    return data.add(world, cat);
+                }
+                if(holder instanceof Entity e) {
                     Client data = getAsClient(e, true);
-                    data.add(world, cat);
-                } else throwBadHolderType(holder);
+                    return data.add(world, cat);
+                } 
+                if(holder instanceof BlockEntity be) {
+                    Client data = getAsClient(be, true);
+                    return data.add(world, cat);
+                } 
+                throwBadHolderType(holder);
             }
             case SYMMETRIC -> {
                 pushAsClient(world, cat, InsertionPolicy.SINGLE);
-                pushAsClient(world, cat.inverseCopy(), InsertionPolicy.SINGLE);
+                return pushAsClient(world, cat.inverseCopy(), InsertionPolicy.SINGLE);
             }
         }
-    }
-    
-    private static void pushAsServer(LevelReader world, GridLink link, InsertionPolicy mode) {
-        switch(mode) {
-            case SINGLE -> {
-                IAttachmentHolder holder = link.getStart().getDataStorageHolder(world);
-                if(holder instanceof LevelChunk chunk) {
-                    ServerSectionable data = getAsServer(chunk, true);
-                    data.add(world, link);
-                } else if(holder instanceof Entity e) {
-                    Server data = getAsServer(e, true);
-                    data.add(world, link);
-                } else throwBadHolderType(holder);
-            }
-            case SYMMETRIC -> {
-                pushAsServer(world, link, InsertionPolicy.SINGLE);
-                pushAsServer(world, link.inverseCopy(), InsertionPolicy.SINGLE);
-            }
-        }
+        return false;
     }
 
     public static boolean put(LevelReader world, GridConnection connection) {
@@ -226,10 +311,10 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 + " to data storage in " + world + " - ConnectionKeys can't be pushed!");
         }
         if(world.isClientSide() && connection.isClientSide() && connection instanceof GridCatenary cat)
-            pushAsClient(world, cat, mode);
-        else if(!world.isClientSide() && !connection.isClientSide() && connection instanceof GridLink link)
-            pushAsServer(world, link, mode);
-        throw new IllegalArgumentException("Failed while pushing " + connection + " - " 
+            return pushAsClient(world, cat, mode);
+        if(!world.isClientSide() && !connection.isClientSide() && connection instanceof GridLink link)
+            return pushAsServer(world, link, mode);
+        throw new IllegalArgumentException("Failed while pushing " + connection + " due to a " 
             + (world.isClientSide() ? "client" : "server") + "-sided mismatch!");
     }
 
@@ -252,6 +337,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
     private static void assertSided(ChunkAccess chunk, boolean clientSided) { assertSided(chunk.getLevel(), clientSided); }
     private static void assertSided(Entity e, boolean clientSided) { assertSided(e.level(), clientSided); }
+    private static void assertSided(BlockEntity be, boolean clientSided) { assertSided(be.getLevel(), clientSided); }
     private static void assertSided(LevelReader world, boolean clientSided) {
         if(world.isClientSide() == clientSided) return;
         throw new IllegalStateException("Sided mismatch encountered while retrieving data store from '" + world + "' - The world passed " + 
@@ -259,7 +345,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     }
 
     private static void throwBadHolderType(IAttachmentHolder holder) {
-        throw new IllegalArgumentException("Invalid AttachmentHolder type - Expected LevelChunk or Entity instance, got '" 
+        throw new IllegalArgumentException("Invalid AttachmentHolder type - Expected LevelChunk, BlockEntity, or Entity, got '" 
             + holder.getClass().getSimpleName() + "' instead!");
     }
 
@@ -358,6 +444,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         public Client getStorageInSection(int sectionY) {
             Client output = contents.get(sectionY);
+            if(output == null) return null;
             if(output.isEmpty()) {
                 contents.remove(sectionY);
                 return null;
@@ -465,5 +552,32 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         @Override public boolean isEmpty() { return contents.isEmpty(); }
         @Override public boolean isClientSide() { return false; }
         @Override public ObjectSet<GridLink> getAll() { throw new UnsupportedOperationException("lol"); }
+    }
+
+    /**
+     * Allows implementing classes to assert what kind 
+     * of LinkData they store, and, by extension, where 
+     * internal systems should look for retrieval. 
+     * This class is used particularly in the {@link TrackedStreamable}
+     * interface as a wway to allow {@link GridConnections} to
+     * reassert their link data to allow catenaries to smoothly
+     * hand off control and rendering context to/from all of the
+     * {@link IAttachmentHolder} subclasses supported by {@link LinkDataStorable}.
+     */
+    public static enum DataScope implements StringRepresentable {
+        SERVER_UNKNOWN,
+        STATIC_CHUNK,
+        BLOCKENTITY,
+        MOVING_ENTITY,
+        ENTITY_VOXEL_DOMAIN;
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+        @Override
+        public String toString() {
+            return getSerializedName();
+        }
     }
 }

@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
@@ -138,6 +139,23 @@ public enum GridResponse implements StringRepresentable {
             return true;
         }
 
+        public static boolean assertAnchorsExist(AnchorPoint startAnchor, AnchorPoint endAnchor) {
+            if(startAnchor == null && endAnchor == null) {
+                Mechano.LOGGER.error("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            }
+            if(startAnchor == null) {
+                Mechano.LOGGER.error("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            }
+            if(endAnchor == null) {
+                Mechano.LOGGER.error("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            }
+            return true;
+        }
+
+
         public static AnchorSyncHolder of(GridNode node) {
             return new AnchorSyncHolder(node, true);
         }
@@ -220,7 +238,6 @@ public enum GridResponse implements StringRepresentable {
         }
 
         // implementation deferred to internal address for convenience
-
         @Override public @Nullable AnchorPoint getAnchor(ClientLevel world) { return addr.getAnchor(world); }
         @Override public @Nullable Griddable<?> getAnchorPoints(LevelReader world) { return addr.getAnchorPoints(world); }
         @Override public @Nullable SurrogateNode getSurrogate(LevelReader world) { return addr.getSurrogate(world); }
@@ -233,7 +250,7 @@ public enum GridResponse implements StringRepresentable {
         @Override public UUIDDiscriminator getDiscriminatorType() { return addr.getDiscriminatorType(); }
         @Override public GridUUID indexedCopy(int index) { return addr.indexedCopy(index); }
         @Override public BlockPos getBlockPos(LevelReader world) { return addr.getBlockPos(world); }
-        @Override public String describeDataHolder(LevelReader world) { return "AnchorPointSyncHolder(" + addr.describeDataHolder(world) + ")"; }
+        @Override public String describeDataScope(LevelReader world) { return addr.describeDataScope(world) + " (Queried from AnchorSyncHolder)"; }
         @Override public Vec3 getPos(LevelReader world) { return addr.getPos(world); }
         @Override public Vec3 getPos(LevelReader world, float pTicks) { return addr.getPos(world, pTicks); }
         @Override public Vec3 getOffsetPos(LevelReader world, float ox, float oy, float oz) { return addr.getOffsetPos(world, ox, oy, oz); }
@@ -241,6 +258,13 @@ public enum GridResponse implements StringRepresentable {
         @Override public void writeTo(CompoundTag tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
         @Override public void writeTo(ByteBuf buffer) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
         @Override public void writeTo(RecordBuilder<?> tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
+        @Override public void setDataScope(DataScope scope) { addr.setDataScope(scope); }
+        @Override public DataScope getDataScope() { return addr.getDataScope(); }
+
+        @Override
+        public void sendLevelUpdates(Level world) {
+            addr.sendLevelUpdates(world);
+        }
 
         @Override
         public String toString() {

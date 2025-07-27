@@ -10,9 +10,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -22,38 +22,49 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class VoxelUUID extends GridUUID {
 
-    private BlockPos pos;
-    private int index;
+    protected BlockPos pos;
+    protected int index;
+    private DataScope scope;
 
     public VoxelUUID(BlockPos pos, int index) {
+        this(pos, index, DataScope.STATIC_CHUNK);
+    }
+
+    public VoxelUUID(BlockPos pos, int index, DataScope target) {
         this.pos = pos;
         this.index = clampIndex(index);
+        this.scope = target;
     }
 
     public VoxelUUID(CompoundTag tag) {
         this.pos = new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z"));
         this.index = clampIndex(tag.getByte("i"));
+        this.scope = DataScope.values()[tag.getByte("s")];
     }
 
     public VoxelUUID(ByteBuf buffer) {
         this.pos = new BlockPos(buffer.readInt(), buffer.readInt(), buffer.readInt());
         this.index = buffer.readByte();
+        this.scope = DataScope.values()[buffer.readByte()];
     }
 
     public VoxelUUID(Dynamic<?> dyn) {
         this.pos = new BlockPos(dyn.get("x").asInt(0), dyn.get("y").asInt(0), dyn.get("z").asInt(0));
         this.index = clampIndex(dyn.get("i").asInt(0));
+        this.scope = DataScope.values()[dyn.get("s").asInt(0)];
     }
 
     @Override
@@ -70,9 +81,10 @@ public class VoxelUUID extends GridUUID {
     @OnlyIn(Dist.CLIENT)
     public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
         BlockEntity be = world.getBlockEntity(pos);
-        if(be == null) return true;
-        if(!(be instanceof GriddableBlockEntity gbe)) return false;
-        return view.isVisible(gbe.getRenderBoundingBox());
+        if(be == null) return false;
+        VoxelShape shape = be.getBlockState().getShape(world, pos);
+        if(shape == null) return false;
+        return view.isVisible(shape.bounds());
     }
 
     @Override
@@ -143,22 +155,49 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) {
-        return world.getChunk(getBlockPos(world));
+        if(scope == DataScope.STATIC_CHUNK)
+            return world.getChunk(pos);
+        scope = DataScope.BLOCKENTITY;
+        return world.getBlockEntity(pos);
     }
 
     @Override
-    public String describeDataHolder(LevelReader world) {
+    public String describeDataScope(LevelReader world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
-        if(holder instanceof LevelChunk chunk) {
-            ChunkPos pos = chunk.getPos();
-            return "LevelChunk[" + pos.x + ", " + pos.z + "]";
+        if(scope == DataScope.STATIC_CHUNK) {
+            if(holder instanceof LevelChunk chunk) {
+                ChunkPos pos = chunk.getPos();
+                return "LevelChunk[" + pos.x + ", " + pos.z + "]";
+            }
+            return "data scope mismatch (" + scope + ")";
+        }
+        if(scope == DataScope.BLOCKENTITY) {
+            if(holder instanceof BlockEntity be)
+                return "BlockEntity '" + be.getClass().getSimpleName() + ", [" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]";
+            return "data scope mismatch (" + scope + ")";
         }
         return "not_applicable";
     }
 
     @Override
+    public DataScope getDataScope() {
+        return this.scope;
+    }
+
+    @Override
+    public void setDataScope(DataScope scope) {
+        this.scope = scope;
+    }
+
+    @Override
     public boolean canMoveDynamically() {
-        return false;
+        return scope != DataScope.STATIC_CHUNK;
+    }
+
+    @Override
+    public void sendLevelUpdates(Level world) {
+        BlockState state = world.getBlockState(pos);
+        world.sendBlockUpdated(pos, state, state, 3);
     }
 
     @Override
@@ -176,6 +215,7 @@ public class VoxelUUID extends GridUUID {
         tag.putInt("y", pos.getY());
         tag.putInt("z", pos.getZ());
         tag.putByte("i", (byte)index);
+        tag.putByte("s", (byte)scope.ordinal());
     }
 
     @Override
@@ -184,15 +224,18 @@ public class VoxelUUID extends GridUUID {
             .writeInt(pos.getX())
             .writeInt(pos.getY())
             .writeInt(pos.getZ())
-            .writeByte(index);
+            .writeByte(index)
+            .writeByte(scope.ordinal());
     }
 
     @Override
     public void writeTo(RecordBuilder<?> builder) {
-        builder.add("x", pos.getX(), Codec.INT);
-        builder.add("y", pos.getY(), Codec.INT);
-        builder.add("z", pos.getZ(), Codec.INT);
-        builder.add("i", (byte)index, Codec.BYTE);
+        builder
+            .add("x", pos.getX(), Codec.INT)
+            .add("y", pos.getY(), Codec.INT)
+            .add("z", pos.getZ(), Codec.INT)
+            .add("i", (byte)index, Codec.BYTE)
+            .add("s", (byte)scope.ordinal(), Codec.BYTE);
     }
 
     @Override
@@ -210,6 +253,6 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public String toString() {
-        return "VoxelUUID[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + index + "]";
+        return "VoxelUUID[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + index + ", '" + scope + "']";
     }
 }

@@ -26,12 +26,12 @@ public interface MeshExtruder {
      * @param previous (Optional, can be null) The previous stick in the chain
      * @param current (Required) The stick to create a profile of
      * @param next (Optional, can be null) The next stick in the chain
-     * @param iteration An arbitrary integer for when this method is being called as part of a larger
-     * iterative process, where multiple extrusions are created in one mesh and need to distinguish
-     * between one another. This is particularly useful for panning UVs across an atlas.
-     * @param faceNormals <code>true</code> if new face normals should be computed here. If <code>false</code>,
+     * @param loftLength An arbitrary float representing the total arclength covered during successive calls to this method. 
+     * Useful for when multiple extrusions are created in one mesh and need to distinguish between one another or for 
+     * panning UVs across an atlas.
+     * @param recomputeNormals <code>true</code> if new face normals should be computed here. If <code>false</code>,
      * the normals contained in <code>geo</code> will not be recomputed, but reused. 
-     * @param pTicks partial ticks
+     * @param pTicks Partial ticks (accessible in most rendering contexts) for lerping from a fixed update cycle.
      */
-    void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, int iteration, boolean faceNormals, float pTicks);
+    void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, float loftLength, boolean recomputeNormals, float pTicks);
 }

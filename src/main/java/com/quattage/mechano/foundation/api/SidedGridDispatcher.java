@@ -14,6 +14,7 @@ import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.catenary.WindManager;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.helper.Worldly;
@@ -92,7 +93,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
             server(world).onUnload();
         isLoadResolved = false;
         if(!weakServerGrid.refersTo(null)) {
-            LOGGER.debug("De-referenced ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
+            LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
             weakServerGrid = weakServerGrid.emptyCopy();
         }
     }
@@ -100,9 +101,10 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     @SubscribeEvent
     public static void onClientUnload(ClientPlayerNetworkEvent.LoggingOut evt) {
         if(!weakServerGrid.refersTo(null)) {
-            LOGGER.debug("De-referenced ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
+            LOGGER.debug("Dumped ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
             weakClientGrid = weakClientGrid.emptyCopy();
         }
+        WindManager.INSTANCE.reset();
     }
 
     @SubscribeEvent

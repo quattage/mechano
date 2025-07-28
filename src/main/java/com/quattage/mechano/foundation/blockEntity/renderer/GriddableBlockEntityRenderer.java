@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.catenary.WindManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -13,6 +13,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implements BlockEntityRenderer<T> {
 
@@ -52,11 +54,27 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
 
     public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
         be.forEachCatenary(cat -> {
-            if(!CatenaryAttributes.DO_IT_JIGGLE && !cat.isMoving())
+            if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving())
                 return;
             if(!be.containsAnchor(cat.getPrimaryRenderer(null)))
                 return;
             cat.renderDynamic(be, bufferSource, matrixStack, pTicks);
         });
+    }
+
+    @Override
+    public AABB getRenderBoundingBox(T be) {
+        return be.getRenderBoundingBox();
+    }
+    
+    @Override
+    public boolean shouldRender(T be, Vec3 cameraPos) {
+        if(be.getSurrogate() != null && be.getSurrogate().belongsToNetwork()) return true;
+        return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
+    }
+
+    @Override
+    public boolean shouldRenderOffScreen(T be) {
+        return be.getSurrogate() != null && be.getSurrogate().belongsToNetwork();
     }
 }

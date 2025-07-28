@@ -15,7 +15,9 @@ import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.Trans
 import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.WindManager;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
+import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -40,7 +42,7 @@ public final class GridCatenary extends GridConnection {
 
     private final AnchorPoint start;
     private AnchorPoint end;
-    private CatenaryModel<?> catenary;
+    private @Nullable CatenaryModel<?> catenary;
     private AABB box = AABB.INFINITE;
 
     public static void renderToSection(LevelReader world, SectionPos sectionPos, BlockPos sectionOrigin, ObjectSet<GridCatenary> catenaries, SectionRenderingContext context) {
@@ -183,13 +185,14 @@ public final class GridCatenary extends GridConnection {
             return;
         }
 
+        if(catenary == null) return;
         GridUUID[] ordered = orderedByWeight(world);
         if(!ordered[1].canMoveDynamically()) return;
         Vec3 diff = ordered[0].getPos(world).subtract(ordered[1].getPos(world));
-        float softLength = getOrCreateModel(world).maxLength * CatenaryAttributes.KINEMATIC_SOFT;
+        float softLength = catenary.maxLength * CatenaryAttributes.KINEMATIC_SOFT;
         if(diff.length() < softLength) return;
         ordered[1].applyForceToAttachment(world, diff.normalize().scale(
-            0.1f * Math.min(1f, (getOrCreateModel(world).length - softLength) / (getOrCreateModel(world).maxLength - softLength))
+            0.1f * Math.min(1f, (catenary.length - softLength) / (catenary.maxLength - softLength))
         ));
     }
 
@@ -240,11 +243,6 @@ public final class GridCatenary extends GridConnection {
         sendLevelUpdates(world);
     }
 
-    /**
-     * 
-     * @param world world to operate within
-     * @param pTicks partial ticks, accessible in most rendering contexts. If you're unsure, just pass as this parameter.
-     */
     @Override
     public void updateShape(LevelReader world, float pTicks) {
         if(canMoveDynamically())
@@ -252,10 +250,31 @@ public final class GridCatenary extends GridConnection {
         getOrCreateModel(world).update();
     }
 
+    /**
+     * Updates the simulated shape of this GridCatenary on
+     * a fixed update cycle. Expected to be called by a scheduled
+     * ticking method, such as Entity or BlockEntity tick. This method
+     * comes with some extra stuff, like wind :)
+     * @param holder
+     * @param world
+     */
+    public void updateShapeFixed(ClientLevel world, Griddable<?> holder) {
+        if(!hasPoints() || !holder.containsAnchor(getPrimaryRenderer(null))) return;
+        CatenaryModel<?> model = getOrCreateModel(world);
+        if(!isMoving()) return;
+        model.setOffset(start.getPos(world, 1), end.getPos(world, 1)).update();
+        if(!WindManager.INSTANCE.isEnabled()) return;
+        if(!(model instanceof SimulatedCatenary scat)) return;
+        scat.applyWind(WindManager.INSTANCE.sample(world, getMiddle(world)));
+    }
+
+
     public CatenaryModel<?> getOrCreateModel(LevelReader world) {
         if(catenary != null) return catenary;
-        catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE.make(world, start, end, trns.getType());
-        return catenary;
+        this.catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE.make(world, start, end, trns.getType());
+        GridCatenary opposite = LinkDataStorable.getAsClient(world, this);
+        if(opposite != null) opposite.catenary = this.catenary;
+        return this.catenary;
     }
 
     public CatenaryModel<?> accumulateModel(LevelReader world) {
@@ -269,7 +288,10 @@ public final class GridCatenary extends GridConnection {
         return this;
     }
 
-    public CatenaryModel<?> getModel() {
+    public CatenaryModel<?> getModel(LevelReader world) {
+        if(catenary != null) return catenary;
+        GridCatenary opposite = LinkDataStorable.getAsClient(world, this);
+        this.catenary = opposite.catenary;
         return catenary;
     }
 
@@ -282,7 +304,11 @@ public final class GridCatenary extends GridConnection {
     public boolean isMoving() {
         if(catenary == null)
             return canMoveDynamically();
-        return !catenary.isResting();
+        if(!catenary.isResting()) {
+            if(catenary instanceof SimulatedCatenary scat) 
+                scat.applyWind(null);
+        };
+        return true;
     }
 
     @Override
@@ -360,24 +386,21 @@ public final class GridCatenary extends GridConnection {
         return getStart().getDataScope();
     }
 
+    public BlockPos getMiddle(LevelReader world) {
+        if(!hasPoints()) return BlockPos.ZERO;
+        BlockPos startPos = start.getAddress().getBlockPos(world);
+        BlockPos endPos = end.getAddress().getBlockPos(world);
+        return new BlockPos(
+            (int)((startPos.getX() + endPos.getX()) / 2f),
+            (int)((startPos.getY() + endPos.getY()) / 2f),
+            (int)((startPos.getZ() + endPos.getZ()) / 2f)
+        );
+    }
+
     @Override
     public void setDataScope(DataScope scope) {
         if(getStart() != null) getStart().setDataScope(scope);
         if(getEnd() != null) getEnd().setDataScope(scope);
-    }
-
-    /**
-     * Updates the simulated shape of this GridCatenary on
-     * a fixed update cycle. Expected to be called by a scheduled
-     * ticking method, such as Entity or BlockEntity tick.
-     * @param holder
-     * @param world
-     */
-    public void updateShapeFixed(Griddable<?> holder, LevelReader world) {
-        if(!hasPoints() || !holder.containsAnchor(getPrimaryRenderer(null))) return;
-        CatenaryModel<?> model = getOrCreateModel(world);
-        if(!isMoving()) return;
-        model.setOffset(start.getPos(world, 1), end.getPos(world, 1)).update();
     }
 
     // TODO REUSABLE MESHER MEANS THAT THESE METHODS ARE NOT THREAD SAFE

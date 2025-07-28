@@ -48,13 +48,6 @@ public class CatenaryAttributes {
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
-    /**
-     * do it?
-     */
-    public static boolean DO_IT_JIGGLE = true;
-
-
-
     public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL 
         = Util.memoize((trns, chunk) -> {
             if(chunk) return RenderType.SOLID;

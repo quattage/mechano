@@ -18,6 +18,7 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.catenary.WindManager;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -270,6 +271,10 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
             Client data = getAsClient(be, false);
             if(data != null) data.pop(world, key);
         } else if(holder != null) throwBadHolderType(holder);
+
+        if(removed != null && WindManager.INSTANCE.isEnabled())
+            WindManager.INSTANCE.forget(removed);
+
         return removed;
     }
 
@@ -283,11 +288,21 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 }
                 if(holder instanceof Entity e) {
                     Client data = getAsClient(e, true);
-                    return data.add(world, cat);
+                    if(data.add(world, cat)) {
+                        if(WindManager.INSTANCE.isEnabled())
+                            WindManager.INSTANCE.track(cat);
+                        return true;
+                    }
+                    return false;
                 } 
                 if(holder instanceof BlockEntity be) {
                     Client data = getAsClient(be, true);
-                    return data.add(world, cat);
+                    if(data.add(world, cat)) {
+                        if(WindManager.INSTANCE.isEnabled())
+                            WindManager.INSTANCE.track(cat);
+                        return true;
+                    }
+                    return false;
                 } 
                 throwBadHolderType(holder);
             }

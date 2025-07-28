@@ -13,12 +13,14 @@ import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.createmod.catnip.gui.element.GuiGameElement;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -44,8 +46,21 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         if(!getLevel().isClientSide) return;
         if(!surrogate.belongsToNetwork()) return;
         forEachCatenary(cat -> {
-            cat.updateShapeFixed(this, level);
+            cat.updateShapeFixed((ClientLevel)level, this);
         });
+    }
+
+    @Override
+    public void onAnchorSynced(Level world, int index) {
+        if(!world.isClientSide) return;
+        invalidateRenderBoundingBox();
+    }
+
+    @Override
+    protected AABB createRenderBoundingBox() {
+        if(!level.isClientSide || !surrogate.belongsToNetwork()) 
+            return super.createRenderBoundingBox();
+        return AABB.INFINITE;
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation.catenary.model;
 
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
@@ -11,12 +11,12 @@ import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher.Stick;
+import com.quattage.mechano.foundation.catenary.WindManager;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
@@ -24,8 +24,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     private float segmentTF = 0f;
     private float[] restitutionError = new float[3];
-
-    private final Vector3f randomKick = new Vector3f(0, 0, 0);
+    private @Nullable Vector2f wind = null;
 
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
@@ -144,36 +143,13 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         assertHasOffset();
         assertSimulatable();
         final Vector3f gravity = getGravity(points.size());
-        final Vector3d lastPos = new Vector3d();
+        final Vector3f lastPos = new Vector3f();
         avgVelocity = 0;
 
-        Point p = points.getFirst();
-        if(p.pinned)
-            p.clearPos();
-        p = points.getLast();
-        if(p.pinned) {
-            lastPos.set(p.pos);
-            p.pos.set(offset);
-            p.lastPos.set(lastPos);
-        }
-
-        for(Point point : points) {
-            if(point.pinned) continue;
-            lastPos.set(point.pos);
-            Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
-            vel.sub(gravity);
-            this.avgVelocity += vel.length();
-            point.pos.add(vel);
-            point.lastPos.set(lastPos);
-        }
-
-        this.avgVelocity /= points.size();
-        if(Float.isNaN(this.avgVelocity)) {
-            Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
-            initialize();
-            calculateSegmentation();
-            return;
-        }
+        updateEnds(lastPos);
+        if(WindManager.INSTANCE.isEnabled() && wind != null) 
+            applyVelocityWithWind(lastPos, gravity, wind);
+        else applyVelocity(lastPos, gravity);
 
         float constraintError = 0f;
         final Vector3f deltaPos = new Vector3f();
@@ -204,6 +180,60 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         restitutionError[1] = constraintError / (float)this.sticks.size();
     }
 
+    private void updateEnds(Vector3f lastPos) {
+        Point p = points.getFirst();
+        if(p.pinned)
+            p.clearPos();
+        p = points.getLast();
+        if(p.pinned) {
+            lastPos.set(p.pos);
+            p.pos.set(offset);
+            p.lastPos.set(lastPos);
+        }
+    }
+    
+    private void applyVelocityWithWind(Vector3f lastPos, Vector3f gravity, Vector2f wind) {
+        float mid = points.size() / 2f;
+        for(int x = 0; x < points.size(); x++) {
+            Point point = points.get(x);
+            if(point.pinned) continue;
+            lastPos.set(point.pos);
+            Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
+            vel.sub(gravity);
+            float windStrength = 1 - (((float)x - mid )/ mid);
+            this.avgVelocity += vel.length();
+            point.pos.add(vel);
+            point.pos.add(wind.x * windStrength, 0, wind.y * windStrength);
+            point.lastPos.set(lastPos);
+        }
+        this.avgVelocity /= points.size();
+        if(Float.isNaN(this.avgVelocity)) {
+            Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
+            initialize();
+            calculateSegmentation();
+            return;
+        }
+    }
+
+    private void applyVelocity(Vector3f lastPos, Vector3f gravity) {
+        for(Point point : points) {
+            if(point.pinned) continue;
+            lastPos.set(point.pos);
+            Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
+            vel.sub(gravity);
+            this.avgVelocity += vel.length();
+            point.pos.add(vel);
+            point.lastPos.set(lastPos);
+        }
+        this.avgVelocity /= points.size();
+        if(Float.isNaN(this.avgVelocity)) {
+            Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
+            initialize();
+            calculateSegmentation();
+            return;
+        }
+    }
+
     @Override
     public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
         if(sticks.size() < 2) {
@@ -227,6 +257,10 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         geo.setLight1(geo.getLight(last.end.pos));
         geo.model.extruder.make(buffer, pose, geo, previous, last, null, arclength, true, pTicks);
         return this;
+    }
+
+    public void applyWind(Vector2f wind) {
+        this.wind = wind;
     }
 
     @Override
@@ -317,12 +351,10 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         kickPoint.pos.y += strength;
     }
 
-    public void randomKick(RandomSource random) {
-        
-    }
-
     @Override
     public boolean isResting() {
+        if(wind != null)
+            return wind.length() > 0.01f;
         if(super.isResting() && (Math.abs(restitutionError[1] - restitutionError[0]) < 1e-4f)) {
             if(restitutionError[2] > 42)
                 return true;

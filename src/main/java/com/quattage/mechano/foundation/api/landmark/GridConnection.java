@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.catenary.Tensionable;
@@ -224,8 +225,15 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
             return new GridUUID[] { end, start };
 
         if(start.canMoveDynamically() && end.canMoveDynamically()) {
+
+            if(start instanceof VoxelUUID && !(end instanceof VoxelUUID))
+                return new GridUUID[] { start, end };
+            if(end instanceof VoxelUUID && !(start instanceof VoxelUUID))
+                return new GridUUID[] { end, start };
+
             float startSize = start.getAttachedSizeFactor(world);
             float endSize = end.getAttachedSizeFactor(world);
+
             if(startSize > endSize)
                 return new GridUUID[] { start, end };
             if(endSize > startSize) 

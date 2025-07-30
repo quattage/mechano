@@ -37,6 +37,7 @@ import net.minecraft.world.level.LevelReader;
 public final class ServerGrid extends SidedGridDispatcher {
 
     public ObjectArrayList<ServerMatrix> matrices;
+    private LinkDataTracker tracker = new LinkDataTracker();
 
     private @Nullable Set<DeferredMember> deferred = new HashSet<>();
 
@@ -431,6 +432,11 @@ public final class ServerGrid extends SidedGridDispatcher {
     @Override
     protected String getDistPrefix() {
         return "SERVER";
+    }
+
+    @Override
+    protected LinkDataTracker getDebugTracker() {
+        return tracker;
     }
 
     private static record DeferredMember(@Nullable GridNode root, ServerMatrix instantiator, GridUUID address, @Nullable ListTag links) {

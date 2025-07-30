@@ -330,9 +330,9 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
     }
 
     @Override
-    public DataScope getDataScope() {
+    public DataScope getDataScope(LevelReader world) {
         assertNotDestroyed();
-        return address.getDataScope();
+        return address.getDataScope(world);
     }
 
     @Override

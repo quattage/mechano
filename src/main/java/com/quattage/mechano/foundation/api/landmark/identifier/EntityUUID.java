@@ -124,7 +124,7 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public boolean canMoveDynamically() {
+    public boolean canMoveDynamically(LevelReader world) {
         return true;
     }
 
@@ -229,7 +229,7 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public DataScope getDataScope() {
+    public DataScope getDataScope(LevelReader world) {
         return DataScope.MOVING_ENTITY;
     }
 

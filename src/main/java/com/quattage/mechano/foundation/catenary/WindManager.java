@@ -1,13 +1,9 @@
 package com.quattage.mechano.foundation.catenary;
 
 import java.lang.ref.WeakReference;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.joml.Vector2f;
-
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -24,7 +20,6 @@ public class WindManager {
     private final float[] windSpeeds = new float[] { 0.013f, 0.021f, 0.042f };
     private boolean enabled = true;
     private WeakReference<PerlinSimplexNoise> noise = new WeakReference<>(null);
-    private Set<GridCatenary> trackedCatenaries = new HashSet<>();
 
     private PerlinSimplexNoise getOrCreateNoise(RandomSource random) {
         if(!noise.refersTo(null)) return noise.get();
@@ -49,14 +44,6 @@ public class WindManager {
         return windSpeeds[0];
     }
 
-    public void track(GridCatenary cat) {
-        synchronized(trackedCatenaries) { trackedCatenaries.add(cat); }
-    }
-
-    public void forget(GridCatenary cat) {
-        synchronized(trackedCatenaries) { trackedCatenaries.remove(cat); }
-    }
-
     public void setEnabled(boolean enable) {
         if(!enabled)
             enabled = enable;
@@ -72,7 +59,6 @@ public class WindManager {
 
     public void reset() {
         enabled = true;
-        noise = new WeakReference<>(null);
-        trackedCatenaries.clear();
+        noise.clear();
     }
 }

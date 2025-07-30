@@ -79,6 +79,10 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         this.trns = trns;
     }
 
+    public TrackedStreamable getPrimaryReferencer(LevelReader world) {
+        return TrackedStreamable.orderedByRenderPriority(world, getStart(), getEnd())[0];
+    }
+
     @Override
     @OnlyIn(Dist.CLIENT) 
     public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
@@ -219,12 +223,12 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         GridUUID start = getStart();
         GridUUID end = getEnd();
 
-        if(!start.canMoveDynamically() && end.canMoveDynamically()) 
+        if(!start.canMoveDynamically(world) && end.canMoveDynamically(world)) 
             return new GridUUID[] { start, end };
-        if(start.canMoveDynamically() && !end.canMoveDynamically()) 
+        if(start.canMoveDynamically(world) && !end.canMoveDynamically(world)) 
             return new GridUUID[] { end, start };
 
-        if(start.canMoveDynamically() && end.canMoveDynamically()) {
+        if(start.canMoveDynamically(world) && end.canMoveDynamically(world)) {
 
             if(start instanceof VoxelUUID && !(end instanceof VoxelUUID))
                 return new GridUUID[] { start, end };
@@ -280,7 +284,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         }
 
         @Override
-        public DataScope getDataScope() {
+        public DataScope getDataScope(LevelReader world) {
             return DataScope.MOVING_ENTITY;
         }
 

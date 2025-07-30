@@ -1,3 +1,4 @@
+
 plugins {
     id 'idea'
     id 'java-library'
@@ -89,6 +90,7 @@ repositories {
     maven { url = "https://mvn.devos.one/snapshots" } // registrate
     maven { url = "https://maven.blamejared.com/" } // jei & vazkii's
     maven { url = "https://maven.theillusivec4.top/" } // curios
+    maven { url = "https://repo.lucko.me/" } // spark
 }
 
 dependencies {
@@ -100,6 +102,7 @@ dependencies {
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
     compileOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}:api")
     runtimeOnly("top.theillusivec4.curios:curios-neoforge:${curios_version}+${minecraft_version}")
+    runtimeOnly("me.lucko:spark-common:${spark_version}")
 }
 
 

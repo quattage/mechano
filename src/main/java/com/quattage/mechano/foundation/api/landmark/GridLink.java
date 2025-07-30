@@ -15,6 +15,7 @@ import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.LevelReader;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public final class GridLink extends GridConnection {
 
@@ -130,8 +131,13 @@ public final class GridLink extends GridConnection {
     }
 
     @Override
-    public DataScope getDataScope() {
+    public DataScope getDataScope(LevelReader world) {
         return DataScope.SERVER_UNKNOWN;
+    }
+
+    @Override
+    public IAttachmentHolder getDataStorageHolder(LevelReader world) {
+        return getPrimaryReferencer(world).getDataStorageHolder(world);
     }
 
     @Override

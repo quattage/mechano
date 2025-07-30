@@ -180,7 +180,7 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public DataScope getDataScope() {
+    public DataScope getDataScope(LevelReader world) {
         return this.scope;
     }
 
@@ -190,7 +190,7 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public boolean canMoveDynamically() {
+    public boolean canMoveDynamically(LevelReader world) {
         return scope != DataScope.STATIC_CHUNK;
     }
 

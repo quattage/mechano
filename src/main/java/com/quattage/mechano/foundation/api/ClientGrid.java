@@ -8,12 +8,13 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.catenary.WindManager;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.ListTag;
@@ -24,7 +25,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public final class ClientGrid extends SidedGridDispatcher {
 
     private final CatenaryMesher mesher;
-    public final ObjectOpenHashSet<GridCatenary> catenaries;
+    public LinkDataTracker tracker = new LinkDataTracker();
 
     public static ClientGrid loadFrom(ListTag serializedGlobals, ClientLevel world) {
         return new ClientGrid(world);
@@ -33,7 +34,7 @@ public final class ClientGrid extends SidedGridDispatcher {
     public ClientGrid(ClientLevel world) {
         super(world);
         this.mesher = CatenaryMesher.asEmpty();
-        this.catenaries = new ObjectOpenHashSet<>(4);
+        tracker.enable().withLogging(LOGGER);
     }
 
     @Override
@@ -45,7 +46,15 @@ public final class ClientGrid extends SidedGridDispatcher {
     protected void onLoad() {}
 
     @Override
-    protected void onUnload() {}
+    protected void onUnload() {
+        mesher.reset();
+        WindManager.INSTANCE.reset();
+    }
+
+    @Override
+    public LinkDataTracker getDebugTracker() {
+        return tracker;
+    }
 
     /**
      * Request that a link is made. This method does some simple
@@ -67,7 +76,6 @@ public final class ClientGrid extends SidedGridDispatcher {
                     + endAnchor.getAddress() + " - No valid PGBE could be found at the starting address");
                 return GridResponse.FAIL_OUTDATED;
             }
-
             if(!endAnchor.existsIn(world)) {
                 Mechano.LOGGER.warn("Failed to create link between " + startAnchor.getAddress() + " and " 
                     + endAnchor.getAddress() + " - No valid PGBE could be found at the ending address");
@@ -75,15 +83,16 @@ public final class ClientGrid extends SidedGridDispatcher {
             }
         }
 
-
         if(!type.ignoresLimits()) {
             if(!endAnchor.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
             if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;
         }
 
-        if(!type.supportsSameBlockConnections())
-            if(endAnchor.equals(startAnchor)) return GridResponse.FAIL_DUPLICATE;    
-        else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) return GridResponse.FAIL_DUPLICATE;
+        if(!type.supportsSameBlockConnections()) {
+            if(endAnchor.equals(startAnchor)) 
+                return GridResponse.FAIL_DUPLICATE;    
+        } else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) 
+            return GridResponse.FAIL_DUPLICATE;
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
         if(linkDistance < type.getMinDistance()) return GridResponse.FAIL_TOO_CLOSE;
@@ -124,12 +133,13 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @return The {@link GridCatenary} that was created
      */
     public GridCatenary handleCatenaryCreation(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
-        AnchorPoint[] points = GridCatenary.orderedByRenderPriority(world, start.applyAndGet(world), end.applyAndGet(world));
-        GridCatenary cat = new GridCatenary(world, points[1], points[0], trns);
+        TrackedStreamable[] ends = TrackedStreamable.orderedByRenderPriority(world, start.applyAndGet(world), end.applyAndGet(world));
+        GridCatenary cat = new GridCatenary(world, (AnchorPoint)ends[0], (AnchorPoint)ends[1], trns);
         LinkDataStorable.put(world, cat);
         cat.sendLevelUpdates(world);
         return cat;
     }
+
 
 
     /**

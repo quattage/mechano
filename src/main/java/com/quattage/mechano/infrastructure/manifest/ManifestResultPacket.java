@@ -1,14 +1,10 @@
 package com.quattage.mechano.infrastructure.manifest;
 
-import java.io.File;
-import java.io.PrintWriter;
-
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -26,15 +22,6 @@ public record ManifestResultPacket(String message) implements ClientboundPacketP
 
     @Override
     public void handle(LocalPlayer player) {
-        String directory = Minecraft.getInstance().gameDirectory.getAbsolutePath();
-        directory += "/logs/mechano_grid_dump.log";
-        File output = new File(directory);
-        try(PrintWriter pw = new PrintWriter(output)) {
-            pw.print(message);
-            pw.close();
-        } catch(Exception e) {
-            Mechano.LOGGER.error("Failed to write mechano grid dump!");
-            e.printStackTrace();
-        }
+        SidedGridDispatcher.MANIFEST.handleComplete(player, message);
     }
 }

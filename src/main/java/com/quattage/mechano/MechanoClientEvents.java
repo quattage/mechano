@@ -5,6 +5,8 @@ import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
 import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
@@ -12,6 +14,7 @@ import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
@@ -23,6 +26,7 @@ import net.minecraft.world.level.GameType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -55,7 +59,7 @@ public class MechanoClientEvents {
         Griddable<?> holder = GriddableEntityAttachment.of(e, false);
         if(holder == null) return;
         ((CatenaryAccessor)e).forEachCatenary(cat -> {
-            if(cat == null || !cat.hasPoints() || !cat.canMoveDynamically()) return;
+            if(cat == null || !cat.hasPoints() || !cat.canMoveDynamically(e.level())) return;
             AnchorPoint point = cat.getPrimaryRenderer(null);
             if(point == null || !holder.containsAnchor(cat.getPrimaryRenderer(null))) 
                 return;
@@ -140,6 +144,17 @@ public class MechanoClientEvents {
         stack = player.getOffhandItem();
         if(stack.getItem() instanceof LeftClickCapturable lcc)
             evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.OFF_HAND));
+    }
+
+    @SubscribeEvent
+    public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if(player == null) return;
+        Griddable<?> points = GriddableEntityAttachment.of(player, false);
+        if(points == null) return;
+        GridUUID addr = points.getOrCreateAddress();
+        if(addr == null) return;
+        CatnipServices.NETWORK.sendToServer(new AnchorSurrogateDestroyPacket(addr));
     }
 
     @EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)

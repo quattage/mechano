@@ -25,9 +25,7 @@ public class GridDumpCommand {
                         return 1;
                     }
                     if(SidedGridDispatcher.MANIFEST.enqueueRequestFrom(sp)) {
-                        source.sendSuccess(() -> { 
-                            return Component.literal("Enqueued request").withStyle(ChatFormatting.AQUA); 
-                        }, false);
+                        source.sendSuccess(() -> Component.literal("Enqueued request").withStyle(ChatFormatting.AQUA), false);
                         return 1;
                     }
 

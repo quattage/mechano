@@ -1,5 +1,7 @@
 package com.quattage.mechano.infrastructure.manifest;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -21,6 +23,8 @@ import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
@@ -63,9 +67,7 @@ public class GridManifestGenerator {
         }
         this.compiledManifestTask = CompletableFuture.supplyAsync(() -> {
             if(!isQueued()) return "";
-            String manifest = "▛▙▘▘■   Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
-            "]   ■▝▝▟▜\n\n⎙ Requested by: '" + getPlayerName() + "' at [" + getTime() + "]\n⌂ Attached to: '" + getDimensionName() + "'\n\n";
-
+            String manifest = "";
             int count = 0;
             for(ServerMatrix grid : active.matrices) {
                 manifest += "⣿ Matrix " + grid.getIndex()  + ":\n";
@@ -78,7 +80,7 @@ public class GridManifestGenerator {
                 }
                 manifest += "\n--\n";
             }
-            manifest += "▙▛▖▖■        Processed " + count + " nodes";
+            manifest += "♡ Processed " + count + " nodes";
             return manifest;
         }).orTimeout(30L, TimeUnit.SECONDS).whenComplete((result, ex) -> {
             if(ex != null) {
@@ -98,7 +100,7 @@ public class GridManifestGenerator {
             requester.sendSystemMessage(Component.literal("Manifest saved!")
                 .withStyle(ChatFormatting.GREEN), false);
             float elapsed = (System.currentTimeMillis() - this.requestTime) / 1000;
-            result += " in " + elapsed + " seconds.         ■▗▗▜▟";
+            result += " in " + elapsed + " seconds. ♡";
             unload();
             CatnipServices.NETWORK.sendToClient(requester, new ManifestResultPacket("\n" + result));
             Mechano.LOGGER.info("\n\n\n" + result);
@@ -172,6 +174,27 @@ public class GridManifestGenerator {
             clientResponseTask.complete(data);
     }
 
+    public void handleComplete(LocalPlayer player, String message) {
+        String directory = Minecraft.getInstance().gameDirectory.getAbsolutePath();
+        directory += "/logs/mechano_grid_dump.log";
+        File output = new File(directory);
+
+        String header = "▛▙▘▘■   Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
+            "]   ■▝▝▟▜\n\n⎙ Requested by: '" + player.getDisplayName().getString() + "' at [" + DATE_FT.format(new Date(System.currentTimeMillis())) + "]\n⌂ Attached to: '" + player.level().dimension().location().toString() + "'\n\n";
+
+        String additional = "";
+        if(Mechano.LINK_TRACKING)
+            additional = SidedGridDispatcher.client(player).getDebugTracker().describeAll();
+
+        try(PrintWriter pw = new PrintWriter(output)) {
+            pw.print(header + message + additional);
+            pw.close();
+        } catch(Exception e) {
+            Mechano.LOGGER.error("Failed to write mechano grid dump!");
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public String toString() {
         return requester == null ? "no incoming requests" : "Currently processing a request from '" + getPlayerName() + "' in '" + getDimensionName() + "' at " + getTime();
@@ -188,7 +211,6 @@ public class GridManifestGenerator {
     private String getTime() {
         return DATE_FT.format(new Date(requestTime));
     }
-
 
     // hehehhahehhehahehehahehaheheahhehehehehehah
     protected static class Throbber {

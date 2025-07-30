@@ -3,9 +3,14 @@ package com.quattage.mechano.foundation.api.switchboard;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.landmark.GridConnection;
+import com.quattage.mechano.foundation.api.landmark.GridLink;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
@@ -92,7 +97,7 @@ public interface TrackedStreamable {
     /**
      * @return The {@link DataScope} for this tracked object.
      */
-    public abstract DataScope getDataScope();
+    public abstract DataScope getDataScope(LevelReader world);
 
     /**
      * Sets the {@link DataScope} for this tracked object, which 
@@ -112,8 +117,8 @@ public interface TrackedStreamable {
      * @return <code>true</code> if this tracked object can move without 
      * causing LevelChunk remeshing
      */
-    public default boolean canMoveDynamically() {
-        return getDataScope() != DataScope.STATIC_CHUNK;
+    public default boolean canMoveDynamically(LevelReader world) {
+        return getDataScope(world) != DataScope.STATIC_CHUNK;
     }
 
     /**
@@ -145,4 +150,111 @@ public interface TrackedStreamable {
     public default void broadcast(GridResponse response) { 
         throw new UnsupportedOperationException("'" + this.getClass().getSimpleName() + "' can't broadcast!"); 
     }
+
+    /**
+     * Enforces a deterministic (if somewhat arbitrary) renderer
+     * priority between any two {@link TrackedStreamable streamable constructs} 
+     * (Usually just {@link GridUUID GridUUIDs})
+     * This method is primarily used to decide which end of a {@link GridConnection}
+     * should take render priority when drawing {@link CatenaryModel catenary meshes}, 
+     * but it is also used for enforcing server-sided {@link GridLink} assertion order
+     * in a deterministic way. The code that does this can be found in the 
+     * {@link LinkDataStorable polymorphic data store}
+     * @param world World to operate within.
+     * @param start The first TrackedStreamable to check
+     * @param end The second TrackedStreamable to check (order is completely arbitrary here)
+     * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
+     * the render priority will additionally use frustum culling when necessary 
+     * to distinguish render priority. Frustum culling can only occur on the client,
+     * so if this is passed as <code>true</code> on the server, it will be ignored.
+     * @return The {@link TrackedStreamable} that takes priority over the other out 
+     * of the two provided. Will never be null unless something goes horribly wrong.
+     */
+    public static TrackedStreamable[] orderedByRenderPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end) {
+        return orderedByRenderPriority(world, start, end, false);
+    }
+
+    /**
+     * Enforces a deterministic (if somewhat arbitrary) renderer
+     * priority between any two {@link TrackedStreamable streamable constructs} 
+     * (Usually just {@link GridUUID GridUUIDs})
+     * This method is primarily used to decide which end of a {@link GridConnection}
+     * should take render priority when drawing {@link CatenaryModel catenary meshes}, 
+     * but it is also used for enforcing server-sided {@link GridLink} assertion order
+     * in a deterministic way. The code that does this can be found in the 
+     * {@link LinkDataStorable polymorphic data store}
+     * @param world World to operate within.
+     * @param start The first TrackedStreamable to check
+     * @param end The second TrackedStreamable to check (order is completely arbitrary here)
+     * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
+     * the render priority will additionally use frustum culling when necessary 
+     * to distinguish render priority. Frustum culling can only occur on the client,
+     * so if this is passed as <code>true</code> on the server, it will be ignored.
+     * @return The {@link TrackedStreamable} that takes priority over the other out 
+     * of the two provided. Will never be null unless something goes horribly wrong.
+     */
+    public static TrackedStreamable[] orderedByRenderPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end, boolean useFrustum) {
+
+        // welcome to spaghettiville
+        TrackedStreamable[] out = new TrackedStreamable[2];
+
+        final boolean canStartMove = start.canMoveDynamically(world);
+        final boolean canEndMove = end.canMoveDynamically(world);
+        if(canStartMove && !canEndMove) {
+            out[0] = start;
+            out[1] = end;
+            return out;
+        }
+        if(canEndMove && !canStartMove) {
+            out[0] = end;
+            out[1] = start;
+            return out;
+        }
+
+        if(world.isClientSide() && useFrustum) {
+            final boolean isStartVisible = start.isVisibleOnScreen(world);
+            final boolean isEndVisible = end.isVisibleOnScreen(world);
+            if(isStartVisible && !isEndVisible) {
+                out[0] = start;
+                out[1] = end;
+                return out;
+            }
+            if(isEndVisible && !isStartVisible) {
+                out[0] = end;
+                out[1] = start;
+                return out;
+            }
+        }
+
+        /**
+         * this edge case handling is here as a "temporary" measure to ensure
+         * that we don't try to inject dynamic wire geometry to the level chunk,
+         * since that would be stupid.
+         */
+        if(!(start instanceof VoxelUUID) && (end instanceof VoxelUUID)) {
+            out[0] = start;
+            out[1] = end;
+            return out;
+        }
+        if((start instanceof VoxelUUID) && !(end instanceof VoxelUUID)) {
+            out[0] = end;
+            out[1] = start;
+            return out;
+        }
+
+        /**
+         * this comparison has no logical significance other than
+         * to fall back on something deterministic.
+         */
+        if(start.hashCode() > end.hashCode()) {
+            out[0] = start;
+            out[1] = end;
+            return out;
+        }
+
+        out[0] = end;
+        out[1] = start;
+        return out;
+    }
+
 }

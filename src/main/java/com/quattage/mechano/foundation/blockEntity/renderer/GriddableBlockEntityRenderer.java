@@ -54,7 +54,7 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
 
     public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
         be.forEachCatenary(cat -> {
-            if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving())
+            if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel()))
                 return;
             if(!be.containsAnchor(cat.getPrimaryRenderer(null)))
                 return;

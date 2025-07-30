@@ -121,37 +121,25 @@ public enum GridResponse implements StringRepresentable {
         private final boolean enabled;
 
         public static boolean assertAnchorsExist(GridResponse response, AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed for response '" + response 
+            if(startAnchor == null && endAnchor == null)
+                throw new IllegalStateException("Assertion failed for response '" + response 
                     + "' - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            if(startAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed for response '" + response 
+            if(startAnchor == null)
+                throw new IllegalStateException("Assertion failed for response '" + response 
                     + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            if(endAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed for response '" + response
+            if(endAnchor == null)
+                throw new IllegalStateException("Assertion failed for response '" + response
                     + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
             return true;
         }
 
         public static boolean assertAnchorsExist(AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            if(startAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            if(endAnchor == null) {
-                Mechano.LOGGER.error("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
+            if(startAnchor == null && endAnchor == null) 
+                throw new IllegalStateException("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
+            if(startAnchor == null) 
+                throw new IllegalStateException("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+            if(endAnchor == null) 
+                throw new IllegalStateException("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
             return true;
         }
 
@@ -244,7 +232,7 @@ public enum GridResponse implements StringRepresentable {
         @Override public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) { return addr.getDataStorageHolder(world); }
         @Override public boolean isInFrustum(LevelReader world, @NotNull Frustum view) { return addr.isInFrustum(world, view); }
         @Override public boolean isBeingTrackedBy(ServerPlayer player) { return addr.isBeingTrackedBy(player); }
-        @Override public boolean canMoveDynamically() { return addr.canMoveDynamically(); }
+        @Override public boolean canMoveDynamically(LevelReader world) { return addr.canMoveDynamically(world); }
         @Override public int getIndex() { return addr.getIndex(); }
         @Override public float getAttachedSizeFactor(LevelReader world) { return addr.getAttachedSizeFactor(world); }
         @Override public UUIDDiscriminator getDiscriminatorType() { return addr.getDiscriminatorType(); }
@@ -259,7 +247,7 @@ public enum GridResponse implements StringRepresentable {
         @Override public void writeTo(ByteBuf buffer) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
         @Override public void writeTo(RecordBuilder<?> tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
         @Override public void setDataScope(DataScope scope) { addr.setDataScope(scope); }
-        @Override public DataScope getDataScope() { return addr.getDataScope(); }
+        @Override public DataScope getDataScope(LevelReader world) { return addr.getDataScope(world); }
 
         @Override
         public void sendLevelUpdates(Level world) {

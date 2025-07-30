@@ -9,7 +9,6 @@ import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
@@ -35,6 +34,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
 @OnlyIn(Dist.CLIENT)
@@ -49,7 +49,7 @@ public final class GridCatenary extends GridConnection {
         synchronized(catenaries) {
             CatenaryMesher mesher = CatenaryMesher.asEmpty();
             for(GridCatenary cat : catenaries) {
-                if(cat == null || !cat.hasPoints() || cat.canMoveDynamically()) continue;
+                if(cat == null || !cat.hasPoints() || cat.canMoveDynamically(world)) continue;
                 AnchorPoint point = cat.getPrimaryRenderer(null);
                 if(point == null || !point.getAddress().isInsideOf(world, sectionPos)) continue;
                 Vec3 startPos = point.getAddress().getPos(world, 1f);
@@ -62,75 +62,7 @@ public final class GridCatenary extends GridConnection {
         }
     }
 
-    /**
-     * Enforces a deterministic (if somewhat arbitrary) renderer
-     * priority between two {@link AnchorPoint AnchorPoints}. 
-     * This method is used to decide which end of a {@link GridCatenary}
-     * should take render priority when drawing catenary meshes.
-     * @param world World to use to check visibility status. If <code>null</code>,
-     * frustum culling is ignored.
-     * @return The {@link AnchorPoint} that takes priority over the 
-     * other out of the two provided
-     */
-    public static AnchorPoint[] orderedByRenderPriority(@Nullable LevelReader world, AnchorPoint start, AnchorPoint end) {
-        AnchorPoint[] out = new AnchorPoint[2];
-
-        final boolean canStartMove = start.getAddress().canMoveDynamically();
-        final boolean canEndMove = end.getAddress().canMoveDynamically();
-        if(canStartMove && !canEndMove) {
-            out[0] = start;
-            out[1] = end;
-            return out;
-        }
-        if(canEndMove && !canStartMove) {
-            out[0] = end;
-            out[1] = start;
-            return out;
-        }
-
-        if(world != null) {
-            final boolean isStartVisible = start.getAddress().isVisibleOnScreen(world);
-            final boolean isEndVisible = end.getAddress().isVisibleOnScreen(world);
-            if(isStartVisible && !isEndVisible) {
-                out[0] = start;
-                out[1] = end;
-                return out;
-            }
-            if(isEndVisible && !isStartVisible) {
-                out[0] = end;
-                out[1] = start;
-                return out;
-            }
-        }
-        /**
-         * this edge case handling is here as a "temporary" measure to ensure
-         * that we don't try to inject dynamic wire geometry to the level chunk,
-         * since that would be stupid.
-         */
-        if(!(start.getAddress() instanceof VoxelUUID) && (end.getAddress() instanceof VoxelUUID)) {
-            out[0] = start;
-            out[1] = end;
-            return out;
-        }
-        if((start.getAddress() instanceof VoxelUUID) && !(end.getAddress() instanceof VoxelUUID)) {
-            out[0] = end;
-            out[1] = start;
-            return out;
-        }
-        if(start.getAddress() instanceof VoxelUUID && end.getAddress() instanceof VoxelUUID) {
-            if(start.hashCode() > end.hashCode()) {
-                out[0] = start;
-                out[1] = end;
-                return out;
-            }
-            out[0] = end;
-            out[1] = start;
-            return out;
-        }
-        out[0] = start;
-        out[1] = end;
-        return out;
-    }
+    
 
     public GridCatenary(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns) {
         super(trns.make());
@@ -140,8 +72,8 @@ public final class GridCatenary extends GridConnection {
             throw new IllegalArgumentException("Can't instantiate a GridCatenary where both the start and end positions are the same!");
         this.start = start;
         this.end = end;
-        this.start.makeLocallyDynamic();
-        this.end.makeLocallyDynamic();
+        this.start.makeLocallyDynamic(world);
+        this.end.makeLocallyDynamic(world);
     }
 
     private GridCatenary(AnchorPoint start, AnchorPoint end, @Nullable CatenaryModel<?> cat, Transmitter<?> trns) {
@@ -153,17 +85,13 @@ public final class GridCatenary extends GridConnection {
             this.catenary.maxLength = trns.getType().getMaximumSpan();
     }
 
-    public AnchorPoint getPrimaryRenderer(@Nullable LevelReader world) {
-        return orderedByRenderPriority(world, start, end)[0];
-    }
-
     /**
      * Imparts forces upon attached entities
      * according to this catenary's tension
      * @param world World to use as a basis for acquiring additional information about both ends of this catenary
      */
     public void updateKinematics(LevelReader world) {
-        if(!canMoveDynamically()) {
+        if(!canMoveDynamically(world)) {
             Mechano.LOGGER.warn("Attempted invalid kinematic update for non-dynamic " + this);
             return;
         }
@@ -187,7 +115,7 @@ public final class GridCatenary extends GridConnection {
 
         if(catenary == null) return;
         GridUUID[] ordered = orderedByWeight(world);
-        if(!ordered[1].canMoveDynamically()) return;
+        if(!ordered[1].canMoveDynamically(world)) return;
         Vec3 diff = ordered[0].getPos(world).subtract(ordered[1].getPos(world));
         float softLength = catenary.maxLength * CatenaryAttributes.KINEMATIC_SOFT;
         if(diff.length() < softLength) return;
@@ -204,7 +132,7 @@ public final class GridCatenary extends GridConnection {
      * @param world
      */
     public void startMoving(ClientLevel world) {
-        if(canMoveDynamically()) {
+        if(canMoveDynamically(world)) {
             Mechano.LOGGER.warn("Skipped an attempt to unfreeze " + this + " - this catenary is already dynamic, so this method call is redundant.");
             return;
         }
@@ -212,8 +140,8 @@ public final class GridCatenary extends GridConnection {
             reinitializeModel(world, CatenaryAttributes.Initializer.FRESH_SIMULATION);
         LinkDataStorable.remove(world, this);
         sendLevelUpdates(world);
-        this.start.makeLocallyDynamic();
-        this.end.makeLocallyDynamic();
+        this.start.makeLocallyDynamic(world);
+        this.end.makeLocallyDynamic(world);
         LinkDataStorable.put(world, this);
     }
 
@@ -230,7 +158,7 @@ public final class GridCatenary extends GridConnection {
      * @param world
      */
     public void freezeInPlace(ClientLevel world) {
-        if(!canMoveDynamically()) {
+        if(!canMoveDynamically(world)) {
             Mechano.LOGGER.warn("Skipped an attempt to freeze " + this + " - this catenary is already frozen, so this method call is redundant.");
             return;
         }
@@ -245,7 +173,7 @@ public final class GridCatenary extends GridConnection {
 
     @Override
     public void updateShape(LevelReader world, float pTicks) {
-        if(canMoveDynamically())
+        if(canMoveDynamically(world))
             getOrCreateModel(world).setOffset(start.getPos(world, pTicks), end.getPos(world, pTicks));
         getOrCreateModel(world).update();
     }
@@ -259,9 +187,8 @@ public final class GridCatenary extends GridConnection {
      * @param world
      */
     public void updateShapeFixed(ClientLevel world, Griddable<?> holder) {
-        if(!hasPoints() || !holder.containsAnchor(getPrimaryRenderer(null))) return;
         CatenaryModel<?> model = getOrCreateModel(world);
-        if(!isMoving()) return;
+        if(!isMoving(world)) return;
         model.setOffset(start.getPos(world, 1), end.getPos(world, 1)).update();
         if(!WindManager.INSTANCE.isEnabled()) return;
         if(!(model instanceof SimulatedCatenary scat)) return;
@@ -296,14 +223,14 @@ public final class GridCatenary extends GridConnection {
     }
 
     @Override
-    public boolean canMoveDynamically() {
+    public boolean canMoveDynamically(LevelReader world) {
         if(!hasPoints() || catenary == null) return false;
-        return this.start.getAddress().canMoveDynamically() && this.end.getAddress().canMoveDynamically();
+        return this.start.getAddress().canMoveDynamically(world) && this.end.getAddress().canMoveDynamically(world);
     }
 
-    public boolean isMoving() {
+    public boolean isMoving(LevelReader world) {
         if(catenary == null)
-            return canMoveDynamically();
+            return canMoveDynamically(world);
         if(!catenary.isResting()) {
             if(catenary instanceof SimulatedCatenary scat) 
                 scat.applyWind(null);
@@ -359,10 +286,15 @@ public final class GridCatenary extends GridConnection {
         return end;
     }
 
+    public String describeCatenary() {
+        if(catenary == null) return "Catenary uninitialized, " + getSpan() + "m";
+        return (catenary.isResting() ? "Catenary at rest" : "Catenary simulating") + ", [" + catenary.length + "/" + catenary.maxLength + "m], type: " + trns.getType().toString();
+    }
+
     @Override
     public void adjustSpan(LevelReader world, float length) {
         getOrCreateModel(world);
-        if(!canMoveDynamically()) startMoving((ClientLevel)world);
+        if(!canMoveDynamically(world)) startMoving((ClientLevel)world);
         catenary.adjustSpan(world, Math.max(0.25f, Math.min(length, trns.getType().getMaximumSpan())));
     }
 
@@ -378,12 +310,17 @@ public final class GridCatenary extends GridConnection {
 
     @Override
     public String describeDataScope(LevelReader world) {
-        return getStart().describeDataScope(world) + "(Queried by GridCatenary)";
+        return getPrimaryReferencer(world).describeDataScope(world) + " (Queried by GridCatenary)";
     }
 
     @Override
-    public DataScope getDataScope() {
-        return getStart().getDataScope();
+    public DataScope getDataScope(LevelReader world) {
+        return getPrimaryReferencer(world).getDataScope(world);
+    }
+
+    @Override
+    public IAttachmentHolder getDataStorageHolder(LevelReader world) {
+        return getPrimaryReferencer(world).getDataStorageHolder(world);
     }
 
     public BlockPos getMiddle(LevelReader world) {

@@ -146,41 +146,26 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         final Vector3f lastPos = new Vector3f();
         avgVelocity = 0;
 
-        updateEnds(lastPos);
+        constrainEnds(lastPos);
         if(WindManager.INSTANCE.isEnabled() && wind != null) 
-            applyVelocityWithWind(lastPos, gravity, wind);
-        else applyVelocity(lastPos, gravity);
+            integrateVelocity(lastPos, gravity, wind);
+        else integrateVelocity(lastPos, gravity);
 
         float constraintError = 0f;
         final Vector3f deltaPos = new Vector3f();
-        for(int x = 0; x < CatenaryAttributes.SOLVER_STEPS; x++) {
-            for(int s = 0; s < sticks.size(); s++) {
-
-                Stick stick = sticks.get(s);
-                stick.computeForward();
-                stick.computeCenter();
-                stick.end.pos.sub(stick.start.pos, deltaPos);
-                float currentLength = deltaPos.length();
-                float diff = (currentLength - stick.length) / currentLength;
-                deltaPos.mul(segmentTF * diff);
-
-                if(!stick.start.pinned && !stick.end.pinned) {
-                    stick.start.pos.add(deltaPos);
-                    stick.end.pos.sub(deltaPos);
-                } else if(!stick.start.pinned)
-                    stick.start.pos.add(deltaPos.mul(2));
-                else if(!stick.end.pinned)
-                    stick.end.pos.sub(deltaPos.mul(2));
-
-                constraintError += Math.abs(stick.start.pos.distance(stick.end.pos) - currentLength);
-            }
-        }
+        for(int x = 0; x < CatenaryAttributes.SOLVER_STEPS; x++)
+            applyConstriants(constraintError, deltaPos);
 
         restitutionError[0] = restitutionError[1];
         restitutionError[1] = constraintError / (float)this.sticks.size();
     }
 
-    private void updateEnds(Vector3f lastPos) {
+    /**
+     * Constrains the start and end of this catenary to their respective positions 
+     * as long as they're pinned in place.
+     * @param lastPos Working vector passed here to avoid continuous re-declaration
+     */
+    public void constrainEnds(Vector3f lastPos) {
         Point p = points.getFirst();
         if(p.pinned)
             p.clearPos();
@@ -191,20 +176,29 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             p.lastPos.set(lastPos);
         }
     }
-    
-    private void applyVelocityWithWind(Vector3f lastPos, Vector3f gravity, Vector2f wind) {
+
+    /**
+     * A single step of the verlet integration algorithm
+     * https://en.wikipedia.org/wiki/Verlet_integration
+     * Optionally includes an arbitrary wind vector for adding
+     * additional dynamism.
+     * @param vec Working vector passed here to avoid continuous re-declaration
+     * @param gravity Gravitational force to apply (see {@link #getGravity})
+     * @param wind (Optional) An additional, arbitrary force resembling wind
+     */
+    public void integrateVelocity(Vector3f vec, Vector3f gravity, Vector2f wind) {
         float mid = points.size() / 2f;
         for(int x = 0; x < points.size(); x++) {
             Point point = points.get(x);
             if(point.pinned) continue;
-            lastPos.set(point.pos);
+            vec.set(point.pos);
             Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
             vel.sub(gravity);
-            float windStrength = 1 - (((float)x - mid )/ mid);
+            float windStrength = 1 - (((float)x - mid ) / mid);
+            vel.add(wind.x * windStrength, 0, wind.y * windStrength);
             this.avgVelocity += vel.length();
             point.pos.add(vel);
-            point.pos.add(wind.x * windStrength, 0, wind.y * windStrength);
-            point.lastPos.set(lastPos);
+            point.lastPos.set(vec);
         }
         this.avgVelocity /= points.size();
         if(Float.isNaN(this.avgVelocity)) {
@@ -215,15 +209,24 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         }
     }
 
-    private void applyVelocity(Vector3f lastPos, Vector3f gravity) {
+    /**
+     * A single step of the verlet integration algorithm
+     * https://en.wikipedia.org/wiki/Verlet_integration
+     * Optionally includes an arbitrary wind vector for adding
+     * additional dynamism.
+     * @param vec Working vector passed here to avoid continuous re-declaration
+     * @param gravity Gravitational force to apply (see {@link #getGravity})
+     * @param wind (Optional) An additional, arbitrary force resembling wind
+     */
+    public void integrateVelocity(Vector3f vec, Vector3f gravity) {
         for(Point point : points) {
             if(point.pinned) continue;
-            lastPos.set(point.pos);
+            vec.set(point.pos);
             Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
             vel.sub(gravity);
             this.avgVelocity += vel.length();
             point.pos.add(vel);
-            point.lastPos.set(lastPos);
+            point.lastPos.set(vec);
         }
         this.avgVelocity /= points.size();
         if(Float.isNaN(this.avgVelocity)) {
@@ -231,6 +234,37 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             initialize();
             calculateSegmentation();
             return;
+        }
+    }
+
+    /**
+     * Applies physical constraints to each {@link Point} in this
+     * catenary while preserving the volume of each segment. 
+     * Several calls to this method should be made to accumulate 
+     * results over time.
+     * @param error The total restitution error accumulated as a result of this call
+     * @param vec Working vector passed here to avoid continuous re-declaration
+     */
+    public void applyConstriants(float error, Vector3f vec) {
+        for(int s = 0; s < sticks.size(); s++) {
+
+            Stick stick = sticks.get(s);
+            stick.computeForward();
+            stick.computeCenter();
+            stick.end.pos.sub(stick.start.pos, vec);
+            float currentLength = vec.length();
+            float diff = (currentLength - stick.length) / currentLength;
+            vec.mul(segmentTF * diff);
+
+            if(!stick.start.pinned && !stick.end.pinned) {
+                stick.start.pos.add(vec);
+                stick.end.pos.sub(vec);
+            } else if(!stick.start.pinned)
+                stick.start.pos.add(vec.mul(2));
+            else if(!stick.end.pinned)
+                stick.end.pos.sub(vec.mul(2));
+
+            error += Math.abs(stick.start.pos.distance(stick.end.pos) - currentLength);
         }
     }
 

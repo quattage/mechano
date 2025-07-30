@@ -3,29 +3,39 @@ package com.quattage.mechano.foundation.api.anchor;
 import static com.quattage.mechano.Mechano.lang;
 
 import java.util.List;
+import java.util.Objects;
 
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
  * An AnchorPoint is the client-sided mirror implementation of the
@@ -34,7 +44,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * world-space.
  */
 @OnlyIn(Dist.CLIENT)
-public class AnchorPoint {
+public class AnchorPoint implements TrackedStreamable {
 
     private final GridUUID address;
     private byte[] data;
@@ -43,6 +53,7 @@ public class AnchorPoint {
     public int bitmask;
 
     public AnchorPoint(GridUUID pos, float px, float py, float pz, float size, boolean enabled, int maxc) {
+        Objects.requireNonNull(pos);
         this.address = pos;
         this.data = new byte[]{
             packMeasurement(px),
@@ -116,8 +127,8 @@ public class AnchorPoint {
      * will result in no change of this AnchorPoint's address
      * already belongs to movable construct, such as an entity.
      */
-    public void makeLocallyDynamic() {
-        if(address.getDataScope() == DataScope.STATIC_CHUNK)
+    public void makeLocallyDynamic(LevelReader world) {
+        if(address.getDataScope(world) == DataScope.STATIC_CHUNK)
             address.setDataScope(DataScope.BLOCKENTITY);
     }
 
@@ -383,5 +394,56 @@ public class AnchorPoint {
         protected AnchorPoint make(BlockPos pos, int index) {
             return new AnchorPoint(new VoxelUUID(pos, index), offx, offy, offz, size, enabled, max);
         }
+    }
+
+
+    @Override
+    public void sendToClientsTracking(CustomPacketPayload packet) {
+        throw new UnsupportedOperationException("AnchorPoints can't send packets, since they're client-sided only!");
+    }
+
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer player) {
+        throw new UnsupportedOperationException("AnchorPoints can't evaluate tracking, since they're client-sided only!");
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
+        return address.isInsideOf(world, chunk);
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, SectionPos section) {
+        return address.isInsideOf(world, section);
+    }
+
+    @Override
+    public int getSectionY(LevelReader world) {
+        return address.getSectionY(world);
+    }
+
+    @Override
+    public void sendLevelUpdates(Level world) {
+        address.sendLevelUpdates(world);
+    }
+
+    @Override
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        return address.isInFrustum(world, view);
+    }
+
+    @Override
+    public IAttachmentHolder getDataStorageHolder(LevelReader world) {
+        return address.getDataStorageHolder(world);
+    }
+
+    @Override
+    public String describeDataScope(LevelReader world) {
+        return address.describeDataScope(world);
+    }
+
+    @Override
+    public DataScope getDataScope(LevelReader world) {
+        return address.getDataScope(world);
     }
 }

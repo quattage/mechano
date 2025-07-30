@@ -34,6 +34,7 @@ import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererInvoker;
 import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererMixin;
+import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
 import com.quattage.mechano.infrastructure.datagen.SpoolDataProvider;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.builders.ItemBuilder;
@@ -61,6 +62,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -148,7 +150,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         }
         Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
         result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchor(), true);
-        applyDurability(stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
+        applyDurability(player, stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
         stack.remove(UUIDDiscriminator.ATTACHMENT);
         startingDamage = -1;
         return InteractionResultHolder.success(stack);
@@ -173,7 +175,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(storage == null) return;
         GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
         if(cat == null) return;
-        applyDurability(stack, cat.getSpan());
+        applyDurability(entity, stack, cat.getSpan());
         cat.adjustSpan(world, (stack.getMaxDamage() - stack.getDamageValue()) / 2f);
     }
 
@@ -226,8 +228,13 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * @param length
      * @param maxLength
      */
-    private void applyDurability(ItemStack stack, float length) {
+    private void applyDurability(Entity entity, ItemStack stack, float length) {
         if(startingDamage < 0) return;
+        if(entity instanceof LocalPlayer lp) {
+            GameType mode = ((PlayerInfoAccessor)lp).mechano$getPlayerInfo().getGameMode();
+            if(mode == null || mode == GameType.CREATIVE || mode == GameType.SPECTATOR)
+                return;
+        }            
         stack.setDamageValue(Math.min(stack.getMaxDamage(), Math.max(1, startingDamage + (int)Math.ceil((length * 2f)))));
     }
 

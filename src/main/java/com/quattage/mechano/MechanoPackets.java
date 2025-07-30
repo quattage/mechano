@@ -3,6 +3,7 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
+import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
 import com.quattage.mechano.foundation.api.switchboard.AnchorSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
@@ -25,6 +26,7 @@ public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     MANIFEST_C2S(ManifestResponsePacket.class, ManifestResponsePacket.STREAM_CODEC),
     MANIFEST_RESULT_S2C(ManifestResultPacket.class, ManifestResultPacket.STREAM_CODEC),
     ANCHOR_SYNC_S2C(AnchorSyncPacket.class, AnchorSyncPacket.STREAM_CODEC),
+    ANCHOR_DESTROY_C2S(AnchorSurrogateDestroyPacket.class, AnchorSurrogateDestroyPacket.STREAM_CODEC),
     ;
 
     @Override

@@ -45,9 +45,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     public void tick() {
         if(!getLevel().isClientSide) return;
         if(!surrogate.belongsToNetwork()) return;
-        forEachCatenary(cat -> {
-            cat.updateShapeFixed((ClientLevel)level, this);
-        });
+        forEachCatenary(cat -> cat.updateShapeFixed((ClientLevel)level, this));
     }
 
     @Override

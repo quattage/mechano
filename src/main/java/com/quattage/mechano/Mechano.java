@@ -32,6 +32,8 @@ public class Mechano {
 
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
+    public static final boolean LINK_TRACKING = true;
+
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();
         REGISTRATE.registerEventListeners(modBus);

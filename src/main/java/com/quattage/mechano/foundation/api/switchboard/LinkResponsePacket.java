@@ -60,7 +60,7 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
             case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns);
             case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns);
             case TASK_DESTROY_LINK -> grid.handleCatenaryDestruction(start, end);
-            case null, default -> Mechano.LOGGER.warn("No valid response could be provided for link task '" + response + "!'");
+            case null, default -> Mechano.LOGGER.error("No valid response could be provided for link task '" + response + "!'");
         }
     }
 }

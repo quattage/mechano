@@ -14,7 +14,6 @@ import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.catenary.WindManager;
 import com.quattage.mechano.foundation.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.helper.Worldly;
@@ -56,8 +55,8 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static final GridManifestGenerator MANIFEST = new GridManifestGenerator();
     private static boolean isLoadResolved = false;
 
-    private static WorldlyReference<ServerGrid> weakServerGrid = new WorldlyReference<>(null);
-    private static WorldlyReference<ClientGrid> weakClientGrid = new WorldlyReference<>(null);
+    private static WorldlyReference<ServerGrid> weakServerGrid = null;
+    private static WorldlyReference<ClientGrid> weakClientGrid = null;
 
     public static final IAttachmentSerializer<ListTag, SidedGridDispatcher> 
         SERIALIZER = new IAttachmentSerializer<>() {
@@ -79,7 +78,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     protected final Level world;
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post evt) { 
+    public static void onServerTick(ServerTickEvent.Post evt) {
         MANIFEST.tick(); 
         if(isLoadResolved) return;
         for(Level world : evt.getServer().getAllLevels())
@@ -89,22 +88,25 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
 
     @SubscribeEvent
     public static void onWorldUnload(ServerStoppingEvent evt) {
-        for(Level world : evt.getServer().getAllLevels())
-            server(world).onUnload();
+        for(Level world : evt.getServer().getAllLevels()) {
+            if(!world.hasData(MechanoData.GRID_ATTACHMENT))
+                continue;
+            world.getData(MechanoData.GRID_ATTACHMENT).onUnload();
+        }
         isLoadResolved = false;
-        if(!weakServerGrid.refersTo(null)) {
+        if(weakServerGrid != null && !weakServerGrid.refersTo(null)) {
             LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
-            weakServerGrid = weakServerGrid.emptyCopy();
+            weakServerGrid.clear();
         }
     }
 
     @SubscribeEvent
     public static void onClientUnload(ClientPlayerNetworkEvent.LoggingOut evt) {
-        if(!weakServerGrid.refersTo(null)) {
+        if(weakClientGrid != null && !weakClientGrid.refersTo(null)) {
             LOGGER.debug("Dumped ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
-            weakClientGrid = weakClientGrid.emptyCopy();
+            weakClientGrid.get().onUnload();
+            weakClientGrid.clear();
         }
-        WindManager.INSTANCE.reset();
     }
 
     @SubscribeEvent
@@ -135,15 +137,15 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onChunkUnwatched(ChunkWatchEvent.UnWatch evt) {
         LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
-        storage.forEach(link -> {
-            Mechano.LOGGER.info("Unsyncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
-            CatnipServices.NETWORK.sendToClient(
-                evt.getPlayer(), LinkResponsePacket.of(
-                    link.getStartNode(), link.getEndNode(), 
-                    link.getTransmitter(),
-                    GridResponse.TASK_FORGET_ANCHORS
-                ));
-        });
+        // storage.forEach(link -> {
+        //     Mechano.LOGGER.info("Unsyncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
+        //     CatnipServices.NETWORK.sendToClient(
+        //         evt.getPlayer(), LinkResponsePacket.of(
+        //             link.getStartNode(), link.getEndNode(), 
+        //             link.getTransmitter(),
+        //             GridResponse.TASK_FORGET_ANCHORS
+        //         ));
+        // });
     }
 
     @SubscribeEvent
@@ -418,4 +420,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     protected abstract String getDistPrefix();
     protected abstract void onLoad();
     protected abstract void onUnload();
+    protected abstract LinkDataTracker getDebugTracker();
+
 }

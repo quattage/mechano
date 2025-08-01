@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
@@ -139,6 +140,17 @@ public class CatenaryAttributes {
         private Initializer(QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func) { 
             this.func = func; 
         }
+
+        /**
+         * Executes a simple set of method calls to create a wire with the desired precomputed
+         * characteristics. It is reccomended that insert {@link AnchorPoints} based on their 
+         * {@link TrackedStreamable#orderedByRenderPriority assertion priority}
+         * @param world
+         * @param start
+         * @param end
+         * @param trns
+         * @return
+         */
         public CatenaryModel<?> make(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns) { 
             return func.apply(world, start, end, trns); 
         }

@@ -14,6 +14,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
+/**
+ * our god is not a just one.
+ */
 public class LinkDataTracker {
 
     private @Nullable HashSet<TrackedLink> elements = null;
@@ -63,13 +66,13 @@ public class LinkDataTracker {
             log("Successfully added " + toAdd.describeConnection() + " from '" + toAdd.getHolderName() + "' to tracker in [" + toAdd.getDimensionName() + "]");
     }
 
-    @SuppressWarnings("unlikely-arg-type")
-    public void forget(GridConnection connection) {
+    public void forget(LevelReader world, IAttachmentHolder holder, GridConnection connection) {
         if(!isEnabled()) return;
         if(connection == null) log("Skipped removing a null element");
-        if(elements.remove(connection))
-            log("Removed " + connection);
-        else log("Failed to remove " + connection);
+        TrackedLink toRemove = new TrackedLink(world, holder, connection);
+        if(elements.remove(toRemove))
+            log("Successfully removed " + toRemove.describeConnection() + " at '" + toRemove.getHolderName() + "' from tracker in [" + toRemove.getDimensionName() + "]"); 
+        else log("Failed to remove " + toRemove.describeConnection() + " at '" + toRemove.getHolderName() + "' from tracker in [" + toRemove.getDimensionName() + "]"); 
     }
 
     private void log(String message) {
@@ -81,7 +84,7 @@ public class LinkDataTracker {
         if(elements == null) return out += "\n\tLink data tracking is disabled for this session.";
         if(elements.isEmpty()) return out += "\n\tNo link data was tracked during this session.";
         for(TrackedLink link : elements) {
-            out += "\n\t■ " + link.describeConnection() + " ⇒ " + link.getHolderName() + " ::";
+            out += "\n\t■ " + link.getTime() + " ⇒ " + link.describeConnection() + " ::";
             if(link.getWorld().isClientSide()) {
                 GridConnection conn = LinkDataStorable.getAsClient(link.world, link.connection);
                 if(conn instanceof GridCatenary cat)
@@ -95,6 +98,7 @@ public class LinkDataTracker {
 
     public static class TrackedLink implements Worldly {
 
+        private final long time;
         private final LevelReader world;
         private final IAttachmentHolder holder;
         private final GridConnection connection;
@@ -103,6 +107,7 @@ public class LinkDataTracker {
             Objects.requireNonNull(world);
             Objects.requireNonNull(holder);
             Objects.requireNonNull(connection);
+            this.time = System.currentTimeMillis();
             this.world = world;
             this.holder = holder;
             this.connection = connection;
@@ -126,13 +131,17 @@ public class LinkDataTracker {
             return holder.getClass().getSimpleName();
         }
 
+        public String getTime() {
+            return "( ⏲ " + SidedGridDispatcher.MANIFEST.getTime(time) + " )";
+        }
+
         @Override
         public boolean equals(Object obj) {
             if(obj == this) return true;
             if(obj instanceof TrackedLink el)
                 return this.connection.equals(el.connection);
-            if(obj instanceof GridCatenary cat)
-                return this.connection.equals(cat);
+            if(obj instanceof GridConnection connection)
+                return this.connection.equals(connection);
             return false;
         }
     }

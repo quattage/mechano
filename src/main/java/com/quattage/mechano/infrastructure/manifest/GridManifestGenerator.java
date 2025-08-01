@@ -212,6 +212,10 @@ public class GridManifestGenerator {
         return DATE_FT.format(new Date(requestTime));
     }
 
+    public String getTime(long ms) {
+        return DATE_FT.format(new Date(ms));
+    }
+
     // hehehhahehhehahehehahehaheheahhehehehehehah
     protected static class Throbber {
 

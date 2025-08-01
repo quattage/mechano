@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -166,7 +165,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         final Set<GridUUID> empties = new HashSet<>();
         GridLink removed = startNode.getOwner().deLink(startNode, endNode, empties);
         LinkDataStorable.popAsServer(getWorld(), removed);
-        removed.broadcast(GridResponse.TASK_DESTROY_LINK);
+        removed.broadcast(getWorld(), GridResponse.TASK_DESTROY_LINK);
         startNode.getOwner().cleanup(empties, true);
     }
 
@@ -213,7 +212,7 @@ public final class ServerGrid extends SidedGridDispatcher {
                 startPoints.getSurrogate().sync(world, startPG);
                 endPoints.getSurrogate().sync(world, startPG);
                 if(startNode.hasLink(newLink)) {
-                    newLink.sendToClientsTracking(LinkResponsePacket.of(newLink, GridResponse.FAIL_DUPLICATE));
+                    newLink.sendToClientsTracking(getWorld(), LinkResponsePacket.of(newLink, GridResponse.FAIL_DUPLICATE));
                     return;
                 }
                 linkUnsafe(newLink, true);
@@ -287,9 +286,8 @@ public final class ServerGrid extends SidedGridDispatcher {
         link.getStartNode().addLink(link);
         GridLink inverse = link.inverseCopy();
         link.getEndNode().addLink(inverse);
-        LinkDataStorable.put(getWorld(), link, InsertionPolicy.SINGLE);
-        LinkDataStorable.put(getWorld(), inverse, InsertionPolicy.SINGLE);
-        if(broadcast) link.broadcast(GridResponse.TASK_CREATE_LINK);
+        LinkDataStorable.put(getWorld(), link);
+        if(broadcast) link.broadcast(getWorld(), GridResponse.TASK_CREATE_LINK);
         return link;
     }
 

@@ -47,7 +47,6 @@ public class MechanoClientEvents {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
     }
 
-
     /**
      * Renders catenaries belonging to the event's entity as part of that entity.
      * This allows catenaries to be visible and inherit the same culling behaviour
@@ -60,9 +59,6 @@ public class MechanoClientEvents {
         if(holder == null) return;
         ((CatenaryAccessor)e).forEachCatenary(cat -> {
             if(cat == null || !cat.hasPoints() || !cat.canMoveDynamically(e.level())) return;
-            AnchorPoint point = cat.getPrimaryRenderer(null);
-            if(point == null || !holder.containsAnchor(cat.getPrimaryRenderer(null))) 
-                return;
             cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
         });
     }

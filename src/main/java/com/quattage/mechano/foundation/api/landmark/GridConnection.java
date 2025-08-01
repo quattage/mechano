@@ -2,9 +2,8 @@ package com.quattage.mechano.foundation.api.landmark;
 
 import java.util.Objects;
 
-import javax.annotation.Nullable;
-
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
@@ -20,6 +19,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -48,7 +48,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         );
     }
 
-    public static void sendToClientsTracking(GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet, InsertionPolicy mode) {
+    public static void sendToClientsTracking(ServerLevel world, GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet, InsertionPolicy mode) {
         MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
         if(mode == InsertionPolicy.SYMMETRIC) {
             for(ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -72,15 +72,24 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
             }
             return;
         }
+        if(mode == InsertionPolicy.ORDERED) {
+            TrackedStreamable priority = TrackedStreamable.orderedByAssertionPriority(world, start, end)[0];
+            for(ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if(priority.isBeingTrackedBy(player))
+                    CatnipServices.NETWORK.sendToClient(player, packet);
+            }
+            return;
+        }
         throw new IllegalArgumentException("Unsupported InsertionPolicy '" + mode + "'");
     }
+
 
     public GridConnection(Transmitter<?> trns) {
         this.trns = trns;
     }
 
-    public TrackedStreamable getPrimaryReferencer(LevelReader world) {
-        return TrackedStreamable.orderedByRenderPriority(world, getStart(), getEnd())[0];
+    public TrackedStreamable getPrimaryConstruct(LevelReader world) {
+        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd())[0];
     }
 
     @Override
@@ -95,9 +104,9 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     }
 
     @Override
-    public void sendToClientsTracking(CustomPacketPayload packet) {
-        if(isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet as a client! YOU CAN'T DO THAT!!!!");
-        sendToClientsTracking(getStart(), getEnd(), packet, InsertionPolicy.SYMMETRIC);
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
+        if(world.isClientSide() || isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet as a client! YOU CAN'T DO THAT!!!!");
+        sendToClientsTracking(world, getStart(), getEnd(), packet, InsertionPolicy.SYMMETRIC);
     }
 
     @Override
@@ -147,6 +156,39 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         }
     }
 
+    /**
+     * Ensures that the start/end {@link GridUUID addresses} can move,
+     * regardless of whether or not its owner can. This is used to
+     * allow attached wires and other rendering features to refresh
+     * dynamically in cases where they would otherwise automatically 
+     * freeze to save performance. 
+     * 
+     * <h3>Broadcasting with Data Scopes</h3>
+     * This {@Link GridConnection instance} will need
+     * will need to be reasserted at the time of invocation
+     * in order for changes to be reflected correctly. 
+     * This is because this method call changes the 
+     * {@link DataScope} of this AnchorPoint's address,
+     * which will change where the {@link GridCatenary}
+     * is stored in the {@Link LinkDataStorable}.
+     * This is done automatically by calling 
+     * 
+     * {@link GridCatenary#startMoving} or {@link GridCatenary#freezeInPlace}
+     * on the client. On the server, this method does not need to be called
+     * at all, since there is no distinction made between LevelChunk and
+     * BlockEntity data attachments there.
+     * 
+     * <p> Calls to this method
+     * will result in no change of this AnchorPoint's address
+     * already belongs to movable construct, such as an entity.
+     */
+    public void makeLocallyDynamic(LevelReader world) {
+        if(getStart().getDataScope(world) == DataScope.STATIC_CHUNK)
+            getStart().setDataScope(DataScope.BLOCKENTITY);
+        if(getEnd().getDataScope(world) == DataScope.STATIC_CHUNK)
+            getEnd().setDataScope(DataScope.BLOCKENTITY);
+    }
+
     /** 
      * @return <code>true</code> if this Connection's start and end points are not <code>null.</code>
      */
@@ -184,13 +226,13 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     public boolean equals(Object other) {
         if(other == this) return true;
         if(!(other instanceof GridConnection that)) return false;
-        return (getStart().equals(that.getStart()) && getEnd().equals(that.getEnd())) || (getStart().equals(that.getEnd()) && getEnd().equals(that.getStart()));
+        return (this.getStart().equals(that.getStart()) && this.getEnd().equals(that.getEnd())) 
+            || (this.getStart().equals(that.getEnd()) && this.getEnd().equals(that.getStart()));
     }
 
     @Override
     public int hashCode() { 
-        if(getStart().equals(getEnd())) return getStart().hashCode();
-        return getStart().hashCode() ^ getEnd().hashCode(); 
+        return getStart().hashCode() + getEnd().hashCode(); 
     }
 
     @Override
@@ -294,5 +336,5 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         }
     }
 
-    public static enum InsertionPolicy { SINGLE, SYMMETRIC; }
+    public static enum InsertionPolicy { SINGLE, SYMMETRIC, ORDERED; }
 }

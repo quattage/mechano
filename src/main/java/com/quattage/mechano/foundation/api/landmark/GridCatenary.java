@@ -9,6 +9,7 @@ import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
@@ -26,6 +27,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.LevelReader;
@@ -50,8 +52,7 @@ public final class GridCatenary extends GridConnection {
             CatenaryMesher mesher = CatenaryMesher.asEmpty();
             for(GridCatenary cat : catenaries) {
                 if(cat == null || !cat.hasPoints() || cat.canMoveDynamically(world)) continue;
-                AnchorPoint point = cat.getPrimaryRenderer(null);
-                if(point == null || !point.getAddress().isInsideOf(world, sectionPos)) continue;
+                AnchorPoint point = (AnchorPoint)cat.getPrimaryConstruct(world);
                 Vec3 startPos = point.getAddress().getPos(world, 1f);
                 cat.accumulateModel(world);
                 mesher.withAppearanceForChunkRendering(cat.getTransmitter().getType())
@@ -61,8 +62,6 @@ public final class GridCatenary extends GridConnection {
             }
         }
     }
-
-    
 
     public GridCatenary(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns) {
         super(trns.make());
@@ -174,31 +173,39 @@ public final class GridCatenary extends GridConnection {
     @Override
     public void updateShape(LevelReader world, float pTicks) {
         if(canMoveDynamically(world))
-            getOrCreateModel(world).setOffset(start.getPos(world, pTicks), end.getPos(world, pTicks));
+            setOrderedOffset(world, getOrCreateModel(world), pTicks);
         getOrCreateModel(world).update();
     }
 
     /**
      * Updates the simulated shape of this GridCatenary on
      * a fixed update cycle. Expected to be called by a scheduled
-     * ticking method, such as Entity or BlockEntity tick. This method
-     * comes with some extra stuff, like wind :)
+     * ticking method, such as Entity or BlockEntity tick 
+     * (NOT a renderer). This method comes with some extra stuff, 
+     * like wind :)
      * @param holder
      * @param world
      */
     public void updateShapeFixed(ClientLevel world, Griddable<?> holder) {
         CatenaryModel<?> model = getOrCreateModel(world);
         if(!isMoving(world)) return;
-        model.setOffset(start.getPos(world, 1), end.getPos(world, 1)).update();
+        setOrderedOffset(world, model, 1);
+        model.update(1);
         if(!WindManager.INSTANCE.isEnabled()) return;
         if(!(model instanceof SimulatedCatenary scat)) return;
         scat.applyWind(WindManager.INSTANCE.sample(world, getMiddle(world)));
     }
 
+    public void setOrderedOffset(LevelReader world, CatenaryModel<?> model, float pTicks) {
+        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
+        model.setOffset(((AnchorPoint)ordered[0]).getPos(world, pTicks), ((AnchorPoint)ordered[1]).getPos(world, pTicks));
+    }
 
     public CatenaryModel<?> getOrCreateModel(LevelReader world) {
         if(catenary != null) return catenary;
-        this.catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE.make(world, start, end, trns.getType());
+        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
+        this.catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE
+            .make(world, (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns.getType());
         GridCatenary opposite = LinkDataStorable.getAsClient(world, this);
         if(opposite != null) opposite.catenary = this.catenary;
         return this.catenary;
@@ -304,23 +311,23 @@ public final class GridCatenary extends GridConnection {
     }
 
     @Override
-    public void sendToClientsTracking(CustomPacketPayload packet) {
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
         throw new UnsupportedOperationException("Client-sided GridCatenaries can't send packets! This is a server-only feature!");
     }
 
     @Override
     public String describeDataScope(LevelReader world) {
-        return getPrimaryReferencer(world).describeDataScope(world) + " (Queried by GridCatenary)";
+        return getPrimaryConstruct(world).describeDataScope(world) + " (Queried by GridCatenary)";
     }
 
     @Override
     public DataScope getDataScope(LevelReader world) {
-        return getPrimaryReferencer(world).getDataScope(world);
+        return getPrimaryConstruct(world).getDataScope(world);
     }
 
     @Override
     public IAttachmentHolder getDataStorageHolder(LevelReader world) {
-        return getPrimaryReferencer(world).getDataStorageHolder(world);
+        return getPrimaryConstruct(world).getDataStorageHolder(world);
     }
 
     public BlockPos getMiddle(LevelReader world) {

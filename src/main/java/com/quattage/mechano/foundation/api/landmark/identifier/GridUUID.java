@@ -20,6 +20,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
@@ -67,8 +68,10 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
     public abstract float getAttachedSizeFactor(LevelReader world);
 
     @Override
-    public void sendToClientsTracking(CustomPacketPayload packet) {
-        MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
+        MinecraftServer server = world.getServer();
+        if(server == null)
+            server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
         for(ServerPlayer player : server.getPlayerList().getPlayers()) {
             if(isBeingTrackedBy(player))
                 CatnipServices.NETWORK.sendToClient(player, packet);

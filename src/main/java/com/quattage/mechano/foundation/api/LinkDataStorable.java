@@ -75,6 +75,16 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         return data;
     }
 
+    /**
+     * if a data attachment is empty when it is retrieved, treat it as if it doesn't exist
+     * and immediately remove the one that was lazily created in the getters above.
+     */
+    private static boolean wipeIfEmpty(LinkDataStorable<?> data, IAttachmentHolder holder) {
+        if(!data.isEmpty()) return false;
+        holder.removeData(MechanoData.LINK_ATTACHMENT);
+        return true;
+    }
+
     public static @Nullable ServerSectionable getAsServer(LevelReader world, ChunkPos pos, boolean force) {
         Objects.requireNonNull(world);
         Objects.requireNonNull(pos);
@@ -110,17 +120,40 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, false);
+
         IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
+
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, false);
+            GridLink acquired = null;
+            if(data != null) acquired = data.get(world, key);
+            if(acquired != null) return acquired;
+
+            DataScope startScope = key.getStart().getDataScope(world);
+            DataScope endScope = key.getEnd().getDataScope(world);
+
+            if(startScope == DataScope.STATIC_CHUNK)
+                key.getStart().setDataScope(DataScope.BLOCKENTITY);
+            if(endScope == DataScope.STATIC_CHUNK)
+                key.getEnd().setDataScope(DataScope.BLOCKENTITY);
+
+            holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder instanceof BlockEntity be) {
+                Server sdata = getAsServer(be, false);
+                acquired = sdata.get(world, key);
+                return acquired;
+            }
+
+            key.getStart().setDataScope(startScope);
+            key.getEnd().setDataScope(endScope);
+            return null;
+        }
+        if(holder instanceof BlockEntity be) {
+            Server data = getAsServer(be, false);
             return data == null ? null : data.get(world, key);
         }
         if(holder instanceof Entity e) {
             Server data = getAsServer(e, false);
-            return data == null ? null : data.get(world, key);
-        }
-        if(holder instanceof BlockEntity be) {
-            Server data = getAsServer(be, false);
             return data == null ? null : data.get(world, key);
         }
         throwBadHolderType(holder);
@@ -132,42 +165,73 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         Objects.requireNonNull(key);
         assertSided(world, false);
 
-        GridLink removed = null;
-        IAttachmentHolder holder = key.getEnd().getDataStorageHolder(world);
+        IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
 
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, false);
+            GridLink removed = null;
             if(data != null) removed = data.pop(world, key);
-        } else if(holder instanceof Entity e) {
-            Server data = getAsServer(e, false);
-            if(data != null) removed = data.pop(world, key);
-        } else if (holder instanceof BlockEntity be) {
+            if(removed != null) {
+                SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+
+            DataScope startScope = key.getStart().getDataScope(world);
+            DataScope endScope = key.getEnd().getDataScope(world);
+
+            if(startScope == DataScope.STATIC_CHUNK)
+                key.getStart().setDataScope(DataScope.BLOCKENTITY);
+            if(endScope == DataScope.STATIC_CHUNK)
+                key.getEnd().setDataScope(DataScope.BLOCKENTITY);
+
+            holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder instanceof BlockEntity be) {
+                Server sdata = getAsServer(be, false);
+                removed = sdata.pop(world, key);
+                if(removed != null) {
+                    SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
+                    return removed;
+                }
+            }
+
+            key.getStart().setDataScope(startScope);
+            key.getEnd().setDataScope(endScope);
+            return null;
+        }
+
+        if(holder instanceof BlockEntity be) {
             Server data = getAsServer(be, false);
-            if(data != null) removed = data.pop(world, key);
-        } else if(holder != null) throwBadHolderType(holder);
+            if(data == null) return null;
+            GridLink removed = data.pop(world, key);
+            if(removed != null) {
+                SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+            return null;
+        }
 
-        // we don't need to make an inverse copy of the key here since the equals and 
-        // hashcode implementations for GridConnection are logically symmetrical
-        holder = key.getStart().getDataStorageHolder(world);
-        if(holder instanceof LevelChunk chunk) {
-            ServerSectionable data = getAsServer(chunk, false);
-            if(data != null) data.pop(world, key);
-        } else if(holder instanceof Entity e) {
+        if(holder instanceof Entity e) {
             Server data = getAsServer(e, false);
-            if(data != null) data.pop(world, key);
-        } else if(holder instanceof BlockEntity be) {
-            Server data = getAsServer(be, false);
-            if(data != null) data.pop(world, key);
-        } else if(holder != null) throwBadHolderType(holder);
-
-        if(removed != null)
-            SidedGridDispatcher.server(world).getDebugTracker().forget(removed);
-
-        return removed;
+            if(data == null) return null;
+            GridLink removed = data.pop(world, key);
+            if(removed != null) {
+                SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+            return null;
+        } 
+        
+        if(holder != null) throwBadHolderType(holder);
+        return null;
     }
 
     private static boolean pushAsServer(LevelReader world, GridLink link) {
+        Objects.requireNonNull(world);
+        Objects.requireNonNull(link);
+        assertSided(world, false);
+
         IAttachmentHolder holder = link.getDataStorageHolder(world);
+
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, true);
             if(data.add(world, link)) {
@@ -231,6 +295,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     }
 
     public static @Nullable GridCatenary getAsClient(LevelReader world, GridConnection key) {
+
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, true);
@@ -239,7 +304,26 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder == null) return null;
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, false);
-            return data == null ? null : data.get(world, key);
+            GridCatenary acquired = null;
+            if(data != null) acquired = data.get(world, key);
+            if(acquired != null) return acquired;
+
+            DataScope startScope = key.getStart().getDataScope(world);
+            DataScope endScope = key.getEnd().getDataScope(world);
+            if(startScope == DataScope.STATIC_CHUNK)
+                key.getStart().setDataScope(DataScope.BLOCKENTITY);
+            if(endScope == DataScope.STATIC_CHUNK)
+                key.getEnd().setDataScope(DataScope.BLOCKENTITY);
+
+            holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder instanceof BlockEntity be) {
+                Client sdata = getAsClient(be, false);
+                return sdata == null ? null : sdata.get(world, key);
+            }
+
+            key.getStart().setDataScope(startScope);
+            key.getEnd().setDataScope(endScope);
+            return null;
         }
         if(holder instanceof Entity e) {
             Client data = getAsClient(e, false);
@@ -258,28 +342,68 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         Objects.requireNonNull(key);
         assertSided(world, true);
 
-        GridCatenary removed = null;
-        IAttachmentHolder holder = key.getPrimaryReferencer(world).getDataStorageHolder(world);
+        IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
 
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, false);
+            GridCatenary removed = null;
             if(data != null) removed = data.pop(world, key);
-        } else if(holder instanceof Entity e) {
-            Client data = getAsClient(e, false);
-            if(data != null) removed = data.pop(world, key);
-        } else if(holder instanceof BlockEntity be) {
+            if(removed != null) {
+                SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+
+            DataScope startScope = key.getStart().getDataScope(world);
+            DataScope endScope = key.getEnd().getDataScope(world);
+
+            if(startScope == DataScope.STATIC_CHUNK)
+                key.getStart().setDataScope(DataScope.BLOCKENTITY);
+            if(endScope == DataScope.STATIC_CHUNK)
+                key.getEnd().setDataScope(DataScope.BLOCKENTITY);
+
+            holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder instanceof BlockEntity be) {
+                Client sdata = getAsClient(be, false);
+                removed = sdata.pop(world, key);
+                if(removed != null) {
+                    SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
+                    return removed;
+                }
+            }
+
+            key.getStart().setDataScope(startScope);
+            key.getEnd().setDataScope(endScope);
+            return null;
+        }
+
+        if(holder instanceof BlockEntity be) {
             Client data = getAsClient(be, false);
-            if(data != null) removed = data.pop(world, key);
-        } else if(holder != null) throwBadHolderType(holder);
+            if(data == null) return null;
+            GridCatenary removed = data.pop(world, key);
+            if(removed != null) {
+                SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+            return null;
+        }
 
-        if(removed != null && Mechano.LINK_TRACKING)
-            SidedGridDispatcher.client(world).getDebugTracker().forget(removed);
-
-        return removed;
+        if(holder instanceof Entity e) {
+            Client data = getAsClient(e, false);
+            if(data == null) return null;
+            GridCatenary removed = data.pop(world, key);
+            if(removed != null) {
+                SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
+                return removed;
+            }
+            return null;
+        } 
+        
+        if(holder != null) throwBadHolderType(holder);
+        return null;
     }
 
     private static boolean pushAsClient(LevelReader world, GridCatenary cat) {
-        IAttachmentHolder holder = cat.getPrimaryReferencer(world).getDataStorageHolder(world);
+        IAttachmentHolder holder = cat.getPrimaryConstruct(world).getDataStorageHolder(world);
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, true);
             if(data.add(world, cat)) {
@@ -296,6 +420,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
+            return false;
         } 
         if(holder instanceof BlockEntity be) {
             Client data = getAsClient(be, true);
@@ -304,6 +429,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
+            return false;
         } 
         throwBadHolderType(holder);
         return false;
@@ -324,6 +450,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
             + (world.isClientSide() ? "client" : "server") + "-sided mismatch!");
     }
 
+
     public static boolean remove(LevelReader world, GridConnection key) {
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
@@ -331,15 +458,16 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     }
 
 
-    /**
-     * if a data attachment is empty when it is retrieved, treat it as if it doesn't exist
-     * and immediately remove the one that was lazily created in the getters above.
-     */
-    private static boolean wipeIfEmpty(LinkDataStorable<?> data, IAttachmentHolder holder) {
-        if(!data.isEmpty()) return false;
-        holder.removeData(MechanoData.LINK_ATTACHMENT);
-        return true;
-    }
+
+
+
+
+
+
+
+
+
+
 
     private static void assertSided(ChunkAccess chunk, boolean clientSided) { assertSided(chunk.getLevel(), clientSided); }
     private static void assertSided(Entity e, boolean clientSided) { assertSided(e.level(), clientSided); }
@@ -348,6 +476,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(world.isClientSide() == clientSided) return;
         throw new IllegalStateException("Sided mismatch encountered while retrieving data store from '" + world + "' - The world passed " + 
             (world.isClientSide() ? " was client-sided" : " was server-sided") + ", but the " + (clientSided ? "client-sided" : "server-sided") + " version of the getter was used!");
+    }
+
+    public default void assertSidedMatch(LevelReader world) {
+        if(world.isClientSide() == isClientSide()) return;
+        throw new IllegalStateException("Sided mismatch encountered for link data of type '" + this.getClass().getSimpleName() + "' - The world passed " + 
+            (world.isClientSide() ? " was client-sided" : " was server-sided") + ", but this data store is only available on the " + (isClientSide() ? "client!" : "server!"));
     }
 
     private static void throwBadHolderType(IAttachmentHolder holder) {
@@ -363,11 +497,26 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public abstract boolean isClientSide();
     public abstract ObjectSet<T> getAll();
     
-    public default void assertSided(LevelReader world) {
-        if(world.isClientSide() == isClientSide()) return;
-        throw new IllegalStateException("Sided mismatch encountered for link data of type '" + this.getClass().getSimpleName() + "' - The world passed " + 
-            (world.isClientSide() ? " was client-sided" : " was server-sided") + ", but this data store is only available on the " + (isClientSide() ? "client!" : "server!"));
-    }
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public static final class Client implements LinkDataStorable<GridCatenary> {
 
@@ -375,19 +524,19 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         @Override
         public boolean add(LevelReader world, GridCatenary connection) {
-            assertSided(world);
+            assertSidedMatch(world);
             return contents.add(connection);
         }
 
         @Override
         public @Nullable GridCatenary get(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             return contents.get(key);
         }
 
         @Override
         public @Nullable GridCatenary pop(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             GridCatenary cat = contents.get(key);
             if(key == null) return null;
             contents.remove(key);
@@ -407,13 +556,30 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         @Override public ObjectSet<GridCatenary> getAll() { return contents; }
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     public static final class ClientSectionable implements LinkDataStorable<GridCatenary> {
 
         private final Int2ObjectOpenHashMap<Client> contents = new Int2ObjectOpenHashMap<>(2);
 
         @Override
         public boolean add(LevelReader world, GridCatenary connection) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = connection.getSectionY(world);
             Client sectionData = contents.get(sectionY);
             if(sectionData == null) {
@@ -427,7 +593,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         @Override
         public @Nullable GridCatenary get(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = key.getSectionY(world);
             Client sectionData = contents.get(sectionY);        
             if(sectionData == null) return null;
@@ -436,7 +602,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         @Override
         public @Nullable GridCatenary pop(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = key.getSectionY(world);
             Client sectionData = contents.get(sectionY);
             if(sectionData == null) return null;
@@ -470,25 +636,33 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     }
 
 
+
+
+
+
+
+
+
+
     public static final class Server implements LinkDataStorable<GridLink> {
 
         private final ObjectOpenHashSet<GridLink> contents = new ObjectOpenHashSet<>(2);
 
         @Override
         public boolean add(LevelReader world, GridLink connection) {
-            assertSided(world);
+            assertSidedMatch(world);
             return contents.add(connection);
         }
 
         @Override
         public @Nullable GridLink get(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             return contents.get(key);
         }
 
         @Override
         public @Nullable GridLink pop(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             GridLink cat = contents.get(key);
             if(key == null) return null;
             contents.remove(key);
@@ -508,13 +682,23 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         @Override public ObjectSet<GridLink> getAll() { return contents; }
     }
 
+
+
+
+
+
+
+
+
+
+
     public static final class ServerSectionable implements LinkDataStorable<GridLink> {
 
         private final Int2ObjectOpenHashMap<Server> contents = new Int2ObjectOpenHashMap<>(2);
 
         @Override
         public boolean add(LevelReader world, GridLink connection) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = connection.getSectionY(world);
             Server sectionData = contents.get(sectionY);
             if(sectionData == null) {
@@ -528,7 +712,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         @Override
         public @Nullable GridLink get(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = key.getSectionY(world);
             Server sectionData = contents.get(sectionY);        
             if(sectionData == null) return null;
@@ -537,7 +721,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
         @Override
         public @Nullable GridLink pop(LevelReader world, GridConnection key) {
-            assertSided(world);
+            assertSidedMatch(world);
             int sectionY = key.getSectionY(world);
             Server sectionData = contents.get(sectionY);
             if(sectionData == null) return null;
@@ -559,6 +743,15 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         @Override public boolean isClientSide() { return false; }
         @Override public ObjectSet<GridLink> getAll() { throw new UnsupportedOperationException("lol"); }
     }
+
+
+
+
+
+
+
+
+
 
     /**
      * Allows implementing classes to assert what kind 
@@ -586,7 +779,4 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
             return getSerializedName();
         }
     }
-
-
-    
 }

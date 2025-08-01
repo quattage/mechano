@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
@@ -113,7 +114,10 @@ public final class SurrogateNode {
      * instance valid so that it can be reused later.
      */
     public void destroy() {
-        if(host.getWorld().isClientSide) return;
+        if(host.getWorld().isClientSide) {
+            Mechano.LOGGER.warn("Skipped attempt to destory surrogate " + getOrMakeAddress() + " on the client");
+            return;
+        }
         if(!isSynced(host.getWorld())) {
             forget(host.getWorld());
             return;
@@ -139,8 +143,8 @@ public final class SurrogateNode {
             }
             return false;
         }
+        if(!isSynced(world)) return false;
         NodeMap friends = constituents();
-        if(!isSynced(world))
         if(friends == null || friends.isEmpty()) return false;
         GridUUID walkingAddress = getOrMakeAddress();
         for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {

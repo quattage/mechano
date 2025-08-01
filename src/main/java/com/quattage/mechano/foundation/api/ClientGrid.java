@@ -133,8 +133,8 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @return The {@link GridCatenary} that was created
      */
     public GridCatenary handleCatenaryCreation(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
-        TrackedStreamable[] ends = TrackedStreamable.orderedByRenderPriority(world, start.applyAndGet(world), end.applyAndGet(world));
-        GridCatenary cat = new GridCatenary(world, (AnchorPoint)ends[0], (AnchorPoint)ends[1], trns);
+        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start.applyAndGet(world), end.applyAndGet(world));
+        GridCatenary cat = new GridCatenary(world, (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns);
         LinkDataStorable.put(world, cat);
         cat.sendLevelUpdates(world);
         return cat;
@@ -169,7 +169,8 @@ public final class ClientGrid extends SidedGridDispatcher {
         GridCatenary cat = LinkDataStorable.getAsClient(world, new ConnectionKey(start, end));
         if(cat == null) {
             if(!AnchorSyncHolder.assertAnchorsExist(startAnchor, endAnchor)) return;
-            cat = new GridCatenary(world, startAnchor, endAnchor, trns);
+            TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start.applyAndGet(world), end.applyAndGet(world));
+            cat = new GridCatenary(world, (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns);
             LinkDataStorable.put(world, cat);
             cat.sendLevelUpdates(world);
         }

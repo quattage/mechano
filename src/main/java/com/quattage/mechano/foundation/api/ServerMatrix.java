@@ -271,8 +271,7 @@ public class ServerMatrix implements Worldly {
         boolean modified = false;
         final Set<GridUUID> empties = new HashSet<>();
         for(int x = 0; x < expectedCount; x++) {
-            GridUUID addr = address.indexedCopy(x);
-            GridNode removed = nodes.remove(addr);
+            GridNode removed = nodes.remove(address.indexedCopy(x));
             if(removed == null ) continue;
             isolate(removed, empties, true);
             modified = true;
@@ -290,7 +289,6 @@ public class ServerMatrix implements Worldly {
      * @param empties A set of GridUUIDs to collect empty nodes. 
      */
     protected void isolate(GridNode node, Set<GridUUID> empties, boolean broadcast) {
-        if(!node.hasLinks()) return;
         for(GridLink link : node) {
             GridNode destination = link.getEndNode();
             Iterator<GridLink> linksIterator = destination.iterator();
@@ -298,13 +296,14 @@ public class ServerMatrix implements Worldly {
                 GridLink linkToTest = linksIterator.next();
                 if(linkToTest.endsWith(node.getAddress())) {
                     linksIterator.remove();
-                    if(broadcast) link.broadcast(GridResponse.TASK_DESTROY_LINK);
+                    if(broadcast) linkToTest.broadcast(globalGrid.getWorld(), GridResponse.TASK_DESTROY_LINK);
                 }
             }
             if(!destination.hasLinks()) 
                 empties.add(destination.getAddress());
         }
-        empties.add(node.getAddress());
+        node.broadcast(globalGrid.getWorld(), GridResponse.TASK_FORGET_ANCHORS);
+        node.nullify();
     }
 
     /**
@@ -312,11 +311,9 @@ public class ServerMatrix implements Worldly {
      * @param start
      * @param end
      */
-    public GridLink deLink(GridNode start, GridNode end, Set<GridUUID> empties) {
-        GridNode startNode = nodes.get(start);
-        GridNode endNode = nodes.get(end);
-        GridLink removedStart = startNode == null ? null : removeLink(startNode, end.getAddress(), empties);
-        GridLink removedEnd = endNode == null ? null : removeLink(endNode, start.getAddress(), empties);
+    public GridLink deLink(GridNode startNode, GridNode endNode, Set<GridUUID> empties) {
+        GridLink removedStart = startNode == null ? null : removeLink(startNode, endNode.getAddress(), empties);
+        GridLink removedEnd = endNode == null ? null : removeLink(endNode, startNode.getAddress(), empties);
         return removedStart == null ? removedEnd : removedStart;
     }
 
@@ -365,20 +362,16 @@ public class ServerMatrix implements Worldly {
             for(GridUUID addr : forRemoval) {
                 GridNode node = nodes.remove(addr);
                 if(node == null) continue;
-                node.broadcast(GridResponse.TASK_FORGET_ANCHORS);
+                node.broadcast(globalGrid.getWorld(), GridResponse.TASK_FORGET_ANCHORS);
                 node.nullify();
             }
         }
-        // if this matrix is completely empty or has been destroyed previously
-        if(nodes == null || nodes.isEmpty()) {
-            globalGrid.destroyMatrix(this);
-            return;
-        }
-        // if this matrix only has one node, destory this matrix
-        if(nodes.size() < 2) {
+
+        // if this matrix only has one (or zero) node(s), destory this matrix
+        if(nodes == null || nodes.size() < 2) {
             for(GridNode node : nodes) {
                 if(node == null) continue;
-                node.broadcast(GridResponse.TASK_FORGET_ANCHORS);
+                node.broadcast(globalGrid.getWorld(), GridResponse.TASK_FORGET_ANCHORS);
                 node.nullify();
             }
             globalGrid.destroyMatrix(this);

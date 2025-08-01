@@ -121,6 +121,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onChunkWatched(ChunkWatchEvent.Sent evt) {
         LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
+        // SEND OTHER CHUNK TOO WHEN CONNECTIONS ARE PRESENT
         storage.forEach(link -> {
             if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SYMMETRIC)) return;
             Mechano.LOGGER.info("Syncing " + link + " from (LevelChunk at " + evt.getPos() + ")");

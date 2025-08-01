@@ -26,6 +26,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -149,12 +150,12 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
         this.address = address;
     }
 
-    public void broadcast() {
-        broadcast(links.isEmpty() ? GridResponse.TASK_FORGET_ANCHORS : GridResponse.TASK_SYNC_ANCHORS);
+    public void broadcast(ServerLevel world) {
+        broadcast(world, links.isEmpty() ? GridResponse.TASK_FORGET_ANCHORS : GridResponse.TASK_SYNC_ANCHORS);
     }
 
     @Override
-    public void broadcast(GridResponse response) {
+    public void broadcast(ServerLevel world, GridResponse response) {
         if(getOwner().getWorld() == null) {
             Mechano.LOGGER.warn("Couldn't broadcast sync for node at " + getAddress() 
                 + " because this address has no world!");
@@ -164,12 +165,12 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
             case TASK_CREATE_LINK, TASK_SYNC_ANCHORS -> {
                 getGriddable().getSurrogate().sync(getOwner().getWorld(), getOwner());
                 getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
-                AnchorSyncHolder.of(this).sendToClients();
+                AnchorSyncHolder.of(this).sendToClients(world);
             }
             case TASK_DESTROY_LINK, TASK_FORGET_ANCHORS -> {
                 getGriddable().getSurrogate().forgetIfNeeded(getOwner().getWorld());
                 getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
-                AnchorSyncHolder.of(this).sendToClients();
+                AnchorSyncHolder.of(this).sendToClients(world);
             }
             case null, default -> Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
         }
@@ -276,6 +277,7 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
     }
 
     public void nullify() {
+        this.links.clear(); // GC friendly? idk
         this.links = null;
         this.host = null;
     }
@@ -302,9 +304,9 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
     }
 
     @Override
-    public void sendToClientsTracking(CustomPacketPayload packet) {
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
         assertNotDestroyed();
-        address.sendToClientsTracking(packet);
+        address.sendToClientsTracking(world, packet);
     }
 
     @Override

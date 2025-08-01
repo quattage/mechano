@@ -3,6 +3,7 @@ package com.quattage.mechano.foundation.catenary;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -17,19 +18,20 @@ public class WindManager {
 
     public static final WindManager INSTANCE = new WindManager();
 
-    private final float[] windSpeeds = new float[] { 0.013f, 0.021f, 0.042f };
+    private final float[] windSpeeds = new float[] { 0.000f, 0.021f, 0.042f };
     private boolean enabled = true;
     private WeakReference<PerlinSimplexNoise> noise = new WeakReference<>(null);
 
     private PerlinSimplexNoise getOrCreateNoise(RandomSource random) {
         if(!noise.refersTo(null)) return noise.get();
-        noise = new WeakReference<PerlinSimplexNoise>(new PerlinSimplexNoise(random.fork(), List.of(0)));
+        noise = new WeakReference<PerlinSimplexNoise>(new PerlinSimplexNoise(random, List.of(0)));
         return noise.get();
     }
 
-    public Vector2f sample(ClientLevel world, BlockPos pos) {
+    public @Nullable Vector2f sample(ClientLevel world, BlockPos pos) {
         float strengthScalar = getWindSpeedAt(world, pos);
         float time = world.getGameTime() * strengthScalar;
+        if(!world.canSeeSky(pos)) return null;
         Vector2f output = new Vector2f(
             (float)getOrCreateNoise(world.random).getValue(pos.getX() + time * 0.13f, pos.getZ() * 0.31f + time, true),
             (float)getOrCreateNoise(world.random).getValue(pos.getX() * 0.76f + time, pos.getZ() + time * 0.49, true)
@@ -48,7 +50,7 @@ public class WindManager {
         if(!enabled)
             enabled = enable;
         else if(enabled && !enable) {
-            reset();
+            noise.clear();
             enabled = false;
         }
     }

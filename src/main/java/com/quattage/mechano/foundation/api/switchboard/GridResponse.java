@@ -25,6 +25,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.Level;
@@ -121,25 +122,35 @@ public enum GridResponse implements StringRepresentable {
         private final boolean enabled;
 
         public static boolean assertAnchorsExist(GridResponse response, AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null)
-                throw new IllegalStateException("Assertion failed for response '" + response 
+            if(startAnchor == null && endAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed for response '" + response 
                     + "' - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-            if(startAnchor == null)
-                throw new IllegalStateException("Assertion failed for response '" + response 
+                return false;
+            } 
+            if(startAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed for response '" + response 
                     + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-            if(endAnchor == null)
-                throw new IllegalStateException("Assertion failed for response '" + response
+                return false;
+            }
+            if(endAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed for response '" + response
                     + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            }
             return true;
         }
 
         public static boolean assertAnchorsExist(AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null) 
-                throw new IllegalStateException("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-            if(startAnchor == null) 
-                throw new IllegalStateException("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-            if(endAnchor == null) 
-                throw new IllegalStateException("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+            if(startAnchor == null && endAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            } if(startAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            } if(endAnchor == null) {
+                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
+                return false;
+            }
             return true;
         }
 
@@ -171,8 +182,8 @@ public enum GridResponse implements StringRepresentable {
             this.enabled = enabled;
         }
 
-        public void sendToClients() {
-            addr.sendToClientsTracking(new AnchorSyncPacket(this));
+        public void sendToClients(ServerLevel world) {
+            addr.sendToClientsTracking(world, new AnchorSyncPacket(this));
         }
 
         private GridUUID getAddr() {
@@ -248,16 +259,8 @@ public enum GridResponse implements StringRepresentable {
         @Override public void writeTo(RecordBuilder<?> tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
         @Override public void setDataScope(DataScope scope) { addr.setDataScope(scope); }
         @Override public DataScope getDataScope(LevelReader world) { return addr.getDataScope(world); }
-
-        @Override
-        public void sendLevelUpdates(Level world) {
-            addr.sendLevelUpdates(world);
-        }
-
-        @Override
-        public String toString() {
-            return addr.toString();
-        }
+        @Override public void sendLevelUpdates(Level world) { addr.sendLevelUpdates(world); }
+        @Override public String toString() { return addr.toString(); }
 
         @Override
         public boolean equals(Object obj) {

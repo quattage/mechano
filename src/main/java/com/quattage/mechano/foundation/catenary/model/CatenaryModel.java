@@ -5,6 +5,9 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.CatenaryMesher.Point;
@@ -89,6 +92,23 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * @return This Catenary for chaining
      */
     public abstract T setOffset(Vec3 start, Vec3 end);
+
+    /**
+     * Automatically calculates the {@link #setOffset offset} vector
+     * for this catenary given a pair of {@link GridUUID addresses}
+     * and enforces their order using the deterministic 
+     * {@link TrackedStreamable#orderedByRenderPriority render priority}
+     * to ensure that the sign of the offset vector's length is correct.
+     * @param world World to operate within
+     * @param start GridUUID starting position
+     * @param end GridUUID ending position (start/end order here is arbitrary)
+     * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
+     * just pass 1.
+     */
+    public void setOrderedOffset(LevelReader world, GridUUID start, GridUUID end, float pTicks) {
+        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
+        setOffset(((AnchorPoint)ordered[0]).getPos(world, pTicks), ((AnchorPoint)ordered[1]).getPos(world, pTicks));
+    }
 
     /**
      * A helper call that sets the first and last

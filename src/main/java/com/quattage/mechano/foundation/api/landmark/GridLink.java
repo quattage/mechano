@@ -14,6 +14,7 @@ import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
@@ -52,26 +53,26 @@ public final class GridLink extends GridConnection {
     }
 
     @Override
-    public void broadast() { broadcast(GridResponse.TASK_CREATE_LINK); }
+    public void broadast(ServerLevel world) { broadcast(world, GridResponse.TASK_CREATE_LINK); }
 
     @Override
-    public void broadcast(GridResponse response) {
+    public void broadcast(ServerLevel world, GridResponse response) {
         switch(response) {
             case TASK_CREATE_LINK -> {
-                start.broadcast(response);
-                end.broadcast(response);
+                start.broadcast(world, response);
+                end.broadcast(world, response);
                 start.getGriddable().onConnectionCreated(start.getOwner().getWorld(), this);
                 end.getGriddable().onConnectionCreated(end.getOwner().getWorld(), this);
                 trns.onConnectionCreated(end.getOwner().getWorld(), this);
-                sendToClientsTracking(LinkResponsePacket.of(start, end, trns, response));
+                sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
             }
             case TASK_DESTROY_LINK -> {
-                start.broadcast(response);
-                end.broadcast(response);
+                start.broadcast(world, response);
+                end.broadcast(world, response);
                 start.getGriddable().onConnectionDestroyed(start.getOwner().getWorld(), this);
                 end.getGriddable().onConnectionDestroyed(end.getOwner().getWorld(), this);
                 trns.onConnectionDestroyed(end.getOwner().getWorld(), null, this);
-                sendToClientsTracking(LinkResponsePacket.of(start, end, trns, response));
+                sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
             }
             case null, default -> Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
         }
@@ -137,7 +138,7 @@ public final class GridLink extends GridConnection {
 
     @Override
     public IAttachmentHolder getDataStorageHolder(LevelReader world) {
-        return getPrimaryReferencer(world).getDataStorageHolder(world);
+        return getPrimaryConstruct(world).getDataStorageHolder(world);
     }
 
     @Override

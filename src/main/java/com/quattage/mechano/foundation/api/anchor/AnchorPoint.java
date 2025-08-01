@@ -9,7 +9,6 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
@@ -25,6 +24,7 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
@@ -104,29 +104,7 @@ public class AnchorPoint implements TrackedStreamable {
         return new Vec3(offset.x, offset.y, offset.z);
     }
 
-    /**
-     * Ensures that this AnchorPoint's {@link GridUUID} can move,
-     * regardless of whether or not its owner can. This is used to
-     * allow attached wires and other rendering features to refresh
-     * dynamically in cases where they would otherwise automatically 
-     * freeze to save performance. 
-     * 
-     * <h3>Broadcasting with Data Scopes</h3>
-     * Any {@link GridCatenary} attached to this AnchorPoint
-     * at the time of invocation will need to be reasserted
-     * in order for changes to be reflected correctly. 
-     * This is because this method call changes the 
-     * {@link DataScope} of this AnchorPoint's address,
-     * which will change where the {@link GridCatenary}
-     * is stored in the {@Link LinkDataStorable}.
-     * This is done automatically by calling 
-     * 
-     * {@link GridCatenary#startMoving} or {@link GridCatenary#freezeInPlace}
-     * 
-     * <p> Calls to this method
-     * will result in no change of this AnchorPoint's address
-     * already belongs to movable construct, such as an entity.
-     */
+    
     public void makeLocallyDynamic(LevelReader world) {
         if(address.getDataScope(world) == DataScope.STATIC_CHUNK)
             address.setDataScope(DataScope.BLOCKENTITY);
@@ -398,7 +376,7 @@ public class AnchorPoint implements TrackedStreamable {
 
 
     @Override
-    public void sendToClientsTracking(CustomPacketPayload packet) {
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
         throw new UnsupportedOperationException("AnchorPoints can't send packets, since they're client-sided only!");
     }
 

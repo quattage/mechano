@@ -56,8 +56,6 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
         be.forEachCatenary(cat -> {
             if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel()))
                 return;
-            if(!be.containsAnchor(cat.getPrimaryRenderer(null)))
-                return;
             cat.renderDynamic(be, bufferSource, matrixStack, pTicks);
         });
     }

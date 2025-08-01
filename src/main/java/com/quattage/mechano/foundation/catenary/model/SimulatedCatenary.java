@@ -60,6 +60,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 sticks.add(x - 1, new Stick(previous, newPoint));
             previous = newPoint;
         }
+        Mechano.LOGGER.info("CAT INIT");
         points.getFirst().pinned = true;
         points.getLast().pinned = true;
         return this;
@@ -139,7 +140,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     */
     @Override
     public void update(float delta) {
-        
+
         assertHasOffset();
         assertSimulatable();
         final Vector3f gravity = getGravity(points.size());
@@ -202,7 +203,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         }
         this.avgVelocity /= points.size();
         if(Float.isNaN(this.avgVelocity)) {
-            Mechano.LOGGER.warn("Cascading instability detected in " + this.toFullString());
+            Mechano.LOGGER.warn("Cascading instability detected in " + this);
             initialize();
             calculateSegmentation();
             return;
@@ -293,7 +294,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         return this;
     }
 
-    public void applyWind(Vector2f wind) {
+    public void applyWind(@Nullable Vector2f wind) {
         this.wind = wind;
     }
 
@@ -370,6 +371,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         this.sticks = null;
         return baked;
     }
+
 
     /**
      * Apply an upward force to the middle of the wire

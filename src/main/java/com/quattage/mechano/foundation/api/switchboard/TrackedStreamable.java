@@ -18,6 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -57,7 +58,7 @@ public interface TrackedStreamable {
      * and performance of the {@link ServerGrid ServerGrid's} packet handling.
      * @param packet
      */
-    public abstract void sendToClientsTracking(CustomPacketPayload packet);
+    public abstract void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet);
     public abstract boolean isBeingTrackedBy(ServerPlayer player);
     public abstract boolean isInsideOf(LevelReader world, ChunkPos chunk);
     public abstract boolean isInsideOf(LevelReader world, SectionPos section);
@@ -132,8 +133,8 @@ public interface TrackedStreamable {
      * @param response GridResponse to broadcast, which will change
      * what kind of packet gets sent as a result of this call.
      */
-    public default void broadast() { 
-        broadcast(GridResponse.values()[0]); 
+    public default void broadast(ServerLevel world) { 
+        broadcast(world, GridResponse.values()[0]); 
     }
 
     /**
@@ -147,14 +148,15 @@ public interface TrackedStreamable {
      * @param response GridResponse to broadcast, which will change
      * what kind of packet gets sent as a result of this call.
      */
-    public default void broadcast(GridResponse response) { 
+    public default void broadcast(ServerLevel world, GridResponse response) { 
         throw new UnsupportedOperationException("'" + this.getClass().getSimpleName() + "' can't broadcast!"); 
     }
 
     /**
-     * Enforces a deterministic (if somewhat arbitrary) renderer
-     * priority between any two {@link TrackedStreamable streamable constructs} 
-     * (Usually just {@link GridUUID GridUUIDs})
+     * Enforces a deterministic (if somewhat arbitrary) insertion and handling
+     * priority between in order to distinguish between any two
+     * {@link TrackedStreamable streamable constructs} 
+     * <p>
      * This method is primarily used to decide which end of a {@link GridConnection}
      * should take render priority when drawing {@link CatenaryModel catenary meshes}, 
      * but it is also used for enforcing server-sided {@link GridLink} assertion order
@@ -170,7 +172,7 @@ public interface TrackedStreamable {
      * @return The {@link TrackedStreamable} that takes priority over the other out 
      * of the two provided. Will never be null unless something goes horribly wrong.
      */
-    public static TrackedStreamable[] orderedByRenderPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end) {
+    public static TrackedStreamable[] orderedByAssertionPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end) {
         return orderedByRenderPriority(world, start, end, false);
     }
 
@@ -231,27 +233,28 @@ public interface TrackedStreamable {
          * that we don't try to inject dynamic wire geometry to the level chunk,
          * since that would be stupid.
          */
-        if(!(start instanceof VoxelUUID) && (end instanceof VoxelUUID)) {
-            out[0] = start;
-            out[1] = end;
-            return out;
-        }
-        if((start instanceof VoxelUUID) && !(end instanceof VoxelUUID)) {
-            out[0] = end;
-            out[1] = start;
-            return out;
+        if(start instanceof VoxelUUID) {
+            if(!(end instanceof VoxelUUID)) {
+                out[0] = end;
+                out[1] = start;
+                return out;
+            }
         }
 
-        /**
-         * this comparison has no logical significance other than
-         * to fall back on something deterministic.
-         */
+        if(end instanceof VoxelUUID) {
+            if(!(start instanceof VoxelUUID)) {
+                out[0] = start;
+                out[1] = end;
+                return out;
+            }
+        }
+
         if(start.hashCode() > end.hashCode()) {
             out[0] = start;
             out[1] = end;
             return out;
         }
-
+        
         out[0] = end;
         out[1] = start;
         return out;

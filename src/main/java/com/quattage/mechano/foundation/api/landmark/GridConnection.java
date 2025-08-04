@@ -48,6 +48,11 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         );
     }
 
+    public static boolean isAsymmetricallyEqual(GridUUID thisStart, GridUUID thisEnd, GridUUID thatStart, GridUUID thatEnd) {
+        return (thisStart.equals(thatStart) && thisEnd.equals(thatEnd)) 
+            || (thisStart.equals(thatEnd) && thisEnd.equals(thatStart));
+    }
+
     public static void sendToClientsTracking(ServerLevel world, GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet, InsertionPolicy mode) {
         MinecraftServer server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
         if(mode == InsertionPolicy.SYMMETRIC) {
@@ -226,8 +231,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     public boolean equals(Object other) {
         if(other == this) return true;
         if(!(other instanceof GridConnection that)) return false;
-        return (this.getStart().equals(that.getStart()) && this.getEnd().equals(that.getEnd())) 
-            || (this.getStart().equals(that.getEnd()) && this.getEnd().equals(that.getStart()));
+        return isAsymmetricallyEqual(this.getStart(), this.getEnd(), that.getStart(), that.getEnd());
     }
 
     @Override

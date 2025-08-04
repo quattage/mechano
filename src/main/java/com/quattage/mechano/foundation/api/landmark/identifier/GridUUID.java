@@ -142,6 +142,8 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
         return getDiscriminatorType().compareTo(o.getDiscriminatorType());
     }
 
+    public abstract boolean isUnindexed(GridUUID other);
+
     public String toString(LevelReader world) {
         return getDiscriminatorType() + "_uuid[" 
             + getBlockPos(world).getX() + ", " 

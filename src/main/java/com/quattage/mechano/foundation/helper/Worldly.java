@@ -18,7 +18,8 @@ public interface Worldly {
      */
     public static boolean areWorldsEqual(Level worldA, Level worldB) {
         if(worldA == null || worldB == null) return false;
-        return worldA == worldB || worldA.dimension().location().equals(worldB.dimension().location());
+        return worldA == worldB || (worldA.isClientSide == worldB.isClientSide 
+            && worldA.dimension().location().equals(worldB.dimension().location()));
     }
 
     public abstract @Nullable Level getWorld();

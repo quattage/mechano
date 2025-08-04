@@ -235,7 +235,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, true);
             if(data.add(world, link)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -244,7 +244,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof Entity e) {
             Server data = getAsServer(e, true);
             if(data.add(world, link)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -253,7 +253,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof BlockEntity be) {
             Server data = getAsServer(be, true);
             if(data.add(world, link)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -407,7 +407,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, true);
             if(data.add(world, cat)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -416,7 +416,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof Entity e) {
             Client data = getAsClient(e, true);
             if(data.add(world, cat)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -425,7 +425,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         if(holder instanceof BlockEntity be) {
             Client data = getAsClient(be, true);
             if(data.add(world, cat)) {
-                if(Mechano.LINK_TRACKING)
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -496,8 +496,6 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public abstract void forEach(Consumer<T> action);
     public abstract boolean isClientSide();
     public abstract ObjectSet<T> getAll();
-    
-    
 
 
 

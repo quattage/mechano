@@ -247,6 +247,13 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
+    public boolean isUnindexed(GridUUID other) {
+        if(this == other) return true;
+        if(!(other instanceof VoxelUUID that)) return false;
+        return this.pos.equals(that.pos);
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(getDiscriminatorType(), pos, index);
     }

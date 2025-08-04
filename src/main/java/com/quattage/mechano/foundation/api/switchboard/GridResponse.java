@@ -35,23 +35,23 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public enum GridResponse implements StringRepresentable {
 
-    TASK_CREATE_LINK(true, false, true),
-    TASK_DESTROY_LINK(true, false, true),
-    TASK_FREE_LINK(true, false, true),
-    TASK_SYNC_ANCHORS(true, false, true),
-    TASK_FORGET_ANCHORS(true, false, true),
-    TASK_SELECT_SUCCESS(true, false, true),
-    FAIL_INTERACTION_CANCELLED(false, true, true),
-    FAIL_DESTINATION_UNSUPPORTED(false, true, true),
-    FAIL_HELD_INCOMPATIBLE(false, false, true),
-    FAIL_DESTINATION_FULL(false, false, true),
-    FAIL_DUPLICATE(false, true, false),
-    FAIL_TOO_CLOSE(false, true, true),
-    FAIL_TOO_FAR(false, false, true),
-    FAIL_DIM_MISMATCH(false, true, true),
-    FAIL_OUTDATED(false, true, true),
-    FAIL_GENERIC(false, true, false),
-    NONE(false, false, false);
+    TASK_CREATE_LINK                     (true, false),
+    TASK_DESTROY_LINK                    (true, false),
+    TASK_FREE_LINK                       (true, false),
+    TASK_SYNC_ANCHORS                    (true, false),
+    TASK_FORGET_ANCHORS                  (true, false),
+    TASK_SELECT_SUCCESS                  (true, false, HighlightMode.SHOW_SUCCESS),
+    FAIL_INTERACTION_CANCELLED           (false, true),
+    FAIL_DESTINATION_UNSUPPORTED         (false, true),
+    FAIL_HELD_INCOMPATIBLE               (false, false),
+    FAIL_DESTINATION_FULL                (false, false),
+    FAIL_DUPLICATE                       (false, true),
+    FAIL_TOO_CLOSE                       (false, true),
+    FAIL_TOO_FAR                         (false, false),
+    FAIL_DIM_MISMATCH                    (false, true),
+    FAIL_OUTDATED                        (false, true),
+    FAIL_GENERIC                         (false, true, HighlightMode.SHOW_FAILURE),
+    NONE                                 (false, false, HighlightMode.SHOW_PASSIVE);
 
     public static final StreamCodec<ByteBuf, GridResponse> STREAM_CODEC = new StreamCodec<>() {
         @Override public GridResponse decode(ByteBuf buffer) { return GridResponse.values()[buffer.readByte()]; }
@@ -60,14 +60,19 @@ public enum GridResponse implements StringRepresentable {
 
     private final boolean isTask;
     private final boolean shouldFailHard;
-    private final boolean showsTarget;
-
+    private final HighlightMode mode;
     
 
-    private GridResponse(boolean isTask, boolean shouldFailHard, boolean showsTarget) { 
+    private GridResponse(boolean isTask, boolean shouldFailHard, HighlightMode mode) { 
         this.isTask = isTask; 
         this.shouldFailHard = shouldFailHard;
-        this.showsTarget = showsTarget;
+        this.mode = mode;
+    }
+
+    private GridResponse(boolean isTask, boolean shouldFailHard) {
+        this.isTask = isTask; 
+        this.shouldFailHard = shouldFailHard;
+        this.mode = HighlightMode.HIDE;
     }
 
     /**
@@ -88,11 +93,10 @@ public enum GridResponse implements StringRepresentable {
     }
 
     /**
-     * Should this response show its target during live queries? 
-     * @return If <code>false</code>, targets returning this response will be hidden.
+     * @return the {@link HighlightMode} associated with this response
      */
-    public boolean showsTarget() {
-        return showsTarget;
+    public HighlightMode getVisibility() {
+        return mode; 
     }
 
     @Override
@@ -121,25 +125,6 @@ public enum GridResponse implements StringRepresentable {
         private final byte connections;
         private final boolean enabled;
 
-        public static boolean assertAnchorsExist(GridResponse response, AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed for response '" + response 
-                    + "' - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            } 
-            if(startAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed for response '" + response 
-                    + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            if(endAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed for response '" + response
-                    + "' - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            return true;
-        }
-
         public static boolean assertAnchorsExist(AnchorPoint startAnchor, AnchorPoint endAnchor) {
             if(startAnchor == null && endAnchor == null) {
                 Mechano.LOGGER.warn("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
@@ -153,7 +138,6 @@ public enum GridResponse implements StringRepresentable {
             }
             return true;
         }
-
 
         public static AnchorSyncHolder of(GridNode node) {
             return new AnchorSyncHolder(node, true);
@@ -199,13 +183,13 @@ public enum GridResponse implements StringRepresentable {
         }
 
         public @Nullable AnchorPoint applyAndGet(Level world) { return applyAndGet(world, false); }
-        public @Nullable AnchorPoint applyAndGet(Level world, boolean shutup) {
+        public @Nullable AnchorPoint applyAndGet(Level world, boolean log) {
             Objects.requireNonNull(world);
             if(!world.isClientSide())
                 throw new IllegalStateException("Cannot apply AnchorSyncHolder on a server-sided world!");
             Griddable<?> points = addr.getAnchorPoints(world);
             if(points == null) {
-                if(!shutup) {
+                if(log) {
                     Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " 
                         + addr.toString(world) + " - No Griddable could be found at this address!");
                 }
@@ -213,7 +197,7 @@ public enum GridResponse implements StringRepresentable {
             }
             AnchorPoint point = points.getAnchor(addr.getIndex());
             if(point == null) {
-                if(!shutup) {
+                if(log) {
                     Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " + addr.toString(world) 
                         + " - An Griddable could be found, but it has no AnchorPoint at the required index! (" + addr.toString(world) + ")");
                 }
@@ -223,7 +207,7 @@ public enum GridResponse implements StringRepresentable {
             point.setEnabled(enabled);
             SurrogateNode surrogate = points.getSurrogate();
             if(surrogate == null) {
-                if(!shutup) {
+                if(log) {
                     Mechano.LOGGER.error("Failed apply AnchorSyncHolder to AnchorPoint at " + addr 
                         + " - Couldn't locate a valid sorrogate node belonging to the AnchorPoint at this address!");
                 }
@@ -261,6 +245,8 @@ public enum GridResponse implements StringRepresentable {
         @Override public DataScope getDataScope(LevelReader world) { return addr.getDataScope(world); }
         @Override public void sendLevelUpdates(Level world) { addr.sendLevelUpdates(world); }
         @Override public String toString() { return addr.toString(); }
+        @Override public boolean isUnindexed(GridUUID other) { return addr.isUnindexed(other); }
+        public GridUUID getAddress() { return addr; }
 
         @Override
         public boolean equals(Object obj) {
@@ -272,6 +258,34 @@ public enum GridResponse implements StringRepresentable {
         @Override
         public int hashCode() {
             return addr.hashCode();
+        }
+    }
+
+
+    public static enum HighlightMode {
+        /**
+         * Shows the vanilla-style black outline around the targeted AnchorPoint
+         */
+        SHOW_PASSIVE,
+        /**
+         * Shows a green AABB drawn by Create's outliner
+         */
+        SHOW_SUCCESS,
+        /**
+         * SHows a red AABB drawn by Create's outliner
+         */
+        SHOW_FAILURE,
+        /**
+         * Shows nothing at all
+         */
+        HIDE;
+
+        public boolean isVisible() {
+            return this != HIDE;
+        }
+
+        public boolean isHighlighted() {
+            return this == SHOW_SUCCESS || this == SHOW_FAILURE;
         }
     }
 }

@@ -94,7 +94,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
+        Griddable<?> playerPoints = ClientGrid.getCachedPoints(player);
         if(playerPoints == null || !playerPoints.getAnchor().hasRoom()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
@@ -148,7 +148,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             }
             return InteractionResultHolder.pass(stack);
         }
-        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
+        Griddable<?> playerPoints = ClientGrid.getCachedPoints(player);
         result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchor(), true);
         applyDurability(player, stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
         stack.remove(UUIDDiscriminator.ATTACHMENT);

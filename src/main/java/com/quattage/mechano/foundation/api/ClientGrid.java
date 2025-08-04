@@ -1,10 +1,16 @@
 package com.quattage.mechano.foundation.api;
 
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
+import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSyncHolder;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
@@ -12,11 +18,11 @@ import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.catenary.CatenaryMesher;
 import com.quattage.mechano.foundation.catenary.WindManager;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.ListTag;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -24,8 +30,16 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public final class ClientGrid extends SidedGridDispatcher {
 
-    private final CatenaryMesher mesher;
-    public LinkDataTracker tracker = new LinkDataTracker();
+    private final AwaitingLinkBuffer buffer = new AwaitingLinkBuffer();
+    private LinkDataTracker tracker = null;
+    private static @Nullable Griddable<?> cachedPoints = null;
+    private boolean isLoaded = false;
+
+    public static Griddable<?> getCachedPoints(LocalPlayer lp) {
+        if(cachedPoints == null)
+            cachedPoints = lp.getData(MechanoData.ANCHOR_ATTACHMENT);
+        return cachedPoints;
+    }
 
     public static ClientGrid loadFrom(ListTag serializedGlobals, ClientLevel world) {
         return new ClientGrid(world);
@@ -33,27 +47,35 @@ public final class ClientGrid extends SidedGridDispatcher {
 
     public ClientGrid(ClientLevel world) {
         super(world);
-        this.mesher = CatenaryMesher.asEmpty();
-        tracker.enable().withLogging(LOGGER);
+        if(Mechano.USE_VERBOSE_LINK_TRACKING) {
+            tracker = new LinkDataTracker()
+                .enable().withLogging(LOGGER);
+        }
     }
 
-    @Override
-    public ClientLevel getWorld() {
-        return (ClientLevel)super.getWorld();
+    @Override 
+    protected void onLoad() {
+        buffer.wakeUp();
     }
 
-    @Override
-    protected void onLoad() {}
+
+    private void tryLoad() {
+        if(!isLoaded) onLoad();
+        isLoaded = true;
+    }
+
 
     @Override
     protected void onUnload() {
-        mesher.reset();
         WindManager.INSTANCE.reset();
+        buffer.shutdown();
+        cachedPoints = null;
     }
 
+
     @Override
-    public LinkDataTracker getDebugTracker() {
-        return tracker;
+    protected void tick() {
+        buffer.tryTickFrom(this);
     }
 
     /**
@@ -69,6 +91,10 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @return {@link UpdateResponser}
      */
     public GridResponse requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type, boolean verify) {
+
+        Objects.requireNonNull(startAnchor);
+        Objects.requireNonNull(endAnchor);
+        tryLoad();
 
         if(verify) {
             if(!startAnchor.existsIn(world)) {
@@ -88,11 +114,9 @@ public final class ClientGrid extends SidedGridDispatcher {
             if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;
         }
 
-        if(!type.supportsSameBlockConnections()) {
-            if(endAnchor.equals(startAnchor)) 
-                return GridResponse.FAIL_DUPLICATE;    
-        } else if(startAnchor.getAddress().isApproximately(world, endAnchor.getAddress())) 
-            return GridResponse.FAIL_DUPLICATE;
+        if(endAnchor.equals(startAnchor) || (!type.supportsUnindexedConnections() 
+            && startAnchor.getAddress().isUnindexed(endAnchor.getAddress()))) 
+                return GridResponse.FAIL_DUPLICATE; 
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
         if(linkDistance < type.getMinDistance()) return GridResponse.FAIL_TOO_CLOSE;
@@ -130,15 +154,21 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param start
      * @param end
      * @param trns
-     * @return The {@link GridCatenary} that was created
      */
-    public GridCatenary handleCatenaryCreation(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
+    public void handleCatenaryCreation(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns, boolean schedule) {
+        tryLoad();
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        if(startAnchor == null || endAnchor == null) {
+            if(schedule) buffer.deferForLater(this, start, end, trns, GridResponse.TASK_CREATE_LINK);
+            return;
+        }
         TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start.applyAndGet(world), end.applyAndGet(world));
         GridCatenary cat = new GridCatenary(world, (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns);
         LinkDataStorable.put(world, cat);
         cat.sendLevelUpdates(world);
-        return cat;
     }
+
 
 
 
@@ -150,8 +180,9 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param end
      */
     public void handleCatenaryDestruction(AnchorSyncHolder start, AnchorSyncHolder end) {
-        start.applyAndGet(world, true);
-        end.applyAndGet(world, true);
+        tryLoad();
+        start.applyAndGet(world);
+        end.applyAndGet(world);
         GridCatenary cat = LinkDataStorable.popAsClient(world, new ConnectionKey(start, end));
         if(cat != null) cat.sendLevelUpdates(world);
     }
@@ -163,28 +194,40 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param end
      * @param trns
      */
-    public void handleCatenarySync(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns) {
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+    public void handleCatenarySync(AnchorSyncHolder start, AnchorSyncHolder end, TransmitterType<?> trns, boolean schedule) {
+        tryLoad();
         GridCatenary cat = LinkDataStorable.getAsClient(world, new ConnectionKey(start, end));
         if(cat == null) {
-            if(!AnchorSyncHolder.assertAnchorsExist(startAnchor, endAnchor)) return;
+            AnchorPoint startAnchor = start.applyAndGet(world);
+            AnchorPoint endAnchor = end.applyAndGet(world);
+            if(startAnchor == null || endAnchor == null) {
+                if(schedule) buffer.deferForLater(this, start, end, trns, GridResponse.TASK_SYNC_ANCHORS);
+                return;
+            }
             TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start.applyAndGet(world), end.applyAndGet(world));
             cat = new GridCatenary(world, (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns);
             LinkDataStorable.put(world, cat);
             cat.sendLevelUpdates(world);
+            return;
         }
-        else cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
+        cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
 
     }
 
     @Override
-    protected ListTag writeAll() {
-        return new ListTag();
+    public ClientLevel getWorld() {
+        return (ClientLevel)super.getWorld();
     }
 
-    public CatenaryMesher getMesher() {
-        return mesher;
+    @Override
+    public LinkDataTracker getDebugTracker() {
+        return tracker;
+    }
+
+    @Override
+    protected ListTag writeAll() {
+        Mechano.LOGGER.error("Attempted to write server-sided NBT data from " + this);
+        return new ListTag();
     }
 
     @Override
@@ -194,6 +237,7 @@ public final class ClientGrid extends SidedGridDispatcher {
 
     @Override
     public String toString() {
-        return "ClientGrid(" + getDimensionName() + ", 0 members)";
+        return "ClientGrid(" + getDimensionName() + ", " + buffer.size() + " tasks)";
     }
+
 }

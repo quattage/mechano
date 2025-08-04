@@ -47,9 +47,10 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
             Mechano.LOGGER.warn("Tried (and failed) to get Griddable for null entity!");
             return null;
         }
+
         if(e instanceof Griddable<?> ap) return (Griddable<T>)ap;
-        if(!force && !e.hasData(MechanoData.ANCHOR_ATTACHMENT)) return null;
-        return (Griddable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
+        if(force) return (Griddable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
+        return (Griddable<T>)e.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
     }
 
     /**

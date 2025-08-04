@@ -183,7 +183,7 @@ public class GridManifestGenerator {
             "]   ■▝▝▟▜\n\n⎙ Requested by: '" + player.getDisplayName().getString() + "' at [" + DATE_FT.format(new Date(System.currentTimeMillis())) + "]\n⌂ Attached to: '" + player.level().dimension().location().toString() + "'\n\n";
 
         String additional = "";
-        if(Mechano.LINK_TRACKING)
+        if(Mechano.USE_VERBOSE_LINK_TRACKING)
             additional = SidedGridDispatcher.client(player).getDebugTracker().describeAll();
 
         try(PrintWriter pw = new PrintWriter(output)) {

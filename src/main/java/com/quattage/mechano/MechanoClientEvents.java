@@ -1,6 +1,7 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
@@ -23,6 +24,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -74,9 +76,11 @@ public class MechanoClientEvents {
         if(instance == null) return;
         if(!instance.options.getCameraType().isFirstPerson()) return;
         LocalPlayer player = instance.player;
-        if(player == null) return;
         ((CatenaryAccessor)player).forEachCatenary(cat -> {
-            cat.renderDynamicFirstPerson(player, Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
+            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).getOrCreateAddress()))
+                return;
+            cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
+                Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
         });
     }
 
@@ -88,6 +92,7 @@ public class MechanoClientEvents {
     public static void onFrame(RenderFrameEvent.Post evt) {
         AnchorSelector.INSTANCE.tick(Minecraft.getInstance().player, evt.getPartialTick());
     }
+
 
     /**
      * Draws nearby anchors submitted to the {@link AnchorSelector}
@@ -146,24 +151,16 @@ public class MechanoClientEvents {
     public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) {
         LocalPlayer player = Minecraft.getInstance().player;
         if(player == null) return;
-        Griddable<?> points = GriddableEntityAttachment.of(player, false);
-        if(points == null) return;
-        GridUUID addr = points.getOrCreateAddress();
+        GridUUID addr = ClientGrid.getCachedPoints(player).getOrCreateAddress();
         if(addr == null) return;
         CatnipServices.NETWORK.sendToServer(new AnchorSurrogateDestroyPacket(addr));
     }
 
-    @EventBusSubscriber(value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
-    public static class Bus {
+    public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
+        evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);
+    }
 
-        @SubscribeEvent
-        public static void registerLayers(RegisterGuiLayersEvent evt) {
-            evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);
-        }
-        
-        @SubscribeEvent
-        public static void registerReloadListeners(RegisterClientReloadListenersEvent evt) {
-            evt.registerReloadListener(CATENARY_RESOURCES);
-        }
+    public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {
+        evt.registerReloadListener(CATENARY_RESOURCES);
     }
 }

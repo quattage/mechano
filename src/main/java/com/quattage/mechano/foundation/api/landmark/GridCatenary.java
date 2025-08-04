@@ -21,7 +21,6 @@ import com.quattage.mechano.foundation.catenary.model.SimulatedCatenary;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -347,13 +346,19 @@ public final class GridCatenary extends GridConnection {
         if(getEnd() != null) getEnd().setDataScope(scope);
     }
 
-    // TODO REUSABLE MESHER MEANS THAT THESE METHODS ARE NOT THREAD SAFE
     /**
-     * Renders this catenary assuming it's attached to the given owner entity.
+     * Renders this catenary to the provided renderer features.
+     * 
+     * <h2>These methods are not thread safe!</h2>
+     * @param owner
+     * @param offset
+     * @param buffers
+     * @param matrixStack
+     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
      */
     public void renderDynamic(LivingEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
         CatenaryMesher.REUSABLE
-            .at(start.getPos(owner.level(), pTicks))
+            .at(((GridUUID)getPrimaryConstruct(owner.level())).getPos(owner.level(), pTicks))
             .in(owner.level())
             .withAppearance(trns.getType())
             .render(buffers, matrixStack, getOrCreateModel(owner.level()), CatenaryAccessor.getLocalizedOffset(owner, pTicks), pTicks);
@@ -361,14 +366,24 @@ public final class GridCatenary extends GridConnection {
     }
 
     /**
-     * Renders this catenary assuming the LocalPlayer is in first person.
+     * Renders this catenary to the provided renderer features.
+     * 
+     * <h2>This method is not thread safe!</h2>
+     * The meshing process implemented here utilizes the {@link CatenaryMesher#REUSABLE reusable mesher},
+     * this mesher has vertices added and removed from it during its lifespan, so any timing issues
+     * that result in bad vertex ordering will cause huge geometry artifacting. 
+     * @param owner The owner of this wire, obtainable as the {@link TrackedStreamable#orderedByAssertionPriority(LevelReader, TrackedStreamable, TrackedStreamable) prioritized construct}
+     * @param offset 
+     * @param buffers
+     * @param matrixStack
+     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
      */
-    public void renderDynamicFirstPerson(LocalPlayer owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+    public void renderDynamic(LivingEntity owner, Vec3 offset, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
         CatenaryMesher.REUSABLE
-            .at(start.getPos(owner.level(), pTicks))
+            .at(((GridUUID)getPrimaryConstruct(owner.level())).getPos(owner.level(), pTicks))
             .in(owner.level())
             .withAppearance(trns.getType())
-            .render(buffers, matrixStack, getOrCreateModel(owner.level()), CatenaryAccessor.getLocalizedOffset(owner, pTicks).subtract(0, owner.getBbHeight() * 0.9f, 0), pTicks);
+            .render(buffers, matrixStack, getOrCreateModel(owner.level()), CatenaryAccessor.getLocalizedOffset(owner, pTicks).subtract(offset), pTicks);
         CatenaryMesher.REUSABLE.reset();
     }
 

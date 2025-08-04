@@ -115,8 +115,11 @@ public final class ServerGrid extends SidedGridDispatcher {
 
     @Override
     protected void onLoad() {
+        if(deferred == null || deferred.isEmpty()) 
+            return;
         for(DeferredMember trgt : deferred) {
-            if(trgt.root == null) createNodeAndMakeProvisionalLinks(world, trgt.instantiator, trgt.address, trgt.links, true);
+            if(trgt.root == null) 
+                createNodeAndMakeProvisionalLinks(world, trgt.instantiator, trgt.address, trgt.links, true);
             else loadLinksFor(trgt.root, trgt.instantiator, trgt.links, false);
         }
         deferred = null;
@@ -127,6 +130,12 @@ public final class ServerGrid extends SidedGridDispatcher {
         deferred = new HashSet<>();
     }
 
+    @Override
+    protected void tick() {
+        
+    }
+
+    // TODO do this lol
     public void swapEndPoint(GridUUID start, GridUUID oldEnd, GridUUID newEnd) {
         
     }

@@ -60,7 +60,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 sticks.add(x - 1, new Stick(previous, newPoint));
             previous = newPoint;
         }
-        Mechano.LOGGER.info("CAT INIT");
         points.getFirst().pinned = true;
         points.getLast().pinned = true;
         return this;

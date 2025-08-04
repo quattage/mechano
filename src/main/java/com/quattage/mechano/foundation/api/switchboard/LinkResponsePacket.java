@@ -57,8 +57,8 @@ public record LinkResponsePacket(AnchorSyncHolder start, AnchorSyncHolder end, T
         if(!response.indicatesCompletion()) return;
         ClientGrid grid = SidedGridDispatcher.client(player);
         switch(response) {
-            case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns);
-            case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns);
+            case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns, true);
+            case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns, true);
             case TASK_DESTROY_LINK -> grid.handleCatenaryDestruction(start, end);
             case null, default -> Mechano.LOGGER.error("No valid response could be provided for link task '" + response + "!'");
         }

@@ -35,11 +35,11 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.neoforged.neoforge.event.level.ChunkWatchEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -53,7 +53,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     
     protected static final Logger LOGGER = LogUtils.getLogger();
     public static final GridManifestGenerator MANIFEST = new GridManifestGenerator();
-    private static boolean isLoadResolved = false;
 
     private static WorldlyReference<ServerGrid> weakServerGrid = null;
     private static WorldlyReference<ClientGrid> weakClientGrid = null;
@@ -66,7 +65,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
                 if(holder instanceof ClientLevel cl) deserializedInstance = ClientGrid.loadFrom(list, cl);
                 else if(holder instanceof ServerLevel sl) deserializedInstance = ServerGrid.loadFrom(list, sl);
                 else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got '" + holder.getClass().getSimpleName() + "!'");
-                deserializedInstance.log("Loaded pre-existing grid data");
+                deserializedInstance.info("Loaded pre-existing grid data");
                 return deserializedInstance;
             }
             @Override
@@ -80,33 +79,38 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post evt) {
         MANIFEST.tick(); 
-        if(isLoadResolved) return;
-        for(Level world : evt.getServer().getAllLevels())
-            server(world).onLoad();
-        isLoadResolved = true;
     }
 
     @SubscribeEvent
-    public static void onWorldUnload(ServerStoppingEvent evt) {
-        for(Level world : evt.getServer().getAllLevels()) {
-            if(!world.hasData(MechanoData.GRID_ATTACHMENT))
-                continue;
-            world.getData(MechanoData.GRID_ATTACHMENT).onUnload();
-        }
-        isLoadResolved = false;
-        if(weakServerGrid != null && !weakServerGrid.refersTo(null)) {
-            LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
-            weakServerGrid.clear();
-        }
+    public static void onLevelTick(LevelTickEvent.Pre evt) {
+        SidedGridDispatcher grid = evt.getLevel().getExistingDataOrNull(MechanoData.GRID_ATTACHMENT);
+        if(grid == null) return;
+        grid.tick();
     }
 
     @SubscribeEvent
-    public static void onClientUnload(ClientPlayerNetworkEvent.LoggingOut evt) {
-        if(weakClientGrid != null && !weakClientGrid.refersTo(null)) {
-            LOGGER.debug("Dumped ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
-            weakClientGrid.get().onUnload();
-            weakClientGrid.clear();
+    public static void onWorldLoad(LevelEvent.Load evt) {
+        if(!(evt.getLevel() instanceof Level world)) return;
+        SidedGridDispatcher grid = world.getExistingDataOrNull(MechanoData.GRID_ATTACHMENT);
+        if(grid == null) return;
+        grid.onLoad();
+    }
+
+    @SubscribeEvent
+    public static void onWorldUnload(LevelEvent.Unload evt) {
+        if(evt.getLevel() instanceof ServerLevel sl) {
+            if(weakServerGrid != null && weakServerGrid.isAttachedTo(sl)) {
+                LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
+                weakServerGrid.clear();
+            }
+        } else if(evt.getLevel() instanceof ClientLevel cl) {
+            if(weakClientGrid != null && weakClientGrid.isAttachedTo(cl)) {
+                LOGGER.debug("Dumped ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
+                weakClientGrid.clear();
+            } 
         }
+        SidedGridDispatcher grid = ((Level)evt.getLevel()).getExistingDataOrNull(MechanoData.GRID_ATTACHMENT);
+        if(grid != null) grid.onUnload();
     }
 
     @SubscribeEvent
@@ -121,9 +125,8 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onChunkWatched(ChunkWatchEvent.Sent evt) {
         LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
-        // SEND OTHER CHUNK TOO WHEN CONNECTIONS ARE PRESENT
         storage.forEach(link -> {
-            if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SYMMETRIC)) return;
+            if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SINGLE)) return;
             Mechano.LOGGER.info("Syncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
             CatnipServices.NETWORK.sendToClient(
                 evt.getPlayer(), LinkResponsePacket.of(
@@ -209,7 +212,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         else if(holder instanceof ServerLevel sl)
             freshInstance = new ServerGrid(sl, new ObjectArrayList<>());
         else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got " + holder + "!");
-        freshInstance.log("Created new grid data");
+        freshInstance.info("Created new grid data");
         return freshInstance;
     }
 
@@ -398,8 +401,12 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         return world;
     }
 
-    public void log(String msg) {
+    public void info(String msg) {
         LOGGER.info("(" + getDistPrefix() + ", " + getDimensionName() + ") " + msg);
+    }
+
+    public void warn(String msg) {
+        LOGGER.warn("(" + getDistPrefix() + ", " + getDimensionName() + ") " + msg);
     }
 
     @Override
@@ -422,5 +429,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     protected abstract void onLoad();
     protected abstract void onUnload();
     protected abstract LinkDataTracker getDebugTracker();
+    protected abstract void tick();
 
 }

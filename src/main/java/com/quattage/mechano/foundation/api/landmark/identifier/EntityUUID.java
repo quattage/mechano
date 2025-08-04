@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
@@ -18,6 +19,7 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -89,12 +91,15 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public @Nullable Griddable<? extends Entity> getAnchorPoints(LevelReader world) {
         if(points == null) {
             Entity e = world.isClientSide() 
                 ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
                 : ((ServerLevel)world).getEntity(uuid);
-            points = GriddableEntityAttachment.of(e, true);
+            points = e instanceof LocalPlayer lp 
+                ? (@Nullable Griddable<? extends Entity>) ClientGrid.getCachedPoints(lp) 
+                : GriddableEntityAttachment.of(e, true);
         }
         return points;
     }
@@ -216,6 +221,13 @@ public class EntityUUID extends GridUUID {
         if(this == obj) return true;
         if(!(obj instanceof EntityUUID that)) return false;
         return this.uuid.equals(that.uuid) && this.index == that.index;
+    }
+
+    @Override
+    public boolean isUnindexed(GridUUID other) {
+        if(this == other) return true;
+        if(!(other instanceof EntityUUID that)) return false;
+        return this.uuid.equals(that.uuid);
     }
 
     @Override

@@ -173,7 +173,7 @@ public interface TrackedStreamable {
      * of the two provided. Will never be null unless something goes horribly wrong.
      */
     public static TrackedStreamable[] orderedByAssertionPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end) {
-        return orderedByRenderPriority(world, start, end, false);
+        return orderedByAssertionPriority(world, start, end, false);
     }
 
     /**
@@ -195,7 +195,7 @@ public interface TrackedStreamable {
      * @return The {@link TrackedStreamable} that takes priority over the other out 
      * of the two provided. Will never be null unless something goes horribly wrong.
      */
-    public static TrackedStreamable[] orderedByRenderPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end, boolean useFrustum) {
+    public static TrackedStreamable[] orderedByAssertionPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end, boolean useFrustum) {
 
         // welcome to spaghettiville
         TrackedStreamable[] out = new TrackedStreamable[2];

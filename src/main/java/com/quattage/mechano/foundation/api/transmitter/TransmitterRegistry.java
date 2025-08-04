@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
@@ -126,7 +127,7 @@ public class TransmitterRegistry {
 
     public static class TransmitterType<T extends Transmitter<?>> { 
 
-        private static final float minimumDistance = 0.16f;
+        private static final float MIN_DISTANCE = 0.16f;
 
         private byte packedIndex = -1;
 
@@ -169,9 +170,9 @@ public class TransmitterRegistry {
         /**
          * @return <code>true</code> if this TransmitterType supports
          * making connections between different anchors within the same
-         * block.
+         * {@link Griddable griddable holder}
          */
-        public boolean supportsSameBlockConnections() {
+        public boolean supportsUnindexedConnections() {
             return canSameBlock;
         }
 
@@ -205,7 +206,7 @@ public class TransmitterRegistry {
          * (or 16 centimeters)
          */
         public float getMinDistance() {
-            return supportsSameBlockConnections() ? 0 : TransmitterType.minimumDistance;
+            return supportsUnindexedConnections() ? 0 : TransmitterType.MIN_DISTANCE;
         }
 
         public byte getRegistryIndex() {

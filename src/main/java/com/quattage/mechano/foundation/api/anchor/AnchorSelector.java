@@ -74,19 +74,25 @@ public class AnchorSelector {
 
 
     public void tick(LocalPlayer player, DeltaTracker deltas) {
-        if(selected != null && !selected.anchor.existsIn(playerHands.player().level()))
-            resetCompletely();
+
         if(player == null) { 
             resetCompletely(); 
             return; 
         }
+
+        if(selected != null && !selected.anchor.existsIn(playerHands.player().level()))
+            resetCompletely();
+
         this.lookingRay = VectorHelper.getLookingRay(player, deltas.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
         this.playerHands = Transmitable.getHolding(player);
-        this.currentTooltip = new ArrayList<>();
+
         if(trackedEntries.isEmpty()) {
             resetCompletely();
             return;
         }
+
+        this.currentTooltip = new ArrayList<>();
+
         if(playerHands.isHoldingReleventItem()) {
             if(!playerHands.implementingItem().onRenderTick(player.level(), playerHands, deltas)) {
                 resetCompletely();
@@ -108,22 +114,20 @@ public class AnchorSelector {
     public void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker delta) {
 
         if(hasSelection() && lookedThisFrame) {
-            if(!selected.anchor.isEnabled()) {
-                if(selected.response.showsTarget()) {
-                    if(selected.response.indicatesCompletion()) {
-                        if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
-                        selectedTicks = Math.min(1, selectedTicks);
-                        selected.renderComplexAABB(selectedTicks, false);
-                    } else if(selectedTicks > 0) {
-                        selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                        selectedTicks = Math.max(0, selectedTicks);
-                        selected.renderComplexAABB(selectedTicks, false);
-                    } else {
-                        selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
-                        selectedTicks = 0;
-                    }
+            if(selected.anchor.isEnabled() || selected.response.getVisibility().isVisible()) {
+                if(selected.response.getVisibility().isHighlighted()) {
+                    if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
+                    selectedTicks = Math.min(1, selectedTicks);
+                    selected.renderComplexAABB(selectedTicks, false);
+                } else if(selectedTicks > 0) {
+                    selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
+                    selectedTicks = Math.max(0, selectedTicks);
+                    selected.renderComplexAABB(selectedTicks, false);
+                } else {
+                    selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
+                    selectedTicks = 0;
                 }
-            } else if(selectedTicks > 0) {
+            } else if(selected.response.getVisibility().isHighlighted() && selectedTicks > 0) {
                 selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
                 selectedTicks = Math.max(0, selectedTicks);
                 selected.renderComplexAABB(selectedTicks, false);
@@ -132,9 +136,8 @@ public class AnchorSelector {
 
         if(!playerHands.isHoldingReleventItem()) return;
         for(Active entry : trackedEntries) {
-            if(entry == null || entry.equals(selected) 
-                || entry.anchor.isEnabled() || !entry.response.showsTarget()) 
-                    continue;
+            if(Active.shouldSkipOutline(entry) || entry.equals(selected))
+                continue;
             entry.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
         }
     }
@@ -155,14 +158,14 @@ public class AnchorSelector {
             if(sel == null || !sel.points.isInteractable()) continue;
             if(!sel.anchor.isIntersecting(world, lookingRay)) continue;
             lookedThisFrame = true;
-            selected = sel;
+            this.selected = sel;
             cons.accept(sel.points, sel, sel.distance);
             break;
         }
         if(!lookedThisFrame) {
             if(hasSelection() && selectedTicks > 0) {
                 selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                selected.renderComplexAABB(selectedTicks, false);
+                this.selected.renderComplexAABB(selectedTicks, false);
             } else resetCompletely();
         }
     }
@@ -291,6 +294,10 @@ public class AnchorSelector {
         private GridResponse response;
         private VoxelShape highlightShape;
 
+        public static boolean shouldSkipOutline(Active entry) {
+            return entry == null || !entry.anchor.isEnabled() || !entry.response.getVisibility().isVisible();
+        }
+
         public Active(Griddable<?> points, AnchorPoint anchor, GridUUID address, float distance) {
             Objects.requireNonNull(points);
             Objects.requireNonNull(anchor);
@@ -347,7 +354,7 @@ public class AnchorSelector {
                 .disableCull()
                 .disableLineNormals()
                 .colored(col)
-                .lineWidth(0.010f * ticks);
+                .lineWidth(0.020f * ticks);
         }
 
         @Override
@@ -359,8 +366,10 @@ public class AnchorSelector {
 
         @Override
         public final boolean equals(Object o) {
-            if(!(o instanceof Active that)) return false;
-            return this.anchor.equals(that.anchor);
+            if(this == o) return true;
+            if(o instanceof AnchorPoint ap) return this.anchor.equals(ap);
+            if(o instanceof Active at) return this.anchor.equals(at.anchor);
+            return false;
         }
 
         @Override

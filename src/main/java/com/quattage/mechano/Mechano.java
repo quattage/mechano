@@ -32,7 +32,8 @@ public class Mechano {
 
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
-    public static final boolean LINK_TRACKING = true;
+    // TODO rig this up to in-game settings
+    public static final boolean USE_VERBOSE_LINK_TRACKING = true;
 
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();
@@ -46,8 +47,10 @@ public class Mechano {
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);
         MechanoTransmissionTypes.register(modBus);
-        modBus.addListener(EventPriority.LOWEST, MechanoDatagen::collect);
         modBus.addListener(this::onCommonSetup);
+        modBus.addListener(MechanoClientEvents::onRegisterLayers);
+        modBus.addListener(MechanoClientEvents::onRegisterReloadListeners);
+        modBus.addListener(EventPriority.LOWEST, MechanoDatagen::collect);
     }
 
     public void onCommonSetup(FMLCommonSetupEvent event) {

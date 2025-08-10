@@ -7,9 +7,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.quattage.mechano.foundation.api.LinkDataStorable;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.gridapi.LinkDataStorable;
+import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.gridapi.landmark.GridCatenary;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;

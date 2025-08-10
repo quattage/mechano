@@ -1,11 +1,13 @@
 package com.quattage.mechano.content.connector;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity;
-import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.gridapi.blockEntity.SimpleBlockEntity;
+import com.quattage.mechano.foundation.gridapi.blockEntity.SimpleBlockEntity.BERefreshable;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;
@@ -17,6 +19,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -96,6 +99,11 @@ public abstract class ConnectorBlock<T extends GriddableBlockEntity> extends Com
     public boolean isConnectorAllowed(LevelReader world, BlockPos connectorPos, BlockState connectorState,
             BlockPos thisPos, BlockState thisState) {
         return false;
+    }
+
+    @Override
+    public @Nullable PushReaction getPistonPushReaction(BlockState state) {
+        return PushReaction.DESTROY;
     }
 
     @Override

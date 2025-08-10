@@ -3,10 +3,11 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
-import com.quattage.mechano.foundation.api.switchboard.AnchorSyncPacket;
-import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.gridapi.switchboard.AnchorSurrogateDestroyPacket;
+import com.quattage.mechano.foundation.gridapi.switchboard.AnchorSyncPacket;
+import com.quattage.mechano.foundation.gridapi.switchboard.LinkRequestPacket;
+import com.quattage.mechano.foundation.gridapi.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.gridapi.switchboard.LinkSwapPacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestRequestPacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestResponsePacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestResultPacket;
@@ -22,11 +23,13 @@ public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     
     LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
     LINK_S2C(LinkResponsePacket.class, LinkResponsePacket.STREAM_CODEC),
+    LINK_SWAP_S2C(LinkSwapPacket.class, LinkSwapPacket.STREAM_CODEC),
     MANIFEST_S2C(ManifestRequestPacket.class, ManifestRequestPacket.STREAM_CODEC),
     MANIFEST_C2S(ManifestResponsePacket.class, ManifestResponsePacket.STREAM_CODEC),
     MANIFEST_RESULT_S2C(ManifestResultPacket.class, ManifestResultPacket.STREAM_CODEC),
     ANCHOR_SYNC_S2C(AnchorSyncPacket.class, AnchorSyncPacket.STREAM_CODEC),
     ANCHOR_DESTROY_C2S(AnchorSurrogateDestroyPacket.class, AnchorSurrogateDestroyPacket.STREAM_CODEC),
+
     ;
 
     @Override

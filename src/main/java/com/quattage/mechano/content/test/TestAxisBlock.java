@@ -3,7 +3,7 @@ package com.quattage.mechano.content.test;
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.hitbox.MechanoHitboxes;
-import com.quattage.mechano.foundation.blockEntity.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.foundation.gridapi.blockEntity.SimpleBlockEntity.BERefreshable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;

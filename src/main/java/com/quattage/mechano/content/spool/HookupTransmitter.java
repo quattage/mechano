@@ -2,10 +2,10 @@
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.gridapi.landmark.GridLink;
+import com.quattage.mechano.foundation.gridapi.transmitter.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.gridapi.transmitter.Transmitter;
+import com.quattage.mechano.foundation.gridapi.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;

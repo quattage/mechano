@@ -1,21 +1,18 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
-import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
-import com.quattage.mechano.foundation.catenary.CatenaryAccessor;
-import com.quattage.mechano.foundation.catenary.CatenaryModelProvider;
-import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.gridapi.ClientGrid;
+import com.quattage.mechano.foundation.gridapi.Griddable;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorGuiLayer;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.gridapi.catenary.CatenaryModelProvider;
+import com.quattage.mechano.foundation.gridapi.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
@@ -29,6 +26,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -77,7 +75,7 @@ public class MechanoClientEvents {
         if(!instance.options.getCameraType().isFirstPerson()) return;
         LocalPlayer player = instance.player;
         ((CatenaryAccessor)player).forEachCatenary(cat -> {
-            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).getOrCreateAddress()))
+            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).createSupplementaryAddress()))
                 return;
             cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
                 Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
@@ -147,14 +145,14 @@ public class MechanoClientEvents {
             evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.OFF_HAND));
     }
 
-    @SubscribeEvent
-    public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if(player == null) return;
-        GridUUID addr = ClientGrid.getCachedPoints(player).getOrCreateAddress();
-        if(addr == null) return;
-        CatnipServices.NETWORK.sendToServer(new AnchorSurrogateDestroyPacket(addr));
-    }
+    /**
+     * The methods here describe various edge cases which can occur while the player is in the process of creating 
+     * a new wire between two points. While the player is holding a spool with a wire attached to it, they could log out,
+     * die, change their game mode, etc - These cases need to be accounted for cuz they'll break shit, yknow?
+     */
+    @SubscribeEvent public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) { ClientGrid.destroyCachedPoints(); }
+    @SubscribeEvent public static void onLogout(ClientPlayerNetworkEvent.LoggingOut evt) { ClientGrid.destroyCachedPoints(); }
+    // the player dying is handled by the LivingEntityMixin since death-related events apply to all entities
 
     public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
         evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);

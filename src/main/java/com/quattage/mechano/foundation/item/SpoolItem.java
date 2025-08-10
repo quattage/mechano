@@ -13,25 +13,25 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
-import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.api.landmark.GridConnection;
-import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
-import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
-import com.quattage.mechano.foundation.api.switchboard.GridResponse;
-import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.api.transmitter.Transmitable;
-import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.gridapi.ClientGrid;
+import com.quattage.mechano.foundation.gridapi.Griddable;
+import com.quattage.mechano.foundation.gridapi.LinkDataStorable;
+import com.quattage.mechano.foundation.gridapi.SidedGridDispatcher;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.gridapi.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.gridapi.landmark.GridCatenary;
+import com.quattage.mechano.foundation.gridapi.landmark.GridConnection;
+import com.quattage.mechano.foundation.gridapi.landmark.GridConnection.ConnectionKey;
+import com.quattage.mechano.foundation.gridapi.landmark.identifier.EntityUUID;
+import com.quattage.mechano.foundation.gridapi.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.gridapi.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.gridapi.switchboard.GridResponse;
+import com.quattage.mechano.foundation.gridapi.switchboard.LinkRequestPacket;
+import com.quattage.mechano.foundation.gridapi.transmitter.MechanoTransmissionTypes;
+import com.quattage.mechano.foundation.gridapi.transmitter.Transmitable;
+import com.quattage.mechano.foundation.gridapi.transmitter.Transmitter;
 import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererInvoker;
 import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererMixin;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
@@ -47,6 +47,7 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.client.renderer.item.ItemPropertyFunction;
 import net.minecraft.core.component.DataComponents;
@@ -197,15 +198,15 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         AnchorPoint previous = addr.getAnchor((ClientLevel)player.level());
         if(previous == null) {
             GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-            CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
+            SidedGridDispatcher.client(player).requestLinkDestruction(entityHost.getAnchor(), previous, true);
             return true;
         }
 
         Vec3 disp = previous.getPos(player.level()).subtract(player.getPosition(1)).normalize();
         float faceDot = (float)player.getViewVector(1).dot(disp);
-        if(faceDot < CatenaryAttributes.DETACH_THRESHOLD) return false;
+        if(faceDot < CatenaryAttributes.DETACH_THRESHOLD) return true;
         GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(entityHost.getOrCreateAddress(), addr, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_FREE_LINK));
+        SidedGridDispatcher.client(player).requestLinkDestruction(entityHost.getAnchor(), previous, true);
         cancelAwaitingConnection(addr, null, stack);
         if(hand != null) {
             player.swing(hand);
@@ -268,20 +269,16 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * the scope of this method.
      */
     public boolean renderInHands(ItemStack item, MultiBufferSource bufferSource, PoseStack matrixStack, AbstractClientPlayer player, ItemInHandRenderer renderer, float swingProgress, float equipProgress, float pitch, float pTicks, int packedLight) {
-        
-        // float f = Mth.sqrt(swingProgress);
-        // float f1 = -0.2F * Mth.sin(swingProgress * (float) Math.PI);
-        // float f2 = -0.4F * Mth.sin(f * (float) Math.PI);
-        // matrixStack.translate(0.0F, -f1 / 2.0F, f2);
-        float tilt = ((ItemInHandRendererInvoker)renderer).mechano$calculateMapTilt(pitch);
-        matrixStack.translate(0f, 0.2f + equipProgress * -1.2f + tilt * -0.5f, -0.72f);
-        matrixStack.mulPose(Axis.XP.rotationDegrees(tilt * -85f));
+
+        float tilt = (((ItemInHandRendererInvoker)renderer).mechano$calculateMapTilt(pitch) * 0.4f) + 0.3f;
+        matrixStack.translate(0f, 0.2f + equipProgress * -1.2f + tilt * -0.3f, -0.72f);
+        matrixStack.mulPose(Axis.XP.rotationDegrees(tilt * -90f));
 
         if (!player.isInvisible()) {
             matrixStack.pushPose();
             matrixStack.mulPose(Axis.YP.rotationDegrees(90));
-            ((ItemInHandRendererInvoker)renderer).mechano$renderMapHand(matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
-            ((ItemInHandRendererInvoker)renderer).mechano$renderMapHand(matrixStack, bufferSource, packedLight, HumanoidArm.LEFT);
+            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
+            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.LEFT);
             matrixStack.popPose();
         }
 
@@ -292,6 +289,24 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         matrixStack.popPose();
 
         return true;
+    }
+
+    protected void renderSpoolHand(ItemInHandRenderer renderer, AbstractClientPlayer player, PoseStack poseStack, MultiBufferSource buffer, int packedLight, HumanoidArm side) {
+        PlayerRenderer playerrenderer = (PlayerRenderer)((ItemInHandRendererInvoker)renderer)
+            .mechano$getEntityRenderDispatcher().<AbstractClientPlayer>getRenderer(player);
+        poseStack.pushPose();
+        // yoinked from vanilla but with some fudged numbers to make 
+        // the hands look more like what i'm going for here
+        float f = side == HumanoidArm.RIGHT ? 1.0F : -1.0F;
+        poseStack.mulPose(Axis.YP.rotationDegrees(92.0F));
+        poseStack.mulPose(Axis.XP.rotationDegrees(30.0F));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(f * -30.0F));
+        poseStack.translate(f * 0.09F, -0.9F, 0.45F);
+        if (side == HumanoidArm.RIGHT) 
+            playerrenderer.renderRightHand(poseStack, buffer, packedLight, player);
+        else playerrenderer.renderLeftHand(poseStack, buffer, packedLight, player);
+
+        poseStack.popPose();
     }
 
 

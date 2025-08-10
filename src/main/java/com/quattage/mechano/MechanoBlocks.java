@@ -1,11 +1,13 @@
 package com.quattage.mechano;
 
 import static com.quattage.mechano.Mechano.REGISTRATE;
+import static com.simibubi.create.api.behaviour.movement.MovementBehaviour.movementBehaviour;
 import static com.simibubi.create.foundation.data.ModelGen.customItemModel;
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 
 import com.quattage.mechano.content.connector.SingleConnectorBlock;
 import com.quattage.mechano.content.test.TestAxisBlock;
+import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
 import com.quattage.mechano.infrastructure.datagen.DynamicStateGenerator;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;
@@ -14,6 +16,7 @@ import com.tterrag.registrate.util.nullness.NonnullType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour.Properties;
 import net.neoforged.bus.api.IEventBus;
+
 
 
 public class MechanoBlocks {
@@ -40,6 +43,7 @@ public class MechanoBlocks {
             .blockstate(new DynamicStateGenerator()::generate)
             .item()
             .transform(customItemModel("connector_single", "base"))
+            .onRegister(movementBehaviour(new GriddableMovementBehaviour()))
             .register();
 
     public static void register(IEventBus modBus) {

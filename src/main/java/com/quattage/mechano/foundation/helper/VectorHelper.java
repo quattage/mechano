@@ -12,7 +12,6 @@ import net.createmod.catnip.theme.Color;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -21,58 +20,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class VectorHelper {
 
-    public static final RandomSource rand = RandomSource.create();
-
-    /***
-     * Converts a Vec3 to a Vec3i
-     */
-    public static Vec3i round(Vec3 vec) {
-        return new Vec3i((int)vec.x, (int)vec.y, (int)vec.z);
-    }
-
-    /***
-     * Converts a Vector3f to a Vec3
-     */
-    public static Vec3 toVec(Vector3f vec) {
-        return new Vec3(vec);
-    }
-
-    public static Vec3 toVec(Vec3i vec) {
-        return new Vec3(vec.getX(), vec.getY(), vec.getZ());
-    }
-
-    public static Vec3 getRandomVector(double dispersion) {
-        return addRandomness(new Vec3(0, 0, 0), dispersion);
-    }
-
-    public static Vec3 addRandomness(Vec3 vec, double dispersion) {
-        double randX = getRandom(dispersion);
-        double randY = getRandom(dispersion);
-        double randZ = getRandom(dispersion);
-        return new Vec3(vec.x + randX, vec.y + randY, vec.z + randZ);
-    }
-
-    public static double getRandom(double dispersion) {
-        return (rand.nextFloat() * dispersion) - (dispersion / 2);
-    }
-
-    public static Vec3 toNearestBlockCenter(Vec3 vec) {
-        BlockPos converted = toBlockPos(vec);
-        Vec3 out = new Vec3(
-            converted.getX(), 
-            converted.getY(), 
-            converted.getZ()
-        );
-        return out;
-    }
-
-    public static void setDiff(Vector3f root, Vector3f p0, Vector3f p1) {
-        root.set(p0.x() - p1.x(), p0.y() - p1.y(), p0.z() - p1.z());
-    }
-
-    public static void setDiff(Vector3f root, Vector3f p0, Vector3f p1, float m) {
-        root.set((p0.x() - p1.x()) + m, (p0.y() - p1.y()), (p0.z() - p1.z()) + m);
-    }
+    private static final float eps = 1e-7f;
 
     public static boolean isGreater(Vec3 a, Vec3 b) {
         return a.x > b.x && a.y > b.y && a.z > b.z();
@@ -83,7 +31,6 @@ public class VectorHelper {
     }
 
     public static boolean approxEqual(Vec3 a, Vec3 b) {
-        double eps = 1e-7;
         return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps && Math.abs(a.z - b.z) < eps;
     }
 
@@ -274,77 +221,6 @@ public class VectorHelper {
             (int)vec.y, 
             (int)vec.z
         );
-    }
-
-    /***
-     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
-     */
-    public static double drip2prime(double a, double x, double d, double h) {
-        double p1 = a * aSinh((h / (2d * a)) * (1d / Math.sinh(d / (2d * a))));
-        return Math.sinh((2 * x + 2 * p1 - d) / (2 * a));
-    }
-
-    /***
-     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
-     */
-    public static double drip2(double a, double x, double d, double h) {
-        double p1 = a * aSinh((h / (2d * a)) * (1d / Math.sinh(d / (2d * a))));
-        double p2 = -a * Math.cosh((2d * p1 - d) / (2d * a));
-        return p2 + a * Math.cosh((((2d * x) + (2d * p1)) - d) / (2d * a));
-    }
-
-    /***
-     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
-     */
-    public static double drip2prime(double x, double d, double h) {
-        return drip2prime(1, x, d, h);
-    }
-
-    /***
-     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
-     */
-    public static double drip2(double x, double d, double h) {
-        return drip2(1, x, d, h);
-    }
-
-    /***
-     * fairy dust magic wizard gnome code, brought to you buy ConnectableChains
-     */
-    private static double aSinh(double r) {
-        return Math.log(r + Math.sqrt(r * r + 1.0));
-    }
-
-    public static Vec3 middleOf(Vec3 a, Vec3 b) {
-        double x = (a.x - b.x) / 2d + b.x;
-        double y = (a.y - b.y) / 2d + b.y;
-        double z = (a.z - b.z) / 2d + b.z;
-        return new Vec3(x, y, z);
-    }
-
-    public static double getMagnitude(Vec3 vec) {
-        double x = vec.x == 0 ? 0.001: vec.x;
-        double y = vec.y == 0 ? 0.001: vec.y;
-        double z = vec.z == 0 ? 0.001 : vec.z;        
-        return Math.sqrt(Math.pow(x, 2.0) + Math.pow(y, 2.0) + Math.pow(z, 2.0));
-    }
-
-    public static double getNorm(Vec3 vec) {
-        return Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
-    } 
-
-    public static double getGreaterMagnitude(Vec3 vec1, Vec3 vec2) {
-        double fT = getMagnitude(vec1);
-        double tF = getMagnitude(vec2);
-
-        return fT > tF ? fT : tF;
-    }
-
-    public static float getLength(Vector3f vec) {
-        return (float)Math.sqrt(Math.fma(vec.x(), vec.x(), Math.fma(vec.y(), vec.y(), vec.z() * vec.z())));
-    }
-
-    public static float estimateDeltaX(float s, float k) {
-        return (float)(s / Math.sqrt(1 + k * k));
     }
 
     /***
@@ -658,10 +534,5 @@ public class VectorHelper {
 
     private static float inv(float in) {
         return in + ((0.5f - in) * 2.0f);
-    }
-
-
-    public static String asString(BlockPos pos) {
-        return pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
     }
 }

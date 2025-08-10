@@ -15,6 +15,7 @@
         "client.LivingEntityMixin",
         "client.ItemInHandRendererMixin",
         "client.ItemInHandRendererInvoker",
+        "ContraptionMixin",
         "EntityMixin"
     ],
     "injectors": {

@@ -1,12 +1,14 @@
 package com.quattage.mechano.foundation.mixin.client;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.world.entity.HumanoidArm;
 
 @Mixin(ItemInHandRenderer.class)
@@ -17,4 +19,7 @@ public interface ItemInHandRendererInvoker {
 
     @Invoker("calculateMapTilt")
     public abstract float mechano$calculateMapTilt(float pitch);
+
+    @Accessor("entityRenderDispatcher")
+    public abstract EntityRenderDispatcher mechano$getEntityRenderDispatcher();
 }

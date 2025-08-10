@@ -3,8 +3,8 @@ package com.quattage.mechano.infrastructure.command;
 import java.util.UUID;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.gridapi.ServerGrid;
+import com.quattage.mechano.foundation.gridapi.SidedGridDispatcher;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -57,9 +57,7 @@ public class GridWipeCommand {
 
                     requester = null;
                     requestTime = 0L;
-                    source.sendSuccess(() -> { 
-                        return Component.literal("Wiping all grid data...").withStyle(style -> style.withColor(ChatFormatting.GRAY));
-                    }, false);
+                    source.sendSuccess(() -> Component.literal("Wiping all grid data...").withStyle(style -> style.withColor(ChatFormatting.GRAY)), false);
                     return 1;
                 });
         }

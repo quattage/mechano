@@ -13,13 +13,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBuildParameters;
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.ServerMatrix;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.gridapi.Griddable;
+import com.quattage.mechano.foundation.gridapi.ServerGrid;
+import com.quattage.mechano.foundation.gridapi.ServerMatrix;
+import com.quattage.mechano.foundation.gridapi.SidedGridDispatcher;
+import com.quattage.mechano.foundation.gridapi.landmark.GridLink;
+import com.quattage.mechano.foundation.gridapi.landmark.GridNode;
+import com.quattage.mechano.foundation.gridapi.landmark.identifier.GridUUID;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -110,7 +110,7 @@ public class GridManifestGenerator {
 
     private String collectNodeInfo(LevelReader world, GridNode node) {
 
-        String out = "\t┌ ▣ " + node.getAddress().toString(world) + ":  ";
+        String out = "\t┌ ▣ " + node.getAddress() + ":  ";
         out += "\n\t┆\t" + (node.hasLinks() ? "☑ Valid" : "☒ Invalid (See below for details)");
         out += "\n\t┆\t▸ Owned by Matrix " + node.getOwner().getIndex();
         Griddable<?> points = node.getGriddable();
@@ -182,9 +182,10 @@ public class GridManifestGenerator {
         String header = "▛▙▘▘■   Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  
             "]   ■▝▝▟▜\n\n⎙ Requested by: '" + player.getDisplayName().getString() + "' at [" + DATE_FT.format(new Date(System.currentTimeMillis())) + "]\n⌂ Attached to: '" + player.level().dimension().location().toString() + "'\n\n";
 
-        String additional = "";
+        String additional = "\n\n♡ Dispatched global tracker dump: ♡\n";
         if(Mechano.USE_VERBOSE_LINK_TRACKING)
-            additional = SidedGridDispatcher.client(player).getDebugTracker().describeAll();
+            additional += SidedGridDispatcher.client(player).getDebugTracker().describeAll();
+        else additional += "\n\tLink data tracking is disabled for this session.";
 
         try(PrintWriter pw = new PrintWriter(output)) {
             pw.print(header + message + additional);

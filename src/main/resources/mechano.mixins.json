@@ -12,9 +12,9 @@
     "client": [
         "client.accessor.RenderBuffersAccessor",
         "client.accessor.PlayerInfoAccessor",
-        "client.LivingEntityMixin",
-        "client.ItemInHandRendererMixin",
         "client.ItemInHandRendererInvoker",
+        "client.ItemInHandRendererMixin",
+        "client.EntityMixin",
         "ContraptionMixin",
         "EntityMixin"
     ],

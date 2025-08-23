@@ -12,6 +12,7 @@ import com.quattage.mechano.foundation.gridapi.Griddable;
 import com.quattage.mechano.foundation.gridapi.LinkDataStorable;
 import com.quattage.mechano.foundation.gridapi.ServerGrid;
 import com.quattage.mechano.foundation.gridapi.anchor.AnchorArray;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.gridapi.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.gridapi.entity.GriddableContraptionAttachment;
@@ -28,7 +29,6 @@ import com.simibubi.create.content.contraptions.Contraption;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.createmod.catnip.gui.element.GuiGameElement;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
@@ -50,6 +50,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+        // TODO this should probably be moved out of the constructor
         AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
         constructAnchors(unbuiltAnchors);
         this.anchors = unbuiltAnchors.confirm(getBlockPos());
@@ -58,12 +59,19 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @Override
     public abstract void constructAnchors(AnchorArray.Builder anchors);
 
-
-    @Override
-    public void tick() {
-        if(!level.isClientSide) return;
-        if(!surrogate.isSynced(level)) return;
-        forEachCatenary(cat -> cat.updateShapeFixed((ClientLevel)level, this));
+    public void applyContraptionOverride(AbstractContraptionEntity contraption) {
+        Objects.requireNonNull(contraption);
+        if(!contraption.level().isClientSide) return;
+        for(int x = 0; x < anchors.size(); x++) {
+            AnchorPoint anchor = anchors.getByIndex(x);
+            if(anchor == null) continue;
+            GridUUID address = anchor.getAddress();
+            if(address instanceof VoxelUUID)
+                anchor.replaceAddress(new ContraptionUUID(contraption.getUUID(), address.getBlockPos(null), address.getIndex()));
+        }
+        Griddable<?> points = contraption.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+        if(points == null) return;
+        surrogate.forceAddressChange(points.getSurrogate().getOrCreateAddress());
     }
 
     @Override
@@ -91,8 +99,21 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    public Level getWorld() {
-        return getLevel();
+    @OnlyIn(Dist.CLIENT)
+    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
+        if(!level.isClientSide()) return null;
+        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(this, false);
+        if(storage == null) return null;
+        return storage.getAll();
+    }
+
+    @Override
+    public Visual getVisual() {
+        return (selected, tooltip, posX, posY, graphics) -> {
+            GuiGameElement.of(getBlockState().getBlock().asItem())
+			.at(posX + 10, posY - 16, 450)
+			.render(graphics);
+		};
     }
 
     @Override
@@ -105,6 +126,11 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
         super.onBlockBroken(world, pos, oldState, newState);
         destroySurrogate();
+    }
+
+    @Override
+    public Level getWorld() {
+        return getLevel();
     }
 
     @Override
@@ -123,26 +149,8 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
-        if(!level.isClientSide()) return null;
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(this, false);
-        if(storage == null) return null;
-        return storage.getAll();
-    }
-
-    @Override
     public String describeState() {
         return "Block '" + getBlockState().getBlock().getName().getString() + "'";
-    }
-
-    @Override
-    public Visual getVisual() {
-        return (selected, tooltip, posX, posY, graphics) -> {
-            GuiGameElement.of(getBlockState().getBlock().asItem())
-			.at(posX + 10, posY - 16, 450)
-			.render(graphics);
-		};
     }
 
     @Override
@@ -195,7 +203,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             container.blockEntity.getSurrogate().forEachAssociated(node -> {
                 ContraptionUUID newID = new ContraptionUUID(data, container.structurePos, node.getAddress().getIndex());
                 data.markParticipatingSubsurrogate(container.blockEntity.getSurrogate(), newID);
-                node.replaceAddress(world, newID);
+                node.replaceHolder(world, data, newID);
             });
         }
 
@@ -213,8 +221,8 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             if(!ServerGrid.ALLOW_DYNAMIC_REASSERTIONS || !(data.getWorld() instanceof ServerLevel world))
                 return;
             data.getSurrogate().forEachAssociated(world, data.getCompositeUUIDs(), node -> {
-                node.replaceAddress(world, container.blockEntity.getSurrogate().getOrCreateAddress());
-                AnchorSynchronizer.of(container.blockEntity.getSurrogate().getOrCreateAddress()).sendToClients(world);
+                node.replaceHolder(world, container.blockEntity, container.blockEntity.getSurrogate().getOrCreateAddress().indexedCopy(node.getAddress().getIndex()));
+                AnchorSynchronizer.of(node.getAddress()).sendToClients(world);
             });
         }
     } 
@@ -226,24 +234,15 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
      * to access transient BE instances after they're added/
      * removed to/from the world during the {@link Contraption}
      * dissassembly/assembly process.
-     * 
      */
-    public interface GriddableAccessor {
+    public interface MovingGriddableAccessor {
         
+        /**
+         * The griddable blocks that are about to be removed or re-added 
+         * when a contraption transitions between assembly states.
+         * @return A list of unique {@link TransientStructureContainer} objects.
+         */
         public abstract List<TransientStructureContainer> getTransientGriddables();
-
-        public default void invokeAssemble(AbstractContraptionEntity entity) {
-            GriddableContraptionAttachment data = new GriddableContraptionAttachment(entity);
-            ((ContraptionUUID)data.getSurrogate().getOrCreateAddress()).forceHost(data);
-            entity.setData(MechanoData.ANCHOR_ATTACHMENT, data);
-            forEachGriddable(container -> container.behaviour.onContraptionAssembled(data, container));
-        }
-
-        public default void invokeDisassemble(AbstractContraptionEntity entity) {
-            GriddableEntityAttachment gea = entity.removeData(MechanoData.ANCHOR_ATTACHMENT);
-            if(!(gea instanceof GriddableContraptionAttachment data)) return;
-            forEachGriddable(container -> container.behaviour.onContraptionDisassembled(data, container));
-        }
 
         public default void forEachGriddable(Consumer<TransientStructureContainer> action) {
             List<TransientStructureContainer> griddables = getTransientGriddables();
@@ -254,8 +253,27 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
                 action.accept(container);
             }
         }
+
+        public default void invokeAssemble(AbstractContraptionEntity entity, @Nullable GriddableContraptionAttachment preexisting) {
+            GriddableContraptionAttachment data = preexisting == null ? new GriddableContraptionAttachment(entity) : preexisting.bindTo(entity);
+            ((ContraptionUUID)data.getSurrogate().getOrCreateAddress()).forceHost(data);
+            entity.setData(MechanoData.ANCHOR_ATTACHMENT, data);
+            forEachGriddable(container -> container.behaviour.onContraptionAssembled(data, container));
+        }
+
+        public default void invokeDisassemble(AbstractContraptionEntity entity) {
+            GriddableEntityAttachment gea = entity.removeData(MechanoData.ANCHOR_ATTACHMENT);
+            if(!(gea instanceof GriddableContraptionAttachment data)) return;
+            forEachGriddable(container -> container.behaviour.onContraptionDisassembled(data, container));
+        }
     }
 
+
+
+    /**
+     * A context container to store structure information for the brief period between when a block is removed 
+     * from the world and when its associated contraption entity is added to the world. 
+     */
     public static record TransientStructureContainer(GriddableMovementBehaviour behaviour, GriddableBlockEntity blockEntity, BlockPos structurePos, BlockPos realPos) {
         protected static boolean isValid(TransientStructureContainer container) {
             if(container == null) {
@@ -265,21 +283,10 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             return container.behaviour != null && container.blockEntity != null && container.structurePos != null && container.realPos != null;
         }
 
-        private String realPosAsString() {
-            return "Real(" + realPos == null ? "NULL)" : (realPos.getX() + ", " + realPos.getY() + ", " + realPos.getZ() + ")");
-        }
-
-        private String structurePosAsString() {
-            return "Structure(" + structurePos == null ? "NULL)" : (structurePos.getX() + ", " + structurePos.getY() + ", " + structurePos.getZ() + ")");
-        }
-
-        private String behaviourAsString() {
-            return "Behaviour(" + behaviour == null ? "NULL)" : (behaviour.getClass().getSimpleName() + ")");
-        }
-
-        private String blockEntityAsString() {
-            return "BE(" + blockEntity == null ? "NULL)" : (blockEntity.getClass().getSimpleName() + ")");
-        }
+        private String realPosAsString() { return "Real(" + realPos == null ? "NULL)" : (realPos.getX() + ", " + realPos.getY() + ", " + realPos.getZ() + ")"); }
+        private String structurePosAsString() { return "Structure(" + structurePos == null ? "NULL)" : (structurePos.getX() + ", " + structurePos.getY() + ", " + structurePos.getZ() + ")"); }
+        private String behaviourAsString() { return "Behaviour(" + behaviour == null ? "NULL)" : (behaviour.getClass().getSimpleName() + ")"); }
+        private String blockEntityAsString() { return "BE(" + blockEntity == null ? "NULL)" : (blockEntity.getClass().getSimpleName() + ")"); }
         
         @Override
         public final String toString() {

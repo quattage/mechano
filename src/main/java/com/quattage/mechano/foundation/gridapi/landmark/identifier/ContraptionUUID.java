@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.foundation.gridapi.landmark.identifier;
 
 import java.util.Objects;
@@ -122,9 +123,12 @@ public class ContraptionUUID extends GridUUID {
     }
 
     public GriddableContraptionAttachment searchContraptionAsServer(LevelReader world) {
-        Entity e = ((ServerLevel)world).getEntity(uuid);
-        if(!(e instanceof AbstractContraptionEntity ace)) return null;
-        return (GriddableContraptionAttachment)ace.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+        if(this.cachedContraption == null) {
+            Entity e = ((ServerLevel)world).getEntity(uuid);
+            if(!(e instanceof AbstractContraptionEntity ace)) return null;
+            this.cachedContraption = ace.getContraption();
+        }
+        return (GriddableContraptionAttachment)cachedContraption.entity.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
     }
 
     private @Nullable AbstractContraptionEntity tryGetEntity(LevelReader world) {
@@ -141,7 +145,21 @@ public class ContraptionUUID extends GridUUID {
 
     @Override
     public IAttachmentHolder getDataStorageHolder(LevelReader world) {
-        return tryGetEntity(world);
+        if(world.isClientSide()) {
+            if(cachedContraption == null) {
+                Entity e = ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid);
+                if(!(e instanceof AbstractContraptionEntity ace)) return null;
+                this.cachedContraption = ace.getContraption();
+            }
+            return cachedContraption.presentBlockEntities.get(structurePos);
+        }
+
+        if(this.cachedContraption == null) {
+            Entity e = ((ServerLevel)world).getEntity(uuid);
+            if(!(e instanceof AbstractContraptionEntity ace)) return null;
+            this.cachedContraption = ace.getContraption();
+        }
+        return cachedContraption.entity;
     }
 
     @Override
@@ -151,8 +169,10 @@ public class ContraptionUUID extends GridUUID {
 
     @Override
     public String describeDataScope(LevelReader world) {
-        if(getDataStorageHolder(world) == null) return "not_applicable";
-        return "Contraption [" + uuid + ", " + structurePos.getX() + ", " + structurePos.getY() + ", " + structurePos.getZ() + "]";
+        Entity e = (Entity)getDataStorageHolder(world);
+        if(e == null) return "not_applicable";
+        BlockPos pos = VectorHelper.toBlockPos(e.getPosition(1));
+        return "'" + e.getClass().getSimpleName() + "' at [" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]";
     }
 
     @Override
@@ -174,7 +194,7 @@ public class ContraptionUUID extends GridUUID {
         return ace == null ? Vec3.ZERO : ace.getDeltaMovement();
     }
 
-    // TODO base contraptions can't recieve velocity this way, but landlord voxel domains can
+    // TODO basic contraptions can't recieve velocity this way, but landlord voxel domains can
     @Override public void setAttachmentVelocity(LevelReader world, Vec3 vec) { return; }
     @Override public void applyForceToAttachment(LevelReader world, Vec3 force) { return; }
     // --

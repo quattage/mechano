@@ -15,7 +15,6 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.gridapi.catenary.CatenaryMesher.Stick;
 import com.quattage.mechano.foundation.gridapi.catenary.model.CatenaryModel;
-import com.quattage.mechano.foundation.gridapi.catenary.model.ParametricCatenary;
 import com.quattage.mechano.foundation.gridapi.catenary.model.SimulatedCatenary;
 import com.quattage.mechano.foundation.gridapi.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.gridapi.transmitter.MechanoTransmissionTypes;
@@ -80,61 +79,39 @@ public class CatenaryAttributes {
             return RenderType.create("catenary_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
         });
 
-
     public static enum Initializer {
-        FRESH_PARAMETRIC((world, start, end, trns) -> {
-            CatenaryModel<?> output = new ParametricCatenary()
-                .setOffset(start.getPos(world), end.getPos(world));
-            output.maxLength = trns.getMaximumSpan();
-            output.calculateSegmentation()
-                .fixEndpoints()
-                .update();
-            return output;
-        }),
         FRESH_SIMULATION((world, start, end, trns) -> {
             CatenaryModel<?> output = new SimulatedCatenary();
             output.maxLength = trns.getMaximumSpan();
-            output.setOffset(start.getPos(world), end.getPos(world))
-                .initialize()
+            output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
+                .initializeSpan()
                 .calculateSegmentation()
-                .fixEndpoints();
+                .pinEndpoints();
             output.update();
             return output;
         }),
         FRESH_SIMULATION_EXPRESSIVE((world, start, end, trns) -> {
             SimulatedCatenary output = new SimulatedCatenary();
             output.maxLength = trns.getMaximumSpan();
-            output.setOffset(start.getPos(world), end.getPos(world))
-                .initialize()
+            output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
+                .initializeSpan()
                 .calculateSegmentation()
-                .fixEndpoints();
+                .pinEndpoints();
             output.update();
-            output.kick(1);
+            output.kick(0.35f);
             return output;
         }),
         RESTING_SIMULATION((world, start, end, trns) -> {
             CatenaryModel<?> output = new SimulatedCatenary();
             output.maxLength = trns.getMaximumSpan();
-            output.setOffset(start.getPos(world), end.getPos(world))
-                .initialize()
+            output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
+                .initializeSpan()
                 .calculateSegmentation()
-                .fixEndpoints();
+                .pinEndpoints();
             output.updateAhead(512);
             return output;
-        }),
-        RESTING_SIMULATION_BAKED((world, start, end, trns) -> {
-            CatenaryModel<?> output = new ParametricCatenary();
-            output.maxLength = trns.getMaximumSpan();
-            output.initialize()
-                .setOffset(start.getPos(world), end.getPos(world))
-                .update();
-            output = output.toSimulated();
-            output.calculateSegmentation()
-                .fixEndpoints()
-                .updateAhead(512);
-            output = output.bake();
-            return output;
         });
+
 
         private final QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func;
         private Initializer(QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func) { 

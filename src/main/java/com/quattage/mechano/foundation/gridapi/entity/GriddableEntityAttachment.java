@@ -60,6 +60,7 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
      */
     @ApiStatus.Internal
     public GriddableEntityAttachment(IAttachmentHolder holder) {
+        if(holder == null) return;
         if(!(holder instanceof Entity entity))
             throw new IllegalArgumentException("GriddableEntityAttachments can only be attached to entities, got " + holder + "!");
         this.entity = entity;

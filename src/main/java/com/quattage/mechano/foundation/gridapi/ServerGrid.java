@@ -98,7 +98,7 @@ public final class ServerGrid extends SidedGridDispatcher {
     }
 
     protected void loadLinksFor(GridNode newStart, ServerMatrix instantiator, ListTag links, boolean storeDeferred) {
-        newStart.prime(links.size());
+        newStart.primeLinks(links.size());
         for(int x = 0; x < links.size(); x++) {
             CompoundTag serializedLink = links.getCompound(x);
             GridUUID endAddress = UUIDDiscriminator.read(serializedLink);
@@ -114,7 +114,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             }
             linkUnsafe(newLink, false);
         }
-        newStart.trim();
+        newStart.trimLinks();
     }
 
     public @Nullable ServerMatrix getMatrixByIndex(int index) {

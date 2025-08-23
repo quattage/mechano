@@ -44,6 +44,8 @@ public class VoxelUUID extends GridUUID {
     }
 
     public VoxelUUID(BlockPos pos, int index, DataScope target) {
+        // if(new BlockPos(0, 1, 0).equals(pos)) 
+        //     throw new IllegalArgumentException("what is going on");
         this.pos = pos;
         this.index = clampIndex(index);
         this.scope = target;
@@ -60,7 +62,7 @@ public class VoxelUUID extends GridUUID {
         this.index = buffer.readByte();
         this.scope = DataScope.values()[buffer.readByte()];
     }
-
+    
     public VoxelUUID(Dynamic<?> dyn) {
         this.pos = new BlockPos(dyn.get("x").asInt(0), dyn.get("y").asInt(0), dyn.get("z").asInt(0));
         this.index = clampIndex(dyn.get("i").asInt(0));
@@ -164,12 +166,14 @@ public class VoxelUUID extends GridUUID {
                 ChunkPos pos = chunk.getPos();
                 return "LevelChunk[" + pos.x + ", " + pos.z + "]";
             }
-            return "data scope mismatch (" + scope + ")";
+            if(holder == null) return "⮿ null (expected '" + scope + "')";
+            return "⮿ mismatch (" + scope + ", expected 'BLOCKENTITY', got " + holder.getClass().getSimpleName() + ") @" + this;
         }
         if(scope == DataScope.BLOCKENTITY) {
             if(holder instanceof BlockEntity be)
                 return "BlockEntity '" + be.getClass().getSimpleName() + ", [" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]";
-            return "data scope mismatch (" + scope + ")";
+            if(holder == null) return "⮿ null (expected '" + scope + "')";
+            return "⮿ mismatch ('" + scope + "', expected 'STATIC_CHUNK', got " + holder.getClass().getSimpleName() + ") @" + this;
         }
         return "not_applicable";
     }
@@ -191,6 +195,7 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public void sendLevelUpdates(Level world) {
+        if(scope != DataScope.STATIC_CHUNK) return;
         BlockState state = world.getBlockState(pos);
         world.sendBlockUpdated(pos, state, state, 3);
     }

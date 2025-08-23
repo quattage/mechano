@@ -28,12 +28,17 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
- * Barebones implementation template for hashables that need to reference
- * a block position and (optionally) an index value. 
+ * Barebones implementation template for hashables that parent themselves
+ * to an arbitrary construct, like a block or an entity
  */
 public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamable {
 
     public static final int MAX_SHARED_OCCUPANCY = 8; 
+
+    public static boolean areAsymmetricallyEqual(GridUUID thisStart, GridUUID thisEnd, GridUUID thatStart, GridUUID thatEnd) {
+        return (thisStart.equals(thatStart) && thisEnd.equals(thatEnd)) 
+            || (thisStart.equals(thatEnd) && thisEnd.equals(thatStart));
+    }
 
     public static int clampIndex(int index) { return clampIndex(index, true); }
     public static int clampIndex(int index, boolean warn) {

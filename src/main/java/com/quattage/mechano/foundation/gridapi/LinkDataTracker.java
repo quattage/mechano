@@ -57,6 +57,7 @@ public class LinkDataTracker {
             log("Skipped adding " + connection + " because the world passed was null.");
             return;
         }
+        
         if(holder == null) {
             log("Skipped adding " + connection + " because the holder passed was null.");
             return;
@@ -75,7 +76,7 @@ public class LinkDataTracker {
         else log("Failed to remove " + toRemove.describeConnection() + " at '" + toRemove.getHolderName() + "' from tracker in [" + toRemove.getDimensionName() + "]"); 
     }
 
-    private void log(String message) {
+    public void log(String message) {
         if(log != null) log.info(message);
     }
 

@@ -59,7 +59,7 @@ public record LinkResponsePacket(AnchorSynchronizer start, AnchorSynchronizer en
             case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns, true);
             case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns, true);
             case TASK_DESTROY_LINK -> grid.handleCatenaryDestruction(start, end);
-            case null, default -> GridResponse.logUnhandled(this, task);
+            case null, default -> GridResponse.logUnhandled(task, this);
         }
     }
 }

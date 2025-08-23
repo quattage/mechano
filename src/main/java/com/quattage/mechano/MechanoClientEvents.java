@@ -35,13 +35,15 @@ import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
-import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
     private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
+
+    private static long frameTime = System.nanoTime();
+    private static float deltaSeconds = 0f;
 
     public static boolean shouldRenderOverlay(Minecraft mc) {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
@@ -58,37 +60,38 @@ public class MechanoClientEvents {
         Griddable<?> holder = GriddableEntityAttachment.of(e, false);
         if(holder == null) return;
         ((CatenaryAccessor)e).forEachCatenary(cat -> {
-            if(cat == null || !cat.hasPoints() || !cat.canMoveDynamically(e.level())) return;
             cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
         });
     }
 
     /**
-     * Renders catenaries in the specific context not covered above - This hook
-     * specifically renders catenaries that belong to the client's LocalPlayer
-     * in first person.
-     */
-    @SubscribeEvent
-    public static <T extends LivingEntity, M extends EntityModel<T>> void onViewport(ViewportEvent.ComputeCameraAngles evt) {
-        Minecraft instance = Minecraft.getInstance();
-        if(instance == null) return;
-        if(!instance.options.getCameraType().isFirstPerson()) return;
-        LocalPlayer player = instance.player;
-        ((CatenaryAccessor)player).forEachCatenary(cat -> {
-            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).createSupplementaryAddress()))
-                return;
-            cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
-                Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), (float)evt.getPartialTick());
-        });
-    }
-
-    /**
      * Tick the {@link AnchorSelector}
+     * and render catenaries attached to the player in first person
      * @param evt
      */
     @SubscribeEvent
     public static void onFrame(RenderFrameEvent.Post evt) {
-        AnchorSelector.INSTANCE.tick(Minecraft.getInstance().player, evt.getPartialTick());
+        Minecraft instance = Minecraft.getInstance();
+        if(instance == null) return;
+        LocalPlayer player = instance.player;
+        AnchorSelector.INSTANCE.tick(player, evt.getPartialTick());
+        if(player == null) return;
+
+        if(!instance.options.getCameraType().isFirstPerson()) return;
+        ((CatenaryAccessor)player).forEachCatenary(cat -> {
+            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).createSupplementaryAddress()))
+                return;
+            cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
+                Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
+        });
+
+        long now = System.nanoTime();
+        deltaSeconds = (now - frameTime) / 1_000_000_000f;
+        frameTime = now;
+    }
+
+    public static float getDeltaSeconds() {
+        return deltaSeconds;
     }
 
 

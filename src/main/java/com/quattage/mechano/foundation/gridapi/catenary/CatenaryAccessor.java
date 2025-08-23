@@ -45,6 +45,17 @@ public interface CatenaryAccessor {
         );
     }
 
+    public default String getCatenariesAsString() {
+        String out = "Catenaries[";
+        ObjectSet<GridCatenary> cats = getCatenaries();
+        if(cats == null || cats.isEmpty()) {
+            return out += "EMPTY]";
+        }
+        for(GridCatenary cat : cats) 
+            out += cat.toString() + ", ";
+        return out.substring(0, out.length() - 2) + "]";
+    }
+
     public static Vec3 getLocalizedOffset(BlockEntity be) {
         return be.getBlockPos().getCenter();
     }

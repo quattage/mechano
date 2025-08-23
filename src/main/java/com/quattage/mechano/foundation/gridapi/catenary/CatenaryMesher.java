@@ -702,10 +702,12 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         }
 
         public Vector3f start(float pTicks) {
+            if(pTicks < 0) return start.pos;
             return start.lastPos.lerp(start.pos, pTicks, new Vector3f());
         }
 
         public Vector3f end(float pTicks) {
+            if(pTicks < 0) return end.pos;
             return end.lastPos.lerp(end.pos, pTicks, new Vector3f());
         }
 

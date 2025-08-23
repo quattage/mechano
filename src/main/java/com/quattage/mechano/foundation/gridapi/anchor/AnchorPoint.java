@@ -427,5 +427,9 @@ public class AnchorPoint implements TrackedStreamable {
         protected AnchorPoint make(BlockPos pos, int index) {
             return new AnchorPoint(new VoxelUUID(pos, index), offx, offy, offz, size, enabled, max);
         }
+
+        protected AnchorPoint make(GridUUID override) {
+            return new AnchorPoint(override, offx, offy, offz, size, enabled, max);
+        }
     }
 }

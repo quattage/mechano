@@ -1,16 +1,27 @@
 package com.quattage.mechano.foundation.gridapi.entity;
 
+import java.util.Objects;
+
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.foundation.gridapi.anchor.AnchorArray;
 import com.quattage.mechano.foundation.gridapi.anchor.AnchorArray.Builder;
-import com.quattage.mechano.foundation.gridapi.anchor.AnchorArray.DynamicAnchorArray;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.gridapi.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.gridapi.landmark.GridCatenary;
 import com.quattage.mechano.foundation.gridapi.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.gridapi.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.gridapi.landmark.identifier.UUIDDiscriminator;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class GriddableContraptionAttachment extends GriddableEntityAttachment {
@@ -21,7 +32,19 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
         super(holder);
         if(!(holder instanceof AbstractContraptionEntity))
             throw new IllegalArgumentException("GriddableContraptionAttachments can only be attached to ContraptionEntities, got " + holder + "!");
-        anchors = new DynamicAnchorArray();
+        anchors = null;
+    }
+
+    @ApiStatus.Internal
+    public GriddableContraptionAttachment() {
+        super(null);
+        anchors = null;
+    }
+
+    public GriddableContraptionAttachment bindTo(AbstractContraptionEntity entity) {
+        Objects.requireNonNull(entity);
+        this.entity = entity;
+        return this;
     }
 
     @Override // anchor construction is automatic for contraption attachments
@@ -29,6 +52,11 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
 
     @Override
     public AnchorArray getAnchors() {
+        throw new UnsupportedOperationException("GriddableContraptionAttachments cannot host anchors on their own! This functionality is deferred to local BlockEntities within the contraption. (Did you attempt to query a Contraption with an EntityUUID?)");
+    }
+
+    @Override
+    public AnchorPoint getAnchor() {
         throw new UnsupportedOperationException("GriddableContraptionAttachments cannot host anchors on their own! This functionality is deferred to local BlockEntities within the contraption. (Did you attempt to query a Contraption with an EntityUUID?)");
     }
 
@@ -53,7 +81,7 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
 
     @Override
     public String describeState() {
-        return "Contraption '" + entity.getName().toString() + "' @" + entity.getUUID();
+        return "Entity '" + entity.getName().getString() + "'";
     }
 
     @Override
@@ -70,5 +98,29 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
     @Override
     public boolean isVisible() {
         return false;
+    }
+
+    @Override
+    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
+        return null;
+    }
+
+    public CompoundTag writeCompositeTo(CompoundTag in) {
+        ListTag list = new ListTag(composite.size());
+        for(Int2ObjectMap.Entry<GridUUID> subsurrogate : composite.int2ObjectEntrySet()) {
+            CompoundTag addrTag = new CompoundTag();
+            subsurrogate.getValue().writeTo(addrTag);
+            list.add(addrTag);
+        }
+        in.put("GridComposite", list);
+        return in;
+    }
+
+    public void readCompositeFrom(ListTag list) {
+        composite.ensureCapacity(list.size());
+        for(int x = 0; x < list.size(); x++) {
+            CompoundTag member = list.getCompound(x);
+            composite.put(x, UUIDDiscriminator.read(member));
+        }
     }
 }

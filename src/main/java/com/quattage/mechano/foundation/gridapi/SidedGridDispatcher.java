@@ -25,7 +25,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -146,29 +145,29 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onEntityWatched(PlayerEvent.StartTracking evt) {
         LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
-        storage.forEach(link -> {
-            if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
-            CatnipServices.NETWORK.sendToClient(
-                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
-                    link.getStartNode(), link.getEndNode(), 
-                    link.getTransmitter(),
-                    GridResponse.TASK_SYNC_ANCHORS
-                ));
-        });
+        // storage.forEach(link -> {
+        //     if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
+        //     CatnipServices.NETWORK.sendToClient(
+        //         (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
+        //             link.getStartNode(), link.getEndNode(), 
+        //             link.getTransmitter(),
+        //             GridResponse.TASK_SYNC_ANCHORS
+        //         ));
+        // });
     }
 
     @SubscribeEvent
     public static void onEntityUnwatched(PlayerEvent.StopTracking evt) {
         LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
-        storage.forEach(link -> {
-            CatnipServices.NETWORK.sendToClient(
-                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
-                    link.getStartNode(), link.getEndNode(), 
-                    link.getTransmitter(),
-                    GridResponse.TASK_FORGET_ANCHORS
-                ));
-        });
+        // storage.forEach(link -> {
+        //     CatnipServices.NETWORK.sendToClient(
+        //         (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
+        //             link.getStartNode(), link.getEndNode(), 
+        //             link.getTransmitter(),
+        //             GridResponse.TASK_FORGET_ANCHORS
+        //         ));
+        // });
     }
 
     /**

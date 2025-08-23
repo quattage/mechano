@@ -139,6 +139,22 @@ public class AnchorArray {
                 } builtAnchors[x] = anchors.get(x).make(pos, x);
             } return new AnchorArray(builtAnchors);
         }
+
+        public AnchorArray confirm(BlockPos pos, GridUUID override) {
+            anchors.trim();
+            if(anchors.isEmpty()) {
+                Mechano.LOGGER.warn("AnchorPoint array for " + points + " - was built with no members!");
+                return AnchorArray.EMPTY;
+            }
+            AnchorPoint[] builtAnchors = new AnchorPoint[anchors.size()];
+            for(int x = 0; x < builtAnchors.length; x++) {
+                if(x >= GridUUID.MAX_SHARED_OCCUPANCY) {
+                    Mechano.LOGGER.warn("Skipped adding AnchorPoint to " + points + " - Max anchor occupancy (" + GridUUID.MAX_SHARED_OCCUPANCY + ") has been reached!");
+                    break;
+                } 
+                builtAnchors[x] = anchors.get(x).make(override.indexedCopy(x));
+            } return new AnchorArray(builtAnchors);
+        }
     }
 
 

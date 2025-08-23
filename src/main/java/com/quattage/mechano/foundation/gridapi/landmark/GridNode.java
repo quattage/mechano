@@ -8,23 +8,27 @@ import javax.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
+import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.gridapi.Griddable;
 import com.quattage.mechano.foundation.gridapi.LinkDataStorable;
 import com.quattage.mechano.foundation.gridapi.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.gridapi.ServerMatrix;
 import com.quattage.mechano.foundation.gridapi.SidedGridDispatcher;
+import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.gridapi.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.gridapi.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.gridapi.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.gridapi.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.gridapi.switchboard.GridResponse;
 import com.quattage.mechano.foundation.gridapi.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.foundation.gridapi.switchboard.LinkSwapPacket;
-import com.quattage.mechano.foundation.gridapi.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.helper.Worldly;
 
+import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -34,20 +38,21 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
  * A GridNode is the primary functional element of the {@link SidedGridDispatcher Grid API} 
  * and provides access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
  */
-public class GridNode implements Iterable<GridLink>, TrackedStreamable {
+public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
 
     /**
      * The only time this can be reassigned is if 
      * this ServerMatrix is merged onto another.
      * ({@link #swapOwner})
      */
-    private ServerMatrix owner;
+    private @NotNull ServerMatrix owner;
 
     // all fields are null if this GridNode has been destroyed
     private @Nullable Griddable<?> host;
@@ -161,45 +166,55 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
      * occuring is if a connector is moved by a Create contraption.
      * @param world World to operate within
      * @param newAddress New address to use when replacing
+     * @param newHolder New holder, which contaains <code>newAddress</code>, to rebind this node to.
      * @param replaceLinks (Optional, defaults to <code>true</code>) If <code>true</code> transitive links will also have their nodes replaced.
      */
-    public void replaceAddress(LevelReader world, GridUUID newAddress) { replaceAddress(world, newAddress, true); }
-
-    /**
-     * This method is useful only in specific circumstances where the address
-     * of this GridNode is outdated and needs to be re-asserted in order
-     * to reflect the current in-world location of whatever this GridNode
-     * is owned by. The best working example I currently have of this 
-     * occuring is if a connector is moved by a Create contraption.
-     * @param world World to operate within
-     * @param newAddress New address to use when replacing
-     * @param replaceLinks (Optional, defaults to <code>true</code>) If <code>true</code> transitive links will also have their nodes replaced.
-     */
-    public void replaceAddress(LevelReader world, GridUUID newAddress, boolean replaceLinks) {
-        Objects.requireNonNull(newAddress);
+    public void replaceHolder(LevelReader world, Griddable<?> newHolder, GridUUID newAddress) {
+        if(!(world instanceof ServerLevel sl)) return;
+        Objects.requireNonNull(newHolder);
+        if(newHolder.getSurrogate() == null) {
+            Mechano.LOGGER.warn("Skipped swapping address for " + this + " - The provided holder (" 
+                + newHolder + ")" + " failed to supply a surrogate node!");
+        }
+        if(this.address.isUnindexed(newHolder.getSurrogate().getOrCreateAddress())) {
+            Mechano.LOGGER.warn("Skipped swapping address for " + this 
+                + " - The provided address is identical to the pre-existing one!");
+            return;
+        }
         assertNotDestroyed();
-        GridUUID oldAddress = this.address.indexedCopy(this.address.getIndex());
+
+        /*
+         * its important that packets are sent before any changes are made, since sendToClientsTracking()
+         * may fail if the new address (and/or holder) point to an Entity that hasn't yet been added to the world.
+        */
+        GridUUID oldAddress = this.address;
+        for(GridLink link : links) {
+            LinkDataStorable.popAsServer(world, link);
+            link.sendLevelUpdates(sl);
+            link.sendToClientsTracking(sl, new LinkSwapPacket(
+                AnchorSynchronizer.of(oldAddress, (byte)links.size()), 
+                AnchorSynchronizer.of(link.getEnd(), (byte)link.getEndNode().links.size()), 
+                newAddress, GridResponse.TASK_SWAP_START)
+            );
+        }
+
         owner.nodes.remove(this.address);
         this.address = newAddress;
-        if(!replaceLinks) return;
-        for(GridLink link : links) {
-            if(world instanceof ServerLevel sl) {
-                GridConnection.sendToClientsTracking(
-                    sl, oldAddress, link.getEnd(), 
-                    LinkSwapPacket.ofStart(oldAddress, link.getEnd(), this.address), 
-                    InsertionPolicy.SYMMETRIC
-                ); 
-            }
-            LinkDataStorable.popAsServer(world, link);
-            link.getStartNode().replaceAddress(world, this.address, false);
-            LinkDataStorable.pushAsServer(world, link);
-            for(GridLink reverseLink : link.getEndNode().links) {
-                LinkDataStorable.popAsServer(world, link);
-                reverseLink.getEndNode().replaceAddress(world, this.address, false);
-                LinkDataStorable.pushAsServer(world, link);
-            }
-        }
+        this.host = newHolder;
+        newHolder.getSurrogate().sync(world, owner);
         owner.nodes.add(this);
+        for(GridLink link : links) {
+            link.getStartNode().address = newAddress;
+            link.getStartNode().host = newHolder;
+            for(GridLink inverse : link.getEndNode()) {
+                if(inverse.getEndNode().address.equals(oldAddress)) {
+                    inverse.getEndNode().address = this.address;
+                    inverse.getEndNode().host = newHolder;
+                }
+            }
+            link.sendLevelUpdates(sl);
+            LinkDataStorable.pushAsServer(world, link);
+        }
     }
 
     public void broadcast(ServerLevel world) {
@@ -252,7 +267,7 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
         return links == null ? 0 : links.size();
     }
 
-    public GridNode prime(int size) {
+    public GridNode primeLinks(int size) {
         if(links == null) {
             Mechano.LOGGER.warn("Skipped priming destroyed GridNode at " + address);
             return this;
@@ -261,7 +276,7 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
         return this;
     }
 
-    public GridNode trim() {
+    public GridNode trimLinks() {
         if(links == null) 
             return this;
         links.trim();
@@ -334,25 +349,24 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
         this.host = null;
     }
 
-    public CompoundTag writeTo(CompoundTag in) {
+    @Override
+    public void writeTo(CompoundTag in) {
         assertNotDestroyed();
         UUIDDiscriminator.write(address, in);
         ListTag serializedLinks = new ListTag();
         for(GridLink link : links)
             serializedLinks.add(link.writeTo(new CompoundTag()));
         in.put("links", serializedLinks);
-        return in;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if(!(obj instanceof GridNode that)) return false;
-        return this.address.equals(that.address);
+    public void writeTo(ByteBuf buffer) {
+        throw new UnsupportedOperationException("GridNodes cannot be written to ByteBuffers!");
     }
 
     @Override
-    public int hashCode() {
-        return this.address.hashCode();
+    public void writeTo(RecordBuilder<?> builder) {
+        throw new UnsupportedOperationException("GridNodes cannot be written to dynamic records!");
     }
 
     @Override
@@ -401,7 +415,78 @@ public class GridNode implements Iterable<GridLink>, TrackedStreamable {
     }
 
     @Override
+    public UUIDDiscriminator getDiscriminatorType() {
+        return address.getDiscriminatorType();
+    }
+
+    @Override
+    public BlockPos getBlockPos(LevelReader world) {
+        return address.getBlockPos(world);
+    }
+
+    @Override
+    public Vec3 getPos(LevelReader world, float pTicks) {
+        return address.getPos(world, pTicks);
+    }
+
+    @Override
+    public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) {
+        return address.getOffsetPos(world, pTicks, ox, oy, oz);
+    }
+
+    @Override
+    public int getIndex() {
+        return address.getIndex();
+    }
+
+    @Override
+    public GridUUID indexedCopy(int index) {
+        return address.indexedCopy(index);
+    }
+
+    @Override
+    public @Nullable AnchorPoint getAnchor(ClientLevel world) {
+        return address == null ? null : address.getAnchor(world);
+    }
+
+    @Override
+    public @Nullable Griddable<?> getOrFindGriddable(LevelReader world) {
+        return address == null ? null : address.getOrFindGriddable(world);
+    }
+
+    @Override
+    public @Nullable SurrogateNode getSurrogate(LevelReader world) {
+        return address == null ? null : address.getSurrogate(world);
+    }
+
+    @Override
+    public float getAttachedSizeFactor(LevelReader world) {
+        return address.getAttachedSizeFactor(world);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof GridNode that)) return false;
+        return this.address.equals(that.address);
+    }
+
+    @Override
+    public boolean isUnindexed(GridUUID other) {
+        return address == null ? false : address.isUnindexed(other);
+    }
+
+    @Override
+    public @Nullable Level getWorld() {
+        return owner == null ? null : owner.getWorld();
+    }
+
+    @Override
     public String toString() {
-        return "GridNode at (" + address.toString() + ")";
+        return "GridNode at (" + (address == null ? "NULL" : address.toString()) + ")";
+    }
+
+    @Override
+    public int hashCode() {
+        return this.address.hashCode();
     }
 }

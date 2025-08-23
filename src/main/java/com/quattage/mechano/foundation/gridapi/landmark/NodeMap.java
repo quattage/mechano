@@ -53,7 +53,9 @@ public class NodeMap implements Iterable<GridNode> {
         ListTag output = new ListTag();
         for(GridNode node : map.values()) {
             if(node == null) continue;
-            output.add(node.writeTo(new CompoundTag()));
+            CompoundTag outputTag = new CompoundTag();
+            node.writeTo(outputTag);
+            output.add(outputTag);
         }
         return output;
     }

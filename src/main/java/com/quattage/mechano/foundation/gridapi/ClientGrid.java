@@ -8,6 +8,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.gridapi.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.gridapi.catenary.WindManager;
 import com.quattage.mechano.foundation.gridapi.landmark.GridCatenary;
@@ -21,6 +22,7 @@ import com.quattage.mechano.foundation.gridapi.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.gridapi.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.gridapi.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.gridapi.transmitter.TransmitterRegistry.TransmitterType;
+import com.simibubi.create.content.contraptions.Contraption;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.Minecraft;
@@ -165,6 +167,8 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param start
      * @param end
      * @param trns
+     * @param schedule <code>true</code> if this action should be deferred for 
+     * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
      */
     public void handleCatenaryCreation(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, boolean schedule) {
         tryLoad();
@@ -186,6 +190,8 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @see #handleCatenaryCreation
      * @param start
      * @param end
+     * @param schedule <code>true</code> if this action should be deferred for 
+     * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
      */
     public void handleCatenaryDestruction(AnchorSynchronizer start, AnchorSynchronizer end) {
         tryLoad();
@@ -201,6 +207,8 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param start
      * @param end
      * @param trns
+     * @param schedule <code>true</code> if this action should be deferred for 
+     * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
      */
     public void handleCatenarySync(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, boolean schedule) {
         tryLoad();
@@ -219,7 +227,70 @@ public final class ClientGrid extends SidedGridDispatcher {
             return;
         }
         cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
+    }
 
+    /**
+     * Swaps the starting point of the {@link GridCatenaary} spanning 
+     * between <code>start</code> and <code>end</code>, replacing it 
+     * with <code>newStart</code>. This method can be used to rebind a 
+     * {@link GridUUID} to reflect a change of ownership when a
+     * {@link GridCatenary} transitions between states (like when an 
+     * {@link GriddableBlockEntity implementing BlockEntity} gets 
+     * picked up or put down by a {@link Contraption})
+     * @see #swapEndingPoint
+     * @param start 
+     * @param end
+     * @param newStart
+     * @param schedule <code>true</code> if this action should be deferred for 
+     * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
+     */
+    public void swapStartingPoint(AnchorSynchronizer start, AnchorSynchronizer end, GridUUID newStart, boolean schedule) {
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        if(startAnchor == null || endAnchor == null || newStart.getDataStorageHolder(world) == null) {
+            if(schedule) buffer.deferForLater(this, start, end, newStart, GridResponse.TASK_SWAP_START);
+            return;
+        }
+        ConnectionKey key = new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress());
+        GridCatenary cat = LinkDataStorable.getAsClient(world, key, true);
+        if(cat == null) cat = LinkDataStorable.getAsClient(world, key.inverseCopy(), true);
+        if(cat == null) { 
+            if(schedule) buffer.deferForLater(this, start, end, newStart, GridResponse.TASK_SWAP_START);
+            return;
+        }
+        cat.replaceAddresses((ClientLevel)world, newStart, cat.getEnd(), null);
+    }
+
+    /**
+     * Swaps the ending point of the {@link GridCatenaary} spanning 
+     * between <code>start</code> and <code>end</code>, replacing it 
+     * with <code>newEnd</code>. This method can be used to rebind a 
+     * {@link GridUUID} to reflect a change of ownership when a
+     * {@link GridCatenary} transitions between states (like when an 
+     * {@link GriddableBlockEntity implementing BlockEntity} gets 
+     * picked up or put down by a {@link Contraption})
+     * @see #swapStartingPoint
+     * @param start 
+     * @param end
+     * @param newEnd
+     * @param schedule <code>true</code> if this action should be deferred for 
+     * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
+     */
+    public void swapEndingPoint(AnchorSynchronizer start, AnchorSynchronizer end, GridUUID newEnd, boolean schedule) {
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        if(startAnchor == null || endAnchor == null) {
+            if(schedule) buffer.deferForLater(this, start, end, newEnd, GridResponse.TASK_SWAP_END);
+            return;
+        }
+        ConnectionKey key = new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress());
+        GridCatenary cat = LinkDataStorable.getAsClient(world, key, true);
+        if(cat == null) cat = LinkDataStorable.getAsClient(world, key.inverseCopy(), true);
+        if(cat == null) { 
+            if(schedule) buffer.deferForLater(this, start, end, newEnd, GridResponse.TASK_SWAP_END);
+            return;
+        }
+        cat.replaceAddresses((ClientLevel)world, cat.getStart(), newEnd, null);
     }
 
     @Override

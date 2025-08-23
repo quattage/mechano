@@ -157,7 +157,7 @@ public interface TrackedStreamable {
      * This method is primarily used to decide which {@link GridUUID end} 
      * of a {@link GridConnection} should take render priority when drawing 
      * {@link CatenaryModel catenary meshes}. The code that does this can be 
-     * found in the {@link LinkDataStorable polymorphic data store}
+     * found in the {@link LinkDataStorable polymorphic data store
      * @param world World to operate within.
      * @param start The first TrackedStreamable to check
      * @param end The second TrackedStreamable to check (order is completely arbitrary here)
@@ -195,32 +195,36 @@ public interface TrackedStreamable {
 
         // welcome to spaghettiville
         TrackedStreamable[] out = new TrackedStreamable[2];
+        if(start == null && end != null) { out[0] = end; out[1] = start; return out; }
+        if(start != null && end == null) { out[0] = start; out[1] = end; return out; }
 
-        final boolean canStartMove = start.canMoveDynamically(world);
-        final boolean canEndMove = end.canMoveDynamically(world);
-        if(canStartMove && !canEndMove) {
-            out[0] = start;
-            out[1] = end;
-            return out;
-        }
-        if(canEndMove && !canStartMove) {
-            out[0] = end;
-            out[1] = start;
-            return out;
-        }
-
-        if(world.isClientSide() && useFrustum) {
-            final boolean isStartVisible = start.isVisibleOnScreen(world);
-            final boolean isEndVisible = end.isVisibleOnScreen(world);
-            if(isStartVisible && !isEndVisible) {
+        if(world != null) {
+            final boolean canStartMove = start.canMoveDynamically(world);
+            final boolean canEndMove = end.canMoveDynamically(world);
+            if(canStartMove && !canEndMove) {
                 out[0] = start;
                 out[1] = end;
                 return out;
             }
-            if(isEndVisible && !isStartVisible) {
+            if(canEndMove && !canStartMove) {
                 out[0] = end;
                 out[1] = start;
                 return out;
+            }
+
+            if(world.isClientSide() && useFrustum) {
+                final boolean isStartVisible = start.isVisibleOnScreen(world);
+                final boolean isEndVisible = end.isVisibleOnScreen(world);
+                if(isStartVisible && !isEndVisible) {
+                    out[0] = start;
+                    out[1] = end;
+                    return out;
+                }
+                if(isEndVisible && !isStartVisible) {
+                    out[0] = end;
+                    out[1] = start;
+                    return out;
+                }
             }
         }
 

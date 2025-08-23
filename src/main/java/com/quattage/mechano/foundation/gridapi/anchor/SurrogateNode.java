@@ -138,6 +138,10 @@ public final class SurrogateNode {
         if(addr != null) getOrCreateAddress();
     }
 
+    public void forceAddressChange(GridUUID newAddress) {
+        
+    }
+
     public ServerMatrix getOwnerMatrix() {
         return owner;
     }
@@ -178,10 +182,10 @@ public final class SurrogateNode {
 
     public void forEachAssociated(LevelReader world, Int2ObjectOpenHashMap<GridUUID> composite, Consumer<GridNode> action) {
         ServerGrid grid = SidedGridDispatcher.server(world);
-        for(Int2ObjectMap.Entry<GridUUID> offset : composite.int2ObjectEntrySet()) {
-            ServerMatrix matrix = grid.getMatrixByIndex(offset.getIntKey());
+        for(Int2ObjectMap.Entry<GridUUID> subsurrogate : composite.int2ObjectEntrySet()) {
+            ServerMatrix matrix = grid.getMatrixByIndex(subsurrogate.getIntKey());
             if(matrix == null || matrix.nodes == null) continue;
-            GridUUID walkingAddress = offset.getValue();
+            GridUUID walkingAddress = subsurrogate.getValue();
             for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
                 walkingAddress = walkingAddress.indexedCopy(x);
                 GridNode node = matrix.nodes.get(walkingAddress);

@@ -31,12 +31,12 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public abstract sealed class GridConnection implements Tensionable, TrackedStreamable permits GridLink, GridCatenary, ConnectionKey {
-    
+
+    protected Transmitter<?> trns;
+
     public abstract GridUUID getStart();
     public abstract GridUUID getEnd();
     public abstract boolean isClientSide();
-
-    protected Transmitter<?> trns;
 
     public static float getEuclideanDistance(LevelReader world, GridUUID a, GridUUID b) {
         Vec3 aPos = a.getPos(world);
@@ -46,11 +46,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
             Math.pow(aPos.y - bPos.y, 2) +
             Math.pow(aPos.z - bPos.z, 2)
         );
-    }
-
-    public static boolean isAsymmetricallyEqual(GridUUID thisStart, GridUUID thisEnd, GridUUID thatStart, GridUUID thatEnd) {
-        return (thisStart.equals(thatStart) && thisEnd.equals(thatEnd)) 
-            || (thisStart.equals(thatEnd) && thisEnd.equals(thatStart));
     }
 
     public static void sendToClientsTracking(ServerLevel world, GridUUID start, @Nullable GridUUID end, CustomPacketPayload packet, InsertionPolicy mode) {
@@ -88,40 +83,17 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         throw new IllegalArgumentException("Unsupported InsertionPolicy '" + mode + "'");
     }
 
-
     public GridConnection(Transmitter<?> trns) {
         this.trns = trns;
     }
 
-    public TrackedStreamable getPrimaryConstruct(LevelReader world) {
-        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd())[0];
-    }
-
-    @Override
-    @OnlyIn(Dist.CLIENT) 
-    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
-        return hasPoints() ? (getStart().isInFrustum(world, view) && getEnd().isInFrustum(world, view)) : false;
-    }
-
-    @Override
-    public boolean isBeingTrackedBy(ServerPlayer player) {
-        return hasPoints() ? (getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player)) : false;
-    }
-
-    @Override
-    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
-        if(world.isClientSide() || isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet as a client! YOU CAN'T DO THAT!!!!");
-        sendToClientsTracking(world, getStart(), getEnd(), packet, InsertionPolicy.SYMMETRIC);
-    }
-
-    @Override
-    public boolean isInsideOf(LevelReader world, SectionPos section) {
-        return hasPoints() ? (getStart().isInsideOf(world, section) || getEnd().isInsideOf(world, section)) : false;
-    }
-
-    @Override
-    public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
-        return hasPoints() ? (getStart().isInsideOf(world, chunk) || getEnd().isInsideOf(world, chunk)) : false;
+    public void correctDataScopes(LevelReader world) {
+        DataScope startScope = this.getStart().getDataScope(world);
+        DataScope endScope = this.getEnd().getDataScope(world);
+        if(startScope == DataScope.STATIC_CHUNK && endScope != DataScope.STATIC_CHUNK)
+            this.getStart().setDataScope(DataScope.BLOCKENTITY);
+        if(startScope != DataScope.STATIC_CHUNK && endScope == DataScope.STATIC_CHUNK)
+            this.getEnd().setDataScope(DataScope.BLOCKENTITY);
     }
 
     @Override
@@ -136,8 +108,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         if(!hasPoints()) throw new IllegalStateException("Can't get data storage holder for connection with null point(s)");
         return getStart().getDataStorageHolder(world);
     }
-
-    public void updateShape(LevelReader world, float pTicks) {}
 
     public boolean isBeingTrackedBy(ServerPlayer player, InsertionPolicy mode) {
         if(mode == InsertionPolicy.SINGLE) return getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player);
@@ -208,7 +178,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
      */
     public abstract GridConnection inverseCopy();
     public abstract CompoundTag writeTo(CompoundTag in);
-    public abstract String getConnectionTypeName();
+    public abstract String describeConnectionType();
     public boolean canTraverse() { return getStart() != null && getEnd() != null && trns != null && trns.isEnabled(); }
     public Transmitter<?> getTransmitter() { return trns; }
     public boolean startsWith(GridUUID address) { return getStart().equals(address); }
@@ -231,7 +201,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     public boolean equals(Object other) {
         if(other == this) return true;
         if(!(other instanceof GridConnection that)) return false;
-        return isAsymmetricallyEqual(this.getStart(), this.getEnd(), that.getStart(), that.getEnd());
+        return GridUUID.areAsymmetricallyEqual(this.getStart(), this.getEnd(), that.getStart(), that.getEnd());
     }
 
     @Override
@@ -241,7 +211,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
 
     @Override
     public String toString() { 
-        return getConnectionTypeName() + "[" + getStart() + " -> " + getEnd() + "]"; 
+        return describeConnectionType() + "[" + getStart() + " -> " + getEnd() + "]"; 
     }
 
     public float calculateTraversalCost() {
@@ -294,6 +264,40 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         return new GridUUID[] { start, end };
     }
 
+    public void updateShapeFixed(LevelReader world) { updateShape(world, 1); }
+    public void updateShape(LevelReader world, float pTicks) {}
+
+    public TrackedStreamable getPrimaryConstruct(LevelReader world) {
+        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd())[0];
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT) 
+    public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
+        return hasPoints() ? (getStart().isInFrustum(world, view) && getEnd().isInFrustum(world, view)) : false;
+    }
+
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer player) {
+        return hasPoints() ? (getStart().isBeingTrackedBy(player) || getEnd().isBeingTrackedBy(player)) : false;
+    }
+
+    @Override
+    public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
+        if(world.isClientSide() || isClientSide()) throw new IllegalArgumentException("Attempted to send a client-bound packet as a client! YOU CAN'T DO THAT!!!!");
+        sendToClientsTracking(world, getStart(), getEnd(), packet, InsertionPolicy.SYMMETRIC);
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, SectionPos section) {
+        return hasPoints() ? (getStart().isInsideOf(world, section) || getEnd().isInsideOf(world, section)) : false;
+    }
+
+    @Override
+    public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
+        return hasPoints() ? (getStart().isInsideOf(world, chunk) || getEnd().isInsideOf(world, chunk)) : false;
+    }
+
     public static final class ConnectionKey extends GridConnection {
 
         private final GridUUID start, end;
@@ -308,7 +312,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         @Override public GridUUID getEnd() { return end; }
         @Override public boolean isClientSide() { return false; }
         @Override public CompoundTag writeTo(CompoundTag in) { return in; }
-        @Override public String getConnectionTypeName() { return "ConnectionKey"; }
+        @Override public String describeConnectionType() { return "ConnectionKey"; }
         @Override public void adjustSpan(LevelReader world, float length) { return; }
 
         @Override

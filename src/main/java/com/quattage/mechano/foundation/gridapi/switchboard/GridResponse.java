@@ -17,7 +17,6 @@ import com.quattage.mechano.foundation.gridapi.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.gridapi.landmark.identifier.UUIDDiscriminator;
 
 import io.netty.buffer.ByteBuf;
-import net.createmod.catnip.net.base.BasePacketPayload;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
@@ -61,8 +60,9 @@ public enum GridResponse implements StringRepresentable {
         @Override public void encode(ByteBuf buffer, GridResponse value) { buffer.writeByte(value.ordinal()); }
     };
 
-    public static void logUnhandled(BasePacketPayload packet, GridResponse response) {
-        Mechano.LOGGER.error("Response type '" + response + "' is unsupported for the packet (" + packet.getClass().getSimpleName() + ")");
+    public static void logUnhandled(GridResponse response, @Nullable Object o) {
+        Mechano.LOGGER.error(("Response type '" + response + "' is unsupported") 
+            + o == null ? "!" : (" for handler '" + o.getClass().getSimpleName() + "'!"));
     }
 
     private final boolean isTask;
@@ -152,6 +152,10 @@ public enum GridResponse implements StringRepresentable {
 
         public static AnchorSynchronizer of(GridUUID addr) {
             return new AnchorSynchronizer(addr, Byte.MIN_VALUE, true);
+        }
+
+        public static AnchorSynchronizer of(GridUUID addr, int connections) {
+            return new AnchorSynchronizer(addr, (byte)(connections - 128), true);
         }
 
         public static final StreamCodec<RegistryFriendlyByteBuf, AnchorSynchronizer> STREAM_CODEC = StreamCodec.composite(

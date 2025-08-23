@@ -42,7 +42,7 @@ public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?>
                 // TODO implement this? 
                 global.destroyLink(start, end);
             }
-            case null, default -> GridResponse.logUnhandled(this, task);
+            case null, default -> GridResponse.logUnhandled(task, this);
         }
     }
 }

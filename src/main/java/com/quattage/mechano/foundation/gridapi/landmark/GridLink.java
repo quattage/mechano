@@ -101,7 +101,7 @@ public final class GridLink extends GridConnection {
     @Override public GridUUID getStart() { return start.getAddress(); }
     @Override public GridUUID getEnd() { return end.getAddress(); }
     @Override public boolean isClientSide() { return false; }
-    @Override public String getConnectionTypeName() { 
+    @Override public String describeConnectionType() { 
         return "GridLink(" + trns.getType() + ")";
     }
 

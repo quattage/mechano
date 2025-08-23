@@ -109,7 +109,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         assertSided(world, false);
 
         IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
-        if(holder == null) return null;
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + key.getPrimaryConstruct(world));
+            return null;
+        }
 
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, false);
@@ -126,6 +130,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 key.getEnd().setDataScope(DataScope.BLOCKENTITY);
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder == null) {
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + key.getPrimaryConstruct(world) + " (scope reassigned)");
+                return null;
+            }
+
             if(holder instanceof BlockEntity be) {
                 Server sdata = getAsServer(be, false);
                 acquired = sdata.get(world, key);
@@ -154,7 +164,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         assertSided(world, false);
 
         IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
-        if(holder == null) return null;
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.server(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + key.getPrimaryConstruct(world));
+            return null;
+        }
 
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, false);
@@ -175,9 +189,15 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 key.getEnd().setDataScope(DataScope.BLOCKENTITY);
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder == null) {
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + key.getPrimaryConstruct(world) + " (scope reassigned)");
+                return null;
+            }
+
             if(holder instanceof BlockEntity be) {
                 Server sdata = getAsServer(be, false);
-                removed = sdata.pop(world, key);
+                removed = sdata == null ? null : sdata.pop(world, key);
                 if(removed != null) {
                     if(Mechano.USE_VERBOSE_LINK_TRACKING)
                         SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
@@ -224,7 +244,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         assertSided(world, false);
 
         IAttachmentHolder holder = link.getDataStorageHolder(world);
-        if(holder == null) return false;
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.server(world).getDebugTracker().log("Failed to add " + link + " - No holder could be found at " + link.getPrimaryConstruct(world));
+            return false;
+        }
 
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, true);
@@ -294,17 +318,26 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         return (Client)data;
     }
 
+
     public static @Nullable GridCatenary getAsClient(LevelReader world, GridConnection key) {
+        return getAsClient(world, key, false);
+    }
+
+    public static @Nullable GridCatenary getAsClient(LevelReader world, GridConnection key, boolean force) {
 
         Objects.requireNonNull(world);
         Objects.requireNonNull(key);
         assertSided(world, true);
 
-        IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
-        if(holder == null) return null;
+        IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.client(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + key.getPrimaryConstruct(world));
+            return null;
+        }
 
         if(holder instanceof LevelChunk chunk) {
-            ClientSectionable data = getAsClient(chunk, false);
+            ClientSectionable data = getAsClient(chunk, force);
             GridCatenary acquired = null;
             if(data != null) acquired = data.get(world, key);
             if(acquired != null) return acquired;
@@ -317,8 +350,14 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 key.getEnd().setDataScope(DataScope.BLOCKENTITY);
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder == null) {
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    SidedGridDispatcher.client(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + key.getPrimaryConstruct(world) + " (scope reassigned)");
+                return null;
+            }
+
             if(holder instanceof BlockEntity be) {
-                Client sdata = getAsClient(be, false);
+                Client sdata = getAsClient(be, force);
                 return sdata == null ? null : sdata.get(world, key);
             }
 
@@ -327,11 +366,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
             return null;
         }
         if(holder instanceof Entity e) {
-            Client data = getAsClient(e, false);
+            Client data = getAsClient(e, force);
             return data == null ? null : data.get(world, key);
         }
         if(holder instanceof BlockEntity be) {
-            Client data = getAsClient(be, false);
+            Client data = getAsClient(be, force);
             return data == null ? null : data.get(world, key);
         }
         throwBadHolderType(holder);
@@ -344,7 +383,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
         assertSided(world, true);
 
         IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
-        if(holder == null) return null;
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.client(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + key.getPrimaryConstruct(world));
+            return null;
+        }
 
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, false);
@@ -365,6 +408,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
                 key.getEnd().setDataScope(DataScope.BLOCKENTITY);
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
+            if(holder == null) {
+                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    SidedGridDispatcher.client(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + key.getPrimaryConstruct(world) + " (scope reassigned)");
+                return null;
+            }
+
             if(holder instanceof BlockEntity be) {
                 Client sdata = getAsClient(be, false);
                 removed = sdata.pop(world, key);
@@ -411,7 +460,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static boolean pushAsClient(LevelReader world, GridCatenary cat) {
         
         IAttachmentHolder holder = cat.getPrimaryConstruct(world).getDataStorageHolder(world);
-        if(holder == null) return false;
+        if(holder == null) {
+            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                SidedGridDispatcher.client(world).getDebugTracker().log("Failed to add " + cat + " - No holder could be found at " + cat.getPrimaryConstruct(world));
+            return false;
+        }
 
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, true);

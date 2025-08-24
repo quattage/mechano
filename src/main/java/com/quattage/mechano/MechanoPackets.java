@@ -3,11 +3,11 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.foundation.gridapi.switchboard.AnchorSurrogateDestroyPacket;
-import com.quattage.mechano.foundation.gridapi.switchboard.AnchorSyncPacket;
-import com.quattage.mechano.foundation.gridapi.switchboard.LinkRequestPacket;
-import com.quattage.mechano.foundation.gridapi.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.gridapi.switchboard.LinkSwapPacket;
+import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
+import com.quattage.mechano.foundation.api.switchboard.AnchorSyncPacket;
+import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
+import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.LinkSwapPacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestRequestPacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestResponsePacket;
 import com.quattage.mechano.infrastructure.manifest.ManifestResultPacket;

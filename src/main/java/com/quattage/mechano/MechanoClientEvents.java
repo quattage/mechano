@@ -1,14 +1,14 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.gridapi.ClientGrid;
-import com.quattage.mechano.foundation.gridapi.Griddable;
-import com.quattage.mechano.foundation.gridapi.anchor.AnchorGuiLayer;
-import com.quattage.mechano.foundation.gridapi.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.gridapi.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAccessor;
-import com.quattage.mechano.foundation.gridapi.catenary.CatenaryModelProvider;
-import com.quattage.mechano.foundation.gridapi.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.ClientGrid;
+import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
@@ -41,9 +41,6 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 public class MechanoClientEvents {
 
     private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
-
-    private static long frameTime = System.nanoTime();
-    private static float deltaSeconds = 0f;
 
     public static boolean shouldRenderOverlay(Minecraft mc) {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
@@ -84,14 +81,6 @@ public class MechanoClientEvents {
             cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
                 Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
         });
-
-        long now = System.nanoTime();
-        deltaSeconds = (now - frameTime) / 1_000_000_000f;
-        frameTime = now;
-    }
-
-    public static float getDeltaSeconds() {
-        return deltaSeconds;
     }
 
 

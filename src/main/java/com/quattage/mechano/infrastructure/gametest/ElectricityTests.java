@@ -5,9 +5,9 @@ import java.io.PrintWriter;
 import java.util.Random;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.gridapi.watt.DoubleSigmoidVoltageCurve;
-import com.quattage.mechano.foundation.gridapi.watt.Joule;
-import com.quattage.mechano.foundation.gridapi.watt.Voltage;
+import com.quattage.mechano.foundation.api.watt.DoubleSigmoidVoltageCurve;
+import com.quattage.mechano.foundation.api.watt.Joule;
+import com.quattage.mechano.foundation.api.watt.Voltage;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;

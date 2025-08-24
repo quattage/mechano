@@ -16,12 +16,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.gridapi.Griddable;
-import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
-import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
-import com.quattage.mechano.foundation.gridapi.blockEntity.GriddableBlockEntity.TransientStructureContainer;
-import com.quattage.mechano.foundation.gridapi.entity.GriddableContraptionAttachment;
+import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
+import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
+import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.TransientStructureContainer;
+import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;

@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation.block;
 
+import com.quattage.mechano.foundation.api.blockEntity.SimpleBlockEntity;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.gridapi.blockEntity.SimpleBlockEntity;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;

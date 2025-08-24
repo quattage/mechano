@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.quattage.mechano.foundation.gridapi.Griddable;
-import com.quattage.mechano.foundation.gridapi.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Entity.RemovalReason;

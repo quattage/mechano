@@ -3,9 +3,9 @@ package com.quattage.mechano.foundation.mixin.client;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 
-import com.quattage.mechano.foundation.gridapi.LinkDataStorable;
-import com.quattage.mechano.foundation.gridapi.catenary.CatenaryAccessor;
-import com.quattage.mechano.foundation.gridapi.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.world.entity.Entity;

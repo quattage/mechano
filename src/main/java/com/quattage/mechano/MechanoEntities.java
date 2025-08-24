@@ -1,7 +1,7 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.gridapi.entity.GriddableEntity;
-import com.quattage.mechano.foundation.gridapi.entity.GriddableEntity.SingleAnchorEntityRenderer;
+import com.quattage.mechano.foundation.api.entity.GriddableEntity;
+import com.quattage.mechano.foundation.api.entity.GriddableEntity.SingleAnchorEntityRenderer;
 import com.tterrag.registrate.util.entry.EntityEntry;
 
 import net.minecraft.world.entity.MobCategory;

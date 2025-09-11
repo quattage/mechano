@@ -1,6 +1,9 @@
 package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.foundation.api.ClientGrid;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
@@ -14,7 +17,8 @@ public record AnchorSyncPacket(AnchorSynchronizer anchor) implements Clientbound
         AnchorSyncPacket::new
     );
     @Override public PacketTypeProvider getTypeProvider() { return MechanoPackets.ANCHOR_SYNC_S2C; }
-    @Override public void handle(LocalPlayer player) { 
-        anchor.applyAndGet(player.level(), false); 
+    @Override public void handle(LocalPlayer player) {
+        ClientGrid grid = SidedGridDispatcher.client(player);
+        grid.syncSingleAnchor(anchor, ProcessMode.TRY_THEN_SCHEDULE);
     }
 }

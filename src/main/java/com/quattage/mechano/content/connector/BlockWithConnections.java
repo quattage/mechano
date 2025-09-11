@@ -24,12 +24,12 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public abstract class ConnectorBlock<T extends GriddableBlockEntity> extends CombinedOrientedBlock implements ConnectorHostOverridable, BERefreshable<T> {
+public abstract class BlockWithConnections<T extends GriddableBlockEntity> extends CombinedOrientedBlock implements ConnectorHostOverridable, BERefreshable<T> {
 
     protected static final VoxelShape ROOT_X = Block.box(0, 7, 7, 10, 9, 9);
     protected static final VoxelShape ROOT_Y = Block.box(7, 7, 0, 9, 9, 10);
 
-    public ConnectorBlock(Properties pProperties) {
+    public BlockWithConnections(Properties pProperties) {
         super(pProperties);
     }
 
@@ -103,7 +103,7 @@ public abstract class ConnectorBlock<T extends GriddableBlockEntity> extends Com
 
     @Override
     public @Nullable PushReaction getPistonPushReaction(BlockState state) {
-        return PushReaction.DESTROY;
+        return PushReaction.NORMAL;
     }
 
     @Override

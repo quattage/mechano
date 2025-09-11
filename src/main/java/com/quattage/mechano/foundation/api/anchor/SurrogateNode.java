@@ -14,9 +14,11 @@ import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.NodeMap;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.LevelReader;
 
@@ -180,12 +182,12 @@ public final class SurrogateNode {
         }
     }
 
-    public void forEachAssociated(LevelReader world, Int2ObjectOpenHashMap<GridUUID> composite, Consumer<GridNode> action) {
+    public void forEachAssociated(LevelReader world, Object2IntOpenHashMap<BlockPos> composite, Consumer<GridNode> action) {
         ServerGrid grid = SidedGridDispatcher.server(world);
-        for(Int2ObjectMap.Entry<GridUUID> subsurrogate : composite.int2ObjectEntrySet()) {
-            ServerMatrix matrix = grid.getMatrixByIndex(subsurrogate.getIntKey());
+        for(Object2IntMap.Entry<BlockPos> subsurrogate : composite.object2IntEntrySet()) {
+            ServerMatrix matrix = grid.getMatrixByIndex(subsurrogate.getIntValue());
             if(matrix == null || matrix.nodes == null) continue;
-            GridUUID walkingAddress = subsurrogate.getValue();
+            GridUUID walkingAddress = new VoxelUUID(subsurrogate.getKey(), 0);
             for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
                 walkingAddress = walkingAddress.indexedCopy(x);
                 GridNode node = matrix.nodes.get(walkingAddress);

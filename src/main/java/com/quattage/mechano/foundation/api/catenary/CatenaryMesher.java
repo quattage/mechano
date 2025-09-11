@@ -9,19 +9,16 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributeHolder;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.ModelType;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Stick;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Thickness;
-import com.quattage.mechano.foundation.api.catenary.model.CatenaryModel;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
-import net.createmod.catnip.theme.Color;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.BlockAndTintGetter;
@@ -572,7 +569,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
     public CatenaryMesher walkUVs(Stick stick, float arclength) {
         data[42] = arclength;
         data[42] %= CatenaryAttributes.TEX_DIMS[1];
-        data[43] = data[42] + (stick.length) * 8;
+        data[43] = data[42] + (stick.getLength()) * 8;
         if(atlas == null || !useTextureAtlas) return this;
         return this;
     }
@@ -611,110 +608,4 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         data[44] = data[45];
         return this;
     }
-
-    /**
-     * Represents a singular point in 3D space
-     * with a controllable position and velocity.
-     * <h2>Important Note:</h2>
-     * All coordinates for both Points and Sticks fall within the parent
-     * wire's Local frame of reference. This point's position vector
-     * does NOT represent a point in the world. For more information, 
-     * read the javadoc attached to {@link CatenaryModel}
-     */
-    public static class Point {
-
-        public Vector3f pos;
-        public Vector3f lastPos;
-        public boolean pinned;
-
-        public Point(Vector3f pos) {
-            this.pos = new Vector3f(pos);
-            this.lastPos = new Vector3f(pos);
-            this.pinned = false;
-        }
-
-        public void clearPos() {
-            this.pos.set(0, 0, 0);
-            this.lastPos.set(0, 0, 0);
-        }
-
-        public void setPos(Vector3f pos) {
-            this.lastPos.set(this.pos);
-            this.pos.set(pos);
-        }
-
-        @Override
-        public String toString() {
-            return"(" + String.format("%4.3f" , pos.x) + ", " +  String.format("%4.3f" , pos.y) + ", " +  String.format("%4.3f" , pos.z) + ")";
-        }
-
-        public void drawDebug(Vec3 basis, int hashIndex) {
-            VectorHelper.drawDebugBox(basis.add(pos.x, pos.y, pos.z), 0.05f, Color.BLACK, "point_" + hashIndex);
-        }
-
-        public int getLight(Vec3 basis, BlockAndTintGetter world) {
-            BlockPos pos = new BlockPos((int)Math.floor(this.pos.x + basis.x), (int)Math.floor(this.pos.y + basis.y), (int)Math.floor(this.pos.z + basis.z));
-            return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, pos), world.getBrightness(LightLayer.SKY, pos));
-        }
-    }
-
-    /**
-     * A physical link connecting two {@link Point points}
-     * Designed as a way for PBD/particle simulations to
-     * apprixmimate the behaviour of chains by representing
-     * an arbitrary volume as a length.
-     * <h2>Important Note:</h2>
-     * All coordinates for both Points and Sticks fall within the parent
-     * wire's Local frame of reference. For more information, 
-     * read the javadoc attached to {@link CatenaryModel}
-     */
-    public static class Stick {
-
-        public final Point start, end;
-        public float length;
-        public Vector3f facing;
-        public Vector3f center;
-
-        public Stick(Point start, Point end) {
-            this.start = start;
-            this.end = end;
-            this.facing = new Vector3f();
-            this.center = new Vector3f();
-        }
-
-        public Vector3f computeCenter() {
-            center.x = (start.pos.x + end.pos.x) / 2f;
-            center.y = (start.pos.y + end.pos.y) / 2f;
-            center.z = (start.pos.z + end.pos.z) / 2f;
-            return center;
-        }
-
-        public Vector3f computeForward() {
-            facing.x = (float)(start.pos.x - end.pos.x);
-            facing.y = (float)(start.pos.y - end.pos.y);
-            facing.z = (float)(start.pos.z - end.pos.z);
-            this.length = facing.length() / 2f;
-            return facing.normalize();
-        }
-
-        public Vector3f getForward() {
-            return facing;
-        }
-
-        public Vector3f start(float pTicks) {
-            if(pTicks < 0) return start.pos;
-            return start.lastPos.lerp(start.pos, pTicks, new Vector3f());
-        }
-
-        public Vector3f end(float pTicks) {
-            if(pTicks < 0) return end.pos;
-            return end.lastPos.lerp(end.pos, pTicks, new Vector3f());
-        }
-
-        @Override
-        public String toString() {
-            return "(" + String.format("%.2f", start.pos.x) + ", " + String.format("%.2f", start.pos.y) + ", " + String.format("%.2f", start.pos.z) + "  ->  " + String.format("%.2f", end.pos.x) + ", " + String.format("%.2f", end.pos.y) + ", " + String.format("%.2f", end.pos.z) + ")";
-        }
-    }
-
 }

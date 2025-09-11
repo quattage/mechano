@@ -8,30 +8,28 @@ import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.TransientStructureContainer;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
 import com.simibubi.create.content.contraptions.StructureTransform;
 
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,14 +37,16 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo;
 
 /**
- * TODO pr create to make this easier
+ * this mixin ensures that BlockEntity instances that were part of the world 
+ * and have Grid data associated with them get preserved for long enough that 
+ * the data can be moved over to contraption during its assembly process, since
+ * the AbstractContraptionEntity doesn't get added until after all blocks (and BEs)
+ * are destroyed.
  */
 @Mixin(Contraption.class)
-public abstract class ContraptionMixin implements MovingGriddableAccessor {
+public abstract class ContraptionMixin implements MovingGriddableAccessor, CatenaryAccessor {
 
-    @Unique private final List<TransientStructureContainer> griddables = new ArrayList<>(11);
-    @Unique @Nullable private GriddableContraptionAttachment deferredData = null;
-
+    private final List<TransientStructureContainer> mechano$griddables = new ArrayList<>(11);
     @Shadow private Map<BlockPos, BlockEntity> presentBlockEntities;
     @Shadow private AbstractContraptionEntity entity;
 
@@ -66,7 +66,8 @@ public abstract class ContraptionMixin implements MovingGriddableAccessor {
         if(!(actor instanceof GriddableMovementBehaviour gmb)) return;
         BlockEntity be = world.getBlockEntity(add);
         if(!(be instanceof GriddableBlockEntity gbe)) return;
-        griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), add));
+        if(!gbe.getSurrogate().isSynced(world)) return;
+        mechano$griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), add));
     }
 
     @Inject(
@@ -86,62 +87,36 @@ public abstract class ContraptionMixin implements MovingGriddableAccessor {
         MovementBehaviour actor = MovementBehaviour.REGISTRY.get(block.state());
         if(!(actor instanceof GriddableMovementBehaviour gmb)) return;
         if(!(blockEntity instanceof GriddableBlockEntity gbe)) return;
-        griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), targetPos));
+        mechano$griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), targetPos));
     }
 
     @Inject(method="onEntityCreated", at = { @At(value = "TAIL") })
     private void mechano$onContraptionPrepare(AbstractContraptionEntity entity, CallbackInfo info) {
-        invokeAssemble(entity, deferredData);
-        deferredData = null;
-        griddables.clear(); // clear the array because its contents have to be re-acquired later
+        invokeAssemble(entity);
+        mechano$griddables.clear(); // clear the array because its contents have to be re-acquired later
     }
 
-    @Inject(method="onEntityRemoved", at = { @At(value = "TAIL") })
-    private void mechano$onContraptionDispose(AbstractContraptionEntity entity, CallbackInfo info) {
-        invokeDisassemble(entity);
-        griddables.clear(); // clear the array just in case the contraption instance persists (i dunno how this shit works man)
-    }
-
-    @Inject(
-        method="onEntityInitialize", at = { @At(value = "HEAD") },
-        cancellable = false, remap = false
-    )
-    private void mechano$onBlockEntityReify(Level world, AbstractContraptionEntity entity, CallbackInfo info) {
-        if(world.isClientSide) {
-            for(BlockEntity be : presentBlockEntities.values()) {
-                if(!(be instanceof GriddableBlockEntity gbe)) continue;
-                gbe.applyContraptionOverride(entity);
-            }
-        }
-    }
-
-    @Inject(
-        method="writeNBT", at = { @At(value = "TAIL") },
-        cancellable = false, remap = false,
-        locals = LocalCapture.CAPTURE_FAILHARD
-    )
-    private void mechano$writeComposite(HolderLookup.Provider registries, boolean spawnPacket, CallbackInfoReturnable<CompoundTag> cir, CompoundTag nbt) {
-        Griddable<?> attachment = entity.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
-        if(!(attachment instanceof GriddableContraptionAttachment data)) return;
-        data.writeCompositeTo(nbt);
-    }
-
-    @Inject(
-        method="readNBT", at = { @At(value = "TAIL") },
-        cancellable = false, remap = false
-    )
-    private void mechano$readComposite(Level world, CompoundTag nbt, boolean spawnData, CallbackInfo info) {
-        ListTag composite = nbt.getList("GridComposite", Tag.TAG_COMPOUND);
-        if(composite == null || composite.isEmpty()) {
-            deferredData = null;
+    @Inject(method = "onEntityInitialize", at = { @At(value = "HEAD") })
+    private void mechano$onEntityInit(Level world, AbstractContraptionEntity entity, CallbackInfo info) {
+        if(!world.isClientSide) return;
+        Contraption cast = (Contraption)(Object)this;
+        if(cast.presentBlockEntities == null || cast.presentBlockEntities.isEmpty()) 
             return;
-        }
-        deferredData = new GriddableContraptionAttachment();
-        deferredData.readCompositeFrom(composite);
+        GriddableContraptionAttachment data = new GriddableContraptionAttachment(entity);
+        data.getAnchors(); // apply aliased addresses to all constituant griddables and cache the result
+        entity.setData(MechanoData.ANCHOR_ATTACHMENT, data);
+    }
+
+    @Override
+    public @Nullable ObjectSet<GridCatenary> getCatenaries() {
+        if(entity == null) return null;
+        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        if(storage == null) return null;
+        return storage.getAll();
     }
 
     @Override
     public List<TransientStructureContainer> getTransientGriddables() {
-        return griddables;
+        return mechano$griddables;
     }
 }

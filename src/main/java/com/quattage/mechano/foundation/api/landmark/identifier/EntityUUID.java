@@ -38,8 +38,8 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class EntityUUID extends GridUUID {
 
-    private UUID uuid;
-    private int index;
+    private final UUID uuid;
+    private final int index;
     private @Nullable Griddable<? extends Entity> points;
 
     public EntityUUID(UUID uuid, int index) {
@@ -132,8 +132,8 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public float getAttachedSizeFactor(LevelReader world) {
-        return getOrFindGriddable(world) == null ? 0 : (float)points.getSource().getBoundingBox().getSize();
+    public float getWeight(LevelReader world) {
+        return getOrFindGriddable(world) == null ? Float.MAX_VALUE : (float)points.getSource().getBoundingBox().getSize();
     }
 
     @Override

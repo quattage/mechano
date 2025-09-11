@@ -26,7 +26,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -57,7 +56,7 @@ public class MechanoClientEvents {
         Griddable<?> holder = GriddableEntityAttachment.of(e, false);
         if(holder == null) return;
         ((CatenaryAccessor)e).forEachCatenary(cat -> {
-            cat.renderDynamic(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
+            cat.render(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
         });
     }
 
@@ -78,7 +77,7 @@ public class MechanoClientEvents {
         ((CatenaryAccessor)player).forEachCatenary(cat -> {
             if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).createSupplementaryAddress()))
                 return;
-            cat.renderDynamic(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
+            cat.render(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
                 Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
         });
     }
@@ -143,8 +142,7 @@ public class MechanoClientEvents {
      * die, change their game mode, etc - These cases need to be accounted for cuz they'll break shit, yknow?
      */
     @SubscribeEvent public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) { ClientGrid.destroyCachedPoints(); }
-    @SubscribeEvent public static void onLogout(ClientPlayerNetworkEvent.LoggingOut evt) { ClientGrid.destroyCachedPoints(); }
-    // the player dying is handled by the LivingEntityMixin since death-related events apply to all entities
+    // the player dying is handled by the EntityMixin since death-related events apply to all entities
 
     public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
         evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);

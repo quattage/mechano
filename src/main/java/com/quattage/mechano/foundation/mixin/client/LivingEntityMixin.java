@@ -36,15 +36,16 @@ public abstract class LivingEntityMixin implements CatenaryAccessor {
         if(!cast.level().isClientSide) return;
         LinkDataStorable.Client storage = LinkDataStorable.getAsClient(cast, false);
         if(storage == null) {
-            this.mechano$Catenaries.clear();
-            if(mechano$Catenaries instanceof ObjectOpenHashSet<GridCatenary> cats) 
+            if(mechano$Catenaries instanceof ObjectOpenHashSet<GridCatenary> cats) {
+                this.mechano$Catenaries.clear();
                 cats.trim(2);
+            }
             return;
         }
         this.mechano$Catenaries = storage.getAll();
         for(GridCatenary cat : this.mechano$Catenaries) {
             if(!cat.hasPoints()) continue;
-            cat.updateShape(cast.level(), 1);
+            cat.update(cast.level(), 1);
         }
     }
 }

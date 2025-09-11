@@ -91,7 +91,6 @@ public class AnchorArray {
     }
 
 
-
     public static class DynamicAnchorArray extends AnchorArray {
         
         public DynamicAnchorArray() {
@@ -103,6 +102,14 @@ public class AnchorArray {
             System.arraycopy(anchors, 0, copy, 0, anchors.length);
             copy[anchors.length] = anchor;
             this.anchors = copy;
+        }
+
+        public void combineWith(AnchorArray other) {
+            for(int x = 0; x < other.size(); x++) {
+                AnchorPoint anchor = other.getByIndex(x);
+                if(anchor == null) continue;
+                add(anchor);
+            }
         }
     }
 

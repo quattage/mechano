@@ -62,6 +62,14 @@ public class VectorHelper {
     }
 
     /***
+     * Draws multiple debug boxes at the given Vec3 positions
+     */
+    public static void drawDebugBox(Vec3... positions) {
+        for(Vec3 pos : positions)
+            drawDebugBox(pos, toColor(pos), "debug_" + pos.hashCode());
+    }
+
+    /***
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos, String hash) {

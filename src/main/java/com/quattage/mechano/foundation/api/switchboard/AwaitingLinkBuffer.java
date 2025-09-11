@@ -10,10 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -21,10 +18,11 @@ import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchr
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.client.Minecraft;
 
 public class AwaitingLinkBuffer {
 
-    public static final int LIFETIME_MS = 5000;
+    public static final int LIFETIME_MS = 4000;
     private static final int BUFFER_MAX = 256;
     
     private final ObjectOpenHashSet<Awaiting> buffer = new ObjectOpenHashSet<>();
@@ -42,7 +40,7 @@ public class AwaitingLinkBuffer {
         Objects.requireNonNull(end);
         Objects.requireNonNull(trns);
         if(futureTask == null) futureTask = GridResponse.values()[0];
-
+        if(!futureTask.indicatesCompletion()) return;
         synchronized(buffer) {
             if(buffer.size() > BUFFER_MAX) {
                 grid.warn("Couldn't defer task '" + futureTask + "' to this buffer - This buffer is already full! " 
@@ -58,6 +56,26 @@ public class AwaitingLinkBuffer {
         }
     }
 
+    public void deferForLater(ClientGrid grid, AnchorSynchronizer start, AnchorSynchronizer end) {
+
+        Objects.requireNonNull(grid);
+        Objects.requireNonNull(start);
+        Objects.requireNonNull(end);
+        synchronized(buffer) {
+            if(buffer.size() > BUFFER_MAX) {
+                grid.warn("Couldn't defer task '" + GridResponse.TASK_DESTROY_LINK + "' to this buffer - This buffer is already full! " 
+                    + "(buffer currently contains " + buffer.size() + " members)");
+                return;
+            }
+            Awaiting old = buffer.get(new ConnectionKey(start, end));
+            if(old != null) {
+                old.refresh(GridResponse.TASK_DESTROY_LINK);
+                return;
+            }
+            buffer.add(new Awaiting(start, end));
+        }
+    }
+
     public void deferForLater(ClientGrid grid, AnchorSynchronizer start, AnchorSynchronizer end, GridUUID replacement, GridResponse futureTask) {
 
         Objects.requireNonNull(grid);
@@ -65,6 +83,7 @@ public class AwaitingLinkBuffer {
         Objects.requireNonNull(end);
         if(!(futureTask == GridResponse.TASK_SWAP_END || futureTask == GridResponse.TASK_SWAP_START))
             futureTask = GridResponse.TASK_SWAP_START;
+        if(!futureTask.indicatesCompletion()) return;
 
         synchronized(buffer) {
             if(buffer.size() > BUFFER_MAX) {
@@ -79,6 +98,45 @@ public class AwaitingLinkBuffer {
             }
             buffer.add(new Awaiting(start, end, replacement, futureTask));
         }
+        return;
+    }
+
+    public void deferForLater(ClientGrid grid, GridCatenary cat) {
+        Objects.requireNonNull(grid);
+        Objects.requireNonNull(cat);
+        synchronized(buffer) {
+            if(buffer.size() > BUFFER_MAX) {
+                grid.warn("Couldn't defer task '" + GridResponse.TASK_REASSERT_LINK + "' to this buffer - This buffer is already full! " 
+                    + "(buffer currently contains " + buffer.size() + " members)");
+                return;
+            }
+            Awaiting old = buffer.get(cat);
+            if(old != null) {
+                old.refresh(GridResponse.TASK_REASSERT_LINK);
+                return;
+            }
+            buffer.add(new Awaiting(cat));
+        }
+        return;
+    }
+
+    public void deferForLater(ClientGrid grid, AnchorSynchronizer addr) {
+        Objects.requireNonNull(grid);
+        Objects.requireNonNull(addr);
+        synchronized(buffer) {
+            if(buffer.size() > BUFFER_MAX) {
+                grid.warn("Couldn't defer task '" + GridResponse.TASK_SYNC_SINGLE + "' to this buffer - This buffer is already full! " 
+                    + "(buffer currently contains " + buffer.size() + " members)");
+                return;
+            }
+            Awaiting old = buffer.get(new ConnectionKey(addr, addr));
+            if(old != null) {
+                old.refresh(GridResponse.TASK_SYNC_SINGLE);
+                return;
+            }
+            buffer.add(new Awaiting(addr));
+        }
+        return;
     }
 
     public void tryTickFrom(ClientGrid owner) {
@@ -103,14 +161,15 @@ public class AwaitingLinkBuffer {
             Iterator<Awaiting> bufferIterator = buffer.iterator();
             while(bufferIterator.hasNext()) {
                 Awaiting awaiting = bufferIterator.next();
-                if(awaiting == null || awaiting.tryExpire()) {
-                    if(!awaiting.wasTaskCompleted) 
-                        Mechano.LOGGER.warn("Task " + awaiting + " expired before completion.");
+                if(Minecraft.getInstance().isPaused()) 
+                    awaiting.refresh(awaiting.awaitingTask);
+                else if(awaiting == null || awaiting.taskStatus.indicatesCompletion())
+                    bufferIterator.remove();
+                else if(awaiting.tryExpire()) {
+                    Mechano.LOGGER.warn("Task " + awaiting + " expired before completion after " + awaiting.attempts + " attempts. (error " + awaiting.taskStatus.ordinal() + ": " + awaiting.taskStatus + ")");
                     bufferIterator.remove(); 
                     continue;
                 }
-                if(awaiting.wasTaskCompleted)
-                    bufferIterator.remove();
             }
         }
     }
@@ -137,11 +196,13 @@ public class AwaitingLinkBuffer {
 
         private final AnchorSynchronizer start;
         private final AnchorSynchronizer end;
+        private final @Nullable GridCatenary reassert;
         private final @Nullable GridUUID replacement;
         private final @Nullable TransmitterType<?> trns;
         private GridResponse awaitingTask;
+        private GridResponse taskStatus = GridResponse.NONE;
         private long expiryTime;
-        private boolean wasTaskCompleted = false;
+        private short attempts;
 
         protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, GridResponse awaitingTask) {
             this.start = start;
@@ -150,6 +211,7 @@ public class AwaitingLinkBuffer {
             this.awaitingTask = awaitingTask;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
             this.replacement = null;
+            this.reassert = null;
         }
 
         protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end,  GridUUID replacement, GridResponse awaitingTask) {
@@ -159,12 +221,42 @@ public class AwaitingLinkBuffer {
             this.awaitingTask = awaitingTask;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
             this.replacement = replacement;
+            this.reassert = null;
+        }
+
+        protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end) {
+            this.start = start;
+            this.end = end;
+            this.trns = null;
+            this.awaitingTask = GridResponse.TASK_DESTROY_LINK;
+            this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
+            this.replacement = null;
+            this.reassert = null;
+        }
+
+        protected Awaiting(GridCatenary cat) {
+            this.start = null;
+            this.end = null;
+            this.trns = cat.getTransmitter() == null ? null : cat.getTransmitter().getType();
+            this.awaitingTask = GridResponse.TASK_REASSERT_LINK;
+            this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
+            this.replacement = null;
+            this.reassert = cat;
+        }
+
+        protected Awaiting(AnchorSynchronizer anchor) {
+            this.start = anchor;
+            this.end = anchor;
+            this.trns = null;
+            this.awaitingTask = GridResponse.TASK_SYNC_SINGLE;
+            this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
+            this.replacement = null;
+            this.reassert = null;
         }
 
         public boolean tryExpire() {
-            if(expiryTime > System.currentTimeMillis())
-                return false;
-            return true;
+            if(attempts >= Short.MAX_VALUE) return true;
+            return expiryTime < System.currentTimeMillis();
         }
 
         public void refresh(GridResponse awaitingTask) {
@@ -172,75 +264,26 @@ public class AwaitingLinkBuffer {
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
         }
 
-        public boolean tryDeferredAction(ClientGrid owner) {
+        public void tryDeferredAction(ClientGrid owner) {
             Objects.requireNonNull(owner);
-            if(wasTaskCompleted) {
-                tryExpire();
-                return true;
-            }
-            if(awaitingTask == GridResponse.NONE) return true;
+            if(taskStatus.indicatesCompletion() || awaitingTask == GridResponse.NONE || tryExpire()) return;         
+            attempts++;
             switch(awaitingTask) {
-                case TASK_CREATE_LINK: return recreate(owner);
-                case TASK_SYNC_ANCHORS: return resync(owner);
-                case TASK_SWAP_START: return swapstart(owner);
-                case TASK_SWAP_END: return swapend(owner);
-                default:
-                    Mechano.LOGGER.error("Couldn't perform deferred action " + this + " - This response type is unsupported!");
+                case TASK_CREATE_LINK -> taskStatus = owner.handleCatenaryCreation(start, end, trns, ProcessMode.IMMEDIATE);
+                case TASK_SYNC_SINGLE -> taskStatus = owner.syncSingleAnchor(start, ProcessMode.IMMEDIATE);
+                case TASK_REASSERT_LINK -> taskStatus = owner.reassertCatenary(reassert, ProcessMode.IMMEDIATE);
+                case TASK_DESTROY_LINK -> taskStatus = owner.handleCatenaryDestruction(start, end, ProcessMode.IMMEDIATE);
+                case TASK_DESTROY_LINK_LAZY -> taskStatus = owner.ensureCatenaryDestroyed(start, end);
+                case TASK_SYNC_ANCHORS -> taskStatus = owner.handleCatenarySync(start, end, trns, ProcessMode.IMMEDIATE);
+                case TASK_SWAP_START -> taskStatus = owner.swapStartingPoint(start, end, replacement, ProcessMode.IMMEDIATE);
+                case TASK_SWAP_END -> taskStatus = owner.swapEndingPoint(start, end, replacement, ProcessMode.IMMEDIATE);
+                case null, default -> GridResponse.logUnhandled(awaitingTask, this);
             }
-            return false;
-        }
-
-        private boolean recreate(ClientGrid grid) {
-            AnchorPoint startAnchor = start.applyAndGet(grid.getWorld());
-            AnchorPoint endAnchor = end.applyAndGet(grid.getWorld());
-            if(startAnchor == null || endAnchor == null) return tryExpire();
-            TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(grid.getWorld(), startAnchor, endAnchor);
-            GridCatenary cat = new GridCatenary(grid.getWorld(), (AnchorPoint)ordered[0], (AnchorPoint)ordered[1], trns);
-            LinkDataStorable.put(grid.getWorld(), cat);
-            cat.sendLevelUpdates(grid.getWorld());
-            this.awaitingTask = GridResponse.NONE;
-            wasTaskCompleted = true;
-            return true;
-        }
-
-        private boolean resync(ClientGrid grid) {
-            GridCatenary cat = LinkDataStorable.getAsClient(grid.getWorld(), new ConnectionKey(start, end));
-            if(cat == null) return recreate(grid);
-            cat.reinitializeModel(grid.getWorld(), CatenaryAttributes.Initializer.RESTING_SIMULATION);
-            this.awaitingTask = GridResponse.NONE;
-            wasTaskCompleted = true;
-            return true;
-        }
-
-        private boolean swapstart(ClientGrid grid) {
-            AnchorPoint startAnchor = start.applyAndGet(grid.getWorld());
-            AnchorPoint endAnchor = end.applyAndGet(grid.getWorld());
-            if(startAnchor == null || endAnchor == null) return tryExpire();
-            ConnectionKey key = new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress());
-            GridCatenary cat = LinkDataStorable.getAsClient(grid.getWorld(), key, true);
-            if(cat == null) cat = LinkDataStorable.getAsClient(grid.getWorld(), key.inverseCopy(), true);
-            if(cat == null) return tryExpire();
-            cat.replaceAddresses(grid.getWorld(), replacement, cat.getEnd(), null);
-            wasTaskCompleted = true;
-            return true;
-        }
-
-        private boolean swapend(ClientGrid grid) {
-            AnchorPoint startAnchor = start.applyAndGet(grid.getWorld());
-            AnchorPoint endAnchor = end.applyAndGet(grid.getWorld());
-            if(startAnchor == null || endAnchor == null) return tryExpire();
-            ConnectionKey key = new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress());
-            GridCatenary cat = LinkDataStorable.getAsClient(grid.getWorld(), key, true);
-            if(cat == null) cat = LinkDataStorable.getAsClient(grid.getWorld(), key.inverseCopy(), true);
-            if(cat == null) return tryExpire();
-            cat.replaceAddresses(grid.getWorld(), cat.getStart(), replacement, null);
-            wasTaskCompleted = true;
-            return true;
         }
 
         @Override
         public String toString() {
-            return "Awaiting['" + awaitingTask + "', @" + SidedGridDispatcher.MANIFEST.getTime(expiryTime) + "]";
+            return "Awaiting['" + awaitingTask + "', @" + SidedGridDispatcher.MANIFEST.getTime(expiryTime) + ", " + start.getAddress() + ", " + end.getAddress() + ", " + replacement + "]";
         }
 
         @Override
@@ -253,15 +296,39 @@ public class AwaitingLinkBuffer {
         @Override
         public boolean equals(Object obj) {
             if(obj == this) return true;
-            if(obj instanceof ConnectionKey key) 
+            if(obj instanceof ConnectionKey key) {
+                if(reassert != null)
+                    return GridUUID.areAsymmetricallyEqual(reassert.getStart(), reassert.getEnd(), key.getStart(), key.getEnd());
                 return GridUUID.areAsymmetricallyEqual(this.start, this.end, key.getStart(), key.getEnd());
+            }
             if(!(obj instanceof Awaiting that)) return false;
+            if(reassert != null)
+                return GridUUID.areAsymmetricallyEqual(reassert.getStart(), reassert.getEnd(), that.start, that.end);
             return GridUUID.areAsymmetricallyEqual(this.start, this.end, that.start, that.end);
         }
 
         @Override
         public int hashCode() {
+            if(reassert != null) return reassert.hashCode();
             return start.getAddress().hashCode() + end.getAddress().hashCode();
         }
+    }
+
+    /**
+     * Controls scheduling behaviour for implementing tasks
+     */
+    public enum ProcessMode {
+        /**
+         * executed immediately with no scheduling
+         */
+        IMMEDIATE,
+        /**
+         * scheduled immediately without an initial execution
+         */
+        SCHEDULE,
+        /**
+         * execute immediately, then scedule only if the initial execution fails
+         */
+        TRY_THEN_SCHEDULE,
     }
 }

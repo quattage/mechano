@@ -294,7 +294,7 @@ public class ServerMatrix implements Worldly {
                 GridLink linkToTest = linksIterator.next();
                 if(linkToTest.endsWith(node.getAddress())) {
                     linksIterator.remove();
-                    if(broadcast) linkToTest.broadcast(globalGrid.getWorld(), GridResponse.TASK_DESTROY_LINK);
+                    if(broadcast) linkToTest.broadcast(globalGrid.getWorld(), GridResponse.TASK_DESTROY_LINK_LAZY);
                 }
             }
             if(!destination.hasLinks()) 

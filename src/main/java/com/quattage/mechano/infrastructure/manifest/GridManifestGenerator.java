@@ -176,7 +176,7 @@ public class GridManifestGenerator {
 
     public void handleComplete(LocalPlayer player, String message) {
         String directory = Minecraft.getInstance().gameDirectory.getAbsolutePath();
-        directory += "/logs/mechano_grid_dump.log";
+        directory += "/logs/grid_manifest.log";
         File output = new File(directory);
 
         String header = "▛▙▘▘■   Mechano GridAPI manifest generator [" + MechanoBuildParameters.VERSION +  

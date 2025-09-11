@@ -89,7 +89,7 @@ public class LinkDataTracker {
                 GridConnection conn = LinkDataStorable.getAsClient(link.world, link.connection);
                 if(conn instanceof GridCatenary cat)
                     out += "\n\t\t" + "⇄ Verified, " + conn.describeDataScope(link.world) + " :: (" + cat.describeCatenary() + ") @" + conn.hashCode() + "\n";
-                else  out += "\n\t\t🞮 Unverified (⚠ " + conn + ")\n";
+                else  out += "\n\t\t⚠ Leaked!\n";
             }
         }
 
@@ -100,10 +100,10 @@ public class LinkDataTracker {
 
         private final long time;
         private final LevelReader world;
-        private final IAttachmentHolder holder;
+        private final @Nullable IAttachmentHolder holder;
         private final GridConnection connection;
 
-        public TrackedLink(LevelReader world, IAttachmentHolder holder, GridConnection connection) {
+        public TrackedLink(LevelReader world, @Nullable IAttachmentHolder holder, GridConnection connection) {
             Objects.requireNonNull(world);
             Objects.requireNonNull(holder);
             Objects.requireNonNull(connection);
@@ -128,7 +128,7 @@ public class LinkDataTracker {
         }
 
         public String getHolderName() {
-            return holder.getClass().getSimpleName();
+            return holder == null ? "N/A" : holder.getClass().getSimpleName();
         }
 
         public String getTime() {

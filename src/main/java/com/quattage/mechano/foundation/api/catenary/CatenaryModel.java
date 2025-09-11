@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.catenary.model;
+package com.quattage.mechano.foundation.api.catenary;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -6,10 +6,6 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.api.catenary.CatenaryMesher;
-import com.quattage.mechano.foundation.api.catenary.CatenaryMesher.Point;
-import com.quattage.mechano.foundation.api.catenary.Tensionable;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 
@@ -94,10 +90,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public void setOrderedOffset(LevelReader world, AnchorPoint start, AnchorPoint end, float pTicks) {
-        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
-        setOffset(((AnchorPoint)ordered[0]).getPos(world, pTicks), ((AnchorPoint)ordered[1]).getPos(world, pTicks));
-    }
+    public abstract T setOrderedOffset(LevelReader world, AnchorPoint start, AnchorPoint end, float pTicks);
 
     /**
      * A helper call that sets the first and last
@@ -129,9 +122,8 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
 
     /**
      * Updates this Catenary. May bake, simulate, or otherwise
-     * construct mesh-related based on the implementing subclass's
-     * requirements in any structure deemed suitable by this
-     * Catenary's underlying implementation. 
+     * construct mesh-related data based on the requirements
+     * and data structure of this particular implementing catenary.
      * <p>
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
@@ -140,12 +132,14 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
-     * It is reccomended that most Catenary implementations run
-     * on a fixed update cycle for performance and stability
-     * reasons. Updating Catenarys in a frame-dependent context
-     * (such as a renderer) comes with an immediate performance
-     * hit, as well as a potential to produce bad results at 
-     * especially high or low framerates. 
+     * It is highly recommended that this method is called
+     * in a fixed timestep, such as a BlockEntity tick, as
+     * most catenary implementations are tuned for a 20 tick
+     * fixed update cycle for performance and stability
+     * reasons. Updating Catenaries in a frame-dependent context
+     * (such as a BlockEntityRenderer) comes with an immediate performance
+     * hit, as well as a strong likelihood to produce poor results,
+     * especially at particularly high or low framerates. 
      */
     public abstract void update();
 
@@ -255,7 +249,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      */
     public int getSegmentCount() {
         return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(length * CatenaryAttributes.DRAW_RES)));
-    }   
+    }  
 
     public Vector3f getGravity(int points) {
         return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * 0.3f, new Vector3f());

@@ -3,15 +3,16 @@ package com.quattage.mechano.foundation.api.switchboard;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
+import com.quattage.mechano.foundation.helper.Duo;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
 import net.minecraft.client.Minecraft;
@@ -31,9 +32,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * Handler for LOD-adjacent functionality on both the client and the server.
  * On the client, this interface provides barebones functionality for frustum culling.
  * On the server, provisions are made to assist with entity and chunk-based tracking.
- * 
- * 
- * Note that any of these methods may throw if called from the wrong side.
  */
 public interface TrackedStreamable {
 
@@ -57,11 +55,25 @@ public interface TrackedStreamable {
      * @param packet
      */
     public abstract void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet);
+
+    /**
+     * Determines whether or not this object is being tracked by the given ServerPlayer.
+     * "Tracking" refers to when an Entity, BlockEntity, or LevelChunk is visible or otherwise
+     * loaded by a player in a given instant.
+     * @param player
+     * @return <code>True</code> if the given {@Link ServerPlayer} is tracking this object.
+     */
     public abstract boolean isBeingTrackedBy(ServerPlayer player);
+
     public abstract boolean isInsideOf(LevelReader world, ChunkPos chunk);
     public abstract boolean isInsideOf(LevelReader world, SectionPos section);
     public abstract int getSectionY(LevelReader world);
 
+    /**
+     * Broadcasts chunk updates. If this object doesn't belong to a chunk, this method
+     * will not do anything.
+     * @param world
+     */
     public abstract void sendLevelUpdates(Level world);
 
     @OnlyIn(Dist.CLIENT)
@@ -107,8 +119,28 @@ public interface TrackedStreamable {
     public default void setDataScope(DataScope scope) {}
 
     /**
+     * The priority of a streamable object is a loose approximation of
+     * its standing when compared to others. Where necessary, two
+     * streamable constructs are compared based on this integer
+     * to determine which one should take priority when determining
+     * {@link #orderedByAssertionPriority() assertion priority}.
+     * @return An integer (higher = more preferential treatment)
+     */
+    public abstract int getPriority();
+
+    /**
+     * The effective weight of a streamable object as 
+     * described by the size of the hitbox it's attached to.
+     * Used when applying forces to attached objects if those
+     * objects can move.
+     * @param world
+     * @return
+     */
+    public abstract float getWeight(LevelReader world);
+
+    /**
      * Determines whether or not this tracked object represents
-     * some kind of movable construct or a if a {@link CatenaryModel}
+     * some kind of movable construct or if a {@link CatenaryModel}
      * interacting with this tracked object is actively moving.
      * This method is used to determine whether or not a 
      * {@link GridCatenary} is able to bake itself to the LevelChunk
@@ -119,6 +151,7 @@ public interface TrackedStreamable {
     public default boolean canMoveDynamically(LevelReader world) {
         return getDataScope(world) != DataScope.STATIC_CHUNK;
     }
+
 
     /**
      * Broadcasts a {@link GridResponse} pertaining to this tracked
@@ -166,9 +199,9 @@ public interface TrackedStreamable {
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
      * @return The {@link TrackedStreamable} that takes priority over the other out 
-     * of the two provided. Will never be null unless something goes horribly wrong.
+     * of the two provided. Will never be null.
      */
-    public static TrackedStreamable[] orderedByAssertionPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end) {
+    public static <T extends TrackedStreamable> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end) {
         return orderedByAssertionPriority(world, start, end, false);
     }
 
@@ -181,6 +214,7 @@ public interface TrackedStreamable {
      * but it is also used for enforcing server-sided {@link GridLink} assertion order
      * in a deterministic way. The code that does this can be found in the 
      * {@link LinkDataStorable polymorphic data store}
+     * @param <T>
      * @param world World to operate within.
      * @param start The first TrackedStreamable to check
      * @param end The second TrackedStreamable to check (order is completely arbitrary here)
@@ -189,75 +223,58 @@ public interface TrackedStreamable {
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
      * @return The {@link TrackedStreamable} that takes priority over the other out 
-     * of the two provided. Will never be null unless something goes horribly wrong.
+     * of the two provided. Will never be null.
      */
-    public static TrackedStreamable[] orderedByAssertionPriority(LevelReader world, TrackedStreamable start, TrackedStreamable end, boolean useFrustum) {
-
-        // welcome to spaghettiville
-        TrackedStreamable[] out = new TrackedStreamable[2];
-        if(start == null && end != null) { out[0] = end; out[1] = start; return out; }
-        if(start != null && end == null) { out[0] = start; out[1] = end; return out; }
+    public static <T extends TrackedStreamable> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end, boolean useFrustum) {
+        if(start == null && end != null) { 
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedStreamable - The provided starting streamable was null.");
+            return Duo.of(end, start);
+        } if(start != null && end == null) { 
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedStreamable - The provided ending streamable was null.");
+            return Duo.of(start, end);
+        } if(start == null && end == null)
+            throw new IllegalStateException("Can't assert priority between two null TrackedStreamable instances!");
 
         if(world != null) {
             final boolean canStartMove = start.canMoveDynamically(world);
             final boolean canEndMove = end.canMoveDynamically(world);
-            if(canStartMove && !canEndMove) {
-                out[0] = start;
-                out[1] = end;
-                return out;
-            }
-            if(canEndMove && !canStartMove) {
-                out[0] = end;
-                out[1] = start;
-                return out;
-            }
-
+            if(canStartMove && !canEndMove)
+                return Duo.of(start, end);
+            if(canEndMove && !canStartMove)
+                return Duo.of(end, start);
             if(world.isClientSide() && useFrustum) {
                 final boolean isStartVisible = start.isVisibleOnScreen(world);
                 final boolean isEndVisible = end.isVisibleOnScreen(world);
-                if(isStartVisible && !isEndVisible) {
-                    out[0] = start;
-                    out[1] = end;
-                    return out;
-                }
-                if(isEndVisible && !isStartVisible) {
-                    out[0] = end;
-                    out[1] = start;
-                    return out;
-                }
+                if(isStartVisible && !isEndVisible)
+                    return Duo.of(start, end);
+                if(isEndVisible && !isStartVisible)
+                    return Duo.of(end, start);
             }
         }
+        if(start.getPriority() > end.getPriority())
+            return Duo.of(start, end);
+        if(end.getPriority() > start.getPriority())
+            return Duo.of(end, start);
 
-        /**
-         * this edge case handling is here as a "temporary" measure to ensure
-         * that we don't try to inject dynamic wire geometry to the level chunk,
-         * since that would be stupid.
-         */
-        if(start instanceof VoxelUUID) {
-            if(!(end instanceof VoxelUUID)) {
-                out[0] = end;
-                out[1] = start;
-                return out;
-            }
-        }
-
-        if(end instanceof VoxelUUID) {
-            if(!(start instanceof VoxelUUID)) {
-                out[0] = start;
-                out[1] = end;
-                return out;
-            }
-        }
-
-        if(start.hashCode() > end.hashCode()) {
-            out[0] = start;
-            out[1] = end;
-            return out;
-        }
-        
-        out[0] = end;
-        out[1] = start;
-        return out;
+        // hashcode fallback just to enforce determinism
+        if(start.hashCode() > end.hashCode())
+            return Duo.of(start, end);
+        return Duo.of(end, start);
     }
 
+    /**
+     * Enfores a sorting order when distinguishing between two TrackedStreamable objects based on their weight.
+     * Weight is approximated by determining the relative size of the hitboxes attached to <code>start</code> 
+     * and <code>end</code>. Additionally, this method will return <code>null</code> in cases where neither 
+     * construct is movable.
+     * @param world
+     */
+    public static <T extends TrackedStreamable> @Nullable Duo<T> orderedByWeight(LevelReader world, @Nullable T start, @Nullable T end) {
+        if(!start.canMoveDynamically(world) && !end.canMoveDynamically(world)) return null;
+        float startWeight = start == null ? Float.MAX_VALUE : (start.canMoveDynamically(world) ? start.getWeight(world) : Float.MAX_VALUE);
+        float endWeight = end == null ? Float.MAX_VALUE : (end.canMoveDynamically(world) ? end.getWeight(world) : Float.MAX_VALUE);
+        if(startWeight - endWeight < 0.05f) return Duo.of(end, start);
+        if(startWeight - endWeight > 0.05f) return Duo.of(start, end);
+        return Duo.of(start, end);
+    }
 }

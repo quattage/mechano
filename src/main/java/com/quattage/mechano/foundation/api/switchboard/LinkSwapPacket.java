@@ -7,6 +7,7 @@ import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
@@ -42,8 +43,8 @@ public record LinkSwapPacket(AnchorSynchronizer start, AnchorSynchronizer end, G
         ClientGrid grid = SidedGridDispatcher.client(player);
         replace.setDataScope(DataScope.BLOCKENTITY);
         switch(task) {
-            case TASK_SWAP_START -> grid.swapStartingPoint(start, end, replace, true);
-            case TASK_SWAP_END -> grid.swapEndingPoint(start, end, replace, true);
+            case TASK_SWAP_START -> grid.swapStartingPoint(start, end, replace, ProcessMode.TRY_THEN_SCHEDULE);
+            case TASK_SWAP_END -> grid.swapEndingPoint(start, end, replace, ProcessMode.TRY_THEN_SCHEDULE);
             case null, default -> GridResponse.logUnhandled(task, this);
         }
     }

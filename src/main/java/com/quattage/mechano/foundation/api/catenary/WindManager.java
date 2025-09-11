@@ -18,6 +18,7 @@ public class WindManager {
 
     public static final WindManager INSTANCE = new WindManager();
 
+    // TODO establish a LUT based on biome, Y level, weather, etc.
     private final float[] windSpeeds = new float[] { 0.000f, 0.021f, 0.042f };
     private boolean enabled = true;
     private WeakReference<PerlinSimplexNoise> noise = new WeakReference<>(null);

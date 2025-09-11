@@ -6,8 +6,11 @@ import static com.quattage.mechano.Mechano.lang;
 import java.util.List;
 
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
+import com.quattage.mechano.foundation.api.landmark.GridConnection;
+import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -46,9 +49,14 @@ public interface Transmitable<T extends Transmitter<?>> {
         lang().text("hi >:)").forGoggles(tooltip);
         GridUUID prevAddress = held.stack.get(UUIDDiscriminator.ATTACHMENT);
         AnchorPoint prevAnchor = prevAddress == null ? null : prevAddress.getAnchor(world);
-        if(target.equals(prevAnchor)) return GridResponse.FAIL_DUPLICATE;
         if(!target.isCompatableWith(getTransmitterType())) return GridResponse.FAIL_HELD_INCOMPATIBLE;
         if(!target.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
+        if(prevAnchor == null) {
+            if(target.equals(prevAnchor)) return GridResponse.FAIL_DUPLICATE;
+            return GridResponse.TASK_SELECT_SUCCESS;
+        }
+        GridConnection preexisting = LinkDataStorable.getAsClient(world, new ConnectionKey(prevAnchor.getAddress(), target.getAddress()));
+        if(preexisting != null) return GridResponse.FAIL_DUPLICATE;
         return GridResponse.TASK_SELECT_SUCCESS;
     }
 

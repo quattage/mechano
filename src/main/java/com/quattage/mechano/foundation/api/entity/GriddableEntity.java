@@ -101,7 +101,7 @@ public final class GriddableEntity extends Entity implements Griddable<Griddable
     @Override public void kill() { this.remove(Entity.RemovalReason.KILLED); }
     @Override public ProjectileDeflection deflection(Projectile projectile) { return ProjectileDeflection.NONE; }
     @Override public PushReaction getPistonPushReaction() { return PushReaction.IGNORE; }
-    @Override public AABB getBoundingBoxForCulling() { return getAnchor().makeHitbox(level(), true); }
+    @Override public AABB getBoundingBoxForCulling() { return getAnchor().makeHitbox(level(), true, 1); }
     @Override public boolean canTrample(BlockState state, BlockPos pos, float fallDistance) { return false; }
 
     @Override
@@ -131,7 +131,7 @@ public final class GriddableEntity extends Entity implements Griddable<Griddable
 
     @Override
     public EntityDimensions getDimensions(Pose pose) {        
-        AABB box = getAnchor().makeHitbox(level(), true);
+        AABB box = getAnchor().makeHitbox(level(), true, 1);
         return EntityDimensions.fixed((float)box.maxX, (float)box.maxY);
     }
 

@@ -167,9 +167,9 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
      * @param world World to operate within
      * @param newAddress New address to use when replacing
      * @param newHolder New holder, which contaains <code>newAddress</code>, to rebind this node to.
-     * @param replaceLinks (Optional, defaults to <code>true</code>) If <code>true</code> transitive links will also have their nodes replaced.
+     * @param sendPackets Whether or not to sync changes to the client
      */
-    public void replaceHolder(LevelReader world, Griddable<?> newHolder, GridUUID newAddress) {
+    public void replaceHolder(LevelReader world, Griddable<?> newHolder, GridUUID newAddress, boolean sendPackets) {
         if(!(world instanceof ServerLevel sl)) return;
         Objects.requireNonNull(newHolder);
         if(newHolder.getSurrogate() == null) {
@@ -182,22 +182,21 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
             return;
         }
         assertNotDestroyed();
-
         /*
          * its important that packets are sent before any changes are made, since sendToClientsTracking()
-         * may fail if the new address (and/or holder) point to an Entity that hasn't yet been added to the world.
+         * may fail if the new address (and/or holder points to an Entity that hasn't yet been added to the world.
         */
         GridUUID oldAddress = this.address;
-        for(GridLink link : links) {
-            LinkDataStorable.popAsServer(world, link);
-            link.sendLevelUpdates(sl);
-            link.sendToClientsTracking(sl, new LinkSwapPacket(
-                AnchorSynchronizer.of(oldAddress, (byte)links.size()), 
-                AnchorSynchronizer.of(link.getEnd(), (byte)link.getEndNode().links.size()), 
-                newAddress, GridResponse.TASK_SWAP_START)
-            );
+        if(sendPackets) {
+            for(GridLink link : links) {
+                LinkDataStorable.popAsServer(world, link);
+                link.sendToClientsTracking(sl, new LinkSwapPacket(
+                    AnchorSynchronizer.of(oldAddress, (byte)links.size()), 
+                    AnchorSynchronizer.of(link.getEnd(), (byte)link.getEndNode().links.size()), 
+                    newAddress, GridResponse.TASK_SWAP_START)
+                );
+            }
         }
-
         owner.nodes.remove(this.address);
         this.address = newAddress;
         this.host = newHolder;
@@ -230,11 +229,15 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         }
         switch(response) {
             case TASK_CREATE_LINK, TASK_SYNC_ANCHORS -> {
+                if(!hasLinks()) {
+                    Mechano.LOGGER.warn("Response '" + response + "' ignored due to bad syncing context");
+                    return;
+                }
                 getGriddable().getSurrogate().sync(getOwner().getWorld(), getOwner());
                 getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
                 AnchorSynchronizer.of(this).sendToClients(world);
             }
-            case TASK_DESTROY_LINK, TASK_FORGET_ANCHORS -> {
+            case TASK_DESTROY_LINK, TASK_DESTROY_LINK_LAZY, TASK_FORGET_ANCHORS -> {
                 getGriddable().getSurrogate().forgetIfNeeded(getOwner().getWorld());
                 getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
                 AnchorSynchronizer.of(this).sendToClients(world);
@@ -329,6 +332,14 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         return links.contains(link);
     }
 
+    public boolean isLinkedTo(GridNode other) {
+        for(GridLink link : links) {
+            if(link.getEnd().equals(other.getAddress())) 
+                return true;
+        }
+        return false;
+    }
+
     @Override
     public Iterator<GridLink> iterator() {
         return links.iterator();
@@ -354,8 +365,10 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         assertNotDestroyed();
         UUIDDiscriminator.write(address, in);
         ListTag serializedLinks = new ListTag();
-        for(GridLink link : links)
+        for(GridLink link : links) {
+            link.fixDataScopes(getWorld(), true);
             serializedLinks.add(link.writeTo(new CompoundTag()));
+        }
         in.put("links", serializedLinks);
     }
 
@@ -460,8 +473,8 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     }
 
     @Override
-    public float getAttachedSizeFactor(LevelReader world) {
-        return address.getAttachedSizeFactor(world);
+    public float getWeight(LevelReader world) {
+        return address.getWeight(world);
     }
 
     @Override
@@ -488,5 +501,10 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     @Override
     public int hashCode() {
         return this.address.hashCode();
+    }
+
+    @Override
+    public int getPriority() {
+        return this.address == null ? 0 : this.address.getPriority();
     }
 }

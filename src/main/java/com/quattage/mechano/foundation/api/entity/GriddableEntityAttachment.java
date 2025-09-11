@@ -19,11 +19,14 @@ import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
 /**
  * A mirror implementation of {@link GriddableBlockEntity} built
@@ -37,18 +40,49 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  */
 public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAccessor {
 
+    public static final IAttachmentSerializer<CompoundTag, GriddableEntityAttachment> SERIALIZER = new IAttachmentSerializer<>() {
+        @Override
+        public GriddableEntityAttachment read(IAttachmentHolder holder, CompoundTag tag,
+                net.minecraft.core.HolderLookup.Provider provider) {
+            if(holder instanceof AbstractContraptionEntity ace) {
+                GriddableContraptionAttachment gca = new GriddableContraptionAttachment(ace);
+                gca.readCompositeFrom(tag);
+                return gca;
+            }
+            return new GriddableEntityAttachment(holder);
+        }
+        @Override
+        public @Nullable CompoundTag write(GriddableEntityAttachment attachment,
+                net.minecraft.core.HolderLookup.Provider provider) {
+            if(attachment instanceof GriddableContraptionAttachment gca && !gca.getCompositeUUIDs().isEmpty())
+                return gca.writeCompositeTo(new CompoundTag());
+            return null;
+        }
+    };
+
     protected Entity entity;
     protected AnchorArray anchors;
     protected final SurrogateNode surrogate = new SurrogateNode(this);
 
     @SuppressWarnings("unchecked")
     public static <T extends Entity> @Nullable Griddable<T> of(T e, boolean force) {
+        if(e instanceof Griddable<?> ap) return (Griddable<T>)ap;
+        if(e instanceof AbstractContraptionEntity ace) {
+            if(force) {
+                GriddableContraptionAttachment gca = new GriddableContraptionAttachment(ace);
+                ace.setData(MechanoData.ANCHOR_ATTACHMENT, gca);
+                return (Griddable<T>)gca;
+            }
+            GriddableEntityAttachment data = ace.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+            if(data == null) return null;
+            if(data instanceof GriddableContraptionAttachment) return (Griddable<T>) data;
+            ace.removeData(MechanoData.ANCHOR_ATTACHMENT);
+            return null;
+        }
         if(e == null) {
             Mechano.LOGGER.warn("Tried (and failed) to get Griddable for null entity!");
             return null;
         }
-
-        if(e instanceof Griddable<?> ap) return (Griddable<T>)ap;
         if(force) return (Griddable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
         return (Griddable<T>)e.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
     }
@@ -64,6 +98,7 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
         if(!(holder instanceof Entity entity))
             throw new IllegalArgumentException("GriddableEntityAttachments can only be attached to entities, got " + holder + "!");
         this.entity = entity;
+        // TODO provisions for optional anchor construction to allow APIs to declare circuits for entities
         constructAnchors(null);
     }
 

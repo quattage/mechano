@@ -36,13 +36,17 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 public enum GridResponse implements StringRepresentable {
 
     TASK_CREATE_LINK                     (true, false),
+    TASK_REASSERT_LINK                   (true, false),
     TASK_DESTROY_LINK                    (true, false),
+    TASK_DESTROY_LINK_LAZY               (true, false),
     TASK_FREE_LINK                       (true, false),
+    TASK_SYNC_SINGLE                     (true, false),
     TASK_SYNC_ANCHORS                    (true, false),
     TASK_FORGET_ANCHORS                  (true, false),
     TASK_SELECT_SUCCESS                  (true, false, HighlightMode.SHOW_SUCCESS),
     TASK_SWAP_START                      (true, false),
     TASK_SWAP_END                        (true, false),
+    TASK_COMPLETED                       (true, false, HighlightMode.SHOW_SUCCESS),
     FAIL_INTERACTION_CANCELLED           (false, true),
     FAIL_DESTINATION_UNSUPPORTED         (false, true),
     FAIL_HELD_INCOMPATIBLE               (false, false),
@@ -51,7 +55,10 @@ public enum GridResponse implements StringRepresentable {
     FAIL_TOO_CLOSE                       (false, true),
     FAIL_TOO_FAR                         (false, false),
     FAIL_DIM_MISMATCH                    (false, true),
-    FAIL_OUTDATED                        (false, true),
+    FAIL_START_MISSING                   (false, true),
+    FAIL_END_MISSING                     (false, true),
+    FAIL_BOTH_ENDS_MISSING               (false, true),
+    FAIL_CATENARY_NOT_FOUND              (false, true),
     FAIL_GENERIC                         (false, true, HighlightMode.SHOW_FAILURE),
     NONE                                 (false, false, HighlightMode.SHOW_PASSIVE);
 
@@ -60,9 +67,9 @@ public enum GridResponse implements StringRepresentable {
         @Override public void encode(ByteBuf buffer, GridResponse value) { buffer.writeByte(value.ordinal()); }
     };
 
-    public static void logUnhandled(GridResponse response, @Nullable Object o) {
-        Mechano.LOGGER.error(("Response type '" + response + "' is unsupported") 
-            + o == null ? "!" : (" for handler '" + o.getClass().getSimpleName() + "'!"));
+    public static void logUnhandled(@Nullable GridResponse response, @Nullable Object o) {
+        Mechano.LOGGER.error(("Response type '" + response + "' is not handled ") 
+            + o == null ? "!" : (" by handler in '" + o.getClass().getSimpleName() + "'!"));
     }
 
     private final boolean isTask;
@@ -202,15 +209,15 @@ public enum GridResponse implements StringRepresentable {
             if(points == null) {
                 if(log) {
                     Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " 
-                        + addr.toString(world) + " - No Griddable could be found at this address!");
+                        + addr + " - No Griddable could be found at this address!");
                 }
                 return null;
             }
             AnchorPoint point = points.getAnchor(addr.getIndex());
             if(point == null) {
                 if(log) {
-                    Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " + addr.toString(world) 
-                        + " - An Griddable could be found, but it has no AnchorPoint at the required index! (" + addr.toString(world) + ")");
+                    Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " + addr 
+                        + " - An Griddable could be found, but it has no AnchorPoint at the required index! (" + addr + ")");
                 }
                 return null;
             }
@@ -240,7 +247,7 @@ public enum GridResponse implements StringRepresentable {
         @Override public boolean isBeingTrackedBy(ServerPlayer player) { return addr.isBeingTrackedBy(player); }
         @Override public boolean canMoveDynamically(LevelReader world) { return addr.canMoveDynamically(world); }
         @Override public int getIndex() { return addr.getIndex(); }
-        @Override public float getAttachedSizeFactor(LevelReader world) { return addr.getAttachedSizeFactor(world); }
+        @Override public float getWeight(LevelReader world) { return addr.getWeight(world); }
         @Override public UUIDDiscriminator getDiscriminatorType() { return addr.getDiscriminatorType(); }
         @Override public GridUUID indexedCopy(int index) { return addr.indexedCopy(index); }
         @Override public BlockPos getBlockPos(LevelReader world) { return addr.getBlockPos(world); }
@@ -258,6 +265,8 @@ public enum GridResponse implements StringRepresentable {
         @Override public String toString() { return addr.toString(); }
         @Override public boolean isUnindexed(GridUUID other) { return addr.isUnindexed(other); }
         public GridUUID getAddress() { return addr; }
+        @Override
+        public int getPriority() { return addr.getPriority(); }
 
         @Override
         public boolean equals(Object obj) {
@@ -283,7 +292,7 @@ public enum GridResponse implements StringRepresentable {
          */
         SHOW_SUCCESS,
         /**
-         * SHows a red AABB drawn by Create's outliner
+         * Shows a red AABB drawn by Create's outliner
          */
         SHOW_FAILURE,
         /**

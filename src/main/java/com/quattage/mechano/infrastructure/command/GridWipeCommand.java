@@ -13,7 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 public class GridWipeCommand {
-    
+
     private static UUID requester = null;
     private static long requestTime = 0L;
 

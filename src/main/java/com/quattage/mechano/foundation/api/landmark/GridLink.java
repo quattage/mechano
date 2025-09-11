@@ -11,7 +11,9 @@ import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
+import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.helper.Duo;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
@@ -59,25 +61,25 @@ public final class GridLink extends GridConnection {
 
     @Override
     public void broadcast(ServerLevel world, GridResponse response) {
+        start.broadcast(world, response);
+        end.broadcast(world, response);
         switch(response) {
             case TASK_CREATE_LINK -> {
-                start.broadcast(world, response);
-                end.broadcast(world, response);
                 start.getGriddable().onConnectionCreated(start.getOwner().getWorld(), this);
                 end.getGriddable().onConnectionCreated(end.getOwner().getWorld(), this);
                 trns.onConnectionCreated(end.getOwner().getWorld(), this);
-                sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
             }
-            case TASK_DESTROY_LINK -> {
-                start.broadcast(world, response);
-                end.broadcast(world, response);
+            case TASK_DESTROY_LINK, TASK_DESTROY_LINK_LAZY -> {
                 start.getGriddable().onConnectionDestroyed(start.getOwner().getWorld(), this);
                 end.getGriddable().onConnectionDestroyed(end.getOwner().getWorld(), this);
                 trns.onConnectionDestroyed(end.getOwner().getWorld(), null, this);
-                sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
             }
-            case null, default -> Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
+            case null, default -> {
+                Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
+                return;
+            }
         }
+        sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
     }
 
     @Override
@@ -143,26 +145,23 @@ public final class GridLink extends GridConnection {
         return getPrimaryConstruct(world).getDataStorageHolder(world);
     }
 
-    /**
-     * Imparts forces upon attached entities
-     * according to this GridLink's tension
-     * @param world World to use as a basis for acquiring additional information about both ends of this catenary
-     */
-    public void updateKinematics(LevelReader world) {
+    @Override
+    public void update(LevelReader world, float pTicks) {
         if(!canMoveDynamically(world)) {
             Mechano.LOGGER.warn("Attempted invalid kinematic update for non-dynamic " + this);
             return;
         }
-        GridUUID[] ordered = orderedByWeight(world);
-        if(!ordered[1].canMoveDynamically(world)) return;
-        Vec3 diff = ordered[0].getPos(world).subtract(ordered[1].getPos(world));
+        Duo<GridUUID> ordered = TrackedStreamable.orderedByWeight(world, getStart(), getEnd());
+        if(ordered == null) return;
+        GridUUID first = ordered.first();
+        GridUUID second = ordered.second();
+        Vec3 diff = second.getPos(world).subtract(first.getPos(world));
         float softLength = getMaximumSpan() * CatenaryAttributes.KINEMATIC_SOFT;
         if(diff.length() < softLength) return;
-        ordered[1].applyForceToAttachment(world, diff.normalize().scale(
+        second.applyForceToAttachment(world, diff.normalize().scale(
             0.1f * Math.min(1f, (lengths[0] - softLength) / (lengths[0] - softLength))
         ));
     }
-
     @Override
     public void setDataScope(DataScope scope) {
         return;

@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class SingleConnectorBlock extends ConnectorBlock<SingleConnectorBlockEntity> {
+public class SingleConnectorBlock extends BlockWithConnections<SingleConnectorBlockEntity> {
 
     public SingleConnectorBlock(Properties pProperties) {
         super(pProperties);

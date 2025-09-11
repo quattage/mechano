@@ -152,7 +152,11 @@ public final class ServerGrid extends SidedGridDispatcher {
     /**
      * Destroys all {@link GridLink GridLinks} present in this {@link ServerGrid} that match the given 
      * <code>start</code> and <code>end</code> addresses. Calls to this method will send multiple packets
-     * to sync {@link AnchorPoint} status as well as to destroy the link itself.
+     * to sync {@link AnchorPoint} status as well as to destroy the link itself. This method is designed
+     * to be invoked in explicit scenarios, where the player (or some entity or level event) deliberately 
+     * destroys a link between two nodes. Chunk unloading is not a good use case for this method, 
+     * since the changes that this method makes are synced between the client and server, and so are
+     * permanent.
      * <h2>Link Symmetry</h2>
      * As far as implementations need to be aware, GridLinks are completely symmetrical. In the 
      * {@link ServerMatrix matrix} itself, The starting {@link GridNode node} stores a reference 

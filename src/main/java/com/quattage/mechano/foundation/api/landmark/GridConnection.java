@@ -9,7 +9,6 @@ import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.catenary.Tensionable;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
@@ -73,7 +72,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
             return;
         }
         if(mode == InsertionPolicy.ORDERED) {
-            TrackedStreamable priority = TrackedStreamable.orderedByAssertionPriority(world, start, end)[0];
+            TrackedStreamable priority = TrackedStreamable.orderedByAssertionPriority(world, start, end).first();
             for(ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if(priority.isBeingTrackedBy(player))
                     CatnipServices.NETWORK.sendToClient(player, packet);
@@ -87,19 +86,32 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         this.trns = trns;
     }
 
-    public void correctDataScopes(LevelReader world) {
+    public GridConnection fixDataScopes(LevelReader world) {
+        return fixDataScopes(world, false);
+    }
+
+    public GridConnection fixDataScopes(LevelReader world, boolean save) {
         DataScope startScope = this.getStart().getDataScope(world);
         DataScope endScope = this.getEnd().getDataScope(world);
-        if(startScope == DataScope.STATIC_CHUNK && endScope != DataScope.STATIC_CHUNK)
-            this.getStart().setDataScope(DataScope.BLOCKENTITY);
-        if(startScope != DataScope.STATIC_CHUNK && endScope == DataScope.STATIC_CHUNK)
-            this.getEnd().setDataScope(DataScope.BLOCKENTITY);
+        if(save) {
+            if(startScope == DataScope.BLOCKENTITY)
+                this.getStart().setDataScope(DataScope.STATIC_CHUNK);
+            if(endScope == DataScope.BLOCKENTITY)
+                this.getEnd().setDataScope(DataScope.STATIC_CHUNK);
+        } else {
+            if(startScope == DataScope.STATIC_CHUNK && endScope != DataScope.STATIC_CHUNK)
+                this.getStart().setDataScope(DataScope.BLOCKENTITY);
+            if(startScope != DataScope.STATIC_CHUNK && endScope == DataScope.STATIC_CHUNK)
+                this.getEnd().setDataScope(DataScope.BLOCKENTITY);
+        }
+        return this;
     }
 
     @Override
     public int getSectionY(LevelReader world) {
         if(!hasPoints()) throw new IllegalStateException("Can't get sectionY for connection with null point(s)!");
-        return getStart().getSectionY(world);
+        TrackedStreamable primary =  getPrimaryConstruct(world);
+        return primary.getSectionY(world);
     }
 
     @Override
@@ -129,39 +141,6 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
             throw new IllegalArgumentException("Sided mismatch encountered while removing " 
                 + this + " - Client-sided links cannot be added to server holders!");
         }
-    }
-
-    /**
-     * Ensures that the start/end {@link GridUUID addresses} can move,
-     * regardless of whether or not its owner can. This is used to
-     * allow attached wires and other rendering features to refresh
-     * dynamically in cases where they would otherwise automatically 
-     * freeze to save performance. 
-     * 
-     * <h3>Broadcasting with Data Scopes</h3>
-     * This {@Link GridConnection instance} will need
-     * will need to be reasserted at the time of invocation
-     * in order for changes to be reflected correctly. 
-     * This is because this method call changes the 
-     * {@link DataScope} of this AnchorPoint's address,
-     * which will change where the {@link GridCatenary}
-     * is stored in the {@Link LinkDataStorable}.
-     * This is done automatically by calling 
-     * 
-     * {@link GridCatenary#startMoving} or {@link GridCatenary#freezeInPlace}
-     * on the client. On the server, this method does not need to be called
-     * at all, since there is no distinction made between LevelChunk and
-     * BlockEntity data attachments there.
-     * 
-     * <p> Calls to this method
-     * will result in no change of this AnchorPoint's address
-     * already belongs to movable construct, such as an entity.
-     */
-    public void makeLocallyDynamic(LevelReader world) {
-        if(getStart().getDataScope(world) == DataScope.STATIC_CHUNK)
-            getStart().setDataScope(DataScope.BLOCKENTITY);
-        if(getEnd().getDataScope(world) == DataScope.STATIC_CHUNK)
-            getEnd().setDataScope(DataScope.BLOCKENTITY);
     }
 
     /** 
@@ -222,53 +201,23 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     }
 
     /**
-     * Returns an array containing both UUIDs in this connection
-     * ordered by their effective "weight." Weight in this
-     * case is a loose heuristic based on the attached entity
-     * block's physical size. This method is useful to determine
-     * which side of the connection should be pulled when 
-     * catenaries get taut.
-     * @param world
-     * @return An array of 2 UUIDs, where the first member 
-     * is considered heavier than the second.
+     * Updates visuals and kinematic stuff related to this GridConnection.
+     * On the server, calling this method will apply constraints to attached entities.
+     * On the client, this method constructs the mesh for rendering.
+     * @param world 
+     * @param pTicks
      */
-    public GridUUID[] orderedByWeight(LevelReader world) {
-        GridUUID start = getStart();
-        GridUUID end = getEnd();
+    public void update(LevelReader world, float pTicks) {}
 
-        if(!start.canMoveDynamically(world) && end.canMoveDynamically(world)) 
-            return new GridUUID[] { start, end };
-        if(start.canMoveDynamically(world) && !end.canMoveDynamically(world)) 
-            return new GridUUID[] { end, start };
-
-        if(start.canMoveDynamically(world) && end.canMoveDynamically(world)) {
-
-            if(start instanceof VoxelUUID && !(end instanceof VoxelUUID))
-                return new GridUUID[] { start, end };
-            if(end instanceof VoxelUUID && !(start instanceof VoxelUUID))
-                return new GridUUID[] { end, start };
-
-            float startSize = start.getAttachedSizeFactor(world);
-            float endSize = end.getAttachedSizeFactor(world);
-
-            if(startSize > endSize)
-                return new GridUUID[] { start, end };
-            if(endSize > startSize) 
-                return new GridUUID[] { end, start };
-            if(start.isAttachedToPlayer(world) && !end.isAttachedToPlayer(world)) 
-                return new GridUUID[] { start, end };
-            if(!start.isAttachedToPlayer(world) && end.isAttachedToPlayer(world))
-                return new GridUUID[] { end, start };
-            return new GridUUID[] { start, end };
-        }
-        return new GridUUID[] { start, end };
-    }
-
-    public void updateShapeFixed(LevelReader world) { updateShape(world, 1); }
-    public void updateShape(LevelReader world, float pTicks) {}
-
+    /**
+     * Gets the primary renderer/hoster for this GridConnection
+     * according to the {@link TrackedStreamable#orderedByAssertionPriority assertion priority}
+     * rules.
+     * @param world
+     * @return
+     */
     public TrackedStreamable getPrimaryConstruct(LevelReader world) {
-        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd())[0];
+        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd()).first();
     }
 
     @Override
@@ -296,6 +245,18 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
     @Override
     public boolean isInsideOf(LevelReader world, ChunkPos chunk) {
         return hasPoints() ? (getStart().isInsideOf(world, chunk) || getEnd().isInsideOf(world, chunk)) : false;
+    }
+
+    @Override
+    public int getPriority() {
+        if(!hasPoints()) return -1;
+        return getStart().getPriority() + getEnd().getPriority();
+    }
+
+    @Override
+    public float getWeight(LevelReader world) {
+        if(!hasPoints()) return Float.MAX_VALUE;
+        return getStart().getWeight(world) + getEnd().getWeight(world);
     }
 
     public static final class ConnectionKey extends GridConnection {
@@ -338,6 +299,11 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         @Override
         public void setDataScope(DataScope scope) {
             return;
+        }
+
+        @Override
+        public int getPriority() {
+            return -1;
         }
     }
 

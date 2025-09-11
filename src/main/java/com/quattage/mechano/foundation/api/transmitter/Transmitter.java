@@ -128,6 +128,11 @@ public abstract class Transmitter<T extends Transmitter<?>> {
     }
 
     @Override
+    public String toString() {
+        return getType().toString();
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if(this == obj) return true;
         if(!(obj instanceof Transmitter that)) return false;

@@ -10,8 +10,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
-import com.quattage.mechano.foundation.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -37,7 +36,6 @@ import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
@@ -88,14 +86,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     }
 
     @SubscribeEvent
-    public static void onEntityTick(EntityTickEvent.Post evt) {
-        if(evt.getEntity().level().isClientSide()) return;
-        if(!(evt.getEntity() instanceof CatenaryAccessor)) return;
-        LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getEntity(), false);
-        storage.forEach(link -> link.updateKinematics(evt.getEntity().level()));
-    }
-
-    @SubscribeEvent
     public static void onWorldLoad(LevelEvent.Load evt) {
         if(!(evt.getLevel() instanceof Level world)) return;
         SidedGridDispatcher grid = world.getExistingDataOrNull(MechanoData.GRID_ATTACHMENT);
@@ -126,7 +116,6 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         if(storage == null) return;
         storage.forEach(link -> {
             if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SINGLE)) return;
-            Mechano.LOGGER.info("Syncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
             CatnipServices.NETWORK.sendToClient(
                 evt.getPlayer(), LinkResponsePacket.of(
                     link.getStartNode(), link.getEndNode(), 
@@ -140,15 +129,15 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onChunkUnwatched(ChunkWatchEvent.UnWatch evt) {
         LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
-        // storage.forEach(link -> {
-        //     Mechano.LOGGER.info("Unsyncing " + link + " from (LevelChunk at " + evt.getPos() + ")");
-        //     CatnipServices.NETWORK.sendToClient(
-        //         evt.getPlayer(), LinkResponsePacket.of(
-        //             link.getStartNode(), link.getEndNode(), 
-        //             link.getTransmitter(),
-        //             GridResponse.TASK_FORGET_ANCHORS
-        //         ));
-        // });
+        storage.forEach(link -> {
+            if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SINGLE)) return;
+            CatnipServices.NETWORK.sendToClient(
+                evt.getPlayer(), LinkResponsePacket.of(
+                    link.getStartNode(), link.getEndNode(), 
+                    link.getTransmitter(),
+                    GridResponse.TASK_DESTROY_LINK_LAZY
+                ));
+        });
     }
 
     @SubscribeEvent

@@ -13,20 +13,27 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.catenary.CatenaryMesher.Stick;
-import com.quattage.mechano.foundation.api.catenary.model.CatenaryModel;
-import com.quattage.mechano.foundation.api.catenary.model.SimulatedCatenary;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.helper.VectorHelper;
 
+import net.createmod.catnip.theme.Color;
 import net.minecraft.Util;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.data.models.blockstates.PropertyDispatch.QuadFunction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.Vec3;
 
+/**
+ * A container class for various catenary-related things
+ */
 public class CatenaryAttributes {
 
     public static final boolean TEX_USE_MIPS = false;
@@ -47,6 +54,7 @@ public class CatenaryAttributes {
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
 
+    // TODO switch to custom shader using more optimized vertex format
     public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL 
         = Util.memoize((trns, chunk) -> {
             if(chunk) return RenderType.SOLID;
@@ -59,7 +67,6 @@ public class CatenaryAttributes {
                 .setOutputState(RenderType.MAIN_TARGET)
                 .setCullState(RenderType.CULL)
                 .createCompositeState(false); 
-            // TODO maybe switch to triangle strips for better performance 
             return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
         });
 
@@ -135,14 +142,15 @@ public class CatenaryAttributes {
 
         SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
             float loftLength, boolean recomputeNormals, float pTicks) -> {
-                if(previous == null) geo.computeMatrix(current.getForward());
-                else geo.computeMatrix(previous.getForward(), current.getForward());
+                Vector3f cDir = current.getFacing();
+                if(previous == null) geo.computeMatrix(current.getFacing());
+                else geo.computeMatrix(previous.getFacing(), cDir);
                 if(recomputeNormals) {
                     geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
                         .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
                 }
                 geo.place4Verts(current.start(pTicks), 0);
-                if(next != null) geo.computeMatrix(current.getForward(), next.getForward());
+                if(next != null) geo.computeMatrix(cDir, next.getFacing());
                 geo.place4Verts(current.end(pTicks), 4);
                 geo.walkUVs(current, loftLength);
                 geo.emitQuad(buffer, pose, geo.normAX(), geo.normAY(), geo.normAZ(), 0, 4, 5, 1);
@@ -151,7 +159,6 @@ public class CatenaryAttributes {
                 geo.emitQuad(buffer, pose, geo.normBX(), geo.normBY(), geo.normBZ(), 3, 7, 4, 0);
                 geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 6, 2);
         }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.extruder),
-
 
         CROSS(null, null), CROSS_CUTOUT(null, null),
         BILLBOARD(null, null), BILLBOARD_CUTOUT(null, null),
@@ -259,6 +266,115 @@ public class CatenaryAttributes {
 
         public float half() {
             return thick / 2f;
+        }
+    }
+
+
+
+
+
+
+    /**
+     * Represents a singular point in 3D space
+     * with a controllable position and velocity.
+     * <h2>Important Note:</h2>
+     * All coordinates for both Points and Sticks fall within the parent
+     * wire's Local frame of reference. This point's position vector
+     * does NOT represent a point in the world. For more information, 
+     * read the javadoc attached to {@link CatenaryModel}
+     */
+    public static class Point {
+
+        public Vector3f pos;
+        public Vector3f lastPos;
+        public boolean pinned;
+
+        public Point(Vector3f pos) {
+            this.pos = new Vector3f(pos);
+            this.lastPos = new Vector3f(pos);
+            this.pinned = false;
+        }
+
+        public Point(float x, float y, float z) {
+            this.pos = new Vector3f(x, y, z);
+            this.lastPos = new Vector3f(x, y, z);
+            this.pinned = false;
+        }
+
+        public void setPos(Vector3f pos) {
+            this.lastPos.set(this.pos);
+            this.pos.set(pos);
+        }
+
+        @Override
+        public String toString() {
+            return"(" + String.format("%4.3f" , pos.x) + ", " +  String.format("%4.3f" , pos.y) + ", " +  String.format("%4.3f" , pos.z) + ")";
+        }
+
+        public void drawDebug(Vec3 basis, int hashIndex) {
+            VectorHelper.drawDebugBox(basis.add(pos.x, pos.y, pos.z), 0.05f, Color.BLACK, "point_" + hashIndex);
+        }
+
+        public int getLight(Vec3 basis, BlockAndTintGetter world) {
+            BlockPos pos = new BlockPos((int)Math.floor(this.pos.x + basis.x), (int)Math.floor(this.pos.y + basis.y), (int)Math.floor(this.pos.z + basis.z));
+            return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, pos), world.getBrightness(LightLayer.SKY, pos));
+        }
+    }
+
+    /**
+     * A physical link connecting two {@link Point points}
+     * Designed as a way for PBD/particle simulations to
+     * apprixmimate the behaviour of chains by representing
+     * an arbitrary volume as a length.
+     * <h2>Important Note:</h2>
+     * All coordinates for both Points and Sticks fall within the parent
+     * wire's Local frame of reference. For more information, 
+     * read the javadoc attached to {@link CatenaryModel}
+     */
+    public static class Stick {
+
+        public final Point start, end;
+
+        public Stick(Point start, Point end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public Vector3f getDir() {
+            Vector3f facing = new Vector3f();
+            facing.x = (float)(start.pos.x - end.pos.x);
+            facing.y = (float)(start.pos.y - end.pos.y);
+            facing.z = (float)(start.pos.z - end.pos.z);
+            return facing;
+        }
+
+        public Vector3f getFacing() {
+            return getDir().normalize();
+        }
+
+        public float getLength() {
+            return getDir().length();
+        }
+
+        public Vector3f getCenter() {
+            Vector3f center = new Vector3f();
+            center.x = (start.pos.x + end.pos.x) / 2f;
+            center.y = (start.pos.y + end.pos.y) / 2f;
+            center.z = (start.pos.z + end.pos.z) / 2f;
+            return center;
+        }
+
+        public Vector3f start(float pTicks) {
+            return start.lastPos.lerp(start.pos, pTicks, new Vector3f());
+        }
+
+        public Vector3f end(float pTicks) {
+            return end.lastPos.lerp(end.pos, pTicks, new Vector3f());
+        }
+
+        @Override
+        public String toString() {
+            return "(" + String.format("%.2f", start.pos.x) + ", " + String.format("%.2f", start.pos.y) + ", " + String.format("%.2f", start.pos.z) + "  ->  " + String.format("%.2f", end.pos.x) + ", " + String.format("%.2f", end.pos.y) + ", " + String.format("%.2f", end.pos.z) + ")";
         }
     }
 }

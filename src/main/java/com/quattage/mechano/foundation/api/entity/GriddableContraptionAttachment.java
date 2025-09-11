@@ -1,32 +1,47 @@
+
 package com.quattage.mechano.foundation.api.entity;
 
-import java.util.Objects;
+import java.util.function.Consumer;
 
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.ServerGrid;
+import com.quattage.mechano.foundation.api.ServerMatrix;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.anchor.AnchorArray.DynamicAnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
+import com.simibubi.create.content.contraptions.StructureTransform;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
-public class GriddableContraptionAttachment extends GriddableEntityAttachment {
+public final class GriddableContraptionAttachment extends GriddableEntityAttachment {
 
-    private Int2ObjectOpenHashMap<GridUUID> composite = new Int2ObjectOpenHashMap<>();
+    /**
+     * This map describes a composite made of multiple AnchorPoint sources
+     * acquired during the contraption assembly process. These sources can be stored
+     * as BlockPos structure offsets, where the GridUUID and surrogate can be inferred
+     * later.
+     */
+    private Object2IntOpenHashMap<BlockPos> composite = new Object2IntOpenHashMap<>();
 
     public GriddableContraptionAttachment(IAttachmentHolder holder) {
         super(holder);
@@ -35,42 +50,82 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
         anchors = null;
     }
 
-    @ApiStatus.Internal
-    public GriddableContraptionAttachment() {
-        super(null);
-        anchors = null;
-    }
-
-    public GriddableContraptionAttachment bindTo(AbstractContraptionEntity entity) {
-        Objects.requireNonNull(entity);
-        this.entity = entity;
-        return this;
-    }
-
     @Override // anchor construction is automatic for contraption attachments
     public void constructAnchors(Builder anchors) {}
 
     @Override
     public AnchorArray getAnchors() {
-        throw new UnsupportedOperationException("GriddableContraptionAttachments cannot host anchors on their own! This functionality is deferred to local BlockEntities within the contraption. (Did you attempt to query a Contraption with an EntityUUID?)");
+        if(this.anchors != null) return this.anchors;
+        DynamicAnchorArray newAnchors = new DynamicAnchorArray();
+        Contraption c = getSource() instanceof AbstractContraptionEntity ace ? ace.getContraption() : null;
+        if(c == null || c.presentBlockEntities == null || c.presentBlockEntities.isEmpty()) return newAnchors;
+        // dummy blockentities freshly instantiated by the contraption will need their AnchorPoints 
+        // and surrogate overwritten with the correct, contraption-compatible one
+        for(BlockEntity be : c.presentBlockEntities.values()) {
+            if(!(be instanceof GriddableBlockEntity gbe)) continue;
+            gbe.applyContraptionOverride(this, be.getBlockPos());
+            newAnchors.combineWith(gbe.getAnchors());
+        }
+        this.anchors = newAnchors;
+        return newAnchors;
     }
 
     @Override
     public AnchorPoint getAnchor() {
-        throw new UnsupportedOperationException("GriddableContraptionAttachments cannot host anchors on their own! This functionality is deferred to local BlockEntities within the contraption. (Did you attempt to query a Contraption with an EntityUUID?)");
+        AnchorArray anchors = getAnchors();
+        return anchors.size() <= 0 ? null : anchors.getByIndex(0);
     }
 
     public Contraption getContraption() {
         return entity == null ? null : ((AbstractContraptionEntity)entity).getContraption();
     }
 
-    public void markParticipatingSubsurrogate(SurrogateNode node, GridUUID id) {
+    /**
+     * Adds the given SurrogateNode to this contraption attachment, instructing this object
+     * that the given surrogate node is part of this attachment's associated
+     * contraption. This makes it possible for the SurrogateNode to be inferred later
+     * when the contraption is disassembled.
+     * @param node
+     * @param structurePos
+     */
+    public void markParticipatingSubsurrogate(SurrogateNode node, BlockPos structurePos) {
+        this.anchors = null;
         int index = node.getOwnerMatrix() == null ? -1 : node.getOwnerMatrix().getIndex();
         if(index < 0) return;
-        composite.put(index, id);
+        composite.put(structurePos, index);
     }
 
-    public Int2ObjectOpenHashMap<GridUUID> getCompositeUUIDs() {
+    /**
+     * This method is used to iterate over each destined AnchorPoint-containing BlockEntity
+     * when a contraption transitions from an assembled to a dissassembled state. The
+     * @param action The action to perform on the {@link GridNode} after its data has been corrected
+     * @param transform The transform reflecting the current position of the contraption. This 
+     * is used to get the real-world position of the block after the contraption has moved.
+     */
+    public void forEachAssociated(StructureTransform transform, Consumer<GridNode> action) {
+        if(entity == null || entity.level().isClientSide) return;
+        ServerGrid grid = SidedGridDispatcher.server(entity.level());
+        boolean found = false;
+        for(Object2IntMap.Entry<BlockPos> subsurrogate : composite.object2IntEntrySet()) {
+            ServerMatrix matrix = grid.getMatrixByIndex(subsurrogate.getIntValue());
+            if(matrix == null || matrix.nodes == null) continue;
+            GridUUID walkingAddress = new ContraptionUUID(entity.getUUID(), subsurrogate.getKey(), 0);
+            for(int x = 0; x < GridUUID.MAX_SHARED_OCCUPANCY; x++) {
+                walkingAddress = walkingAddress.indexedCopy(x);
+                GridNode node = matrix.nodes.get(walkingAddress);
+                if(node == null) continue;
+                action.accept(node);
+                found = true;
+            }
+        }
+        if(!found) Mechano.LOGGER.warn("Iteration attempt on GridNode assocations for " + entity + " produced no results.");
+    }
+
+    public void forEachAssociatedClient(StructureTransform transform, Consumer<AnchorPoint> action) {
+        
+    }
+
+    public Object2IntOpenHashMap<BlockPos> getCompositeUUIDs() {
         return composite;
     }
 
@@ -107,20 +162,49 @@ public class GriddableContraptionAttachment extends GriddableEntityAttachment {
 
     public CompoundTag writeCompositeTo(CompoundTag in) {
         ListTag list = new ListTag(composite.size());
-        for(Int2ObjectMap.Entry<GridUUID> subsurrogate : composite.int2ObjectEntrySet()) {
-            CompoundTag addrTag = new CompoundTag();
-            subsurrogate.getValue().writeTo(addrTag);
-            list.add(addrTag);
+        for(Object2IntMap.Entry<BlockPos> subsurrogate : composite.object2IntEntrySet()) {
+            CompoundTag addr = new CompoundTag();
+            addr.putInt("ctr", subsurrogate.getIntValue());
+            addr.putInt("x", subsurrogate.getKey().getX());
+            addr.putInt("y", subsurrogate.getKey().getY());
+            addr.putInt("z", subsurrogate.getKey().getZ());
+            list.add(addr);
         }
         in.put("GridComposite", list);
         return in;
     }
 
-    public void readCompositeFrom(ListTag list) {
+    public void readCompositeFrom(CompoundTag in) {
+        if(in == null) return;
+        ListTag list = in.getList("GridComposite", Tag.TAG_COMPOUND);
+        if(list == null) return;
         composite.ensureCapacity(list.size());
         for(int x = 0; x < list.size(); x++) {
-            CompoundTag member = list.getCompound(x);
-            composite.put(x, UUIDDiscriminator.read(member));
+            CompoundTag addr = list.getCompound(x);
+            composite.put(new BlockPos(addr.getInt("x"), addr.getInt("y"), addr.getInt("z")), addr.getInt("ctr"));
         }
     }
+
+    public long[] packComposite() {
+        if(composite.isEmpty()) return new long[0];
+        long[] compressed = new long[composite.size() * 2];
+        int index = 0;
+        for(Object2IntMap.Entry<BlockPos> subsurrogate : composite.object2IntEntrySet()) {
+            compressed[index] = subsurrogate.getIntValue();
+            index++;
+            compressed[index] = subsurrogate.getKey().asLong();
+            index++;
+        }
+        return compressed;
+    }
+
+    public void unpackComposite(long[] compressed) {
+        if(compressed.length <= 0) return;
+        composite.clear();
+        composite.ensureCapacity(compressed.length / 2);
+        for(int x = 0; x < compressed.length; x += 2)
+            composite.put(BlockPos.of(compressed[x + 1]), (int)compressed[x]);
+    }
+
+    // public static StreamCodec<RegistryFriendlyByteBuf, 
 }

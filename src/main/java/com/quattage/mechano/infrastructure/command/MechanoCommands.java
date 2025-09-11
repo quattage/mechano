@@ -29,6 +29,7 @@ public class MechanoCommands {
         return Commands.literal("grid")
             .then(GridDumpCommand.make())
             .then(GridWipeCommand.make())
+            .then(LinkPeekCommand.make())
             .build();
     }
 }

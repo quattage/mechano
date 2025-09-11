@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public interface ConnectorHostOverridable {
     
     /**
-     * Called internally by {@link com.quattage.mechano.content.connector.ConnectorBlock#canSurvive ConnectorBlock.canSurvive()} <p>
+     * Called internally by {@link com.quattage.mechano.content.connector.BlockWithConnections#canSurvive ConnectorBlock.canSurvive()} <p>
      * Implement your own logic here to determine whether or not your block
      * can host a connector.
      * @param world World to operate within

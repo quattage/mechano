@@ -52,7 +52,6 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
 
     @Override
     public abstract boolean isBeingTrackedBy(ServerPlayer player);
-
     public abstract UUIDDiscriminator getDiscriminatorType();
     public abstract BlockPos getBlockPos(LevelReader world);
     public Vec3 getPos(LevelReader world) { return getPos(world, 1); }
@@ -70,7 +69,6 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
     public abstract @Nullable Griddable<?> getOrFindGriddable(LevelReader world);
     public abstract @Nullable SurrogateNode getSurrogate(LevelReader world);
-    public abstract float getAttachedSizeFactor(LevelReader world);
 
     @Override
     public void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
@@ -118,6 +116,11 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
 
     public HeuristicUUID makeTrackable() {
         return new HeuristicUUID(this);
+    }
+    
+    @Override
+    public int getPriority() {
+        return getDiscriminatorType().ordinal();
     }
 
     /**

@@ -66,6 +66,8 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public abstract class SpoolItem<T extends Transmitter<?>> extends Item implements Transmitable<T>, LeftClickCapturable {
 
@@ -73,6 +75,33 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
 
     public SpoolItem(Properties properties) {
         super(properties);
+    }
+
+    /**
+     * Removes all data from every spool in player's inventory. 
+     */
+    @OnlyIn(Dist.CLIENT)
+    public static void wipeFromInventory(LocalPlayer lp, boolean cancelEarly) {
+        for(ItemStack stack : lp.getInventory().items) {
+            if(stack != null && stack.getItem() instanceof SpoolItem spool) {
+                spool.cancelAwaitingConnection(null, null, stack);
+                /**
+                 * normally the player is permitted to only ever have one awaiting
+                 * spool at a time, so this can safely return early without having
+                 * to iterate over the player's entire inventory in most cases.
+                 */
+                if(cancelEarly) return;
+            }
+        }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static boolean hasAwaiting(LocalPlayer lp) {
+        for(ItemStack stack : lp.getInventory().items) {
+            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(UUIDDiscriminator.ATTACHMENT))
+                return true;
+        }
+        return false;
     }
 
     @Override
@@ -91,6 +120,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * between the selected anchor and the player.
      */
     private InteractionResultHolder<ItemStack> handleFirstRightClick(LocalPlayer player, ItemStack stack, @Nullable AnchorPoint startAnchor) {
+        if(hasAwaiting(player)) return InteractionResultHolder.fail(stack);
         if(startAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
@@ -308,10 +338,6 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
 
         poseStack.popPose();
     }
-
-
-
-
 
 
 

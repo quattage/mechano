@@ -118,19 +118,19 @@ public class AnchorSelector {
                 if(selected.response.getVisibility().isHighlighted()) {
                     if(selectedTicks < 1) selectedTicks += delta.getGameTimeDeltaTicks() / 2;
                     selectedTicks = Math.min(1, selectedTicks);
-                    selected.renderComplexAABB(selectedTicks, false);
+                    selected.renderComplexAABB(selectedTicks, false, delta.getGameTimeDeltaPartialTick(false));
                 } else if(selectedTicks > 0) {
                     selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
                     selectedTicks = Math.max(0, selectedTicks);
-                    selected.renderComplexAABB(selectedTicks, false);
+                    selected.renderComplexAABB(selectedTicks, false, delta.getGameTimeDeltaPartialTick(false));
                 } else {
-                    selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
+                    selected.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer, delta.getGameTimeDeltaPartialTick(false));
                     selectedTicks = 0;
                 }
             } else if(selected.response.getVisibility().isHighlighted() && selectedTicks > 0) {
                 selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
                 selectedTicks = Math.max(0, selectedTicks);
-                selected.renderComplexAABB(selectedTicks, false);
+                selected.renderComplexAABB(selectedTicks, false, delta.getGameTimeDeltaPartialTick(false));
             }
         }
 
@@ -139,7 +139,7 @@ public class AnchorSelector {
             if(Active.shouldSkipOutline(entry) || entry.equals(selected))
                 continue;
             // Mechano.LOGGER.warn("OUTLINE " + entry + " -> " + selected);
-            entry.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer);
+            entry.injectSimpleVanillaOutline(camera.getPosition(), matrixStack, buffer, delta.getGameTimeDeltaPartialTick(false));
         }
     }
 
@@ -166,7 +166,7 @@ public class AnchorSelector {
         if(!lookedThisFrame) {
             if(hasSelection() && selectedTicks > 0) {
                 selectedTicks -= delta.getGameTimeDeltaTicks() / 2;
-                this.selected.renderComplexAABB(selectedTicks, false);
+                this.selected.renderComplexAABB(selectedTicks, false, delta.getGameTimeDeltaPartialTick(false));
             } else resetCompletely();
         }
     }
@@ -320,11 +320,11 @@ public class AnchorSelector {
          * @param buffer
          * @return <code>true</code> if the outline was successfully rendered.
          */
-        public boolean injectSimpleVanillaOutline(Vec3 basis, PoseStack matrix, VertexConsumer buffer) {
+        public boolean injectSimpleVanillaOutline(Vec3 basis, PoseStack matrix, VertexConsumer buffer, float pTicks) {
 
             Minecraft mc = Minecraft.getInstance();
             if(mc != null && !mc.level.getWorldBorder().isWithinBounds(basis)) return false;
-            Vec3 shapePos = anchor.getPos(points.getWorld());
+            Vec3 shapePos = anchor.getPos(points.getWorld(), pTicks);
 
             // yoinked from vanilla
             matrix.pushPose();
@@ -349,8 +349,8 @@ public class AnchorSelector {
         /**
          * Renders this wrapped AnchorPoint's AABB hitbox to the Create Outliner
          */
-        public void renderComplexAABB(float ticks, boolean unique) {
-            AABB visual = anchor.makeHitbox(points.getWorld(), false).inflate(anchor.getSize() * ticks);
+        public void renderComplexAABB(float ticks, boolean unique, float pTicks) {
+            AABB visual = anchor.makeHitbox(points.getWorld(), false, pTicks).inflate(anchor.getSize() * ticks);
             Color col = Color.BLACK.mixWith(new Color(77, 253, 182), ticks);
             Outliner.getInstance().showAABB(unique ? anchor.hashCode() : 0xFFFFFFF, visual)
                 .disableCull()

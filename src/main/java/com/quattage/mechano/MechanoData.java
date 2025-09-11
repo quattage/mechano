@@ -42,6 +42,7 @@ public class MechanoData {
         = ATTACHMENT_REGISTRY.register(
             Mechano.ID + "_entity_data", () -> AttachmentType
                 .builder(GriddableEntityAttachment::new)
+                .serialize(GriddableEntityAttachment.SERIALIZER)
                 .build()
         );
 

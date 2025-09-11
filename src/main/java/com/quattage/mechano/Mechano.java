@@ -32,8 +32,8 @@ public class Mechano {
 
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
-    // TODO rig this up to in-game settings
-    public static final boolean USE_VERBOSE_LINK_TRACKING = true;
+    // TODO rig this up to config file
+    public static final boolean USE_VERBOSE_LINK_TRACKING = false;
 
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();
@@ -89,6 +89,15 @@ public class Mechano {
             path += "/" + item;
         }
         return ResourceLocation.fromNamespaceAndPath(ctx.getId().getNamespace(), path);
+    }
+
+    public static void printStack() {
+        String out = "STACKTRACE: \n";
+        for(StackTraceElement s :  Thread.currentThread().getStackTrace()) {
+            out += "\t\tat " + s.getClassName() + "." + s.getMethodName() 
+                + "(" + s.getFileName() + ":" + s.getLineNumber() + ")\n";
+        }
+        Mechano.LOGGER.info(out + "--");
     }
 
     public static LangBuilder lang() {

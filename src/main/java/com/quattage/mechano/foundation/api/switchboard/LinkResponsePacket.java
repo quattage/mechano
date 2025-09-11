@@ -7,6 +7,7 @@ import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
+import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
@@ -53,12 +54,16 @@ public record LinkResponsePacket(AnchorSynchronizer start, AnchorSynchronizer en
 
     @Override
     public void handle(LocalPlayer player) {
-        if(!task.indicatesCompletion()) return;
         ClientGrid grid = SidedGridDispatcher.client(player);
+        if(!task.indicatesCompletion()) {
+            grid.ensureCatenaryDestroyed(start, end);
+            return;
+        }
         switch(task) {
-            case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns, true);
-            case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns, true);
-            case TASK_DESTROY_LINK -> grid.handleCatenaryDestruction(start, end);
+            case TASK_CREATE_LINK -> grid.handleCatenaryCreation(start, end, trns, ProcessMode.TRY_THEN_SCHEDULE);
+            case TASK_SYNC_ANCHORS -> grid.handleCatenarySync(start, end, trns, ProcessMode.TRY_THEN_SCHEDULE);
+            case TASK_DESTROY_LINK -> grid.handleCatenaryDestruction(start, end, ProcessMode.TRY_THEN_SCHEDULE);
+            case TASK_DESTROY_LINK_LAZY -> grid.ensureCatenaryDestroyed(start, end);
             case null, default -> GridResponse.logUnhandled(task, this);
         }
     }

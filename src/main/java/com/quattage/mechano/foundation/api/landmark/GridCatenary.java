@@ -1,22 +1,32 @@
 package com.quattage.mechano.foundation.api.landmark;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.api.catenary.CatenaryMesher;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
+import com.quattage.mechano.foundation.api.catenary.SimulatedCatenary;
 import com.quattage.mechano.foundation.api.catenary.WindManager;
-import com.quattage.mechano.foundation.api.catenary.model.CatenaryModel;
-import com.quattage.mechano.foundation.api.catenary.model.SimulatedCatenary;
+import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.helper.Duo;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.StructureTransform;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -50,12 +60,90 @@ public final class GridCatenary extends GridConnection {
                 if(cat == null || !cat.hasPoints() || cat.canMoveDynamically(world)) continue;
                 AnchorPoint point = (AnchorPoint)cat.getPrimaryConstruct(world);
                 Vec3 startPos = point.getAddress().getPos(world, 1f);
-                cat.accumulateModel(world);
                 mesher.withAppearanceForChunkRendering(cat.getTransmitter().getType())
                     .at(startPos).in(context.getRegion())
                     .render(context, cat.getOrCreateModel(world), CatenaryAccessor.getLocalizedOffset(world, sectionOrigin, point), 1f);
                 mesher.reset();
             }
+        }
+    }
+
+    /**
+     * Searches multiple times through the {@link LinkDataStorable link data store} 
+     * to find a {@link GridCatenary} matching the given {@link GridUUID UUIDs}.
+     * Calls to this method will adjust the {@link GridConnection#getDataScope data scope}
+     * of the IDs passed if no match was found, and try again.
+     * @param world world to operate within
+     * @param start
+     * @param end
+     * @return The {@link GridCatenary} located between <code>start</code> and <code>end</code>, or <code>null</code>.
+     */
+    public static @Nullable GridCatenary findLoosely(ClientLevel world, GridUUID start, GridUUID end) {
+        ConnectionKey key = new ConnectionKey(start, end);
+        GridCatenary cat = LinkDataStorable.getAsClient(world, key, true);
+        if(cat != null && cat.hasPoints()) return cat;
+        key.fixDataScopes(world);
+        cat = LinkDataStorable.getAsClient(world, key, true);
+        if(cat != null && cat.hasPoints()) return cat;
+        return null;
+    }
+
+    /**
+     * An alternative approach to {@link #findLoosely()} that will brute-force iterate in a worse-case scenario.
+     * This method can find {@link GridCatenary} instances that have been orphaned by some adverse process, or 
+     * instances that don't follow the correct {@link TrackedStreamable#orderedByAssertionPriority assertion priority scheme}.
+     * A catenary can become orphaned in rare circumstances where a contraption's lifecycle isn't properle tracked by a client 
+     * (due to packet loss or client-sided timing issues), or if API users overuse the {@link GridCatenary#replaceStart discrete UUID replacement} 
+     * system on catenaries with shared AnchorPoint references.
+     * <h4> This method is rather expensive, so it shouldn't be called frequently. Ideally, this method can be removed once the GridAPI
+     * is truly watertight.</h4>
+     * @param world
+     * @param start
+     * @param end
+     * @return The {@link GridCatenary} located between <code>start</code> and <code>end</code>, or <code>null</code>.
+     */
+    public static @Nullable GridCatenary findLooselyWithOrphans(ClientLevel world, GridUUID start, GridUUID end) {
+        GridCatenary cat = findLoosely(world, start, end);
+        if(cat != null) return cat;
+        ConnectionKey key = new ConnectionKey(start, end);
+        /**
+         * catenaries may be orphaned by the contraption reification process
+         * so they have to be looked up iteratively, but this only has to happen once.
+         */
+        Duo<GridUUID> orphanLookupIDs = TrackedStreamable.orderedByAssertionPriority(world, start, end);
+        LinkDataStorable<?> potentialStorage = LinkDataStorable.getAsClient(orphanLookupIDs.second().getDataStorageHolder(world));
+        if(potentialStorage != null) {
+            GridConnection acquiredOrphan = potentialStorage.getAndRemoveOrphan(key);
+            if(acquiredOrphan instanceof GridCatenary foundCat) return foundCat;
+        }
+        potentialStorage = LinkDataStorable.getAsClient(orphanLookupIDs.first().getDataStorageHolder(world));
+        if(potentialStorage != null) {
+            GridConnection acquiredOrphan = potentialStorage.getAndRemoveOrphan(key);
+            if(acquiredOrphan instanceof GridCatenary foundCat) return foundCat;
+        }
+        return null;
+    }
+
+    /**
+     * This method is broken out from {@link ContraptionDissassemblyPacketMixin}
+     * because this code is prone to error and debugging is easier if its outside a mixin
+     */
+    public static void replaceEndsOnDisassemble(ClientGrid grid, LinkDataStorable.Client storage, StructureTransform transform, AbstractContraptionEntity ace) {
+        if(storage == null) return;
+        if(storage.getAll().isEmpty()) return;
+        final ObjectSet<GridCatenary> catenaryStorage = storage.getAll();
+        if(catenaryStorage == null || catenaryStorage.isEmpty()) return;
+        // iterator.next() throws an error due to what i think was a race condition
+        // unimi's objectset foreach does not use an iterator so it can be avoided like so:
+        final List<GridCatenary> cats = new ArrayList<>(catenaryStorage.size());
+        catenaryStorage.forEach(cat -> cats.add(cat));
+        // we need to iterate over a copy of the storage since the following loop modifies the storage contents
+        for(GridCatenary cat : cats) {
+            if(cat == null) continue;
+            if(cat.getStart() instanceof ContraptionUUID cu && cu.getUUID().equals(ace.getUUID()))
+                cat.replaceStart(grid.getWorld(), cu.toVoxel(transform), null);
+            else if(cat.getEnd() instanceof ContraptionUUID cu && cu.getUUID().equals(ace.getUUID()))
+                cat.replaceEnd(grid.getWorld(), cu.toVoxel(transform), null);
         }
     }
 
@@ -67,8 +155,7 @@ public final class GridCatenary extends GridConnection {
             throw new IllegalArgumentException("Can't instantiate a GridCatenary where both the start and end positions are the same!");
         this.start = start;
         this.end = end;
-        this.start.makeLocallyDynamic(world);
-        this.end.makeLocallyDynamic(world);
+        fixDataScopes(world);
     }
 
     private GridCatenary(AnchorPoint start, AnchorPoint end, @Nullable CatenaryModel<?> cat, Transmitter<?> trns) {
@@ -85,37 +172,15 @@ public final class GridCatenary extends GridConnection {
         return new GridCatenary(end, start, catenary, trns);
     }
 
-    /**
-     * Marks start/end points as dynamic if possible and 
-     * un-bakes this wire. This method will broadcast chunk updates
-     * if this wire was previously baked to a chunk.
-     * For the opposite operation, see {@link #startMoving}
-     * @param world
-     */
-    public void startMoving(ClientLevel world) {
-        if(canMoveDynamically(world)) {
-            Mechano.LOGGER.warn("Skipped an attempt to unfreeze " + this + " - this catenary is already dynamic, so this method call is redundant.");
-            return;
-        }
-        if(catenary == null || !catenary.isInitialized())
-            reinitializeModel(world, CatenaryAttributes.Initializer.FRESH_SIMULATION);
-        LinkDataStorable.remove(world, this);
-        sendLevelUpdates(world);
-        this.start.makeLocallyDynamic(world);
-        this.end.makeLocallyDynamic(world);
-        LinkDataStorable.put(world, this);
-    }
-
     public CatenaryModel<?> getOrCreateModel(LevelReader world) {
         if(catenary != null) return this.catenary;
         GridCatenary lookup = LinkDataStorable.getAsClient(world, this);
-        if(lookup != null) {
-            if(lookup.catenary != null) this.catenary = lookup.catenary;
-            else {
-                this.catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE
-                    .make(world, start, end, trns.getType());
-                lookup.catenary = this.catenary;
-            }
+        if(lookup != null && lookup.catenary != null) 
+            this.catenary = lookup.catenary;
+        else {
+            this.catenary = CatenaryAttributes.Initializer.FRESH_SIMULATION_EXPRESSIVE
+                .make(world, start, end, trns.getType());
+            if(lookup != null) lookup.catenary = this.catenary;
         }
         return this.catenary;
     }
@@ -126,43 +191,12 @@ public final class GridCatenary extends GridConnection {
         return this;
     }
 
-    public CatenaryModel<?> accumulateModel(LevelReader world) {
-        catenary = CatenaryAttributes.Initializer.RESTING_SIMULATION.make(world, start, end, trns.getType());
-        return catenary;
-    }
-
-    /**
-     * Marks start/end points as static if possible and 
-     * un-bakes this wire. This method will broadcast chunk updates
-     * if this wire was previously baked to a chunk.
-     * For the opposite operation, see {@link #startMoving}.
-     * <h2>Important note:</h2> This method will freeze this catenary's mesh
-     * and simulation regardless of the mobility state of its start and end points.
-     * If this {@link GridCatenary} has movable {@link AnchorPoint AnchorPoints},
-     * this method will result in visual issues as the wire would freeze in place
-     * but remain attached to a potentially moving renderer.
-     * @param world
-     */
-    public void freezeInPlace(ClientLevel world) {
-        if(!canMoveDynamically(world)) {
-            Mechano.LOGGER.warn("Skipped an attempt to freeze " + this + " - this catenary is already frozen, so this method call is redundant.");
-            return;
-        }
-        if(catenary == null || !catenary.isInitialized())
-            reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
-        LinkDataStorable.remove(world, this);
-        this.start.getAddress().setDataScope(DataScope.STATIC_CHUNK);
-        this.end.getAddress().setDataScope(DataScope.STATIC_CHUNK);
-        LinkDataStorable.put(world, this);
-        sendLevelUpdates(world);
-    }
-
     @Override
-    public void updateShapeFixed(LevelReader world) {
+    public void update(LevelReader world, float pTicks) {
         if(!(world instanceof ClientLevel cl)) return;
         CatenaryModel<?> model = getOrCreateModel(world);
         if(!isMoving(world)) return;
-        model.setOrderedOffset(world, start, end, 1);
+        model.setOrderedOffset(world, start, end, pTicks);
         model.update();
         if(WindManager.INSTANCE.isEnabled() && model instanceof SimulatedCatenary scat)
             scat.applyWind(WindManager.INSTANCE.sample(cl, getMiddle(world)));
@@ -181,9 +215,7 @@ public final class GridCatenary extends GridConnection {
 
     @Override
     public void adjustSpan(LevelReader world, float length) {
-        getOrCreateModel(world);
-        if(!canMoveDynamically(world)) startMoving((ClientLevel)world);
-        catenary.adjustSpan(world, Math.max(0.25f, Math.min(length, trns.getType().getMaximumSpan())));
+        getOrCreateModel(world).adjustSpan(world, Math.max(0.25f, Math.min(length, trns.getType().getMaximumSpan())));
     }
 
     public BlockPos getMiddle(LevelReader world) {
@@ -210,35 +242,28 @@ public final class GridCatenary extends GridConnection {
         if(getEnd() != null) getEnd().setDataScope(scope);
     }
 
-    public void replaceAddresses(ClientLevel world, GridUUID startAddress, GridUUID endAddress, @Nullable DataScope forcedScope) {
-        if(!hasPoints()) throw new IllegalStateException("Couldn't replace addresses for a GridCatenary with no points!");
+    public void replaceStart(ClientLevel world, GridUUID newStartAddress, @Nullable DataScope forcedScope) {
+        if(!hasPoints()) throw new IllegalStateException("Couldn't replace starting address for a GridCatenary with no points!");
         LinkDataStorable.popAsClient(world, this);
-        this.start.replaceAddress(startAddress);
-        this.end.replaceAddress(endAddress);
+        this.start.replaceAddress(newStartAddress);
         if(forcedScope == null)
-            correctDataScopes(world);
+            fixDataScopes(world);
         else setDataScope(forcedScope);
-        LinkDataStorable.put(world, this);
+        update(world, 1);
+        SidedGridDispatcher.client(world).reassertCatenary(this, ProcessMode.TRY_THEN_SCHEDULE);
+        sendLevelUpdates(world);
     }
 
-    /**
-     * Renders this catenary to the provided renderer feature as an extension of a LivingEntity's geometry
-     * <h2>This method is not thread safe!</h2>
-     * The meshing process implemented here utilizes the {@link CatenaryMesher#REUSABLE reusable mesher},
-     * this mesher has vertices added and removed from it during its lifespan, so any timing issues
-     * (caused by concurrent access) will result in bad vertex ordering and geometry artifacts.
-     * @param owner 
-     * @param buffers
-     * @param matrixStack
-     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
-     */
-    public void renderDynamic(LivingEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
-        CatenaryMesher.REUSABLE
-            .at(getMiddlePos(owner.level()))
-            .in(owner.level())
-            .withAppearance(trns.getType())
-            .render(buffers, matrixStack, getOrCreateModel(owner.level()), CatenaryAccessor.getLocalizedOffset(owner, pTicks), pTicks);
-        CatenaryMesher.REUSABLE.reset();
+    public void replaceEnd(ClientLevel world, GridUUID newEndAddress, @Nullable DataScope forcedScope) {
+        if(!hasPoints()) throw new IllegalStateException("Couldn't replace ending address for a GridCatenary with no points!");
+        LinkDataStorable.popAsClient(world, this);
+        this.end.replaceAddress(newEndAddress);
+        if(forcedScope == null)
+            fixDataScopes(world);
+        else setDataScope(forcedScope);
+        update(world, 1);
+        SidedGridDispatcher.client(world).reassertCatenary(this, ProcessMode.TRY_THEN_SCHEDULE);
+        sendLevelUpdates(world);
     }
 
     /**
@@ -253,12 +278,32 @@ public final class GridCatenary extends GridConnection {
      * @param matrixStack PoseStach pertaining to the relevent rendering context.
      * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
      */
-    public void renderDynamic(LivingEntity owner, Vec3 offset, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+    public void render(LivingEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        render(owner, owner.getRopeHoldPosition(pTicks).subtract(owner.getPosition(pTicks)), buffers, matrixStack, pTicks);
+    }
+
+    /**
+     * Renders this catenary to the provided renderer feature as an extension of a LivingEntity's geometry
+     * <h2>This method is not thread safe!</h2>
+     * The meshing process implemented here utilizes the {@link CatenaryMesher#REUSABLE reusable mesher},
+     * this mesher has vertices added and removed from it during its lifespan, so any timing issues
+     * (caused by concurrent access) will result in bad vertex ordering and geometry artifacts.
+     * @param owner The owner of this catenary, used for acquiring a local offset vector
+     * @param offset An optional, additional offset vector to apply when rendering this wire
+     * @param buffers BufferSource to push vertices to,
+     * @param matrixStack PoseStack pertaining to the relevent rendering context.
+     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
+     */
+    public void render(LivingEntity owner, Vec3 offset, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(owner.level(), start, end);
+        Vec3 startPos = ordered.start().getPos(owner.level(), pTicks);
+        Vec3 endPos = ordered.end().getPos(owner.level(), pTicks);
         CatenaryMesher.REUSABLE
-            .at(getMiddlePos(owner.level()))
+            .at(startPos.add(endPos).scale(0.5f))
             .in(owner.level())
             .withAppearance(trns.getType())
-            .render(buffers, matrixStack, getOrCreateModel(owner.level()), CatenaryAccessor.getLocalizedOffset(owner, pTicks).subtract(offset), pTicks);
+            .render(buffers, matrixStack, getOrCreateModel(owner.level()), 
+                ordered.first().getOffset().add(offset).add(endPos.subtract(startPos).scale(0.5f)), pTicks);
         CatenaryMesher.REUSABLE.reset();
     }
 
@@ -267,21 +312,47 @@ public final class GridCatenary extends GridConnection {
      * the proper AnchorPoint offset with the given BlockEntity.
      * This method is designed specifically to be invoked in BlockEntityRenderer contexts.
      * @param owner The owner of this catenary, used for acquiring a local offset vector from an AnchorPoint.
-     * @param buffers BufferSource to push vertices to,
-     * @param matrixStack PoseStach pertaining to the relevent rendering context.
+     * @param buffers BufferSource to push vertices to, 
+     * @param matrixStack PoseStack pertaining to the relevent rendering context.
      * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
      */
-    public void renderDynamic(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
-        TrackedStreamable[] ordered = TrackedStreamable.orderedByAssertionPriority(owner.getLevel(), start, end);
-        if(!(ordered[0] instanceof AnchorPoint ap1) || !(ordered[1] instanceof AnchorPoint ap2)) return;
-        Vec3 startPos = ap1.getPos(owner.getLevel(), pTicks);
-        Vec3 endPos = ap2.getPos(owner.getLevel(), pTicks);
-        CatenaryMesher.REUSABLE
-            .at(startPos.add(endPos).scale(0.5f))
+    public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(owner.getLevel(), start, end);
+        Vec3 worldMid = ordered.start().getPos(owner.getLevel(), pTicks).add(ordered.end().getPos(owner.getLevel(), pTicks)).scale(0.5);
+        // VectorHelper.drawDebugBox(ordered.start().getPos(owner.getLevel(), pTicks), worldMid, ordered.end().getPos(owner.getLevel(), pTicks));
+        CatenaryMesher.REUSABLE 
+            .at(worldMid)
             .in(owner.getLevel())
             .withAppearance(trns.getType())
-            .render(buffers, matrixStack, getOrCreateModel(owner.getLevel()), 
-                ap1.getOffset().subtract(startPos.subtract(endPos).scale(0.5f)), pTicks);
+            .render(buffers, matrixStack, getOrCreateModel(owner.getLevel()), worldMid.subtract(Vec3.atLowerCornerOf(owner.getBlockPos())), pTicks);
+        CatenaryMesher.REUSABLE.reset();
+    }
+
+
+    /**
+     * Renders this catenary to to the provided renderer feature while applying
+     * the proper AnchorPoint offset with the given BlockEntity.
+     * This method is designed specifically to be invoked in BlockEntityRenderer contexts.
+     * @param owner The owner of this catenary, used for acquiring a local offset vector from an AnchorPoint.
+     * @param buffers BufferSource to push vertices to, 
+     * @param matrixStack PoseStack pertaining to the relevent rendering context.
+     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
+     */
+    public void render(AbstractContraptionEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(owner.level(), start, end);
+        Vec3 startPos = ordered.start().getPos(owner.level(), pTicks);
+        Vec3 endPos = ordered.end().getPos(owner.level(), pTicks);
+        Mechano.LOGGER.warn("" + startPos + " -> " + endPos);
+        Vec3 worldMid = startPos.add(endPos).scale(0.5);
+        CatenaryModel<?> model = getOrCreateModel(owner.level()).updateEndpoints();
+        if(model instanceof SimulatedCatenary scat)
+            scat.setOffsetContinuous(owner.level(), startPos, worldMid);
+        // VectorHelper.drawDebugBox(startPos, endPos, owner.toGlobalVector(matrixOffset, pTicks));
+        CatenaryMesher.REUSABLE
+            .at(worldMid)
+            .in(owner.level())
+            .withAppearance(trns.getType())
+            .render(buffers, matrixStack, model, ordered.start().getOffset().add(endPos.subtract(startPos).scale(0.5)), pTicks);
         CatenaryMesher.REUSABLE.reset();
     }
 
@@ -340,7 +411,7 @@ public final class GridCatenary extends GridConnection {
     
     @Override
     public TrackedStreamable getPrimaryConstruct(LevelReader world) {
-        return TrackedStreamable.orderedByAssertionPriority(world, start, end)[0];
+        return TrackedStreamable.orderedByAssertionPriority(world, start, end).first();
     }
 
     @Override

@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
@@ -52,9 +53,9 @@ public class AnchorPoint implements TrackedStreamable {
     private Vector3f offset;
     public int bitmask;
 
-    public AnchorPoint(GridUUID pos, float px, float py, float pz, float size, boolean enabled, int maxc) {
-        Objects.requireNonNull(pos);
-        this.address = pos;
+    public AnchorPoint(GridUUID addr, float px, float py, float pz, float size, boolean enabled, int maxc) {
+        Objects.requireNonNull(addr);
+        this.address = addr;
         this.data = new byte[]{
             packMeasurement(px),
             packMeasurement(py),
@@ -89,7 +90,7 @@ public class AnchorPoint implements TrackedStreamable {
     }
 
     public Vec3 getPos(LevelReader world) {
-        return address.getOffsetPos(world, 1, offset.x, offset.y, offset.z);
+        return getPos(world, 1);
     }
 
     public Vec3 getPos(LevelReader world, float pTicks) {
@@ -101,13 +102,11 @@ public class AnchorPoint implements TrackedStreamable {
      * @see {@link #getRealPosition} to get the actual in-world position of this AnchorPoint
      */
     public Vec3 getOffset() {
+        if(getAddress() instanceof ContraptionUUID cuid) {
+            BlockPos cpos = cuid.getContraptionOffset();
+            return new Vec3(cpos.getX() + offset.x, cpos.getY() + offset.y, cpos.getZ() + offset.z);
+        }
         return new Vec3(offset.x, offset.y, offset.z);
-    }
-
-    
-    public void makeLocallyDynamic(LevelReader world) {
-        if(address.getDataScope(world) == DataScope.STATIC_CHUNK)
-            address.setDataScope(DataScope.BLOCKENTITY);
     }
 
     /**
@@ -198,7 +197,7 @@ public class AnchorPoint implements TrackedStreamable {
      * @param useSize if <code>false<code>, the returned AABB will have a size of 0.
      * @return A new AABB describing this AnchorPoint's hitbox
      */
-    public AABB makeHitbox(LevelReader world, boolean useSize) {
+    public AABB makeHitbox(LevelReader world, boolean useSize, float pTicks) {
         float size = useSize ? getSize() : 0;
         BlockPos pos = address.getBlockPos(world);
         return new AABB(
@@ -256,11 +255,10 @@ public class AnchorPoint implements TrackedStreamable {
      * @return <code>true</code> if <code>ray</code> is intersecting this AnchorPoint
      */
     public boolean isIntersecting(LevelReader world, VectorHelper.Ray ray) {
-        return makeHitbox(world, true).clip(ray.start, ray.end).isPresent();
+        return makeHitbox(world, true, 1).clip(ray.start, ray.end).isPresent();
     }
 
     public CompoundTag writeTo(CompoundTag tag) {
-        // tag.put("pos", GridUUIDData.write(backer, new CompoundTag()));
         tag.putByteArray("data", data);
         tag.putBoolean("e", enabled);
         tag.putInt("bm", bitmask);
@@ -269,11 +267,7 @@ public class AnchorPoint implements TrackedStreamable {
 
     @Override
     public String toString() {
-        String x = String.format("%.2f", offset.x);
-        String y = String.format("%.2f", offset.y);
-        String z = String.format("%.2f", offset.z);
-        String mask = Integer.toBinaryString(bitmask);
-        return "(" + x + "," + y + "," + z + ", " + getIndex() + " / " + GridUUID.MAX_SHARED_OCCUPANCY + "), " + mask;
+        return address == null ? "AnchorPoint[NULL ADDRESS]" : "AnchorPoint[" + address + "]";
     }
 
     @Override
@@ -326,8 +320,8 @@ public class AnchorPoint implements TrackedStreamable {
         return address.getDataStorageHolder(world);
     }
 
-    public void replaceAddress(GridUUID address) {
-        this.address = address;
+    public void replaceAddress(GridUUID newAddress) {
+        this.address = newAddress;
     }
 
     @Override
@@ -340,8 +334,15 @@ public class AnchorPoint implements TrackedStreamable {
         return address.getDataScope(world);
     }
 
+    @Override
+    public int getPriority() {
+        return address.getPriority();
+    }
 
-
+    @Override
+    public float getWeight(LevelReader world) {
+        return address.getWeight(world);
+    }
 
 
     /**

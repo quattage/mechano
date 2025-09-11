@@ -48,7 +48,7 @@ public class RestitutionTracker {
     }
 
     public boolean isCascading() {
-        return avgVelocity > 1e10 || Float.isNaN(avgVelocity) || Float.isInfinite(avgVelocity);
+        return avgVelocity > 1e10 || Float.isNaN(avgVelocity) || accumulatedError > 500;
     }
 
     public void softReset() {

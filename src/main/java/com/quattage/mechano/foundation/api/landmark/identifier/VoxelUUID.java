@@ -35,8 +35,8 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class VoxelUUID extends GridUUID {
 
-    protected BlockPos pos;
-    protected int index;
+    protected final BlockPos pos;
+    protected final int index;
     private DataScope scope;
 
     public VoxelUUID(BlockPos pos, int index) {
@@ -91,7 +91,7 @@ public class VoxelUUID extends GridUUID {
 
     @Override
     public GridUUID indexedCopy(int index) {
-        return new VoxelUUID(this.pos, index);
+        return new VoxelUUID(this.pos, index, this.scope);
     }
 
     @Override
@@ -201,12 +201,8 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public float getAttachedSizeFactor(LevelReader world) {
-        BlockEntity be = world.getBlockEntity(pos);
-        if(be == null) return 1;
-        BlockState state = be.getBlockState();
-        if(state == null) return 1;
-        return (float)state.getShape(world, pos).bounds().getSize();
+    public float getWeight(LevelReader world) {
+        return Float.MAX_VALUE;
     }
 
     @Override

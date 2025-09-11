@@ -14,9 +14,11 @@
         "client.accessor.PlayerInfoAccessor",
         "client.ItemInHandRendererInvoker",
         "client.ItemInHandRendererMixin",
-        "client.EntityMixin",
-        "ContraptionMixin",
-        "EntityMixin"
+        "client.LivingEntityMixin",
+        "client.ContraptionDisassemblyPacketMixin",
+        "client.ContraptionEntityRendererMixin",
+        "AbstractContraptionEntityMixin",
+        "ContraptionMixin"
     ],
     "injectors": {
         "defaultRequire": 1

@@ -28,8 +28,7 @@ public enum UUIDDiscriminator implements StringRepresentable {
     // do not reorder these or god will smite you
     VOXEL(VoxelUUID.class),
     ENTITY(EntityUUID.class),
-    CONTRAPTION(ContraptionUUID.class),
-    WORLDLY(null);
+    CONTRAPTION(ContraptionUUID.class);
 
     private static final String PREFIX = "type";
 

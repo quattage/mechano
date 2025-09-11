@@ -1,4 +1,5 @@
 
+
 package com.quattage.mechano.foundation.api.landmark.identifier;
 
 import java.util.Objects;
@@ -20,8 +21,10 @@ import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
+import com.simibubi.create.content.contraptions.StructureTransform;
 
 import io.netty.buffer.ByteBuf;
+import net.createmod.catnip.math.VecHelper;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
@@ -34,17 +37,32 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class ContraptionUUID extends GridUUID {
 
-    private UUID uuid;
-    private BlockPos structurePos;
-    private int index;
-    private @Nullable Griddable<?> points;
-    private @Nullable Contraption cachedContraption;
+    private final UUID uuid;
+    private final BlockPos structurePos;
+    private final int index;
+    private @Nullable AbstractContraptionEntity cachedACE;
+
+    /**
+     * A mirror implementation of {@link AbstractContraptionEntity#toGlobalVector} that
+     * lerps the position of the body aas well as the rotation offset. I don't know why the 
+     * built in implementation doesn't do this already, but doing this was required
+     * @param ace The contraption entity whose anchor position will be used when lerping
+     * @param localVec The local offset relatiev to the anchor which will be transformed and returned
+     * @param pTicks partial ticks, accessible from most rendering contexts, used for lerping
+     * @return A new Vec3 containing the worldly position derived from <code>localVec</code>
+     */
+    public static Vec3 toGlobalVectorWithPositionalLerping(AbstractContraptionEntity ace, Vec3 localVec, float pTicks) {
+		Vec3 anchor = ace.getPrevAnchorVec().lerp(ace.getAnchorVec(), pTicks);
+		Vec3 rotationOffset = VecHelper.getCenterOf(BlockPos.ZERO);
+		localVec = ace.applyRotation(localVec.subtract(rotationOffset), pTicks);
+		localVec = localVec.add(rotationOffset).add(anchor);
+		return localVec;
+	}
 
     public ContraptionUUID(UUID uuid, BlockPos structurePos, int index) {
         this.uuid = uuid;
@@ -56,7 +74,7 @@ public class ContraptionUUID extends GridUUID {
         this.uuid = points.getSource().getUUID();
         this.structurePos = structurePos;
         this.index = index;
-        forceHost(points);
+        this.cachedACE = (AbstractContraptionEntity)points.getSource();
     }
 
     public ContraptionUUID(CompoundTag tag) {
@@ -85,8 +103,8 @@ public class ContraptionUUID extends GridUUID {
     @Override
     public boolean isBeingTrackedBy(ServerPlayer player) {
         if(!(player.level().getChunkSource() instanceof ServerChunkCache chunkCache)) return false;
-        AbstractContraptionEntity ace = tryGetEntity(player.level());
-        if(ace == null) return false;
+        IAttachmentHolder holder = getDataStorageHolder(player.level());
+        if(!(holder instanceof AbstractContraptionEntity ace)) return false;
         ChunkMap.TrackedEntity tracked = chunkCache.chunkMap.entityMap.get(ace.getId());
         if(tracked == null) return false;
         return tracked.seenBy.contains(player.connection);
@@ -94,77 +112,58 @@ public class ContraptionUUID extends GridUUID {
 
     @Override
     public boolean isInFrustum(LevelReader world, @NotNull Frustum view) {
-        if(getOrFindGriddable(world) == null || cachedContraption.bounds == null) 
-            return false;
-        return view.isVisible(cachedContraption.bounds);
-    }
-
-    public void forceHost(GriddableContraptionAttachment points) {
-        Objects.requireNonNull(points);
-        this.points = points;
-        this.cachedContraption = points.getContraption();
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return false;
+        Contraption c = ace.getContraption();
+        if(c == null) return false;
+        return view.isVisible(c.bounds);
     }
 
     @Override
     public @Nullable Griddable<?> getOrFindGriddable(LevelReader world) {
-        if(points != null) return points;
-        if(world.isClientSide()) points = searchContraptionAsClient(world);
-        else points = searchContraptionAsServer(world);
-        return points;        
-    }
-
-    public GriddableBlockEntity searchContraptionAsClient(LevelReader world) {
-        Entity e = ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid);
-        if(!(e instanceof AbstractContraptionEntity ace)) return null;
-        this.cachedContraption = ace.getContraption();
-        if(cachedContraption == null) return null;
-        BlockEntity be = cachedContraption.presentBlockEntities.get(structurePos);
-        return be instanceof GriddableBlockEntity gbe ? gbe : null;
-    }
-
-    public GriddableContraptionAttachment searchContraptionAsServer(LevelReader world) {
-        if(this.cachedContraption == null) {
-            Entity e = ((ServerLevel)world).getEntity(uuid);
-            if(!(e instanceof AbstractContraptionEntity ace)) return null;
-            this.cachedContraption = ace.getContraption();
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
+        if(world.isClientSide()) {
+            Contraption c = ace.getContraption();
+            if(c == null) return null;
+            if(c.presentBlockEntities == null) return null;
+            BlockEntity be = c.presentBlockEntities.get(structurePos);
+            return be instanceof GriddableBlockEntity gbe ? gbe : null;
         }
-        return (GriddableContraptionAttachment)cachedContraption.entity.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
-    }
-
-    private @Nullable AbstractContraptionEntity tryGetEntity(LevelReader world) {
-        if(cachedContraption != null && cachedContraption.entity != null) 
-            return cachedContraption.entity;
-        getOrFindGriddable(world);
-        return cachedContraption == null ? null : cachedContraption.entity;
+        return ace.getData(MechanoData.ANCHOR_ATTACHMENT);
     }
 
     @Override
     public @Nullable SurrogateNode getSurrogate(LevelReader world) {
-        return getOrFindGriddable(world) == null ? null : points.getSurrogate();
+        Griddable<?> points = getOrFindGriddable(world);
+        return points == null ? null : points.getSurrogate();
     }
 
     @Override
     public IAttachmentHolder getDataStorageHolder(LevelReader world) {
+        if(cachedACE != null) return cachedACE;
         if(world.isClientSide()) {
-            if(cachedContraption == null) {
-                Entity e = ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid);
-                if(!(e instanceof AbstractContraptionEntity ace)) return null;
-                this.cachedContraption = ace.getContraption();
-            }
-            return cachedContraption.presentBlockEntities.get(structurePos);
-        }
-
-        if(this.cachedContraption == null) {
-            Entity e = ((ServerLevel)world).getEntity(uuid);
+            Entity e = ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid);
             if(!(e instanceof AbstractContraptionEntity ace)) return null;
-            this.cachedContraption = ace.getContraption();
+            this.cachedACE = ace;
+            return ace;
         }
-        return cachedContraption.entity;
+        Entity e = ((ServerLevel)world).getEntity(uuid);
+        if(!(e instanceof AbstractContraptionEntity ace)) return null;
+        this.cachedACE = ace;
+        return ace;
     }
 
     @Override
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
-        return getOrFindGriddable(world) == null ? null : getOrFindGriddable(world).getAnchor(index);
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
+        Contraption c = ace.getContraption();
+        if(c == null || c.presentBlockEntities == null || c.presentBlockEntities.isEmpty()) 
+            return null;
+        BlockEntity be = c.presentBlockEntities.get(structurePos);
+        if(!(be instanceof GriddableBlockEntity gbe)) return null;
+        return gbe.getAnchor();
     }
 
     @Override
@@ -181,20 +180,22 @@ public class ContraptionUUID extends GridUUID {
     }
 
     @Override
-    public float getAttachedSizeFactor(LevelReader world) {
-        AbstractContraptionEntity ace = tryGetEntity(world);
-        if(ace == null) return 0;
-        AABB box = cachedContraption.entity.getBoundingBox();
-        return box == null ? 0 : (float)box.getSize();
+    public float getWeight(LevelReader world) {
+        return Float.MAX_VALUE;
+        // AbstractContraptionEntity ace = tryGetEntity(world);
+        // if(ace == null) return 0;
+        // AABB box = cachedContraption.entity.getBoundingBox();
+        // return box == null ? 0 : (float)box.getSize();
     }
 
     @Override
     public Vec3 getAttachmentVelocity(LevelReader world) {
-        AbstractContraptionEntity ace = tryGetEntity(world);
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
         return ace == null ? Vec3.ZERO : ace.getDeltaMovement();
     }
 
-    // TODO basic contraptions can't recieve velocity this way, but landlord voxel domains can
+    // TODO basic contraptions can't recieve velocity this way, but landlord voxel domains can? or minecart contraptions? idk
     @Override public void setAttachmentVelocity(LevelReader world, Vec3 vec) { return; }
     @Override public void applyForceToAttachment(LevelReader world, Vec3 force) { return; }
     // --
@@ -211,9 +212,9 @@ public class ContraptionUUID extends GridUUID {
 
     @Override
     public Vec3 getPos(LevelReader world, float pTicks) {
-        AbstractContraptionEntity ace = tryGetEntity(world);
-        if(ace == null) return Vec3.ZERO;
-        return ace.toGlobalVector(Vec3.atLowerCornerOf(structurePos), pTicks);
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return Vec3.ZERO;
+        return toGlobalVectorWithPositionalLerping(ace, Vec3.atLowerCornerOf(structurePos), pTicks);
     }
 
     @Override
@@ -266,6 +267,18 @@ public class ContraptionUUID extends GridUUID {
         if(this == other) return true;
         if(!(other instanceof ContraptionUUID that)) return false;
         return this.uuid.equals(that.uuid) && this.structurePos.equals(that.structurePos);
+    }
+
+    public UUID getUUID() {
+        return uuid;
+    }
+
+    public BlockPos getContraptionOffset() {
+        return structurePos;
+    }
+
+    public VoxelUUID toVoxel(StructureTransform transform) {
+        return new VoxelUUID(transform.apply(structurePos), getIndex());
     }
 
     @Override

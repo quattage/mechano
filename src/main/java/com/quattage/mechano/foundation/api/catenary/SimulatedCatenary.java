@@ -20,55 +20,76 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
 public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
-    private @Nullable Vector2f wind = null;
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
     private final RestitutionTracker tracker = new RestitutionTracker(1e-8f);
-    private float uniformLength = 0f;
+    private float[] forces;
 
-    public SimulatedCatenary() {}
-
-    @Override
-    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
-        if(this.halfOffset == null) {
-            this.halfOffset = new Vector3f(
-                (float)start.x - ((float)(start.x + end.x)) / 2f, 
-                (float)start.y - ((float)(start.y + end.y)) / 2f,
-                (float)start.z - ((float)(start.z + end.z)) / 2f
-            );
-            this.length = halfOffset.length() * 2f;
-            calculateSegmentation(); 
-            return this;
-        }
-        Vector3f oldOffset = new Vector3f(halfOffset);
-        this.halfOffset.set(
-            start.x - ((float)(start.x + end.x)) / 2f, 
-            start.y - ((float)(start.y + end.y)) / 2f, 
-            start.z - ((float)(start.z + end.z)) / 2f
-        );
-        this.length = halfOffset.length() * 2f;
-        calculateSegmentation(); 
-        if(Math.abs(oldOffset.dot(halfOffset)) > 35f)
-            flipSpan();
-        return this;
+    public SimulatedCatenary() {
+        forces = new float[12];
     }
 
     @Override
-    public SimulatedCatenary setOrderedOffset(LevelReader world, GridUUID start, GridUUID end, float pTicks) {
+    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
+        if(start == null || end == null) return this;
+        applyDisplacement(start, end);
+        if(this.halfOffset == null)
+            this.halfOffset = new Vector3f();
+        this.halfOffset.set(    
+            (float)(start.x - forces[1]),
+            (float)(start.y - forces[2]),
+            (float)(start.z - forces[3])
+        );
+        this.length = halfOffset.length() * 2f;
+        calculateSegmentation(); 
+        return this;
+    }
+
+    private void applyDisplacement(Vec3 start, Vec3 end) {
+        if(CatenaryAttributes.FEATURESET.allowsDisplacement() && this.halfOffset != null) {
+            this.forces[4] = (float)start.x - (forces[1] + halfOffset.x);
+            this.forces[5] = (float)start.y - (forces[2] + halfOffset.y);
+            this.forces[6] = (float)start.z - (forces[3] + halfOffset.z);
+            this.forces[7] = (float)end.x - (forces[1] - halfOffset.x);
+            this.forces[8] = (float)end.y - (forces[2] - halfOffset.y);
+            this.forces[9] = (float)end.z - (forces[3] - halfOffset.z);
+        }
+        this.forces[1] = (float)((start.x + end.x) / 2f);
+        this.forces[2] = (float)((start.y + end.y) / 2f);
+        this.forces[3] = (float)((start.z + end.z) / 2f);
+    }
+
+    @Override
+    public SimulatedCatenary setOrderedOffset(LevelReader world, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks) {
+        if(start == null || end == null) return this;
         Duo<GridUUID> ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
         setOffset(ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
         return this;
     }
 
     @Override
-    public SimulatedCatenary setOrderedOffset(LevelReader world, AnchorPoint start, AnchorPoint end, float pTicks) {
+    public SimulatedCatenary setOrderedOffset(LevelReader world, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks) {
+        if(start == null || end == null) return this;
         Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
         setOffset(ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
+        return this;
+    }
+
+    public SimulatedCatenary setOffsetContinuous(LevelReader world, Vec3 startPos, Vec3 endPos, Vec3 worldMid) {
+        if(startPos == null || endPos == null) return this;
+        if(this.halfOffset == null) this.halfOffset = new Vector3f();
+        Vector3f oldOffset = this.halfOffset.normalize(new Vector3f());
+        this.halfOffset.set(startPos.x - worldMid.x, startPos.y - worldMid.y, startPos.z - worldMid.z);
+        this.length = halfOffset.length() * 2f;
+        float diff = Math.abs(this.halfOffset.normalize(new Vector3f()).dot(oldOffset));
+        if(diff < 0.5) Mechano.LOGGER.error("FLIP");
+        updateEndpoints();
         return this;
     }
 
@@ -133,7 +154,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             this.sticks.ensureCapacity(segmentCount - 1);
             addAdditionalSegments(segmentCount - this.points.size());
         }
-        this.uniformLength = (length / (float)sticks.size()) * 0.99f;
+        this.forces[0] = (length / (float)sticks.size()) * 0.99f;
         return this;
     }
 
@@ -187,9 +208,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         updateEndpoints();
 
         final Vector3f gravity = getGravity(points.size());
-        if(WindManager.INSTANCE.isEnabled() && wind != null) 
-            integrateVelocity(gravity, wind);
-        else integrateVelocity(gravity);
+        integrateVelocity(gravity, this.forces[10], this.forces[11]);
 
         float error = 0;
         for(int iter = 0; iter < CatenaryAttributes.SOLVER_STEPS; iter++) {
@@ -198,17 +217,18 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 Vector3f dir = stick.getDir();
                 float initialLength = dir.length();
                 dir.normalize();
+                float half = this.forces[0] / 2f;
                 if(!stick.start.pinned) {
                     stick.start.pos.set(
-                        center.x + dir.x * uniformLength / 2f,
-                        center.y + dir.y * uniformLength / 2f,
-                        center.z + dir.z * uniformLength / 2f
+                        center.x + dir.x * half,
+                        center.y + dir.y * half,
+                        center.z + dir.z * half
                     );
                 } if(!stick.end.pinned) {
                     stick.end.pos.set(
-                        center.x - dir.x * uniformLength / 2f,
-                        center.y - dir.y * uniformLength / 2f,
-                        center.z - dir.z * uniformLength / 2f
+                        center.x - dir.x * half,
+                        center.y - dir.y * half,
+                        center.z - dir.z * half
                     );
                 }
                 error += Math.abs(stick.getLength() - initialLength);
@@ -222,44 +242,31 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
      * https://en.wikipedia.org/wiki/Verlet_integration
      * Optionally includes an arbitrary wind vector for adding
      * additional dynamism.
-     * @param vec Working vector passed here to avoid continuous re-declaration
      * @param gravity Gravitational force to apply (see {@link #getGravity})
-     * @param wind (Optional) An additional, arbitrary force resembling wind
+     * @param windX  average X value for wind forces applied across all points
+     * @param windY average Y value for wind forces applied across all points
      */
-    public void integrateVelocity(Vector3f gravity, Vector2f wind) {
-        float mid = points.size() / 2f;
+    public void integrateVelocity(Vector3f gravity, float windX, float windY) {
+        int s = points.size();
+        float mid = (float)s / 2f;
         for(int x = 0; x < points.size(); x++) {
             Point point = points.get(x);
             if(point.pinned) continue;
             Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
             vel.sub(gravity);
-            float windStrength = (1 - (((float)x - mid ) / mid));
-            vel.add(wind.x * windStrength, 0, wind.y * windStrength);
+            float tS = (float)x / (float)s;
+            float tC = 1 - (((float)x - mid ) / mid);
+            vel.add(windX * tC, 0, windY * tC);
+            vel.sub(
+                (Mth.lerp(tS, forces[4], forces[7]) * 3) / s,
+                (Mth.lerp(tS, forces[5], forces[8]) * 3) / s,
+                (Mth.lerp(tS, forces[6], forces[9]) * 3) / s
+            );
             point.lastPos.set(point.pos);
             point.pos.add(vel);
             tracker.apply(vel);
         }
     }
-
-    /**
-     * A single step of the verlet integration algorithm
-     * https://en.wikipedia.org/wiki/Verlet_integration
-     * Optionally includes an arbitrary wind vector for adding
-     * additional dynamism.
-     * @param vec Working vector passed here to avoid continuous re-declaration
-     * @param gravity Gravitational force to apply (see {@link #getGravity})
-     * @param wind (Optional) An additional, arbitrary force resembling wind
-     */
-    public void integrateVelocity(Vector3f gravity) {
-        for(Point point : points) {
-            if(point.pinned) continue;
-            Vector3f vel = point.pos.sub(point.lastPos, new Vector3f());
-            vel.sub(gravity);
-            point.lastPos.set(point.pos);
-            point.pos.add(vel);
-            tracker.apply(vel);
-        }
-    }   
 
     @Override
     public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
@@ -300,7 +307,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             p.lastPos.set(p.pos);
             p.pos.set(-halfOffset.x, -halfOffset.y, -halfOffset.z);
             p.pinned = true;
-        }
+        }   
         return this;
     }
 
@@ -317,14 +324,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             p.pos.set(-halfOffset.x, -halfOffset.y, -halfOffset.z);
             p.pinned = false;
         }
-        return this;
-    }
-
-    public SimulatedCatenary setOffsetContinuous(LevelReader world, Vec3 startPos, Vec3 worldMid) {
-        if(this.halfOffset == null) this.halfOffset = new Vector3f();
-        this.halfOffset.set(startPos.x - worldMid.x, startPos.y - worldMid.y, startPos.z - worldMid.z);
-        this.length = halfOffset.length() * 2f;
-        updateEndpoints();
         return this;
     }
 
@@ -356,6 +355,18 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 basis.add(stick.end.pos.x, stick.end.pos.y, stick.end.pos.z))
                     .lineWidth(0.02f).disableCull().colored(Color.GREEN);
         }
+        debugVelocities();
+    }
+
+    private void debugVelocities() {
+        Vec3 center = new Vec3(forces[1], forces[2], forces[3]);
+        Vec3 start = new Vec3(forces[1] + halfOffset.x, forces[2] + halfOffset.y, forces[3] + halfOffset.z);
+        Vec3 end = new Vec3(forces[1] - halfOffset.x, forces[2] - halfOffset.y, forces[3] - halfOffset.z);
+        VectorHelper.drawDebugBox(start, Color.RED, "dbls");
+        VectorHelper.drawDebugBox(end, Color.RED, "dble");
+        VectorHelper.drawDebugBox(center, Color.RED, "dblc");
+        VectorHelper.drawDebugRay(start, new Vector3f(forces[4] * 40f, forces[5] * 40f, forces[6] * 40f), new Color(0, 0, 255), "vs");
+        VectorHelper.drawDebugRay(end, new Vector3f(forces[7] * 40f, forces[8] * 40f, forces[9] * 40f), new Color(0, 0, 255), "ve");
     }
 
     private void resetIfUnstable() {
@@ -399,13 +410,14 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     @Override
     public boolean isResting() {
-        if(wind != null && wind.length() > 0.01f) return false;
+        if(hasWind()) return false;
         return tracker.isResting();
     }
 
     @Override
     public void updateAhead(int steps) {
-        disableWind();
+        this.forces[10] = 0;
+        this.forces[11] = 0;
         for(int x = 0; x < steps; x++) {
             update();
             if(isResting()) return;
@@ -442,12 +454,40 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             throw new IllegalStateException("Cannot integrate " + this + " - This Catenary has not been initialized!");
     }
 
-    public void applyWind(@Nullable Vector2f wind) {
-        this.wind = wind;
+    public float getSegmentLength() {
+        return forces[0];
     }
 
-    public void disableWind() {
-        this.wind = null;
+    public void applyWind(float x, float y) {
+        this.forces[10] = x;
+        this.forces[11] = y;
+    }
+    
+    public void applyWind(@Nullable Vector2f wind) {
+        if(wind == null) {
+            this.forces[10] = 0;
+            this.forces[11] = 0;
+            return;
+        }
+        applyWind(wind.x, wind.y);
+    }
+
+    public boolean hasWind() {
+        return Math.abs(forces[10] - CatenaryAttributes.RESTITUTION_VELOCITY) > 0.1f 
+            || Math.abs(forces[11] - CatenaryAttributes.RESTITUTION_VELOCITY) > 0.1f;
+    }
+
+
+    public Vec3 getWorldlyMidpoint() {
+        return new Vec3(forces[1], forces[2], forces[3]);
+    }
+
+    public Vec3 getWorldlyStartPoint() {
+        return getWorldlyMidpoint().add(halfOffset.x, halfOffset.y, halfOffset.z);
+    }
+
+    public Vec3 getWorldlyEndPoint() {
+        return getWorldlyMidpoint().subtract(halfOffset.x, halfOffset.y, halfOffset.z);
     }
 
     @Override

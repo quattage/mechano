@@ -213,13 +213,15 @@ public class ContraptionUUID extends GridUUID {
     @Override
     public Vec3 getPos(LevelReader world, float pTicks) {
         IAttachmentHolder holder = getDataStorageHolder(world);
-        if(!(holder instanceof AbstractContraptionEntity ace)) return Vec3.ZERO;
+        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
         return toGlobalVectorWithPositionalLerping(ace, Vec3.atLowerCornerOf(structurePos), pTicks);
     }
 
     @Override
     public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) {
-        return getPos(world, pTicks).add(ox, oy, oz);
+        Vec3 pos = getPos(world, pTicks);
+        if(pos == null) return null;
+        return pos.add(ox, oy, oz);
     }
 
     @Override

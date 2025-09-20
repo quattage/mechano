@@ -589,7 +589,7 @@ public class CatenaryMesher extends CatenaryAttributeHolder {
         lightLookup.setY((int)Math.round(pos.y + basis.y)); 
         lightLookup.setZ((int)Math.round(pos.z + basis.z));
         int blocklight = world.getBrightness(LightLayer.BLOCK, lightLookup);
-        if(CatenaryAttributes.CLAMP_BLOCKLIGHT_SHADOWS)
+        if(CatenaryAttributes.FEATURESET.shouldApplyShadowClamping())
             blocklight = Mth.clamp(blocklight, 3, 15);
         return LightTexture.pack(blocklight, world.getBrightness(LightLayer.SKY, lightLookup));
     }

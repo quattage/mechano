@@ -54,6 +54,16 @@ public class VectorHelper {
         Outliner.getInstance().showLine("rdb_" + basis + normal, basis, basis.add(normal.x * 0.3f, normal.y * 0.3f, normal.z * 0.3f)).lineWidth(0.02f).disableCull().colored(c);
     }
 
+    /**
+     * Draws the normal vector as a line in 3d space
+     * @param basis Position of the starting point
+     * @param normal Offset towards the ending point (the direction of the ray)
+     * @param c Color of the line to be drawn
+     */
+    public static void drawDebugRay(Vec3 basis, Vector3f normal, Color c, String id) {
+        Outliner.getInstance().showLine("rdb_" + id, basis, basis.add(normal.x * 0.3f, normal.y * 0.3f, normal.z * 0.3f)).lineWidth(0.02f).disableCull().colored(c);
+    }
+
     /***
      * Draws a simple debug box at the given Vec3 position
      */

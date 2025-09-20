@@ -6,7 +6,6 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.LinkDataStorable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
@@ -196,7 +195,11 @@ public final class GridCatenary extends GridConnection {
         if(!(world instanceof ClientLevel cl)) return;
         CatenaryModel<?> model = getOrCreateModel(world);
         if(!isMoving(world)) return;
-        model.setOrderedOffset(world, start, end, pTicks);
+        Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
+        Vec3 start = ordered.start().getPos(world, pTicks);
+        Vec3 end = ordered.end().getPos(world, pTicks);
+        if(start == null || end == null) return;
+        model.setOffset(start, end);
         model.update();
         if(WindManager.INSTANCE.isEnabled() && model instanceof SimulatedCatenary scat)
             scat.applyWind(WindManager.INSTANCE.sample(cl, getMiddle(world)));
@@ -314,7 +317,7 @@ public final class GridCatenary extends GridConnection {
      * @param owner The owner of this catenary, used for acquiring a local offset vector from an AnchorPoint.
      * @param buffers BufferSource to push vertices to, 
      * @param matrixStack PoseStack pertaining to the relevent rendering context.
-     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerping.
+     * @param pTicks Partial Ticks, accessible in most rendering contexts, used for lerpin  g.
      */
     public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
         Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(owner.getLevel(), start, end);
@@ -342,18 +345,44 @@ public final class GridCatenary extends GridConnection {
         Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(owner.level(), start, end);
         Vec3 startPos = ordered.start().getPos(owner.level(), pTicks);
         Vec3 endPos = ordered.end().getPos(owner.level(), pTicks);
-        Mechano.LOGGER.warn("" + startPos + " -> " + endPos);
+        CatenaryModel<?> model = getOrCreateModel(owner.level());
+        if(startPos == null || endPos == null) {
+            renderFallback(owner.level(), ordered, buffers, matrixStack, pTicks);
+            return;
+        }
         Vec3 worldMid = startPos.add(endPos).scale(0.5);
-        CatenaryModel<?> model = getOrCreateModel(owner.level()).updateEndpoints();
+        /**
+         * the offset needs be updated at the framerate of the game to make sure the endpoints don't lag behind
+         * when they're lerped - this is usually done by the fixed update cycle of the catenary itself.
+         * idk if this sucks or not but it seems to work so ¯\_(ツ)_/¯
+         */
         if(model instanceof SimulatedCatenary scat)
-            scat.setOffsetContinuous(owner.level(), startPos, worldMid);
-        // VectorHelper.drawDebugBox(startPos, endPos, owner.toGlobalVector(matrixOffset, pTicks));
+            scat.setOffsetContinuous(owner.level(), startPos, endPos, worldMid);
         CatenaryMesher.REUSABLE
             .at(worldMid)
             .in(owner.level())
             .withAppearance(trns.getType())
             .render(buffers, matrixStack, model, ordered.start().getOffset().add(endPos.subtract(startPos).scale(0.5)), pTicks);
         CatenaryMesher.REUSABLE.reset();
+    }
+
+    /**
+     * Catenaries that involve entities (usually contraptions) may occasionally render before said entity has been
+     * added to the world depending on frame timing or network lag, so we can safely fall back on the previously
+     * stored catenary information instead. This is slightly more expensive, since the start and end now must be
+     * computed based on the catenary's offset. It also means that the catenary may render with the incorrect 
+     * local offset, where the endpoints don't quite line up, but this edge case is transient and shouldn't 
+     * last long enough to be especially noticeable.
+     */
+    private void renderFallback(LevelReader world, Duo<AnchorPoint> ordered, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        if(!(getOrCreateModel(world) instanceof SimulatedCatenary scat)) return;
+        CatenaryMesher.REUSABLE
+            .at(scat.getWorldlyMidpoint())
+            .in(world)
+            .withAppearance(trns.getType())
+            .render(buffers, matrixStack, scat, ordered.start().getOffset().add(scat.getWorldlyEndPoint().subtract(scat.getWorldlyStartPoint()).scale(0.5)), pTicks);
+        CatenaryMesher.REUSABLE.reset();
+        return;
     }
 
     @Override

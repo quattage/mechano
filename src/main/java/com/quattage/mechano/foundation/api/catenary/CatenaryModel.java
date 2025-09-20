@@ -76,7 +76,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, GridUUID start, GridUUID end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
 
     /**
      * Calculates the {@link #setOffset offset} vector
@@ -90,7 +90,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, AnchorPoint start, AnchorPoint end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks);
 
     /**
      * A helper call that sets the first and last
@@ -248,7 +248,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * determines the length of each uniform segment
      */
     public int getSegmentCount() {
-        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(length * CatenaryAttributes.DRAW_RES)));
+        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(length * CatenaryAttributes.FEATURESET.getResolution())));
     }  
 
     public Vector3f getGravity(int points) {

@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -156,7 +155,7 @@ public final class GridLink extends GridConnection {
         GridUUID first = ordered.first();
         GridUUID second = ordered.second();
         Vec3 diff = second.getPos(world).subtract(first.getPos(world));
-        float softLength = getMaximumSpan() * CatenaryAttributes.KINEMATIC_SOFT;
+        float softLength = getMaximumSpan() * 0.9f;
         if(diff.length() < softLength) return;
         second.applyForceToAttachment(world, diff.normalize().scale(
             0.1f * Math.min(1f, (lengths[0] - softLength) / (lengths[0] - softLength))

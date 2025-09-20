@@ -2,6 +2,7 @@
 
 package com.quattage.mechano.foundation.api.catenary;
 
+import java.util.Locale;
 import java.util.function.BiFunction;
 
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +27,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.data.models.blockstates.PropertyDispatch.QuadFunction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LightLayer;
@@ -42,14 +44,11 @@ public class CatenaryAttributes {
     public static final Vector3f UP = new Vector3f(0, 1, 0);
     public static final float POINT_MASS = 3f;
     public static final float TENSION_EPSILON = 1e-3f;
-    public static final float DRAW_RES = 1f;
-    public static final boolean CLAMP_BLOCKLIGHT_SHADOWS = true;
-
+    public static final SimulationFeatureset FEATURESET = SimulationFeatureset.DISPLACED_CORRECTED_HIGH;
     public static final int SOLVER_STEPS = 64;
-    public static final float KINEMATIC_SOFT = 0.9f;
-    public static final float KINEMATIC_DAMP = 0.6f;
     public static final float DETACH_THRESHOLD = 0.6f;
     public static final float RESTITUTION_VELOCITY = 0.1f;
+    
 
     public static final int DRAW_MIN = 5;
     public static final int DRAW_MAX = 32;
@@ -270,8 +269,50 @@ public class CatenaryAttributes {
     }
 
 
+    public static enum SimulationFeatureset implements StringRepresentable {
 
+        LOW_RES(false, false, 0.5f),
+        BASIC(false, false, 1f),
+        DISPLACED(false, true, 1f),
+        DISPLACED_CORRECTED(true, true, 1f),
+        DISPLACED_CORRECTED_HIGH(true, true, 2f);
 
+        private final boolean clampShadows = true;
+        private final boolean allowsFlipping;
+        private final boolean allowsDisplacement;
+        private final float res;
+
+        private SimulationFeatureset(boolean allowsFlipping, boolean allowsProjection, float res) {
+            this.allowsFlipping = allowsFlipping;
+            this.allowsDisplacement = allowsProjection;
+            this.res = res;
+        }
+
+        public float getResolution() {
+            return res;
+        }
+
+        public boolean shouldApplyShadowClamping() {
+            return clampShadows;
+        }
+
+        public boolean allowsFlipping() {
+            return allowsFlipping;
+        }
+
+        public boolean allowsDisplacement() {
+            return allowsDisplacement;
+        }
+
+        public ResourceLocation asResource() {
+            return Mechano.asResource("catenary.featureset." + getSerializedName());
+        }
+
+        @Override
+        public String getSerializedName() {
+            return this.toString().toLowerCase(Locale.ROOT);
+        }
+    }
 
 
     /**

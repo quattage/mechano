@@ -5,7 +5,7 @@ import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -37,11 +37,7 @@ public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?>
         if(!task.indicatesCompletion()) return;
         switch(task) {
             case TASK_CREATE_LINK -> global.createLink(start, end, transmitter);
-            case TASK_DESTROY_LINK -> global.destroyLink(start, end);
-            case TASK_FREE_LINK -> {
-                // TODO implement this? 
-                global.destroyLink(start, end);
-            }
+            case TASK_DESTROY_LINK, TASK_FREE_LINK -> global.destroyLink(start, end);
             case null, default -> GridResponse.logUnhandled(task, this);
         }
     }

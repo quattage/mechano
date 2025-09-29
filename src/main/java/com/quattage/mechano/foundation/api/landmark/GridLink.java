@@ -3,29 +3,27 @@ package com.quattage.mechano.foundation.api.landmark;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector3f;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.helper.Duo;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public final class GridLink extends GridConnection {
 
     private GridNode start;
     private GridNode end;
-    private final float[] lengths;
 
     public GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns) {
         super(trns); 
@@ -39,18 +37,14 @@ public final class GridLink extends GridConnection {
             throw new IllegalArgumentException("Can't instantiate a GridLink where both the start and end positions are the same!");
         if(!start.getOwner().equals(end.getOwner()))
             throw new IllegalStateException("Attempted to add two nodes that don't belong to the same grid, got start: " + start.getOwner() + ", and end: " + end.getOwner());
-        this.lengths = new float[2];
-        this.lengths[0] = Math.round(getEuclideanDistance(world, start.getAddress(), end.getAddress()));
-        this.lengths[1] = trns.getType().getMaximumSpan();
         this.start = start;
         this.end = end;
     }
 
-    private GridLink(GridNode start, GridNode end, Transmitter<?> trns, float[] lengths) {
+    private GridLink(GridNode start, GridNode end, Transmitter<?> trns) {
         super(trns);
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
-        this.lengths = lengths;
         this.start = start;
         this.end = end;
     }
@@ -83,7 +77,7 @@ public final class GridLink extends GridConnection {
 
     @Override
     public GridLink inverseCopy() {
-        return new GridLink(end, start, this.getTransmitter(), this.lengths);
+        return new GridLink(end, start, this.getTransmitter());
     }
 
     @Override
@@ -114,18 +108,14 @@ public final class GridLink extends GridConnection {
     }
 
     @Override
-    public float getSpan() {
-        return lengths[0];
-    }
-
-    @Override
-    public float getMaximumSpan() { 
-        return trns.getType().getMaximumSpan();
+    public float calculateSpan() {
+        return (float)start.getApproxmiatePosition().distanceTo(end.getApproxmiatePosition());
     }
 
     @Override
     public void adjustSpan(LevelReader world, float length) {
-        this.lengths[1] = length;
+        // this doesn't need to do anything on the server since the span is implied by the uuids
+        return;
     }
 
     @Override
@@ -145,22 +135,36 @@ public final class GridLink extends GridConnection {
     }
 
     @Override
-    public void update(LevelReader world, float pTicks) {
-        if(!canMoveDynamically(world)) {
-            Mechano.LOGGER.warn("Attempted invalid kinematic update for non-dynamic " + this);
-            return;
+    public void tick(LevelReader world) {
+        if(!canMoveDynamically(world)) return;
+
+        float wA = getStart().getWeight(world);
+        float wB = getEnd().getWeight(world);
+        Vector3f diff = getStart().getPos(world).subtract(getEnd().getPos(world)).toVector3f();
+        float span = diff.length();
+        if(span < getMaximumSpan()) return;
+
+        PhysicalMaterial phys = getCatenaryAttributesOrThrow().getPhysicalMaterial();
+        float forceMagnitude = ((getMaximumSpan() - span) / getMaximumSpan()) * phys.getReboundForce();
+        Mechano.LOGGER.warn("F: " + forceMagnitude);
+        if(phys.exertsForce()) {
+            diff.normalize();
+            Vector3f sForce = diff.mul(forceMagnitude * (wB / (wA + wB)), new Vector3f());
+            Vector3f eForce = diff.mul(forceMagnitude * (wA / (wB + wA)), new Vector3f());
+            if(sForce.length() > phys.getMaxExertion() || eForce.length() > phys.getMaxExertion()) {
+                // invoke catenary snapping logic
+                return;
+            }
+            if(phys.exertsRigidForce()) {
+                // project startpoint velocity onto sForce
+                // project endpoint velocity onto eForce
+            }
+            getStart().applyForceToAttachment(world, sForce, true);
+            getEnd().applyForceToAttachment(world, eForce, true);
         }
-        Duo<GridUUID> ordered = TrackedStreamable.orderedByWeight(world, getStart(), getEnd());
-        if(ordered == null) return;
-        GridUUID first = ordered.first();
-        GridUUID second = ordered.second();
-        Vec3 diff = second.getPos(world).subtract(first.getPos(world));
-        float softLength = getMaximumSpan() * 0.9f;
-        if(diff.length() < softLength) return;
-        second.applyForceToAttachment(world, diff.normalize().scale(
-            0.1f * Math.min(1f, (lengths[0] - softLength) / (lengths[0] - softLength))
-        ));
+        
     }
+
     @Override
     public void setDataScope(DataScope scope) {
         return;

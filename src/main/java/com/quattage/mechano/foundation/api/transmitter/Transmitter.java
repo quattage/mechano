@@ -8,8 +8,7 @@ import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterTypeBuilder;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType.TransmitterTypeBuilder;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;

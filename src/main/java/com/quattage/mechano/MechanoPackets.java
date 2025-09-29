@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
 import com.quattage.mechano.foundation.api.switchboard.AnchorSyncPacket;
+import com.quattage.mechano.foundation.api.switchboard.EntityForceVelocityS2CPacket;
 import com.quattage.mechano.foundation.api.switchboard.GriddableUpdatePacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
@@ -24,6 +25,7 @@ import net.neoforged.bus.api.IEventBus;
 
 public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     
+    ENTITY_VELOCITY_S2C(EntityForceVelocityS2CPacket.class, EntityForceVelocityS2CPacket.STREAM_CODEC),
     LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
     LINK_S2C(LinkResponsePacket.class, LinkResponsePacket.STREAM_CODEC),
     LINK_SWAP_S2C(LinkSwapPacket.class, LinkSwapPacket.STREAM_CODEC),

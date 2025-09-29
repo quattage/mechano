@@ -11,7 +11,7 @@ import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.Proces
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;

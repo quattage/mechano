@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -180,6 +181,13 @@ public class ContraptionUUID extends GridUUID {
     }
 
     @Override
+    public boolean canReceiveVelocity(LevelReader world) {
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        return false;
+        // TODO minecart contraptions
+    }
+
+    @Override
     public float getWeight(LevelReader world) {
         return Float.MAX_VALUE;
         // AbstractContraptionEntity ace = tryGetEntity(world);
@@ -197,7 +205,7 @@ public class ContraptionUUID extends GridUUID {
 
     // TODO basic contraptions can't recieve velocity this way, but landlord voxel domains can? or minecart contraptions? idk
     @Override public void setAttachmentVelocity(LevelReader world, Vec3 vec) { return; }
-    @Override public void applyForceToAttachment(LevelReader world, Vec3 force) { return; }
+    @Override public void applyForceToAttachment(LevelReader world, Vector3f force) { return; }
     // --
 
     @Override

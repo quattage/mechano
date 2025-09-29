@@ -166,6 +166,11 @@ public final class GriddableEntity extends Entity implements Griddable<Griddable
         return this;
     }
 
+    @Override
+    public Vec3 getSourcePosition() {
+        return position();
+    }
+
     public static class SingleAnchorEntityRenderer extends EntityRenderer<GriddableEntity> {
 
         public SingleAnchorEntityRenderer(Context context) {

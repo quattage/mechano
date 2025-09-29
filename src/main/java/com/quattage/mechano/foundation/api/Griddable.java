@@ -22,6 +22,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -195,6 +196,7 @@ public interface Griddable<T> {
     }
 
     public abstract T getSource();
+    public abstract Vec3 getSourcePosition();
 
     public default boolean isInteractable() { return true; }
     public default boolean isVisible() { return true; }

@@ -152,6 +152,9 @@ public interface TrackedStreamable {
         return getDataScope(world) != DataScope.STATIC_CHUNK;
     }
 
+    public default boolean canReceiveVelocity(LevelReader world) {
+        return false;
+    }
 
     /**
      * Broadcasts a {@link GridResponse} pertaining to this tracked
@@ -270,9 +273,10 @@ public interface TrackedStreamable {
      * @param world
      */
     public static <T extends TrackedStreamable> @Nullable Duo<T> orderedByWeight(LevelReader world, @Nullable T start, @Nullable T end) {
+        if(!start.canReceiveVelocity(world) && !end.canReceiveVelocity(world)) return null;
         if(!start.canMoveDynamically(world) && !end.canMoveDynamically(world)) return null;
-        float startWeight = start == null ? Float.MAX_VALUE : (start.canMoveDynamically(world) ? start.getWeight(world) : Float.MAX_VALUE);
-        float endWeight = end == null ? Float.MAX_VALUE : (end.canMoveDynamically(world) ? end.getWeight(world) : Float.MAX_VALUE);
+        float startWeight = start == null ? Float.MAX_VALUE : (start.canMoveDynamically(world) && start.canReceiveVelocity(world) ? start.getWeight(world) : Float.MAX_VALUE);
+        float endWeight = end == null ? Float.MAX_VALUE : (end.canMoveDynamically(world) && end.canReceiveVelocity(world) ? end.getWeight(world) : Float.MAX_VALUE);
         if(startWeight - endWeight < 0.05f) return Duo.of(end, start);
         if(startWeight - endWeight > 0.05f) return Duo.of(start, end);
         return Duo.of(start, end);

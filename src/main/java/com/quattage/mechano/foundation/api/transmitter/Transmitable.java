@@ -14,7 +14,6 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.multiplayer.ClientLevel;

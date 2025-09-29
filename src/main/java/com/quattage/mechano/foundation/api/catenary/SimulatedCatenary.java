@@ -28,8 +28,9 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     protected @Nullable ObjectArrayList<Point> points;
     protected @Nullable ObjectArrayList<Stick> sticks;
-    private final RestitutionTracker tracker = new RestitutionTracker(1e-8f);
+    private final EntropyTracker tracker = new EntropyTracker(1e-8f);
     private float[] forces;
+    private boolean locked = false;
 
     public SimulatedCatenary() {
         forces = new float[12];
@@ -46,7 +47,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             (float)(start.y - forces[2]),
             (float)(start.z - forces[3])
         );
-        this.length = halfOffset.length() * 2f;
+        if(!locked) 
+            this.length = halfOffset.length() * 2f;
         calculateSegmentation(); 
         return this;
     }
@@ -84,11 +86,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     public SimulatedCatenary setOffsetContinuous(LevelReader world, Vec3 startPos, Vec3 endPos, Vec3 worldMid) {
         if(startPos == null || endPos == null) return this;
         if(this.halfOffset == null) this.halfOffset = new Vector3f();
-        Vector3f oldOffset = this.halfOffset.normalize(new Vector3f());
         this.halfOffset.set(startPos.x - worldMid.x, startPos.y - worldMid.y, startPos.z - worldMid.z);
-        this.length = halfOffset.length() * 2f;
-        float diff = Math.abs(this.halfOffset.normalize(new Vector3f()).dot(oldOffset));
-        if(diff < 0.5) Mechano.LOGGER.error("FLIP");
         updateEndpoints();
         return this;
     }
@@ -133,10 +131,9 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     @Override
     public SimulatedCatenary calculateSegmentation() {
-        int segmentCount = getSegmentCount();
-        if(!isInitialized()) {
-            return this;
-        }
+        if(!isInitialized()) return this;
+        if(locked) return this;
+        int segmentCount = getSegmentCount();        
         if(segmentCount < this.points.size()) {
             boolean wasPinned = this.points.getLast().pinned;
             this.points.removeElements(segmentCount, this.points.size());
@@ -154,7 +151,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             this.sticks.ensureCapacity(segmentCount - 1);
             addAdditionalSegments(segmentCount - this.points.size());
         }
-        this.forces[0] = (length / (float)sticks.size()) * 0.99f;
+        if(length < maxLength)
+            this.forces[0] = (length / (float)sticks.size()) * 0.99f;
         return this;
     }
 
@@ -206,9 +204,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         resetIfUnstable();
         tracker.softReset();
         updateEndpoints();
-
-        final Vector3f gravity = getGravity(points.size());
-        integrateVelocity(gravity, this.forces[10], this.forces[11]);
+        integrateVelocity(getGravity(points.size()), this.forces[10], this.forces[11]);
 
         float error = 0;
         for(int iter = 0; iter < CatenaryAttributes.SOLVER_STEPS; iter++) {
@@ -269,27 +265,34 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks) {
+    public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, float pTicks) {
+        if(!geo.getCatenaryAttributesOrThrow().renders()) {
+            Mechano.LOGGER.warn("Attempted to render a CatenaryModel for non-renderable type '" + geo.getTransmitterType() + "'");
+            return this;
+        }
         if(sticks.size() < 2) {
-            Mechano.LOGGER.error("Attempted to render SimulatedCatenary with invalid (< 2) size!");
+            Mechano.LOGGER.error("Attempted to render a CatenaryModel with invalid (< 2) size!");
             return this;
         }
         Stick previous = sticks.getFirst();
         geo.setLight0(geo.getLight(previous.start.pos));
         geo.setLight1(geo.getLight(previous.end.pos));
         float arclength = 0;
-        geo.model.extruder.make(buffer, pose, geo, null, previous, sticks.get(1), arclength, true, pTicks);
+        MeshExtruder extr = geo.getCatenaryAttributesOrThrow().getModelType().extruder;
+        if(extr == null)
+            throw new UnsupportedOperationException("Unimplemeneted MeshExtruder for ModelType '" + geo.getCatenaryAttributesOrThrow().getModelType() + "'");
+        extr.make(buffer, pose, geo, null, previous, sticks.get(1), arclength, true, pTicks);
         for(int x = 1; x < sticks.size() - 1; x++) {
             Stick current = sticks.get(x);
             arclength += current.getLength();
             geo.setLight1(geo.getLight(current.start.pos));
-            geo.model.extruder.make(buffer, pose, geo, previous, current, sticks.get(x + 1), arclength, true, pTicks);
+            extr.make(buffer, pose, geo, previous, current, sticks.get(x + 1), arclength, true, pTicks);
             previous = current;
             geo.walkLight();
         }
         Stick last = sticks.getLast();
         geo.setLight1(geo.getLight(last.end.pos));
-        geo.model.extruder.make(buffer, pose, geo, previous, last, null, arclength, true, pTicks);
+        extr.make(buffer, pose, geo, previous, last, null, arclength, true, pTicks);
         return this;
     }
 
@@ -473,8 +476,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     public boolean hasWind() {
-        return Math.abs(forces[10] - CatenaryAttributes.RESTITUTION_VELOCITY) > 0.1f 
-            || Math.abs(forces[11] - CatenaryAttributes.RESTITUTION_VELOCITY) > 0.1f;
+        return Math.abs(forces[10] - CatenaryAttributes.RESTITUTION_SPEED) > 0.1f 
+            || Math.abs(forces[11] - CatenaryAttributes.RESTITUTION_SPEED) > 0.1f;
     }
 
 
@@ -495,19 +498,12 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         return this.points != null && this.sticks != null;
     }
 
-    @Override
-    public void adjustSpan(LevelReader world, float length) {
-        this.maxLength = length;
+    public void lockSpan() {
+        this.locked = true;
     }
 
-    @Override
-    public float getSpan() {
-        return length;
-    }
-
-    @Override
-    public float getMaximumSpan() {
-        return maxLength;
+    public void unlockSpan() {
+        this.locked = false;
     }
 
     @Override

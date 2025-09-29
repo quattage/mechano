@@ -2,10 +2,10 @@ package com.quattage.mechano.foundation.api.transmitter;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.spool.HookupTransmitter;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.ModelType;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Soundscape;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Thickness;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
 
 import net.neoforged.bus.api.IEventBus;
 
@@ -15,9 +15,13 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_conductor"), () -> Transmitter
             .builder(PerfectConductor::new)
             .writesToNetwork(null)
-            .maximumSpannedDistance(Integer.MAX_VALUE)
-            .supportsSameBlockConnections()
-            .withAttributes(CatenaryAttributes.INVISIBLE)
+            .withAttributes(attr -> {
+                attr.withModelType(ModelType.NO_DRAW);
+                attr.withThickness(Thickness.ZERO);
+                attr.withMaterial(PhysicalMaterial.AIR);
+                attr.withSounds(Soundscape.AIR);
+                attr.enableInterconnectivity();
+            })
             .build()
     );
 
@@ -25,9 +29,13 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_insulator"), () -> Transmitter
             .builder(PerfectInsulator::new)
             .writesToNetwork(null)
-            .maximumSpannedDistance(Integer.MAX_VALUE)
-            .supportsSameBlockConnections()
-            .withAttributes(CatenaryAttributes.INVISIBLE)
+            .withAttributes(attr -> {
+                attr.withModelType(ModelType.NO_DRAW);
+                attr.withThickness(Thickness.ZERO);
+                attr.withMaterial(PhysicalMaterial.AIR);
+                attr.withSounds(Soundscape.AIR);
+                attr.enableInterconnectivity();
+            })
             .build()
     );
 
@@ -35,11 +43,13 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("hookup"), () -> Transmitter
             .builder(HookupTransmitter::new)
             .writesToNetwork(null)
-            .maximumSpannedDistance(32)
-            .withAttributes(CatenaryAttributes
-                .as(ModelType.SQUARE)
-                .withThickness(Thickness.TRIPLE)
-            ).build()
+            .withAttributes(attr -> {
+                attr.withModelType(ModelType.SQUARE);
+                attr.withThickness(Thickness.TRIPLE);
+                attr.withMaterial(PhysicalMaterial.ROPE);
+                attr.withSounds(Soundscape.CABLE);
+            })
+            .build()
     );
 
     public static void register(IEventBus modBus) {

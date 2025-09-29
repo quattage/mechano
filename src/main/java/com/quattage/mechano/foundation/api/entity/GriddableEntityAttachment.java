@@ -25,6 +25,7 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
@@ -148,5 +149,10 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
     @Override
     public Entity getSource() {
         return entity;
+    }
+
+    @Override
+    public Vec3 getSourcePosition() {
+        return entity == null ? Vec3.ZERO : entity.position();
     }
 }

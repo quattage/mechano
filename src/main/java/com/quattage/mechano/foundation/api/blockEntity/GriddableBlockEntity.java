@@ -43,6 +43,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -86,7 +87,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     public void tick() {
         if(!level.isClientSide) return;
         if(!surrogate.isSynced(level)) return;
-        forEachCatenary(cat -> cat.update((ClientLevel)level, 1));
+        forEachCatenary(cat -> cat.tick((ClientLevel)level));
     }
 
     @Override
@@ -165,6 +166,11 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @Override
     public BlockEntity getSource() {
         return this;
+    }
+
+    @Override
+    public Vec3 getSourcePosition() {
+        return getBlockPos().getCenter();
     }
 
     @Override

@@ -5,6 +5,7 @@ package com.quattage.mechano.foundation.api.catenary;
 import java.util.Locale;
 import java.util.function.BiFunction;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -13,10 +14,11 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.theme.Color;
@@ -42,16 +44,38 @@ public class CatenaryAttributes {
     public static final int[] TEX_DIMS = new int[] { 16, 32 };
 
     public static final Vector3f UP = new Vector3f(0, 1, 0);
-    public static final float POINT_MASS = 3f;
-    public static final float TENSION_EPSILON = 1e-3f;
     public static final SimulationFeatureset FEATURESET = SimulationFeatureset.DISPLACED_CORRECTED_HIGH;
-    public static final int SOLVER_STEPS = 64;
     public static final float DETACH_THRESHOLD = 0.6f;
-    public static final float RESTITUTION_VELOCITY = 0.1f;
-    
 
-    public static final int DRAW_MIN = 5;
-    public static final int DRAW_MAX = 32;
+    /**
+     * This controls how many times the constraint solver should run in verlet-based catenary simulations.
+     * Unfortunately this shouldn't be altered by the player for scalability settings, since doing could
+     * cause catenaries to look very different between clients. Any lower than this and the constraint solver
+     * can't properly resolve tight catenaries, so its like they're always loose even if they should be tight.
+     */
+    public static final int SOLVER_STEPS = 64;
+
+    /**
+     * The uniform mass of every catenary. Note that longer catenaries (with more segments)
+     * don't actually weigh more than shorter ones. I don't actually remember why I did this,
+     * but I don't want to touch it since it's currently working.
+     */
+    public static final float MASS = 3f;
+
+    /**
+     * The maximum amount of speed that a catenary is able to
+     * possess throughout its points that is considered still enough
+     * that the simulation may pause without visual oddities.
+     * The speed here is measured in meters per game tick, where
+     * any catenary whose average point velocity magnitude is 
+     * below this value is considered to be in a state of restitution.
+     * This allows verlet simulations to approximately determine
+     * whether or not they have reached a state of mimimum potential energy.
+     */
+    public static final float RESTITUTION_SPEED = 0.1f;
+
+    public static final int DRAW_MIN = 5; // minimum amount of segments in a single catenary
+    public static final int DRAW_MAX = 32; // maximum amount of segments in a single catenary
 
     // TODO switch to custom shader using more optimized vertex format
     public static final BiFunction<TransmitterType<?>, Boolean, RenderType> SOLID_MATERIAL 
@@ -84,10 +108,10 @@ public class CatenaryAttributes {
             return RenderType.create("catenary_cutout", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, DRAW_MAX * 8, true, false, composite);
         });
 
-    public static enum Initializer {
-        FRESH_SIMULATION((world, start, end, trns) -> {
+    public static enum MeshInitializer {
+        FRESH_SIMULATION((world, start, end, attr) -> {
             CatenaryModel<?> output = new SimulatedCatenary();
-            output.maxLength = trns.getMaximumSpan();
+            output.maxLength = attr.getMaximumSpan();
             output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
                 .initializeSpan()
                 .calculateSegmentation()
@@ -95,9 +119,9 @@ public class CatenaryAttributes {
             output.update();
             return output;
         }),
-        FRESH_SIMULATION_EXPRESSIVE((world, start, end, trns) -> {
+        FRESH_SIMULATION_EXPRESSIVE((world, start, end, attr) -> {
             SimulatedCatenary output = new SimulatedCatenary();
-            output.maxLength = trns.getMaximumSpan();
+            output.maxLength = attr.getMaximumSpan();
             output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
                 .initializeSpan()
                 .calculateSegmentation()
@@ -106,9 +130,9 @@ public class CatenaryAttributes {
             output.kick(0.35f);
             return output;
         }),
-        RESTING_SIMULATION((world, start, end, trns) -> {
+        RESTING_SIMULATION((world, start, end, attr) -> {
             CatenaryModel<?> output = new SimulatedCatenary();
-            output.maxLength = trns.getMaximumSpan();
+            output.maxLength = attr.getMaximumSpan();
             output.setOrderedOffset(world, start.getAddress(), end.getAddress(), 1)
                 .initializeSpan()
                 .calculateSegmentation()
@@ -117,29 +141,19 @@ public class CatenaryAttributes {
             return output;
         });
 
-
-        private final QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func;
-        private Initializer(QuadFunction<LevelReader, AnchorPoint, AnchorPoint, TransmitterType<?>, CatenaryModel<?>> func) { 
+        private final QuadFunction<LevelReader, AnchorPoint, AnchorPoint, CatenaryAttributes.Container, CatenaryModel<?>> func;
+        private MeshInitializer(QuadFunction<LevelReader, AnchorPoint, AnchorPoint, CatenaryAttributes.Container, CatenaryModel<?>> func) { 
             this.func = func; 
         }
 
-        /**
-         * Executes a simple set of method calls to create a catenary with the desired precomputed
-         * characteristics. 
-         * @param world
-         * @param start
-         * @param end
-         * @param trns
-         * @return
-         */
         public CatenaryModel<?> make(LevelReader world, AnchorPoint start, AnchorPoint end, TransmitterType<?> trns) { 
-            return func.apply(world, start, end, trns); 
+            return func.apply(world, start, end, trns.getCatenaryAttributesOrThrow()); 
         }
     }
 
-    public static enum ModelType {
+    public static enum ModelType implements StringRepresentable {
 
-        SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
+        SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
             float loftLength, boolean recomputeNormals, float pTicks) -> {
                 Vector3f cDir = current.getFacing();
                 if(previous == null) geo.computeMatrix(current.getFacing());
@@ -157,6 +171,7 @@ public class CatenaryAttributes {
                 geo.shiftUVs();
                 geo.emitQuad(buffer, pose, geo.normBX(), geo.normBY(), geo.normBZ(), 3, 7, 4, 0);
                 geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 6, 2);
+                geo.unshiftUVs();
         }), SQUARE_CUTOUT(CUTOUT_MATERIAL, SQUARE.extruder),
 
         CROSS(null, null), CROSS_CUTOUT(null, null),
@@ -169,10 +184,6 @@ public class CatenaryAttributes {
         private ModelType(BiFunction<TransmitterType<?>, Boolean, RenderType> materialGetter, MeshExtruder extruder) {
             this.extruder = extruder;
             this.mat = Util.memoize(materialGetter);
-        }
-
-        public @Nullable RenderType getMaterial(TransmitterType<?> type) {
-            return getMaterial(type, false);
         }
 
         public @Nullable RenderType getMaterial(TransmitterType<?> type, boolean chunk) {
@@ -190,57 +201,183 @@ public class CatenaryAttributes {
             }
             return shader;
         }
-    }
 
-    public static CatenaryAttributeHolder as(ModelType type) {
-        return new CatenaryAttributeHolder(type);
-    }
-
-
-
-
-    public static final  CatenaryAttributeHolder INVISIBLE
-        = CatenaryAttributes
-            .as(ModelType.NO_DRAW)
-            .withThickness(Thickness.ZERO);
-
-    public static final CatenaryAttributeHolder DEFAULT 
-        = CatenaryAttributes
-            .as(ModelType.SQUARE)
-            .withThickness(Thickness.TRIPLE);
-
-
-    public static class CatenaryAttributeHolder {
-
-        public @Nullable ModelType model;
-        protected @Nullable Thickness thick = Thickness.TRIPLE;
-
-        protected CatenaryAttributeHolder(ModelType model) {
-            this.model = model;
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(Locale.ROOT);
         }
 
-        public CatenaryAttributeHolder withThickness(Thickness thick) {
+        @Override
+        public String toString() {
+            return getSerializedName();
+        }
+    }
+
+
+
+    public static class Container {
+
+        private @NotNull ModelType model = ModelType.SQUARE;
+        private @NotNull Thickness thick = Thickness.TRIPLE;
+        private @NotNull PhysicalMaterial material = PhysicalMaterial.ROPE;
+        private @NotNull Soundscape sounds = Soundscape.CABLE;
+        private int maxSpan = 32;
+        private boolean canInterconnect = false;
+        private boolean ignoresRestrictions = false;
+
+        public Container withModelType(ModelType model) {
+            if(model == null) return this;
+            this.model = model;
+            return this;
+        }
+
+        public Container withThickness(Thickness thick) {
             if(thick == null) return this;
             this.thick = thick;
             return this;
         }
 
-        protected ModelType getModelType() {
+        public Container withMaterial(PhysicalMaterial material) {
+            if(material == null) return this;
+            this.material = material;
+            return this;
+        }
+
+        public Container withSounds(Soundscape sounds) {
+            if(sounds == null) return this;
+            this.sounds = sounds;
+            return this;
+        }
+        
+        /**
+         * Enables the ability for {@link TransmissionType transmitters}
+         * inheriting from this container to make connections between two
+         * {@link AnchorPoint AnchorPoints} that belong to the same
+         * {@link Griddable source}. For transmitters that the player
+         * can manipulate directly, it is reccomended for this to be
+         * disabled, (its disabled by default) since 
+         * @return This container for chaining
+         */
+        public Container enableInterconnectivity() {
+            this.canInterconnect = true;
+            return this;
+        }
+
+        /**
+         * Disables all restrictions for the placability of
+         * {@link TransmissionType transmitters} inheriting from
+         * this container. This is useful for transmitters that 
+         * shouldn't care whether or not they're compatible with
+         * a particular {@link com.quattage.mechano.foundation.api.Griddable endpoint}
+         * and should instead always be connectable to everything.
+         * @return
+         */
+        public Container bypassRestrictions() {
+            this.ignoresRestrictions = true;
+            return this;
+        }
+
+        /**
+         * The maximum spanned length (in meters) of individual
+         * catenaries that inherit from this container. Spools
+         * will not be permitted to produce catenaries past this length.
+         * @param maxSpan
+         * @return This container for chaining
+         */
+        public Container maxLength(int maxSpan) {
+            this.maxSpan = maxSpan;
+            return this;
+        }
+
+        public ModelType getModelType() {
             return model;
         }
 
         public Thickness getThickness() {
-            return thick == null ? Thickness.TRIPLE : thick;
+            return thick;
         }
 
+        public int getMaximumSpan() {
+            return maxSpan;
+        }
 
-        public @Nullable RenderType getShaderFor(TransmitterType<?> type) {
-            return model == null ? RenderType.SOLID : model.getMaterial(type);
+        public float getMinimumSpan() {
+            return canInterconnect ? 0 : 0.125f;
+        }
+
+        public boolean shouldApplyRestrictions() {
+            return !ignoresRestrictions;
+        }
+
+        public boolean supportsInterconnectivity() {
+            return canInterconnect;
+        }
+
+        public PhysicalMaterial getPhysicalMaterial() {
+            return material;
+        }
+
+        public boolean renders() {
+            return model != ModelType.NO_DRAW && thick != Thickness.ZERO;
         }
     }
 
-    
 
+    /**
+     * Indicates that implementing classes store a CatenaryAttributes
+     * container.
+     */
+    public static interface CatenaryAttributable {
+        /**
+         * Gets a {@link CatenaryAttributes.Container}
+         * associated with this object with a nullcheck and
+         * warning. If null, this method will return a new
+         * container with default settings.
+         * @return A catenary container assoicaited with this object.
+         */
+        public default Container getCatenaryAttributesSafe() {
+            return getCatenaryAttributesOrElse(new CatenaryAttributes.Container());
+        }
+        /**
+         * Gets a {@link CatenaryAttributes.Container}
+         * associated with this object with a nullcheck and
+         * warning. If null, this method will return instance passed.
+         * @param fallback CatenaryAttributes container that will be returned instead
+         * @return A catenary container assoicaited with this object.
+         */
+        public default Container getCatenaryAttributesOrElse(CatenaryAttributes.Container fallback) {
+            Container c = getCatenaryAttributes();
+            if(c == null)
+                return fallback;
+            return c;
+        }
+        /**
+         * Gets a {@Link CatenaryAttributes.Container}
+         * associated with this object
+         * @return A catenary container assoicaited with this object.
+         */
+        public default Container getCatenaryAttributesOrThrow() {
+            Container c = getCatenaryAttributes();
+            if(c == null)
+                throw new IllegalStateException("An operation attempted to acquire a catenary attribute container from an object that returned null!");
+            return c;
+        }
+
+        public default float getMinimumSpan() { return getCatenaryAttributesOrThrow().getMinimumSpan(); }
+        public default float getMaximumSpan() { return getCatenaryAttributesOrThrow().getMaximumSpan(); }
+
+        public abstract void adjustSpan(LevelReader world, float length);
+        public abstract float calculateSpan();
+        public abstract Container getCatenaryAttributes();
+    }
+
+
+    /**
+     * Pixel-unit thickness of a catenary when it is drawn.
+     * The rendering process does not suport UV stretching
+     * (which would result in texels that are too big/small), 
+     * so this must match the width of the texture you're using.
+     */
     public static enum Thickness {
         ZERO(0),
         SINGLE(1),
@@ -249,33 +386,109 @@ public class CatenaryAttributes {
         QUADRUPLE(4);
 
         private final int pix;
-        private final float thick;
+
         private Thickness(int pixels) {
             this.pix = pixels;
-            this.thick = (pixels) / 16f;
         }
 
-        public int getPixels() {
+        public int pixels() {
             return pix;
         }
 
-        public float get() {
-            return thick;
+        public float raw() {
+            return (float)pix / 16f;
         }
 
         public float half() {
-            return thick / 2f;
+            return (float)pix / 32f;
         }
     }
 
 
+    public static enum PhysicalMaterial {
+
+        /**
+         * Average tension tolerance and little stretch. Will snap.
+         */
+        ROPE(0.2f, 5f),
+        /**
+         * No stretch. Can handle high forces
+         */
+        CHAIN(1f, 20f),
+        /**
+         * Very stretchy and robust
+         */
+        BUNGEE(0.3f, 12f),
+        /**
+         * Extremely stretchy, but fragile and exerts little force on attachments
+         */
+        RUBBER(1f, 3f),
+        /**
+         * Unbreakable and infinitely stretchy.
+         * This type exerts no force on attachments at all, so its as if it doesn't exist.
+         */
+        AIR(-1f, Float.MAX_VALUE),
+        /**
+         * Unbreakable with zero stretch. 
+         * This type exerts maximal force on attachments to fully constrain them.
+         * Basically just an infinitely rigid chain that will never break.
+         */
+        UNOBRANIUM(Float.MAX_VALUE, -1f);
+
+        protected final float reboundForceMultiplier;
+        protected final float maxExertionBeforeBreaking;
+
+        private PhysicalMaterial(float reboundForceMultiplier, float maxExertionBeforeBreaking) {
+            this.reboundForceMultiplier = reboundForceMultiplier;
+            this.maxExertionBeforeBreaking = maxExertionBeforeBreaking;
+        }
+
+        public boolean exertsForce() {
+            return reboundForceMultiplier > 0;
+        }
+
+        public boolean exertsElasticForce() {
+            return reboundForceMultiplier > 0 && reboundForceMultiplier < Float.MAX_VALUE;
+        }
+
+        public boolean exertsRigidForce() {
+            return reboundForceMultiplier >= Float.MAX_VALUE;
+        }
+
+        public boolean isBreakable() {
+            return maxExertionBeforeBreaking > -0.01f;
+        }
+
+        public float getMaxExertion() {
+            return maxExertionBeforeBreaking;
+        }
+
+        public float getReboundForce() {
+            return reboundForceMultiplier;
+        }
+    }
+
+    public static enum Soundscape {
+        AIR,
+        TWINE,
+        CABLE,
+        CHAIN;
+    }
+
+    /**
+     * Scalability settings for catenary simulations. Unfortunatley,
+     * simulation steps cannot be included here, since turning
+     * the iteration count down would drastically alter the perceived
+     * tension of the catenary. Lower simulation step counts resolve 
+     * to lazy, loose cables.
+     */
     public static enum SimulationFeatureset implements StringRepresentable {
 
-        LOW_RES(false, false, 0.5f),
-        BASIC(false, false, 1f),
-        DISPLACED(false, true, 1f),
-        DISPLACED_CORRECTED(true, true, 1f),
-        DISPLACED_CORRECTED_HIGH(true, true, 2f);
+        LOW_RES(false, false, 0.25f),
+        BASIC(false, false, 0.5f),
+        DISPLACED(false, true, 0.5f),
+        DISPLACED_CORRECTED(true, true, 0.5f),
+        DISPLACED_CORRECTED_HIGH(true, true, 1f);
 
         private final boolean clampShadows = true;
         private final boolean allowsFlipping;
@@ -361,6 +574,8 @@ public class CatenaryAttributes {
             return LightTexture.pack(world.getBrightness(LightLayer.BLOCK, pos), world.getBrightness(LightLayer.SKY, pos));
         }
     }
+
+
 
     /**
      * A physical link connecting two {@link Point points}

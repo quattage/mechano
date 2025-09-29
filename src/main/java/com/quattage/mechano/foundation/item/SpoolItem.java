@@ -206,7 +206,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         if(storage == null) return;
         GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
         if(cat == null) return;
-        applyDurability(entity, stack, cat.getSpan());
+        applyDurability(entity, stack, cat.calculateSpan());
         cat.adjustSpan(world, (stack.getMaxDamage() - stack.getDamageValue()) / 2f);
     }
 

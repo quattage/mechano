@@ -437,6 +437,17 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         return address.getBlockPos(world);
     }
 
+    /**
+     * Used in place of {@link #getPos} for when
+     * you don't have access to the world - may return 
+     * out of date information.
+     * @return Vec3 position of this GridNode in the world
+     */
+    public Vec3 getApproxmiatePosition() {
+        if(owner == null || address == null) return Vec3.ZERO;
+        return getPos(owner.getWorld());
+    }
+
     @Override
     public Vec3 getPos(LevelReader world, float pTicks) {
         return address.getPos(world, pTicks);

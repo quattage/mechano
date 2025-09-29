@@ -2,7 +2,15 @@ package com.quattage.mechano.foundation.api.catenary;
 
 import org.joml.Vector3f;
 
-public class RestitutionTracker {
+/**
+ * A helper class for determining whether or not a verlet-based 
+ * catenary simulation has reached a state of minimum potential 
+ * energy. This class is designed to be instantiated by 
+ * {@link CatenaryModel instances} for convenience.
+ */
+public class EntropyTracker {
+
+    // TODO this class is LOD unfriendly and kind of expensive to store in every single catenary instance
 
     private final float epsilon;
     private float avgVelocity = 0f;
@@ -10,12 +18,12 @@ public class RestitutionTracker {
     private float previousAccumulatedError = 0;
     private float accumulatedError = 0;
 
-    public RestitutionTracker(float precision) {
+    public EntropyTracker(float precision) {
         this.epsilon = precision;
     }
 
     public boolean isResting() {
-        if(avgVelocity < CatenaryAttributes.RESTITUTION_VELOCITY && (Math.abs(accumulatedError - previousAccumulatedError) < epsilon)) {
+        if(avgVelocity < CatenaryAttributes.RESTITUTION_SPEED && (Math.abs(accumulatedError - previousAccumulatedError) < epsilon)) {
             if(tick > 42) return true;
             tick++;
             return false;
@@ -36,17 +44,25 @@ public class RestitutionTracker {
     public void walk(float newError, int steps) {
         previousAccumulatedError = accumulatedError;
         accumulatedError = (newError / (float)(steps * CatenaryAttributes.SOLVER_STEPS));
-        average(steps);
+        this.avgVelocity /= (float)steps;
     }
 
     public void apply(Vector3f velocity) {
         this.avgVelocity += velocity.length();
     }
 
-    public void average(int total) {
-        this.avgVelocity /= total;
-    }
-
+    /**
+     * A catenary is considered to be cascading when it receives a change
+     * in velocity that is too great, or if its accumulated constraint error
+     * is too high. This can occur in cases where catenary simulations
+     * become unstable or too long/complex, where they're unable to resolve 
+     * to a stable output. In cases like this, steps should be taken to ensure 
+     * that the catenary is removed from the world before it causes extreme 
+     * visual artifacts that are generally unpleasant, but may also affect 
+     * people with photosensitivity.
+     * @return <code>true</code> if this EntropyTracker contains data that 
+     * suggests its instantiating catenary is cascading.
+     */
     public boolean isCascading() {
         return avgVelocity > 1e10 || Float.isNaN(avgVelocity) || accumulatedError > 500;
     }

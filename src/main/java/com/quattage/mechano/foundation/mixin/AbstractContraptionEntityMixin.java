@@ -56,7 +56,7 @@ public class AbstractContraptionEntityMixin implements CatenaryAccessor {
         this.mechano$Catenaries = storage.getAll();
         for(GridCatenary cat : this.mechano$Catenaries) {
             if(!cat.hasPoints()) continue;
-            cat.update(cast.level(), 1);
+            cat.tick(cast.level());
         }
     }
 

@@ -6,7 +6,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
-import com.quattage.mechano.foundation.api.catenary.Tensionable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Container;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
@@ -29,9 +30,9 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-public abstract sealed class GridConnection implements Tensionable, TrackedStreamable permits GridLink, GridCatenary, ConnectionKey {
+public abstract sealed class GridConnection implements TrackedStreamable, CatenaryAttributable permits GridLink, GridCatenary, ConnectionKey {
 
-    protected Transmitter<?> trns;
+    protected final @NotNull Transmitter<?> trns;
 
     public abstract GridUUID getStart();
     public abstract GridUUID getEnd();
@@ -176,28 +177,11 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         getEnd().sendLevelUpdates(world);
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if(other == this) return true;
-        if(!(other instanceof GridConnection that)) return false;
-        return GridUUID.areAsymmetricallyEqual(this.getStart(), this.getEnd(), that.getStart(), that.getEnd());
-    }
-
-    @Override
-    public int hashCode() { 
-        return getStart().hashCode() + getEnd().hashCode(); 
-    }
-
-    @Override
-    public String toString() { 
-        return describeConnectionType() + "[" + getStart() + " -> " + getEnd() + "]"; 
-    }
-
     public float calculateTraversalCost() {
         // TODO traversal cost should vary depending on whether or not
         // the pathfinding gets closer or further away from the target
         if(!canTraverse()) return Float.MAX_VALUE;
-        return Math.max(0, getSpan() + trns.getCost());
+        return Math.max(0, calculateSpan() + trns.getCost());
     }
 
     /**
@@ -205,9 +189,8 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
      * On the server, calling this method will apply constraints to attached entities.
      * On the client, this method constructs the mesh for rendering.
      * @param world 
-     * @param pTicks
      */
-    public void update(LevelReader world, float pTicks) {}
+    public void tick(LevelReader world) {}
 
     /**
      * Gets the primary renderer/hoster for this GridConnection
@@ -259,6 +242,28 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         return getStart().getWeight(world) + getEnd().getWeight(world);
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if(other == this) return true;
+        if(!(other instanceof GridConnection that)) return false;
+        return GridUUID.areAsymmetricallyEqual(this.getStart(), this.getEnd(), that.getStart(), that.getEnd());
+    }
+
+    @Override
+    public int hashCode() { 
+        return getStart().hashCode() + getEnd().hashCode(); 
+    }
+
+    @Override
+    public String toString() { 
+        return describeConnectionType() + "[" + getStart() + " -> " + getEnd() + "]"; 
+    }
+
+    @Override
+    public Container getCatenaryAttributes() {
+        return trns.getType().getCatenaryAttributes();
+    }
+
     public static final class ConnectionKey extends GridConnection {
 
         private final GridUUID start, end;
@@ -277,7 +282,7 @@ public abstract sealed class GridConnection implements Tensionable, TrackedStrea
         @Override public void adjustSpan(LevelReader world, float length) { return; }
 
         @Override
-        public float getSpan() {
+        public float calculateSpan() {
             return -1;
         }
 

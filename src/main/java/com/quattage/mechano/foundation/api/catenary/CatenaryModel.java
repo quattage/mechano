@@ -9,7 +9,6 @@ import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
 
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
 
@@ -33,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  * by applying a basis vector and/or translating the PoseStack, depending on what context you're rendering from.
  * 
  */
-public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensionable {
+public abstract class CatenaryModel<T extends CatenaryModel<?>> {
 
     // TODO flywheel and cache
 
@@ -44,8 +43,9 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     public float maxLength = 32f;
 
     /**
-     * Dumps the given catenary, nullifying its internal references
-     * and destroying it.
+     * Destroying the provided CatenaryModel will ensure that
+     * internal references are reset so it cannot be reused,
+     * which prevents potential leaks.
      * @param cat
      */
     public static void disposeOf(CatenaryModel<?> cat) {
@@ -128,7 +128,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * Note that updating a model will not result in any visual
      * indication that anything has occured in-game. For that to
      * happen, the model must be {@link #render pushed to a VertexConsumer}.
-     * The re-usable pipeline wrapper, {@link CatenaryMesher}, contains
+     * The re-usable pipeline wrapper, {@link CatenaryMeshBuffer}, contains
      * more robust helper methods for doing this.
      * <p> 
      * <h3>A quick note about update cycles</h3>
@@ -174,17 +174,17 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      * Renders this Catenary to the provided stack. For more 
      * comprehensive access and ease of use, this method is
      * primarily intended to be accessed via the
-     * {@link CatenaryMesher#render geometry dispatcher}
+     * {@link CatenaryMeshBuffer#render geometry dispatcher}
      */
-    public abstract CatenaryModel<T> render(VertexConsumer buffer, Pose pose, CatenaryMesher geo, float pTicks);
+    public abstract CatenaryModel<T> render(VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, float pTicks);
 
     /**
      * Renders this Catenary to the provided stack. For more 
      * comprehensive access and ease of use, this method is
      * primarily intended to be accessed via the
-     * {@link CatenaryMesher#render geometry dispatcher}
+     * {@link CatenaryMeshBuffer#render geometry dispatcher}
      */
-    public CatenaryModel<T> render(VertexConsumer buffer, Pose pose, CatenaryMesher geo) {
+    public CatenaryModel<T> render(VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo) {
         return render(buffer, pose, geo, 1);
     }
 
@@ -215,30 +215,14 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
      */
     public abstract void drawDebug(Vec3 basis);
 
-    /**
-     * Helper method for lerping from
-     * -halfoffset to halfoffset
-     */
-    protected Vector3f quicklerp(Vector3f trgt, float t) {
-        trgt.set(
-            Mth.lerp(t, -halfOffset.x, halfOffset.x),
-            Mth.lerp(t, -halfOffset.y, halfOffset.y),
-            Mth.lerp(t, -halfOffset.z, halfOffset.z)
-        );
-        return trgt;
-    }
-
-    @Override
     public float getSpan() {
         return length;
     }
 
-    @Override
     public float getMaximumSpan() {
         return maxLength;
     }
 
-    @Override
     public void adjustSpan(LevelReader world, float length) {
         this.maxLength = length;
     }
@@ -252,7 +236,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Tensi
     }  
 
     public Vector3f getGravity(int points) {
-        return CatenaryAttributes.UP.mul((CatenaryAttributes.POINT_MASS / (float)points) * 0.3f, new Vector3f());
+        return CatenaryAttributes.UP.mul((CatenaryAttributes.MASS / (float)points) * 0.3f, new Vector3f());
     }
 
     /**

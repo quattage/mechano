@@ -22,7 +22,7 @@ public interface MeshExtruder {
      * place of either adjacent stick.
      * @param buffer VertexConsumer to push geometry to
      * @param pose Pose to use for transforming
-     * @param geo {@link CatenaryMesher} to store and process vertex data
+     * @param geo {@link CatenaryMeshBuffer} to store and process vertex data
      * @param previous (Optional, can be null) The previous stick in the chain
      * @param current (Required) The stick to create a profile of
      * @param next (Optional, can be null) The next stick in the chain
@@ -33,5 +33,5 @@ public interface MeshExtruder {
      * the normals contained in <code>geo</code> will not be recomputed, but reused. 
      * @param pTicks Partial ticks (accessible in most rendering contexts) for lerping from a fixed update cycle.
      */
-    void make(VertexConsumer buffer, Pose pose, CatenaryMesher geo, @Nullable Stick previous, Stick current, @Nullable Stick next, float loftLength, boolean recomputeNormals, float pTicks);
+    void make(VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, @Nullable Stick previous, Stick current, @Nullable Stick next, float loftLength, boolean recomputeNormals, float pTicks);
 }

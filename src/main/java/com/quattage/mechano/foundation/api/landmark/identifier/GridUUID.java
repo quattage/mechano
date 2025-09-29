@@ -3,6 +3,7 @@ package com.quattage.mechano.foundation.api.landmark.identifier;
 import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
@@ -61,8 +62,8 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
     public abstract int getIndex();
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
-    public void applyForceToAttachment(LevelReader world, Vec3 force) { applyForceToAttachment(world, force, true); }
-    public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {}
+    public void applyForceToAttachment(LevelReader world, Vector3f force) { applyForceToAttachment(world, force, true); }
+    public void applyForceToAttachment(LevelReader world, Vector3f force, boolean retainVelocity) {}
     public Vec3 getAttachmentVelocity(LevelReader world) { return Vec3.ZERO; }
     public void setAttachmentVelocity(LevelReader world, Vec3 vec) {}
 

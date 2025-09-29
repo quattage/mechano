@@ -8,12 +8,14 @@ import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
+import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
+import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.helper.VectorHelper;
@@ -117,7 +119,7 @@ public class AnchorPoint implements TrackedStreamable {
      * @return <code>true</code> if the provided TFP can interact with this AnchorPoint
      */
     public boolean isCompatableWith(TransmitterType<?> type) {
-        if(type.ignoresLimits()) return true;
+        if(!type.getCatenaryAttributesOrThrow().shouldApplyRestrictions()) return true;
         return (bitmask & type.bitmask()) != 0;
     }
 
@@ -208,6 +210,18 @@ public class AnchorPoint implements TrackedStreamable {
             (pos.getY() + offset.y) + size,
             (pos.getZ() + offset.z) + size
         );
+    }
+
+    /**
+     * Evaluates whether or not this AnchorPoint is attached to any Player entity
+     * @param world
+     * @return <code>true</code> if this AnchorPoint's address points to a Player entity instance
+     */
+    public boolean belongsToPlayer(LevelReader world) {
+        if(!(address instanceof EntityUUID euid)) return false;
+        Griddable<?> points = euid.getOrFindGriddable(world);
+        if(points == null) return false;
+        return points.getSource() instanceof Player;
     }
 
 

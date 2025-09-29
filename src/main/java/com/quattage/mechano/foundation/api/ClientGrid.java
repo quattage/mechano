@@ -23,7 +23,7 @@ import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry.TransmitterType;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.simibubi.create.content.contraptions.Contraption;
 
@@ -116,16 +116,17 @@ public final class ClientGrid extends SidedGridDispatcher {
             GridResponse response = failIfMissing(startAnchor, endAnchor, null);
             if(!response.indicatesCompletion()) return response;
         }
-        if(!type.ignoresLimits()) {
+        CatenaryAttributes.Container attr = type.getCatenaryAttributesOrThrow();
+        if(attr.shouldApplyRestrictions()) {
             if(!endAnchor.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
             if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;
         }
-        if(endAnchor.equals(startAnchor) || (!type.supportsUnindexedConnections() 
+        if(endAnchor.equals(startAnchor) || (!attr.supportsInterconnectivity()
             && startAnchor.getAddress().isUnindexed(endAnchor.getAddress()))) 
                 return GridResponse.FAIL_DUPLICATE; 
 
         float linkDistance = startAnchor.distanceTo(world, endAnchor);
-        if(linkDistance < type.getMinDistance()) return GridResponse.FAIL_TOO_CLOSE;
+        if(linkDistance < type.getMinimumSpan()) return GridResponse.FAIL_TOO_CLOSE;
         if(linkDistance > type.getMaximumSpan()) return GridResponse.FAIL_TOO_FAR;
 
         GridConnection preexisting = LinkDataStorable.getAsClient(world, new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress()));
@@ -249,7 +250,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         }
         GridCatenary cat = GridCatenary.findLoosely(getWorld(), start.getAddress(), end.getAddress());
         if(cat != null) {
-            cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
+            cat.reinitializeModel(world, CatenaryAttributes.MeshInitializer.RESTING_SIMULATION);
             cat.sendLevelUpdates(world);
             return GridResponse.TASK_COMPLETED;
         }
@@ -261,7 +262,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         cat.fixDataScopes(world); //////////////////////////
         ////////////////////////////////////////////////////
         
-        cat.reinitializeModel(world, CatenaryAttributes.Initializer.RESTING_SIMULATION);
+        cat.reinitializeModel(world, CatenaryAttributes.MeshInitializer.RESTING_SIMULATION);
         LinkDataStorable.put(world, cat);
         cat.sendLevelUpdates(world);
         return GridResponse.TASK_COMPLETED;

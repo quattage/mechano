@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.foundation.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;

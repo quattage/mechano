@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -15,9 +16,11 @@ import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.switchboard.EntityForceVelocityS2CPacket;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
+import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -132,6 +135,11 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
+    public boolean canReceiveVelocity(LevelReader world) {
+        return true;
+    }
+
+    @Override
     public float getWeight(LevelReader world) {
         return getOrFindGriddable(world) == null ? Float.MAX_VALUE : (float)points.getSource().getBoundingBox().getSize();
     }
@@ -142,9 +150,19 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public void applyForceToAttachment(LevelReader world, Vec3 force, boolean retainVelocity) {
+    public void applyForceToAttachment(LevelReader world, Vector3f force, boolean retainVelocity) {
         if(getOrFindGriddable(world) == null) return;
-        points.getSource().setDeltaMovement(retainVelocity ? points.getSource().getDeltaMovement().add(force) : force);
+        Entity e = points.getSource();
+        if(e == null || !e.isAlive()) return;
+        if(!world.isClientSide() && e instanceof ServerPlayer sp) {            
+            if(retainVelocity) sp.push(force.x, force.y, force.z);
+            else sp.setDeltaMovement(force.x, force.y, force.z);
+            EntityForceVelocityS2CPacket packet = EntityForceVelocityS2CPacket.of(sp, !retainVelocity);
+            CatnipServices.NETWORK.sendToClientsTrackingAndSelf(sp, packet);
+            return;
+        }
+        if(retainVelocity) e.push(force.x, force.y, force.z);
+        else e.setDeltaMovement(force.x, force.y, force.z);
     }
 
     @Override

@@ -3,10 +3,10 @@ package com.quattage.mechano.foundation.api.landmark;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
@@ -18,14 +18,16 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public final class GridLink extends GridConnection {
 
     private GridNode start;
     private GridNode end;
+    private float span;
 
-    public GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns) {
+    public GridLink(LevelReader world, GridNode start, GridNode end, Transmitter<?> trns, float span) {
         super(trns); 
         Objects.requireNonNull(world);
         Objects.requireNonNull(start);
@@ -39,14 +41,16 @@ public final class GridLink extends GridConnection {
             throw new IllegalStateException("Attempted to add two nodes that don't belong to the same grid, got start: " + start.getOwner() + ", and end: " + end.getOwner());
         this.start = start;
         this.end = end;
+        this.span = span;
     }
 
-    private GridLink(GridNode start, GridNode end, Transmitter<?> trns) {
+    private GridLink(GridNode start, GridNode end, Transmitter<?> trns, float span) {
         super(trns);
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
         this.start = start;
         this.end = end;
+        this.span = span;
     }
 
     @Override
@@ -72,12 +76,12 @@ public final class GridLink extends GridConnection {
                 return;
             }
         }
-        sendToClientsTracking(world, LinkResponsePacket.of(start, end, trns, response));
+        sendToClientsTracking(world, LinkResponsePacket.of(this, response));
     }
 
     @Override
     public GridLink inverseCopy() {
-        return new GridLink(end, start, this.getTransmitter());
+        return new GridLink(end, start, this.getTransmitter(), span);
     }
 
     @Override
@@ -85,6 +89,7 @@ public final class GridLink extends GridConnection {
         UUIDDiscriminator.write(end.getAddress(), in);
         end.getAddress().writeTo(in);
         trns.getType().writeTo(in);
+        writeSpan(in);
         if(trns.needsSerialization()) {
             CompoundTag extras = new CompoundTag();
             trns.writeTo(extras);
@@ -109,12 +114,12 @@ public final class GridLink extends GridConnection {
 
     @Override
     public float calculateSpan() {
-        return (float)start.getApproxmiatePosition().distanceTo(end.getApproxmiatePosition());
+        return this.span;
     }
 
     @Override
     public void adjustSpan(LevelReader world, float length) {
-        // this doesn't need to do anything on the server since the span is implied by the uuids
+        this.span = length;
         return;
     }
 
@@ -137,32 +142,17 @@ public final class GridLink extends GridConnection {
     @Override
     public void tick(LevelReader world) {
         if(!canMoveDynamically(world)) return;
+        Vec3 start = getStart().getPos(world);
+        Vec3 end = getEnd().getPos(world);
+        PhysicalMaterial phys = getCatenaryAttributesOrThrow().getPhysicalMaterial(); 
+        float force = GridConnection.simulateKinematics(this, phys, start, end, world);
+        if(phys.isBreakable() && (force > phys.getMaxExertion()))
+            SidedGridDispatcher.server(world).destroyLink(getStart(), getEnd());
+    }
 
-        float wA = getStart().getWeight(world);
-        float wB = getEnd().getWeight(world);
-        Vector3f diff = getStart().getPos(world).subtract(getEnd().getPos(world)).toVector3f();
-        float span = diff.length();
-        if(span < getMaximumSpan()) return;
-
-        PhysicalMaterial phys = getCatenaryAttributesOrThrow().getPhysicalMaterial();
-        float forceMagnitude = ((getMaximumSpan() - span) / getMaximumSpan()) * phys.getReboundForce();
-        Mechano.LOGGER.warn("F: " + forceMagnitude);
-        if(phys.exertsForce()) {
-            diff.normalize();
-            Vector3f sForce = diff.mul(forceMagnitude * (wB / (wA + wB)), new Vector3f());
-            Vector3f eForce = diff.mul(forceMagnitude * (wA / (wB + wA)), new Vector3f());
-            if(sForce.length() > phys.getMaxExertion() || eForce.length() > phys.getMaxExertion()) {
-                // invoke catenary snapping logic
-                return;
-            }
-            if(phys.exertsRigidForce()) {
-                // project startpoint velocity onto sForce
-                // project endpoint velocity onto eForce
-            }
-            getStart().applyForceToAttachment(world, sForce, true);
-            getEnd().applyForceToAttachment(world, eForce, true);
-        }
-        
+    @Override
+    public float getMaximumSpan() {
+        return involvesPlayer(start.getWorld()) ? trns.getType().getMaximumSpan() : span;
     }
 
     @Override

@@ -33,7 +33,7 @@ public class AwaitingLinkBuffer {
         worker = Executors.newSingleThreadScheduledExecutor();
     }
 
-    public void deferForLater(ClientGrid grid, AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, GridResponse futureTask) {
+    public void deferForLater(ClientGrid grid, AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, float span, GridResponse futureTask) {
 
         Objects.requireNonNull(grid);
         Objects.requireNonNull(start);
@@ -52,7 +52,7 @@ public class AwaitingLinkBuffer {
                 old.refresh(futureTask);
                 return;
             }
-            buffer.add(new Awaiting(start, end, trns, futureTask));
+            buffer.add(new Awaiting(start, end, trns, span, futureTask));
         }
     }
 
@@ -196,6 +196,7 @@ public class AwaitingLinkBuffer {
 
         private final AnchorSynchronizer start;
         private final AnchorSynchronizer end;
+        private final float span;
         private final @Nullable GridCatenary reassert;
         private final @Nullable GridUUID replacement;
         private final @Nullable TransmitterType<?> trns;
@@ -204,9 +205,10 @@ public class AwaitingLinkBuffer {
         private long expiryTime;
         private short attempts;
 
-        protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, GridResponse awaitingTask) {
+        protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, float span, GridResponse awaitingTask) {
             this.start = start;
             this.end = end;
+            this.span = span;
             this.trns = trns;
             this.awaitingTask = awaitingTask;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
@@ -217,6 +219,7 @@ public class AwaitingLinkBuffer {
         protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end,  GridUUID replacement, GridResponse awaitingTask) {
             this.start = start;
             this.end = end;
+            this.span = 0;
             this.trns = null;
             this.awaitingTask = awaitingTask;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
@@ -227,6 +230,7 @@ public class AwaitingLinkBuffer {
         protected Awaiting(AnchorSynchronizer start, AnchorSynchronizer end) {
             this.start = start;
             this.end = end;
+            this.span = 0;
             this.trns = null;
             this.awaitingTask = GridResponse.TASK_DESTROY_LINK;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
@@ -237,6 +241,7 @@ public class AwaitingLinkBuffer {
         protected Awaiting(GridCatenary cat) {
             this.start = null;
             this.end = null;
+            this.span = cat.calculateSpan();
             this.trns = cat.getTransmitter() == null ? null : cat.getTransmitter().getType();
             this.awaitingTask = GridResponse.TASK_REASSERT_LINK;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
@@ -247,6 +252,7 @@ public class AwaitingLinkBuffer {
         protected Awaiting(AnchorSynchronizer anchor) {
             this.start = anchor;
             this.end = anchor;
+            this.span = 0;
             this.trns = null;
             this.awaitingTask = GridResponse.TASK_SYNC_SINGLE;
             this.expiryTime = System.currentTimeMillis() + (long)LIFETIME_MS;
@@ -269,12 +275,12 @@ public class AwaitingLinkBuffer {
             if(taskStatus.indicatesCompletion() || awaitingTask == GridResponse.NONE || tryExpire()) return;         
             attempts++;
             switch(awaitingTask) {
-                case TASK_CREATE_LINK -> taskStatus = owner.handleCatenaryCreation(start, end, trns, ProcessMode.IMMEDIATE);
+                case TASK_CREATE_LINK -> taskStatus = owner.handleCatenaryCreation(start, end, span, trns, ProcessMode.IMMEDIATE);
                 case TASK_SYNC_SINGLE -> taskStatus = owner.syncSingleAnchor(start, ProcessMode.IMMEDIATE);
                 case TASK_REASSERT_LINK -> taskStatus = owner.reassertCatenary(reassert, ProcessMode.IMMEDIATE);
                 case TASK_DESTROY_LINK -> taskStatus = owner.handleCatenaryDestruction(start, end, ProcessMode.IMMEDIATE);
                 case TASK_DESTROY_LINK_LAZY -> taskStatus = owner.ensureCatenaryDestroyed(start, end);
-                case TASK_SYNC_ANCHORS -> taskStatus = owner.handleCatenarySync(start, end, trns, ProcessMode.IMMEDIATE);
+                case TASK_SYNC_ANCHORS -> taskStatus = owner.handleCatenarySync(start, end, span, trns, ProcessMode.IMMEDIATE);
                 case TASK_SWAP_START -> taskStatus = owner.swapStartingPoint(start, end, replacement, ProcessMode.IMMEDIATE);
                 case TASK_SWAP_END -> taskStatus = owner.swapEndingPoint(start, end, replacement, ProcessMode.IMMEDIATE);
                 case null, default -> GridResponse.logUnhandled(awaitingTask, this);

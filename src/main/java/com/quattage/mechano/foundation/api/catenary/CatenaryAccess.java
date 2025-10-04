@@ -9,14 +9,12 @@ import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public interface CatenaryAccessor {
+public interface CatenaryAccess {
     
     @OnlyIn(Dist.CLIENT)
     public abstract @Nullable ObjectSet<GridCatenary> getCatenaries();
@@ -30,10 +28,6 @@ public interface CatenaryAccessor {
             if(!cat.hasPoints()) continue;
             action.accept(cat);
         }
-    }
-
-    public static Vec3 getLocalizedOffset(LivingEntity e, float pTicks) {
-        return e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
     }
 
     public static Vec3 getLocalizedOffset(LevelReader world, BlockPos sectionCenter, AnchorPoint anchor) {
@@ -54,9 +48,5 @@ public interface CatenaryAccessor {
         for(GridCatenary cat : cats) 
             out += cat.toString() + ", ";
         return out.substring(0, out.length() - 2) + "]";
-    }
-
-    public static Vec3 getLocalizedOffset(BlockEntity be) {
-        return be.getBlockPos().getCenter();
     }
 }

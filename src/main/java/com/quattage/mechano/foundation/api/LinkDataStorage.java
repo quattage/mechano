@@ -10,9 +10,9 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.LinkDataStorable.Client;
-import com.quattage.mechano.foundation.api.LinkDataStorable.ClientSectionable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.ServerSectionable;
+import com.quattage.mechano.foundation.api.LinkDataStorage.Client;
+import com.quattage.mechano.foundation.api.LinkDataStorage.ClientSectionable;
+import com.quattage.mechano.foundation.api.LinkDataStorage.ServerSectionable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
@@ -20,7 +20,7 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -44,32 +44,37 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * side-specific access, with the end goal of  ensuring that grid data is only one hash 
  * lookup away in most contexts. Especially for client-sided rendering tasks, this structure
  * is very useful for immediately accessing any {@link GridCatenary catenaries} that belong
- * to any trackable construct. LevelChunk, Entity, and BlockEntity attachment holders are 
+ * to any TrackedConstruct. LevelChunk, Entity, and BlockEntity attachment holders are 
  * explicitly supported. Attempts to push link data to any other IAttachmentHolder type
  * will result in thrown exceptions.
  */
-public sealed interface LinkDataStorable<T extends GridConnection> permits Client, com.quattage.mechano.foundation.api.LinkDataStorable.Server, ClientSectionable, ServerSectionable {
+public sealed interface LinkDataStorage<T extends GridConnection> permits Client, com.quattage.mechano.foundation.api.LinkDataStorage.Server, ClientSectionable, ServerSectionable {
 
     @SuppressWarnings("unchecked")
     @ApiStatus.Internal
-    public static <T extends GridConnection> LinkDataStorable<T> make(IAttachmentHolder holder) {
+    public static <T extends GridConnection> LinkDataStorage<T> make(IAttachmentHolder holder) {
         if(holder instanceof LevelChunk chunk) {
             if(chunk.getLevel().isClientSide())
-                return (LinkDataStorable<T>) new ClientSectionable();
-            return (LinkDataStorable<T>) new ServerSectionable();
+                return (LinkDataStorage<T>) new ClientSectionable();
+            return (LinkDataStorage<T>) new ServerSectionable();
         }
         if(holder instanceof Entity entity) {
             if(entity.level().isClientSide())
-                return (LinkDataStorable<T>) new Client();
-            return (LinkDataStorable<T>) new Server();
+                return (LinkDataStorage<T>) new Client();
+            return (LinkDataStorage<T>) new Server();
         }
         if(holder instanceof BlockEntity be) {
             if(be.getLevel().isClientSide())
-                return (LinkDataStorable<T>) new Client();
-            return (LinkDataStorable<T>) new Server();
+                return (LinkDataStorage<T>) new Client();
+            return (LinkDataStorage<T>) new Server();
         }
         throwBadHolderType(holder);
         return null;
+    }
+
+    public static @Nullable LinkDataStorage<?> getUnsided(Entity e) {
+        if(e.level().isClientSide()) return getAsClient(e, false);
+        return getAsServer(e, false);
     }
 
     public static @Nullable ServerSectionable getAsServer(LevelReader world, ChunkPos pos, boolean force) {
@@ -86,12 +91,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable Server getAsServer(BlockEntity be, boolean force) {
         Objects.requireNonNull(be);
         assertSided(be, false);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = be.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof Server sdata) return sdata;
         if(!force) return null;
-        data = (new LinkDataStorable.Server());
-        be.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.Server());
+        be.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (Server)data;
     }
 
@@ -99,12 +104,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable ServerSectionable getAsServer(ChunkAccess chunk, boolean force) {
         Objects.requireNonNull(chunk);
         assertSided(chunk, false);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = chunk.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof ServerSectionable sdata) return sdata;
         if(!force) return null;
-        data = (new LinkDataStorable.ServerSectionable());
-        chunk.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.ServerSectionable());
+        chunk.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (ServerSectionable)data;
     }
 
@@ -112,12 +117,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable Server getAsServer(Entity e, boolean force) {
         Objects.requireNonNull(e);
         assertSided(e, false);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = e.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof Server sdata) return sdata;
         if(!force) return null;
-        data = (new LinkDataStorable.Server());
-        e.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.Server());
+        e.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (Server)data;
     }
 
@@ -308,7 +313,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static @Nullable LinkDataStorable<?> getAsClient(IAttachmentHolder holder) {
+    public static @Nullable LinkDataStorage<?> getAsClient(IAttachmentHolder holder) {
         if(holder instanceof LevelChunk chunk)
             return getAsClient(chunk, false);
         if(holder instanceof Entity e)
@@ -335,12 +340,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable Client getAsClient(BlockEntity be, boolean force) {
         Objects.requireNonNull(be);
         assertSided(be, true);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = be.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof Client cdata) return cdata;
         if(!force) return null;
-        data = (new LinkDataStorable.Client());
-        be.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.Client());
+        be.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (Client)data;
     }
 
@@ -349,12 +354,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable ClientSectionable getAsClient(ChunkAccess chunk, boolean force) {
         Objects.requireNonNull(chunk);
         assertSided(chunk, true);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = chunk.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof ClientSectionable cdata) return cdata;
         if(!force) return null;
-        data = (new LinkDataStorable.ClientSectionable());
-        chunk.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.ClientSectionable());
+        chunk.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (ClientSectionable)data;
     }
 
@@ -363,12 +368,12 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
     public static @Nullable Client getAsClient(Entity e, boolean force) {
         Objects.requireNonNull(e);
         assertSided(e, true);
-        LinkDataStorable<?> data;
+        LinkDataStorage<?> data;
         data = e.getExistingDataOrNull(MechanoData.LINK_ATTACHMENT);
         if(data instanceof Client cdata) return cdata;
         if(!force) return null;
-        data = (new LinkDataStorable.Client());
-        e.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorable)data);
+        data = (new LinkDataStorage.Client());
+        e.setData(MechanoData.LINK_ATTACHMENT, (LinkDataStorage)data);
         return (Client)data;
     }
 
@@ -592,7 +597,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
     private static String describePrimary(LevelReader world, GridConnection connection) {
         if(connection == null) return "null connection";
-        TrackedStreamable ts = connection.getPrimaryConstruct(world);
+        TrackedConstruct ts = connection.getPrimaryConstruct(world);
         if(ts instanceof AnchorPoint ap && ap.getAddress() != null) return "[" + ap.getAddress().toString() + " scope: '" + ap.getDataScope(world) + "', holder: " + ap.getDataStorageHolder(world);
         if(ts instanceof GridNode node && node.getAddress() != null) return node.getAddress().toString() + " scope: '" + node.getDataScope(world) + "', holder: " + node.getDataStorageHolder(world);
         if(ts instanceof GridUUID uuid) return uuid.toString() + ", holder: " + uuid.describeDataScope(world);
@@ -649,7 +654,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
 
 
-    public static final class Client implements LinkDataStorable<GridCatenary> {
+    public static final class Client implements LinkDataStorage<GridCatenary> {
 
         private final ObjectOpenHashSet<GridCatenary> contents = new ObjectOpenHashSet<>(2);
 
@@ -730,7 +735,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
 
 
-    public static final class ClientSectionable implements LinkDataStorable<GridCatenary> {
+    public static final class ClientSectionable implements LinkDataStorage<GridCatenary> {
 
         private final Int2ObjectOpenHashMap<Client> contents = new Int2ObjectOpenHashMap<>(2);
 
@@ -828,7 +833,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
 
 
-    public static final class Server implements LinkDataStorable<GridLink> {
+    public static final class Server implements LinkDataStorage<GridLink> {
 
         private final ObjectOpenHashSet<GridLink> contents = new ObjectOpenHashSet<>(2);
 
@@ -896,7 +901,7 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
 
 
 
-    public static final class ServerSectionable implements LinkDataStorable<GridLink> {
+    public static final class ServerSectionable implements LinkDataStorage<GridLink> {
 
         private final Int2ObjectOpenHashMap<Server> contents = new Int2ObjectOpenHashMap<>(2);
 
@@ -983,11 +988,11 @@ public sealed interface LinkDataStorable<T extends GridConnection> permits Clien
      * Allows implementing classes to assert what kind 
      * of LinkData they store, and, by extension, where 
      * internal systems should look for retrieval. 
-     * This class is used particularly in the {@link TrackedStreamable}
+     * This class is used particularly in the {@link TrackedConstruct}
      * interface as a wway to allow {@link GridConnections} to
      * reassert their link data to allow catenaries to smoothly
      * hand off control and rendering context to/from all of the
-     * {@link IAttachmentHolder} subclasses supported by {@link LinkDataStorable}.
+     * {@link IAttachmentHolder} subclasses supported by {@link LinkDataStorage}.
      */
     public static enum DataScope implements StringRepresentable {
         SERVER_UNKNOWN,

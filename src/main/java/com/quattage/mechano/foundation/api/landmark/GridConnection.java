@@ -4,13 +4,16 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Container;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -21,6 +24,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -30,13 +35,58 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-public abstract sealed class GridConnection implements TrackedStreamable, CatenaryAttributable permits GridLink, GridCatenary, ConnectionKey {
+public abstract sealed class GridConnection implements TrackedConstruct, CatenaryAttributable permits GridLink, GridCatenary, ConnectionKey {
 
     protected final @NotNull Transmitter<?> trns;
 
     public abstract GridUUID getStart();
     public abstract GridUUID getEnd();
     public abstract boolean isClientSide();
+
+    public static short span2Short(float span) {
+        return (short)(Mth.clamp(span * 50f, 0, 65535) - Short.MAX_VALUE);
+    }
+
+
+
+    /**
+     * Applies forces to the endpoints that the provided {@link GridConnection} instance
+     * is attached to. This method is used to simulate the kinematic effects of tension
+     * using Hooke's law. Forces applied, by default, are scaled by the relative size 
+     * of each end's hitbox, and by whether or not the endpoint is capable of moving
+     * in the first place (for example, an {@link AnchorPoint}) attached to a BlockEntity
+     * cannot move.
+     * @param link link to grab kinematic data from
+     * @param mat {@Link Physicalmaterial} to use for force calculations
+     * @param start starting point of the provided link
+     * @param end ending point of the provided link
+     * @param world world to operate within
+     * @return float magnitude representing the total force applied to both endpoints
+     */
+    public static float simulateKinematics(GridConnection link, PhysicalMaterial mat, @Nullable Vec3 start, @Nullable Vec3 end, LevelReader world) {
+
+        if(start == null || end == null) return 0;
+        if(!mat.exertsForce()) return 0;
+        Vector3f diff = start.subtract(end).toVector3f();
+        float maxSpan = link.getMaximumSpan();
+        float span = diff.length();
+        if(span < link.getMaximumSpan()) return 0;
+
+        // hooke's law (mostly sortof idk)
+        float forceMagnitude = ((maxSpan - span) / maxSpan) * mat.getReboundForce();
+        
+        diff.normalize();
+        float wA = link.getStart().getMass(world);
+        float wB = link.getEnd().getMass(world);
+        Vector3f sForce = diff.mul(-Math.abs(forceMagnitude * (wB / (wA + wB))), new Vector3f());
+        Vector3f eForce = diff.mul(-Math.abs(forceMagnitude * (wA / (wB + wA))), new Vector3f());
+
+        float sfM = sForce.length() * 20;
+        if(sfM > 0.01f) link.getStart().applyForceToAttachment(world, sForce, true);
+        float efM = eForce.length() * 20;
+        if(efM > 0.01f) link.getEnd().applyForceToAttachment(world, eForce, true);
+        return sfM + efM;
+    }
 
     public static float getEuclideanDistance(LevelReader world, GridUUID a, GridUUID b) {
         Vec3 aPos = a.getPos(world);
@@ -73,7 +123,7 @@ public abstract sealed class GridConnection implements TrackedStreamable, Catena
             return;
         }
         if(mode == InsertionPolicy.ORDERED) {
-            TrackedStreamable priority = TrackedStreamable.orderedByAssertionPriority(world, start, end).first();
+            TrackedConstruct priority = TrackedConstruct.orderedByAssertionPriority(world, start, end).first();
             for(ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if(priority.isBeingTrackedBy(player))
                     CatnipServices.NETWORK.sendToClient(player, packet);
@@ -111,7 +161,7 @@ public abstract sealed class GridConnection implements TrackedStreamable, Catena
     @Override
     public int getSectionY(LevelReader world) {
         if(!hasPoints()) throw new IllegalStateException("Can't get sectionY for connection with null point(s)!");
-        TrackedStreamable primary =  getPrimaryConstruct(world);
+        TrackedConstruct primary =  getPrimaryConstruct(world);
         return primary.getSectionY(world);
     }
 
@@ -165,6 +215,13 @@ public abstract sealed class GridConnection implements TrackedStreamable, Catena
     public boolean endsWith(GridUUID address) { return getEnd().equals(address); }
     public boolean involves(GridUUID address) { return startsWith(address) || endsWith(address); }
 
+
+    public boolean involvesPlayer(LevelReader world) {
+        boolean startP = getStart() != null && getStart().getDataStorageHolder(world) instanceof Player;
+        boolean endP = getEnd() != null && getEnd().getDataStorageHolder(world) instanceof Player;
+        return startP || endP;
+    }
+
     @Override
     public void sendLevelUpdates(Level world) {
         // if(!hasPoints() || getStart().canMoveDynamically() || getEnd().canMoveDynamically()) 
@@ -194,13 +251,13 @@ public abstract sealed class GridConnection implements TrackedStreamable, Catena
 
     /**
      * Gets the primary renderer/hoster for this GridConnection
-     * according to the {@link TrackedStreamable#orderedByAssertionPriority assertion priority}
+     * according to the {@link TrackedConstruct#orderedByAssertionPriority assertion priority}
      * rules.
      * @param world
      * @return
      */
-    public TrackedStreamable getPrimaryConstruct(LevelReader world) {
-        return TrackedStreamable.orderedByAssertionPriority(world, getStart(), getEnd()).first();
+    public TrackedConstruct getPrimaryConstruct(LevelReader world) {
+        return TrackedConstruct.orderedByAssertionPriority(world, getStart(), getEnd()).first();
     }
 
     @Override
@@ -237,9 +294,9 @@ public abstract sealed class GridConnection implements TrackedStreamable, Catena
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        if(!hasPoints()) return Float.MAX_VALUE;
-        return getStart().getWeight(world) + getEnd().getWeight(world);
+    public float getMass(LevelReader world) {
+        if(!hasPoints()) return TrackedConstruct.DEFAULT_MASS;
+        return getStart().getMass(world) + getEnd().getMass(world);
     }
 
     @Override

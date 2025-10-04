@@ -1,14 +1,15 @@
 package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
@@ -55,8 +56,10 @@ public class MechanoClientEvents {
         LivingEntity e = evt.getEntity();
         Griddable<?> holder = GriddableEntityAttachment.of(e, false);
         if(holder == null) return;
-        ((CatenaryAccessor)e).forEachCatenary(cat -> {
-            cat.render(e, evt.getMultiBufferSource(), evt.getPoseStack(), evt.getPartialTick());
+        float pTicks = evt.getPartialTick();
+        ((CatenaryAccess)e).forEachCatenary(cat -> {
+            Vec3 offsetOverride = e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
+            cat.render(e, offsetOverride, evt.getMultiBufferSource(), evt.getPoseStack(), pTicks);
         });
     }
 
@@ -74,8 +77,8 @@ public class MechanoClientEvents {
         if(player == null) return;
 
         if(!instance.options.getCameraType().isFirstPerson()) return;
-        ((CatenaryAccessor)player).forEachCatenary(cat -> {
-            if(!cat.getPrimaryConstruct(player.level()).equals(ClientGrid.getCachedPoints(player).createSupplementaryAddress()))
+        ((CatenaryAccess)player).forEachCatenary(cat -> {
+            if(!cat.getPrimaryConstruct(player.level()).equals(GriddableEntityAttachment.of(player, false).createSupplementaryAddress()))
                 return;
             cat.render(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
                 Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
@@ -136,16 +139,15 @@ public class MechanoClientEvents {
             evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.OFF_HAND));
     }
 
-    /**
-     * The methods here describe various edge cases which can occur while the player is in the process of creating 
-     * a new wire between two points. While the player is holding a spool with a wire attached to it, they could log out,
-     * die, change their game mode, etc - These cases need to be accounted for cuz they'll break shit, yknow?
-     */
-    @SubscribeEvent public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) { ClientGrid.destroyCachedPoints(); }
-    // the player dying is handled by the EntityMixin since death-related events apply to all entities
+    @SubscribeEvent 
+    public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) { 
+        LocalPlayer lp = Minecraft.getInstance().player;
+        if(evt.getNewGameType() != GameType.SPECTATOR) return;
+        SidedGridDispatcher.client(lp).requestAnchorDestruction(new EntityUUID(lp));
+    }
 
     public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
-        evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("ancor_selection"), AnchorGuiLayer::renderOverlay);
+        evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("anchor_selection"), AnchorGuiLayer::renderOverlay);
     }
 
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {

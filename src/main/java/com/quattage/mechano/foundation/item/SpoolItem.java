@@ -15,7 +15,7 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
@@ -81,15 +81,22 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * Removes all data from every spool in player's inventory. 
      */
     @OnlyIn(Dist.CLIENT)
-    public static void wipeFromInventory(LocalPlayer lp, boolean cancelEarly) {
+    public static void wipeData(LocalPlayer lp, boolean cancelEarly) {
+        ItemStack held = lp.getMainHandItem();
+        if(held != null && held.getItem() instanceof SpoolItem spool) {
+            spool.cancelAwaitingConnection(null, null, held);
+            if(cancelEarly) return;
+        }
+        held = lp.getOffhandItem();
+        if(held != null && held.getItem() instanceof SpoolItem spool) {
+            spool.cancelAwaitingConnection(null, null, held);
+            if(cancelEarly) return;
+        }
+        // normally the player is only ever permitted to have one bound
+        // spool at a time, but just in case, we check the whole inventory
         for(ItemStack stack : lp.getInventory().items) {
             if(stack != null && stack.getItem() instanceof SpoolItem spool) {
                 spool.cancelAwaitingConnection(null, null, stack);
-                /**
-                 * normally the player is permitted to only ever have one awaiting
-                 * spool at a time, so this can safely return early without having
-                 * to iterate over the player's entire inventory in most cases.
-                 */
                 if(cancelEarly) return;
             }
         }
@@ -125,7 +132,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-        Griddable<?> playerPoints = ClientGrid.getCachedPoints(player);
+        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
         if(playerPoints == null || !playerPoints.getAnchor().hasRoom()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
@@ -179,7 +186,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             }
             return InteractionResultHolder.pass(stack);
         }
-        Griddable<?> playerPoints = ClientGrid.getCachedPoints(player);
+        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
         result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchor(), true);
         applyDurability(player, stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
         stack.remove(UUIDDiscriminator.ATTACHMENT);
@@ -202,7 +209,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             return;
         }
 
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(entity, false);
         if(storage == null) return;
         GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
         if(cat == null) return;

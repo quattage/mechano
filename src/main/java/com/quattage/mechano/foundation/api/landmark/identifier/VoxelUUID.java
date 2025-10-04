@@ -10,9 +10,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -201,8 +202,8 @@ public class VoxelUUID extends GridUUID {
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        return Float.MAX_VALUE;
+    public float getMass(LevelReader world) {
+        return TrackedConstruct.DEFAULT_MASS;
     }
 
     @Override

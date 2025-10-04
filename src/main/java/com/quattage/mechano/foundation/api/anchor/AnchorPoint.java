@@ -9,12 +9,12 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -47,7 +47,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * world-space.
  */
 @OnlyIn(Dist.CLIENT)
-public class AnchorPoint implements TrackedStreamable {
+public class AnchorPoint implements TrackedConstruct {
 
     private GridUUID address;
     private byte[] data;
@@ -354,8 +354,8 @@ public class AnchorPoint implements TrackedStreamable {
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        return address.getWeight(world);
+    public float getMass(LevelReader world) {
+        return address.getMass(world);
     }
 
 

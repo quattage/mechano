@@ -5,18 +5,18 @@ import java.util.Objects;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.MeshInitializer;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.catenary.WindManager;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.AnchorSurrogateDestroyPacket;
+import com.quattage.mechano.foundation.api.switchboard.AnchorRequestPacket;
 import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer;
 import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -28,7 +28,6 @@ import com.quattage.mechano.foundation.item.SpoolItem;
 import com.simibubi.create.content.contraptions.Contraption;
 
 import net.createmod.catnip.platform.CatnipServices;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.ListTag;
@@ -37,27 +36,6 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public final class ClientGrid extends SidedGridDispatcher {
-
-    private static @Nullable Griddable<?> cachedPoints = null;
-
-    public static Griddable<?> getCachedPoints(LocalPlayer lp) {
-        if(cachedPoints == null)
-            cachedPoints = lp.getData(MechanoData.ANCHOR_ATTACHMENT);
-        return cachedPoints;
-    }
-
-    public static void destroyCachedPoints() {
-        LocalPlayer lp = Minecraft.getInstance().player;
-        if(lp == null) return;
-        destroyCachedPoints(lp);
-    }
-
-    public static void destroyCachedPoints(LocalPlayer lp) {
-        GridUUID addr = getCachedPoints(lp).createSupplementaryAddress();
-        if(addr == null) return;
-        CatnipServices.NETWORK.sendToServer(new AnchorSurrogateDestroyPacket(addr));
-        SpoolItem.wipeFromInventory(lp, true);
-    }
 
     private final AwaitingLinkBuffer buffer = new AwaitingLinkBuffer();
     private LinkDataTracker tracker = null;
@@ -87,7 +65,6 @@ public final class ClientGrid extends SidedGridDispatcher {
     protected void onUnload() {
         WindManager.INSTANCE.reset();
         buffer.shutdown();
-        cachedPoints = null;
     }
 
     @Override
@@ -129,7 +106,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         if(linkDistance < type.getMinimumSpan()) return GridResponse.FAIL_TOO_CLOSE;
         if(linkDistance > type.getMaximumSpan()) return GridResponse.FAIL_TOO_FAR;
 
-        GridConnection preexisting = LinkDataStorable.getAsClient(world, new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress()));
+        GridConnection preexisting = LinkDataStorage.getAsClient(world, new ConnectionKey(startAnchor.getAddress(), endAnchor.getAddress()));
         if(preexisting != null) return GridResponse.FAIL_DUPLICATE;
 
         CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAnchor.getAddress(), endAnchor.getAddress(), type, GridResponse.TASK_CREATE_LINK));
@@ -147,6 +124,11 @@ public final class ClientGrid extends SidedGridDispatcher {
         return GridResponse.TASK_DESTROY_LINK;
     }
 
+    public GridResponse requestAnchorDestruction(GridUUID id) {
+        CatnipServices.NETWORK.sendToServer(new AnchorRequestPacket(id, GridResponse.TASK_FORGET_ANCHORS));
+        return GridResponse.TASK_FORGET_ANCHORS;
+    }
+
     /**
      * Creates a new {@link GridCatenary} from <code>start</code> to <code>end</code>
      * and store that catenary in the relevent {@link DataScope scope} for rendering
@@ -159,10 +141,10 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param schedule <code>true</code> if this action should be deferred for 
      * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
      */
-    public GridResponse handleCatenaryCreation(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, ProcessMode mode) {
+    public GridResponse handleCatenaryCreation(AnchorSynchronizer start, AnchorSynchronizer end, float span, TransmitterType<?> trns, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
-            buffer.deferForLater(this, start, end, trns, GridResponse.TASK_CREATE_LINK);
+            buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_CREATE_LINK);
             return GridResponse.TASK_COMPLETED;
         }
         AnchorPoint startAnchor = start.applyAndGet(world);
@@ -170,12 +152,11 @@ public final class ClientGrid extends SidedGridDispatcher {
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
         if(!response.indicatesCompletion()) {
             if(mode == ProcessMode.IMMEDIATE) return response;
-            buffer.deferForLater(this, start, end, trns, GridResponse.TASK_CREATE_LINK);
+            buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_CREATE_LINK);
             return GridResponse.TASK_COMPLETED;
         }
         GridCatenary cat = new GridCatenary(world, startAnchor, endAnchor, trns);
-
-        LinkDataStorable.put(world, cat);
+        LinkDataStorage.put(world, MeshInitializer.applyPreexistingSpan(world, cat, span));
         cat.sendLevelUpdates(world);
         return GridResponse.TASK_COMPLETED;
     }
@@ -194,14 +175,15 @@ public final class ClientGrid extends SidedGridDispatcher {
             buffer.deferForLater(this, start, end);
             return GridResponse.TASK_COMPLETED;
         }
-        start.applyAndGet(world);
-        end.applyAndGet(world);
-        GridCatenary cat = LinkDataStorable.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        GridCatenary cat = LinkDataStorage.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
         if(cat == null) {
             if(mode == ProcessMode.IMMEDIATE) return GridResponse.FAIL_CATENARY_NOT_FOUND;
             buffer.deferForLater(this, start, end);
             return GridResponse.TASK_COMPLETED; 
         }
+        wipeSpoolProgress(startAnchor, endAnchor);
         cat.sendLevelUpdates(world);
         return GridResponse.TASK_COMPLETED;
     }
@@ -216,10 +198,11 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @return {@link GridResponse#TASK_COMPLETED}
      */
     public GridResponse ensureCatenaryDestroyed(AnchorSynchronizer start, AnchorSynchronizer end) {
-        start.applyAndGet(world); 
-        end.applyAndGet(world);
-        GridCatenary cat = LinkDataStorable.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
+        AnchorPoint startAnchor = start.applyAndGet(world);
+        AnchorPoint endAnchor = end.applyAndGet(world);
+        GridCatenary cat = LinkDataStorage.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
         if(cat != null) cat.sendLevelUpdates(world);
+        wipeSpoolProgress(startAnchor, endAnchor);
         return GridResponse.TASK_COMPLETED;
     }
 
@@ -234,10 +217,10 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param trns {@link TransmitterType} to use for creating a new catenary if none coudl be found
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
-    public GridResponse handleCatenarySync(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, ProcessMode mode) {
+    public GridResponse handleCatenarySync(AnchorSynchronizer start, AnchorSynchronizer end, float span, TransmitterType<?> trns, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
-            buffer.deferForLater(this, start, end, trns, GridResponse.TASK_SYNC_ANCHORS);
+            buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_SYNC_ANCHORS);
             return GridResponse.TASK_COMPLETED;
         }
         AnchorPoint startAnchor = start.applyAndGet(world);
@@ -245,25 +228,22 @@ public final class ClientGrid extends SidedGridDispatcher {
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
         if(!response.indicatesCompletion()) {
             if(mode == ProcessMode.IMMEDIATE) return response;
-            buffer.deferForLater(this, start, end, trns, GridResponse.TASK_SYNC_ANCHORS);
+            buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_SYNC_ANCHORS);
             return GridResponse.TASK_COMPLETED;
         }
         GridCatenary cat = GridCatenary.findLoosely(getWorld(), start.getAddress(), end.getAddress());
         if(cat != null) {
-            cat.reinitializeModel(world, CatenaryAttributes.MeshInitializer.RESTING_SIMULATION);
-            cat.sendLevelUpdates(world);
+            MeshInitializer.applyPreexistingSpan(world, cat, span);
             return GridResponse.TASK_COMPLETED;
         }
         cat = new GridCatenary(world, startAnchor, endAnchor, trns);
-
         ////////////////////////////////////////////////////     
         //// TEMPORARY UNTIL CHUNK RENDERING RE-ENABLED ////
         cat.setDataScope(DataScope.BLOCKENTITY); ///////////      <--- TODO lazy ass
         cat.fixDataScopes(world); //////////////////////////
         ////////////////////////////////////////////////////
-        
-        cat.reinitializeModel(world, CatenaryAttributes.MeshInitializer.RESTING_SIMULATION);
-        LinkDataStorable.put(world, cat);
+        MeshInitializer.applyPreexistingSpan(world, cat, span);
+        LinkDataStorage.put(world, cat);
         cat.sendLevelUpdates(world);
         return GridResponse.TASK_COMPLETED;
     }        
@@ -366,7 +346,7 @@ public final class ClientGrid extends SidedGridDispatcher {
             buffer.deferForLater(this, cat);
             return GridResponse.TASK_COMPLETED;
         }
-        boolean modified = LinkDataStorable.put(getWorld(), cat);
+        boolean modified = LinkDataStorage.put(getWorld(), cat);
         if(modified) return GridResponse.TASK_COMPLETED;
         if(mode == ProcessMode.IMMEDIATE) return GridResponse.FAIL_BOTH_ENDS_MISSING;
         buffer.deferForLater(this, cat);
@@ -412,6 +392,14 @@ public final class ClientGrid extends SidedGridDispatcher {
             return GridResponse.FAIL_END_MISSING;
         }
         return GridResponse.TASK_COMPLETED;
+    }
+
+    // TODO if both anchors are attached to players, this code will wipe from both ends which might not make sense for every circumstance
+    private void wipeSpoolProgress(@Nullable AnchorPoint start, @Nullable AnchorPoint end) {
+        if(start != null && start.getDataStorageHolder(world) instanceof LocalPlayer lp)
+            SpoolItem.wipeData(lp, false);
+        if(end != null && end.getDataStorageHolder(world) instanceof LocalPlayer lp)
+            SpoolItem.wipeData(lp, false);
     }
 
     @Override

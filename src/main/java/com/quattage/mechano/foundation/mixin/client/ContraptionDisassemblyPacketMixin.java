@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
@@ -31,7 +31,7 @@ public abstract class ContraptionDisassemblyPacketMixin {
         if(!(player.level().getEntity(entityId) instanceof AbstractContraptionEntity ace))
             return;
         ClientGrid grid = SidedGridDispatcher.client(player);        
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(ace, false);
+        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(ace, false);
         GridCatenary.replaceEndsOnDisassemble(grid, storage, transform, ace);
     }
 }

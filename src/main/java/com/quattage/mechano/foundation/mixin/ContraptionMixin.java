@@ -14,12 +14,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.TransientStructureContainer;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -44,7 +44,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
  * are destroyed.
  */
 @Mixin(Contraption.class)
-public abstract class ContraptionMixin implements MovingGriddableAccessor, CatenaryAccessor {
+public abstract class ContraptionMixin implements MovingGriddableAccessor, CatenaryAccess {
 
     private final List<TransientStructureContainer> mechano$griddables = new ArrayList<>(11);
     @Shadow private Map<BlockPos, BlockEntity> presentBlockEntities;
@@ -110,7 +110,7 @@ public abstract class ContraptionMixin implements MovingGriddableAccessor, Caten
     @Override
     public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         if(entity == null) return null;
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(entity, false);
         if(storage == null) return null;
         return storage.getAll();
     }

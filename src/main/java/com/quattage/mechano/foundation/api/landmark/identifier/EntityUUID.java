@@ -10,19 +10,16 @@ import org.joml.Vector3f;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
-import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
-import com.quattage.mechano.foundation.api.switchboard.EntityForceVelocityS2CPacket;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -44,6 +41,10 @@ public class EntityUUID extends GridUUID {
     private final UUID uuid;
     private final int index;
     private @Nullable Griddable<? extends Entity> points;
+
+    public EntityUUID(Entity e) {
+        this(e.getUUID(), 0);
+    }
 
     public EntityUUID(UUID uuid, int index) {
         this.uuid = uuid;
@@ -93,15 +94,12 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public @Nullable Griddable<? extends Entity> getOrFindGriddable(LevelReader world) {
         if(points != null) return points;
         Entity e = world.isClientSide() 
             ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
             : ((ServerLevel)world).getEntity(uuid);
-        points = e instanceof LocalPlayer lp 
-            ? (@Nullable Griddable<? extends Entity>) ClientGrid.getCachedPoints(lp) 
-            : GriddableEntityAttachment.of(e, true);
+        points = GriddableEntityAttachment.of(e, true);
         return points;
     }
 
@@ -119,7 +117,7 @@ public class EntityUUID extends GridUUID {
     public String describeDataScope(LevelReader world) {
         if(getDataStorageHolder(world) instanceof Entity e) {
             Vec3 pos = e.getPosition(1);
-            return e.getClass().getSimpleName() + "['" +  e.getName().getString() + ",' " + pos.x + ", " + pos.y + ", " + pos.z + "]";
+            return e.getClass().getSimpleName() + "['" +  e.getName().getString() + ",' " + (int)pos.x + ", " + (int)pos.y + ", " + (int)pos.z + "]";
         }
         return "not_applicable";
     }
@@ -140,8 +138,8 @@ public class EntityUUID extends GridUUID {
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        return getOrFindGriddable(world) == null ? Float.MAX_VALUE : (float)points.getSource().getBoundingBox().getSize();
+    public float getMass(LevelReader world) {
+        return getOrFindGriddable(world) == null ? TrackedConstruct.DEFAULT_MASS : (float)points.getSource().getBoundingBox().getSize();
     }
 
     @Override
@@ -154,13 +152,7 @@ public class EntityUUID extends GridUUID {
         if(getOrFindGriddable(world) == null) return;
         Entity e = points.getSource();
         if(e == null || !e.isAlive()) return;
-        if(!world.isClientSide() && e instanceof ServerPlayer sp) {            
-            if(retainVelocity) sp.push(force.x, force.y, force.z);
-            else sp.setDeltaMovement(force.x, force.y, force.z);
-            EntityForceVelocityS2CPacket packet = EntityForceVelocityS2CPacket.of(sp, !retainVelocity);
-            CatnipServices.NETWORK.sendToClientsTrackingAndSelf(sp, packet);
-            return;
-        }
+        if(!world.isClientSide() && e instanceof Player) return;
         if(retainVelocity) e.push(force.x, force.y, force.z);
         else e.setDeltaMovement(force.x, force.y, force.z);
     }
@@ -169,12 +161,6 @@ public class EntityUUID extends GridUUID {
     public Vec3 getAttachmentVelocity(LevelReader world) {
         if(getOrFindGriddable(world) == null) return Vec3.ZERO;
         return points.getSource().getDeltaMovement();
-    }
-
-    @Override
-    public void setAttachmentVelocity(LevelReader world, Vec3 vec) {
-        if(getOrFindGriddable(world) == null) return;
-        points.getSource().setDeltaMovement(vec);
     }
 
     @Override

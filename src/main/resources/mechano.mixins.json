@@ -14,10 +14,10 @@
         "client.accessor.PlayerInfoAccessor",
         "client.ItemInHandRendererInvoker",
         "client.ItemInHandRendererMixin",
-        "client.LivingEntityMixin",
         "client.ContraptionDisassemblyPacketMixin",
         "client.ContraptionEntityRendererMixin",
         "AbstractContraptionEntityMixin",
+        "EntityMixin",
         "ContraptionMixin"
     ],
     "injectors": {

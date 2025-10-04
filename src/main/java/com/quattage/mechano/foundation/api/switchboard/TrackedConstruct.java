@@ -4,8 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
@@ -29,26 +29,22 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
- * Handler for LOD-adjacent functionality on both the client and the server.
- * On the client, this interface provides barebones functionality for frustum culling.
- * On the server, provisions are made to assist with entity and chunk-based tracking.
+ * The TrackedConstruct interface indicates that implementing
+ * subclasses require the ability to dynamically associate
+ * with an {@link IAttachmentHolder attachment holder} and
+ * determine at any time whether or not said attachment holder
+ * is loaded by any given {@link ServerPlayer}. Subclasses also
+ * provide methods to automatically send packets to tracking 
+ * players and for comparing multiple instances by arbitrary priority
+ * or by approximate mass.
  */
-public interface TrackedStreamable {
+public interface TrackedConstruct {
+
+    public static float DEFAULT_MASS = 65535f;
 
     /**
-     * Uses an accessor injected by Create to grab the frustum from the LevelRenderer
-     */
-    public static @Nullable Frustum getFrustum() {
-        if(Minecraft.getInstance().levelRenderer == null) return null;
-        LevelRendererAccessor accessor = ((LevelRendererAccessor)(Minecraft.getInstance().levelRenderer));
-        return accessor.create$getCapturedFrustum() != null ?
-			accessor.create$getCapturedFrustum() :
-			accessor.create$getCullingFrustum();
-    }
-    
-    /**
      * Sends the provided packet to all clients that can see or are loading this
-     * tracked object. 
+     * TrackedConstruct. 
      * Generally, the cost incurred by iterating over the entire list of ServerPlayers
      * is worth it when determining visibility, since it vastly improves the stability
      * and performance of the {@link ServerGrid ServerGrid's} packet handling.
@@ -106,12 +102,12 @@ public interface TrackedStreamable {
     public abstract String describeDataScope(LevelReader world);
 
     /**
-     * @return The {@link DataScope} for this tracked object.
+     * @return The {@link DataScope} for this TrackedConstruct.
      */
     public abstract DataScope getDataScope(LevelReader world);
 
     /**
-     * Sets the {@link DataScope} for this tracked object, which 
+     * Sets the {@link DataScope} for this TrackedConstruct, which 
      * is optionally supported by some subclasses that allow changing
      * DataScope at runtime.
      * @param scope
@@ -129,23 +125,26 @@ public interface TrackedStreamable {
     public abstract int getPriority();
 
     /**
-     * The effective weight of a streamable object as 
-     * described by the size of the hitbox it's attached to.
+     * The effective "mass" of a streamable object is an 
+     * approximated value derived (in most cases) from the 
+     * size of the associated object's hitbox. Non-movable
+     * constructs (e.g. BlockEntities) are indicated by a
+     * return value of <code>65535.</code>
      * Used when applying forces to attached objects if those
      * objects can move.
-     * @param world
-     * @return
+     * @param world world to operate within
+     * @return approximate mass (of no particular unit or guaranteed precision) of this TrackedConstruct
      */
-    public abstract float getWeight(LevelReader world);
+    public abstract float getMass(LevelReader world);
 
     /**
-     * Determines whether or not this tracked object represents
+     * Determines whether or not this TrackedConstruct represents
      * some kind of movable construct or if a {@link CatenaryModel}
-     * interacting with this tracked object is actively moving.
+     * interacting with this TrackedConstruct is actively moving.
      * This method is used to determine whether or not a 
      * {@link GridCatenary} is able to bake itself to the LevelChunk
      * or not.
-     * @return <code>true</code> if this tracked object can move without 
+     * @return <code>true</code> if this TrackedConstruct can move without 
      * causing LevelChunk remeshing
      */
     public default boolean canMoveDynamically(LevelReader world) {
@@ -188,55 +187,55 @@ public interface TrackedStreamable {
 
     /**
      * Enforces a deterministic (if somewhat arbitrary) insertion order
-     * between two {@link TrackedStreamable streamable constructs} 
+     * between two {@link TrackedConstruct streamable constructs} 
      * <p>
      * This method is primarily used to decide which {@link GridUUID end} 
      * of a {@link GridConnection} should take render priority when drawing 
      * {@link CatenaryModel catenary meshes}. The code that does this can be 
-     * found in the {@link LinkDataStorable polymorphic data store
+     * found in the {@link LinkDataStorage polymorphic data store
      * @param world World to operate within.
-     * @param start The first TrackedStreamable to check
-     * @param end The second TrackedStreamable to check (order is completely arbitrary here)
+     * @param start The first TrackedConstruct to check
+     * @param end The second TrackedConstruct to check (order is completely arbitrary here)
      * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
      * the render priority will additionally use frustum culling when necessary 
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
-     * @return The {@link TrackedStreamable} that takes priority over the other out 
+     * @return The {@link TrackedConstruct} that takes priority over the other out 
      * of the two provided. Will never be null.
      */
-    public static <T extends TrackedStreamable> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end) {
+    public static <T extends TrackedConstruct> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end) {
         return orderedByAssertionPriority(world, start, end, false);
     }
 
     /**
      * Enforces a deterministic (if somewhat arbitrary) renderer
-     * priority between any two {@link TrackedStreamable streamable constructs} 
+     * priority between any two {@link TrackedConstruct streamable constructs} 
      * (Usually just {@link GridUUID GridUUIDs})
      * This method is primarily used to decide which end of a {@link GridConnection}
      * should take render priority when drawing {@link CatenaryModel catenary meshes}, 
      * but it is also used for enforcing server-sided {@link GridLink} assertion order
      * in a deterministic way. The code that does this can be found in the 
-     * {@link LinkDataStorable polymorphic data store}
+     * {@link LinkDataStorage polymorphic data store}
      * @param <T>
      * @param world World to operate within.
-     * @param start The first TrackedStreamable to check
-     * @param end The second TrackedStreamable to check (order is completely arbitrary here)
+     * @param start The first TrackedConstruct to check
+     * @param end The second TrackedConstruct to check (order is completely arbitrary here)
      * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
      * the render priority will additionally use frustum culling when necessary 
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
-     * @return The {@link TrackedStreamable} that takes priority over the other out 
+     * @return The {@link TrackedConstruct} that takes priority over the other out 
      * of the two provided. Will never be null.
      */
-    public static <T extends TrackedStreamable> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end, boolean useFrustum) {
+    public static <T extends TrackedConstruct> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end, boolean useFrustum) {
         if(start == null && end != null) { 
-            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedStreamable - The provided starting streamable was null.");
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedConstruct - The provided starting streamable was null.");
             return Duo.of(end, start);
         } if(start != null && end == null) { 
-            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedStreamable - The provided ending streamable was null.");
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedConstruct - The provided ending streamable was null.");
             return Duo.of(start, end);
         } if(start == null && end == null)
-            throw new IllegalStateException("Can't assert priority between two null TrackedStreamable instances!");
+            throw new IllegalStateException("Can't assert priority between two null TrackedConstruct instances!");
 
         if(world != null) {
             final boolean canStartMove = start.canMoveDynamically(world);
@@ -266,19 +265,29 @@ public interface TrackedStreamable {
     }
 
     /**
-     * Enfores a sorting order when distinguishing between two TrackedStreamable objects based on their weight.
-     * Weight is approximated by determining the relative size of the hitboxes attached to <code>start</code> 
-     * and <code>end</code>. Additionally, this method will return <code>null</code> in cases where neither 
-     * construct is movable.
+     * Enfores a sorting order when distinguishing between two TrackedConstruct objects based on their {@link #getMass mass}.
+     * This method will return <code>null</code> in cases where neither construct is movable.
      * @param world
+     * @return {@link Duo} containing both input TrackedConstruct instances, where the first is heavier than the second
      */
-    public static <T extends TrackedStreamable> @Nullable Duo<T> orderedByWeight(LevelReader world, @Nullable T start, @Nullable T end) {
+    public static <T extends TrackedConstruct> @Nullable Duo<T> orderedByMass(LevelReader world, @Nullable T start, @Nullable T end) {
         if(!start.canReceiveVelocity(world) && !end.canReceiveVelocity(world)) return null;
         if(!start.canMoveDynamically(world) && !end.canMoveDynamically(world)) return null;
-        float startWeight = start == null ? Float.MAX_VALUE : (start.canMoveDynamically(world) && start.canReceiveVelocity(world) ? start.getWeight(world) : Float.MAX_VALUE);
-        float endWeight = end == null ? Float.MAX_VALUE : (end.canMoveDynamically(world) && end.canReceiveVelocity(world) ? end.getWeight(world) : Float.MAX_VALUE);
+        float startWeight = start == null ? TrackedConstruct.DEFAULT_MASS : (start.canMoveDynamically(world) && start.canReceiveVelocity(world) ? start.getMass(world) : TrackedConstruct.DEFAULT_MASS);
+        float endWeight = end == null ? TrackedConstruct.DEFAULT_MASS : (end.canMoveDynamically(world) && end.canReceiveVelocity(world) ? end.getMass(world) : TrackedConstruct.DEFAULT_MASS);
         if(startWeight - endWeight < 0.05f) return Duo.of(end, start);
         if(startWeight - endWeight > 0.05f) return Duo.of(start, end);
         return Duo.of(start, end);
+    }
+
+    /**
+     * Uses an accessor injected by Create to grab the frustum from the LevelRenderer
+     */
+    public static @Nullable Frustum getFrustum() {
+        if(Minecraft.getInstance().levelRenderer == null) return null;
+        LevelRendererAccessor accessor = ((LevelRendererAccessor)(Minecraft.getInstance().levelRenderer));
+        return accessor.create$getCapturedFrustum() != null ?
+			accessor.create$getCapturedFrustum() :
+			accessor.create$getCullingFrustum();
     }
 }

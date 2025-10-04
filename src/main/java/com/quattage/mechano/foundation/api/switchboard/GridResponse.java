@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
@@ -247,7 +247,7 @@ public enum GridResponse implements StringRepresentable {
         @Override public boolean isBeingTrackedBy(ServerPlayer player) { return addr.isBeingTrackedBy(player); }
         @Override public boolean canMoveDynamically(LevelReader world) { return addr.canMoveDynamically(world); }
         @Override public int getIndex() { return addr.getIndex(); }
-        @Override public float getWeight(LevelReader world) { return addr.getWeight(world); }
+        @Override public float getMass(LevelReader world) { return addr.getMass(world); }
         @Override public UUIDDiscriminator getDiscriminatorType() { return addr.getDiscriminatorType(); }
         @Override public GridUUID indexedCopy(int index) { return addr.indexedCopy(index); }
         @Override public BlockPos getBlockPos(LevelReader world) { return addr.getBlockPos(world); }

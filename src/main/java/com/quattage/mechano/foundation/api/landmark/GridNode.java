@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
@@ -189,7 +189,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         GridUUID oldAddress = this.address;
         if(sendPackets) {
             for(GridLink link : links) {
-                LinkDataStorable.popAsServer(world, link);
+                LinkDataStorage.popAsServer(world, link);
                 link.sendToClientsTracking(sl, new LinkSwapPacket(
                     AnchorSynchronizer.of(oldAddress, (byte)links.size()), 
                     AnchorSynchronizer.of(link.getEnd(), (byte)link.getEndNode().links.size()), 
@@ -212,7 +212,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
                 }
             }
             link.sendLevelUpdates(sl);
-            LinkDataStorable.pushAsServer(world, link);
+            LinkDataStorage.pushAsServer(world, link);
         }
     }
 
@@ -437,16 +437,16 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         return address.getBlockPos(world);
     }
 
-    /**
-     * Used in place of {@link #getPos} for when
-     * you don't have access to the world - may return 
-     * out of date information.
-     * @return Vec3 position of this GridNode in the world
-     */
-    public Vec3 getApproxmiatePosition() {
-        if(owner == null || address == null) return Vec3.ZERO;
-        return getPos(owner.getWorld());
-    }
+    // /**
+    //  * Used in place of {@link #getPos} for when
+    //  * you don't have access to the world - may return 
+    //  * out of date information.
+    //  * @return Vec3 position of this GridNode in the world
+    //  */
+    // public Vec3 getApproxmiatePosition() {
+    //     if(owner == null || address == null) return Vec3.ZERO;
+    //     return getPos(owner.getWorld());
+    // }
 
     @Override
     public Vec3 getPos(LevelReader world, float pTicks) {
@@ -484,8 +484,8 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        return address.getWeight(world);
+    public float getMass(LevelReader world) {
+        return address.getMass(world);
     }
 
     @Override

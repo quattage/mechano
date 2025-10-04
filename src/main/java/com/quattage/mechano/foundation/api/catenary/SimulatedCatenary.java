@@ -13,7 +13,8 @@ import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Point;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Stick;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.helper.Duo;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
@@ -37,7 +38,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary setOffset(Vec3 start, Vec3 end) {
+    public SimulatedCatenary setOffset(TransmitterType<?> trns, Vec3 start, Vec3 end) {
         if(start == null || end == null) return this;
         applyDisplacement(start, end);
         if(this.halfOffset == null)
@@ -47,9 +48,10 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             (float)(start.y - forces[2]),
             (float)(start.z - forces[3])
         );
-        if(!locked) 
-            this.length = halfOffset.length() * 2f;
-        calculateSegmentation(); 
+        if(!locked) {
+            this.span = halfOffset.length() * 2f;
+            calculateSegmentation(trns); 
+        }
         return this;
     }
 
@@ -68,18 +70,18 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary setOrderedOffset(LevelReader world, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks) {
+    public SimulatedCatenary setOrderedOffset(LevelReader world, TransmitterType<?> trns, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks) {
         if(start == null || end == null) return this;
-        Duo<GridUUID> ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
-        setOffset(ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
+        Duo<GridUUID> ordered = TrackedConstruct.orderedByAssertionPriority(world, start, end);
+        setOffset(trns, ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
         return this;
     }
 
     @Override
-    public SimulatedCatenary setOrderedOffset(LevelReader world, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks) {
+    public SimulatedCatenary setOrderedOffset(LevelReader world, TransmitterType<?> trns, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks) {
         if(start == null || end == null) return this;
-        Duo<AnchorPoint> ordered = TrackedStreamable.orderedByAssertionPriority(world, start, end);
-        setOffset(ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
+        Duo<AnchorPoint> ordered = TrackedConstruct.orderedByAssertionPriority(world, start, end);
+        setOffset(trns, ordered.first().getPos(world, pTicks), ordered.second().getPos(world, pTicks));
         return this;
     }
 
@@ -130,9 +132,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public SimulatedCatenary calculateSegmentation() {
+    public SimulatedCatenary calculateSegmentation(TransmitterType<?> trns) {
         if(!isInitialized()) return this;
-        if(locked) return this;
         int segmentCount = getSegmentCount();        
         if(segmentCount < this.points.size()) {
             boolean wasPinned = this.points.getLast().pinned;
@@ -146,13 +147,13 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             }
             this.points.trim();
             this.sticks.trim();
-        } else if(segmentCount > this.points.size() && length < maxLength) {
+        } else if(segmentCount > this.points.size() && span < trns.getMaximumSpan()) {
             this.points.ensureCapacity(segmentCount);
             this.sticks.ensureCapacity(segmentCount - 1);
             addAdditionalSegments(segmentCount - this.points.size());
         }
-        if(length < maxLength)
-            this.forces[0] = (length / (float)sticks.size()) * 0.99f;
+        if(span < trns.getMaximumSpan())
+            this.forces[0] = (span / (float)sticks.size()) * 0.99f;
         return this;
     }
 
@@ -198,10 +199,10 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
      * @throws IllegalStateException if this Catenary doesn't have {@link #setOffset an offset} or hasn't been {@link #initialize initialized} at least once.
     */
     @Override
-    public void update() {
+    public void update(TransmitterType<?> trns) {
         assertHasOffset();
         assertSimulatable();
-        resetIfUnstable();
+        resetIfUnstable(trns);
         tracker.softReset();
         updateEndpoints();
         integrateVelocity(getGravity(points.size()), this.forces[10], this.forces[11]);
@@ -260,6 +261,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             );
             point.lastPos.set(point.pos);
             point.pos.add(vel);
+
             tracker.apply(vel);
         }
     }
@@ -372,7 +374,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         VectorHelper.drawDebugRay(end, new Vector3f(forces[7] * 40f, forces[8] * 40f, forces[9] * 40f), new Color(0, 0, 255), "ve");
     }
 
-    private void resetIfUnstable() {
+    private void resetIfUnstable(TransmitterType<?> trns) {
         if(points == null || !tracker.isCascading()) return;
         Mechano.LOGGER.warn("Cascading instability detected in " + this);
         ArrayList<@Nullable Vector3f> pins = new ArrayList<>(points.size());
@@ -381,8 +383,13 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
                 pins.add(null);
             else pins.add(p.pos);
         }
-        initializeSpan();
-        calculateSegmentation();
+        boolean wasLocked = this.locked;
+        unlockSpan();
+        Vec3 start = new Vec3(forces[1] + halfOffset.x, forces[2] + halfOffset.y, forces[3] + halfOffset.z);
+        Vec3 end = new Vec3(forces[1] - halfOffset.x, forces[2] - halfOffset.y, forces[3] - halfOffset.z);
+        setOffset(trns, start, end);
+        calculateSegmentation(trns);
+        this.locked = wasLocked;
         for(int x = 0; x < points.size(); x++) {
             if(x >= pins.size()) return;
             Vector3f pinnedPos = pins.get(x);
@@ -418,16 +425,16 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     @Override
-    public void updateAhead(int steps) {
+    public void updateAhead(TransmitterType<?> trns, int steps) {
         this.forces[10] = 0;
         this.forces[11] = 0;
         for(int x = 0; x < steps; x++) {
-            update();
+            update(trns);
             if(isResting()) return;
         }
         float arclength = 0;
         for(Stick s : sticks) arclength += s.getLength();
-        Mechano.LOGGER.warn("Catenary simulation (" + length + " meters, " + arclength + " arcmeters) couldn't reach a state of restitution in " + steps + " iterations.");
+        Mechano.LOGGER.warn("Catenary simulation (" + span + " meters, " + arclength + " arcmeters) couldn't reach a state of restitution in " + steps + " iterations.");
     }
 
     @Override
@@ -498,10 +505,13 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         return this.points != null && this.sticks != null;
     }
 
+    
+    @Override
     public void lockSpan() {
         this.locked = true;
     }
 
+    @Override
     public void unlockSpan() {
         this.locked = false;
     }

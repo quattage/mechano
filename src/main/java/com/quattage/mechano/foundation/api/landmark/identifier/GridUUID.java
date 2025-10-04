@@ -10,7 +10,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
@@ -26,13 +26,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * Barebones implementation template for hashables that parent themselves
  * to an arbitrary construct, like a block or an entity
  */
-public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamable {
+public abstract class GridUUID implements Comparable<GridUUID>, TrackedConstruct {
 
     public static final int MAX_SHARED_OCCUPANCY = 8; 
 
@@ -57,16 +59,58 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedStreamabl
     public abstract BlockPos getBlockPos(LevelReader world);
     public Vec3 getPos(LevelReader world) { return getPos(world, 1); }
     public abstract Vec3 getPos(LevelReader world, float pTicks);
+    // TODO remove this method in favor of explicitly defined offsets for entity AnchorPoints
     public Vec3 getOffsetPos(LevelReader world, float ox, float oy, float oz) { return getOffsetPos(world, 1, ox, oy, oz); }
     public abstract Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz);
     public abstract int getIndex();
     public final GridUUID copy() { return indexedCopy(getIndex()); }
     public abstract GridUUID indexedCopy(int index);
+    
+    /**
+     * Applies the given force to the construct (e.g. block, entity, contraption, etc)
+     * that this UUID refers to. This method should only be called on the logical server. <p>
+     * If this method is called on a UUID that isn't attached to a movable
+     * construct, e.g. a block, this method will not do anything. Additionally,
+     * due to how Minecraft handles player movement, this method will not apply
+     * forces to ServerPlayers.
+     * @param world World to operate within
+     * @param force force to apply
+     * @param retainVelocity (Optional, defaults to <code>true</code>) - If <code>true</code> 
+     * the force will be added to the current velocity, if <code>false</code> the force will replace the current velocity
+     */
     public void applyForceToAttachment(LevelReader world, Vector3f force) { applyForceToAttachment(world, force, true); }
+    
+    /**
+     * Applies the given force to the construct (e.g. block, entity, contraption, etc)
+     * that this UUID refers to. This method should only be called on the logical server. <p>
+     * If this method is called on a UUID that isn't attached to a movable
+     * construct, e.g. a block, this method will not do anything. Additionally,
+     * due to how Minecraft handles player movement, this method will not apply
+     * forces to ServerPlayers.
+     * @param world World to operate within
+     * @param force force to apply
+     * @param retainVelocity (Optional, defaults to <code>true</code>) - If <code>true</code> 
+     * the force will be added to the current velocity, if <code>false</code> the force will replace the current velocity
+     */
     public void applyForceToAttachment(LevelReader world, Vector3f force, boolean retainVelocity) {}
-    public Vec3 getAttachmentVelocity(LevelReader world) { return Vec3.ZERO; }
-    public void setAttachmentVelocity(LevelReader world, Vec3 vec) {}
 
+    /**
+     * Gets the current velocity of the construct (e.g. block, entity, contraption, etc)
+     * that this UUID refers to. If this UUID is not attached to a movable construct,
+     * or the movable construct could not be found, this method will return {@link Vec3#ZERO}
+     * @param world World to operate within
+     * @return {@link Vec3} velocity of the attachment construct
+     */
+    public Vec3 getAttachmentVelocity(LevelReader world) { return Vec3.ZERO; }
+
+    /**
+     * Gets the {@link AnchorPoint} associated with this UUID. If no AnchorPoint
+     * could be found (e.g. the UUID is invalid, the block/entity has been removed,
+     * or the AnchorPoint does not exist) this method will return null.
+     * @param world
+     * @return {@link AnchorPoint} at this UUID
+     */
+    @OnlyIn(Dist.CLIENT) 
     public abstract @Nullable AnchorPoint getAnchor(ClientLevel world);
     public abstract @Nullable Griddable<?> getOrFindGriddable(LevelReader world);
     public abstract @Nullable SurrogateNode getSurrogate(LevelReader world);

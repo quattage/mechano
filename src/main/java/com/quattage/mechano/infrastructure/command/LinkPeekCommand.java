@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
@@ -63,7 +63,7 @@ public class LinkPeekCommand {
             player.sendSystemMessage(Component.literal("The targeted object has no links.").withStyle(style -> style.withColor(ChatFormatting.RED)));
             return;
         }
-        LinkDataStorable<?> storage = LinkDataStorable.getAsClient(holder);
+        LinkDataStorage<?> storage = LinkDataStorage.getAsClient(holder);
         if(storage == null) {
             player.sendSystemMessage(Component.literal("The targeted object has no links.").withStyle(style -> style.withColor(ChatFormatting.RED)));
             return;

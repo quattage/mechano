@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -66,18 +67,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         return freshGlobal;
     }
 
-    /**
-     * Creates a new ServerGrid with a predefined list of subgrids.
-     * Used internally by the {@link SidedGridDispatcher#SERIALIZER}
-     * @param world ServerLevel that owns this grid
-     * @param subgrids Subgrids to instantiate the new ServerGrid with
-     */
-    protected ServerGrid(ServerLevel world, ObjectArrayList<ServerMatrix> subgrids) {
-        super(world);
-        this.matrices = subgrids;
-        if(Mechano.USE_VERBOSE_LINK_TRACKING)
-            tracker = new LinkDataTracker().enable().withLogging(LOGGER);
-    }
+    
 
     /**
      * A breakout method for making {@link ServerGrid#loadFrom} easier to read - 
@@ -97,7 +87,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         loadLinksFor(newStart, instantiator, links, true);
     }
 
-    protected void loadLinksFor(GridNode newStart, ServerMatrix instantiator, ListTag links, boolean storeDeferred) {
+    private void loadLinksFor(GridNode newStart, ServerMatrix instantiator, ListTag links, boolean storeDeferred) {
         newStart.primeLinks(links.size());
         for(int x = 0; x < links.size(); x++) {
             CompoundTag serializedLink = links.getCompound(x);
@@ -107,7 +97,8 @@ public final class ServerGrid extends SidedGridDispatcher {
                 if(storeDeferred) this.deferred.add(new DeferredMember(newStart, instantiator, endAddress, links));
                 continue;
             }
-            GridLink newLink = new GridLink(world, newStart, newEnd, TransmitterRegistry.INSTANCE.get(serializedLink));
+            Transmitter<?> trns = TransmitterRegistry.INSTANCE.get(serializedLink);
+            GridLink newLink = new GridLink(world, newStart, newEnd, trns, CatenaryAttributable.makeSpan(world, newStart, newEnd, trns.getType(), serializedLink));
             if(newLink.getTransmitter().needsSerialization()) {
                 CompoundTag data = serializedLink.getCompound("data");
                 if(!data.isEmpty()) newLink.getTransmitter().loadFrom(data);
@@ -117,10 +108,20 @@ public final class ServerGrid extends SidedGridDispatcher {
         newStart.trimLinks();
     }
 
-    public @Nullable ServerMatrix getMatrixByIndex(int index) {
-        if(index < 0 || index >= matrices.size()) return null;
-        return matrices.get(index);
+
+    /**
+     * Creates a new ServerGrid with a predefined list of subgrids.
+     * Used internally by the {@link SidedGridDispatcher#SERIALIZER}
+     * @param world ServerLevel that owns this grid
+     * @param subgrids Subgrids to instantiate the new ServerGrid with
+     */
+    protected ServerGrid(ServerLevel world, ObjectArrayList<ServerMatrix> subgrids) {
+        super(world);
+        this.matrices = subgrids;
+        if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            tracker = new LinkDataTracker().enable().withLogging(LOGGER);
     }
+
 
     @Override
     protected void onLoad() {
@@ -142,6 +143,11 @@ public final class ServerGrid extends SidedGridDispatcher {
     @Override
     protected void tick() {
         
+    }
+
+    public @Nullable ServerMatrix getMatrixByIndex(int index) {
+        if(index < 0 || index >= matrices.size()) return null;
+        return matrices.get(index);
     }
 
     // TODO do this lol
@@ -186,7 +192,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         }
         final Set<GridUUID> empties = new HashSet<>();
         GridLink removed = startNode.getOwner().deLink(startNode, endNode, empties);
-        LinkDataStorable.popAsServer(getWorld(), removed);
+        LinkDataStorage.popAsServer(getWorld(), removed);
         removed.broadcast(getWorld(), GridResponse.TASK_DESTROY_LINK);
         startNode.getOwner().cleanup(empties, true);
     }
@@ -230,7 +236,7 @@ public final class ServerGrid extends SidedGridDispatcher {
                 endPG = null;
                 GridNode startNode = GridNode.getOrCreate(startPG, startPoints, start);
                 GridNode endNode = GridNode.getOrCreate(startPG, endPoints, end);
-                GridLink newLink = new GridLink(world, startNode, endNode, type.make());
+                GridLink newLink = new GridLink(world, startNode, endNode, type.make(), CatenaryAttributable.makeSpan(world, startNode, endNode, type, null));
                 startPoints.getSurrogate().sync(world, startPG);
                 endPoints.getSurrogate().sync(world, startPG);
                 if(startNode.hasLink(newLink)) {
@@ -292,7 +298,7 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @return The GridLink that was created
      */
     public GridLink linkUnsafe(GridNode start, GridNode end, Transmitter<?> trns, boolean broadcast) {
-        GridLink link = new GridLink(getWorld(), start, end, trns);
+        GridLink link = new GridLink(getWorld(), start, end, trns, CatenaryAttributable.makeSpan(getWorld(), start, end, trns.getType(), null));
         return linkUnsafe(link, broadcast);
     }
 
@@ -308,7 +314,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         link.getStartNode().addLink(link);
         GridLink inverse = link.inverseCopy();
         link.getEndNode().addLink(inverse);
-        LinkDataStorable.put(getWorld(), link);
+        LinkDataStorage.put(getWorld(), link);
         if(broadcast) link.broadcast(getWorld(), GridResponse.TASK_CREATE_LINK);
         return link;
     }

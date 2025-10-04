@@ -2,7 +2,7 @@ package com.quattage.mechano.foundation.api.switchboard;
 
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;

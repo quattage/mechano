@@ -14,11 +14,12 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable.DataScope;
+import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
@@ -35,6 +36,7 @@ import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -183,30 +185,30 @@ public class ContraptionUUID extends GridUUID {
     @Override
     public boolean canReceiveVelocity(LevelReader world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
-        return false;
-        // TODO minecart contraptions
+        return holder instanceof AbstractContraptionEntity ace && ace.getVehicle() instanceof AbstractMinecart;
     }
 
     @Override
-    public float getWeight(LevelReader world) {
-        return Float.MAX_VALUE;
-        // AbstractContraptionEntity ace = tryGetEntity(world);
-        // if(ace == null) return 0;
-        // AABB box = cachedContraption.entity.getBoundingBox();
-        // return box == null ? 0 : (float)box.getSize();
+    public float getMass(LevelReader world) {
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return TrackedConstruct.DEFAULT_MASS;
+        return ace.getVehicle() instanceof AbstractMinecart ? (float)ace.getBoundingBox().getSize() : TrackedConstruct.DEFAULT_MASS;
     }
 
     @Override
     public Vec3 getAttachmentVelocity(LevelReader world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
-        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
-        return ace == null ? Vec3.ZERO : ace.getDeltaMovement();
+        if(!(holder instanceof AbstractContraptionEntity ace)) return Vec3.ZERO;
+        return ace.getVehicle() instanceof AbstractMinecart am ? am.getDeltaMovement() : ace.getDeltaMovement();
     }
 
-    // TODO basic contraptions can't recieve velocity this way, but landlord voxel domains can? or minecart contraptions? idk
-    @Override public void setAttachmentVelocity(LevelReader world, Vec3 vec) { return; }
-    @Override public void applyForceToAttachment(LevelReader world, Vector3f force) { return; }
-    // --
+    @Override public void applyForceToAttachment(LevelReader world, Vector3f force, boolean retainVelocity) { 
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(!(holder instanceof AbstractContraptionEntity ace)) return;
+        if(!(ace.getVehicle() instanceof AbstractMinecart am)) return;
+        if(retainVelocity) am.push(force.x, force.y, force.z);
+        else am.setDeltaMovement(force.x, force.y, force.z);
+    }
 
     @Override
     public BlockPos getBlockPos(LevelReader world) {
@@ -228,6 +230,9 @@ public class ContraptionUUID extends GridUUID {
     @Override
     public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) {
         Vec3 pos = getPos(world, pTicks);
+        IAttachmentHolder holder = getDataStorageHolder(world);
+        if(holder instanceof AbstractContraptionEntity ace)
+            pos.add(ace.applyRotation(new Vec3(ox, oy, oz), pTicks));
         if(pos == null) return null;
         return pos.add(ox, oy, oz);
     }

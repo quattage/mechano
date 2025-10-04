@@ -9,12 +9,12 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
@@ -47,7 +47,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity>, CatenaryAccessor {
+public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity>, CatenaryAccess {
 
     // always empty on the server
     private AnchorArray anchors = AnchorArray.EMPTY;
@@ -112,7 +112,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @OnlyIn(Dist.CLIENT)
     public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         if(!level.isClientSide()) return null;
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(this, false);
+        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(this, false);
         if(storage == null) return null;
         return storage.getAll();
     }
@@ -207,7 +207,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
          * @param structurePos The contraption-space position within <code>contraptionEntity</code> that this BE is locatd at.
          */
         public void onContraptionAssembled(GriddableContraptionAttachment data, TransientStructureContainer container) {
-            Mechano.LOGGER.error("ASSEMBLY START");
+            // Mechano.LOGGER.error("ASSEMBLY START");
             Objects.requireNonNull(data);
             if(!(data.getWorld() instanceof ServerLevel world) 
                 || !container.blockEntity.surrogate.isSynced(world)) 
@@ -218,12 +218,12 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
                 return;
             }
             container.blockEntity.getSurrogate().forEachAssociated(node -> {
-                GridUUID before = node.getAddress().copy();
+                // GridUUID before = node.getAddress().copy();
                 node.replaceHolder(world, data, new ContraptionUUID(data, container.structurePos, node.getAddress().getIndex()), true);
                 data.markParticipatingSubsurrogate(container.blockEntity.getSurrogate(), container.structurePos);
-                Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
+                // Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
             });
-            Mechano.LOGGER.error("ASSEMBLY END");
+            // Mechano.LOGGER.error("ASSEMBLY END");
         }
 
         /**
@@ -236,18 +236,18 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
          * {@see #onContraptionAssembled}
          */
         public void onContraptionDisassembled(StructureTransform transform, GriddableContraptionAttachment data, TransientStructureContainer container) {
-            Mechano.LOGGER.error("DISASSEMBLY START");
+            // Mechano.LOGGER.error("DISASSEMBLY START");
             Objects.requireNonNull(data);
             if(!(data.getWorld() instanceof ServerLevel world) || !ServerGrid.ALLOW_DYNAMIC_REASSERTIONS)
                 return;
             data.forEachAssociated(transform, node -> {
-                GridUUID before = node.getAddress().copy();
+                // GridUUID before = node.getAddress().copy();
                 node.replaceHolder(world, container.blockEntity, container.blockEntity.getSurrogate().getOrCreateAddress(), false);
                 CatnipServices.NETWORK.sendToClientsTrackingChunk((ServerLevel)data.getSource().level(), new ChunkPos(data.getSource().getOnPos()), new AnchorSyncPacket(AnchorSynchronizer.of(node)));
-                Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
+                // Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
             });
             data.getSource().removeData(MechanoData.ANCHOR_ATTACHMENT);
-            Mechano.LOGGER.error("DISASSEMBLY END");
+            // Mechano.LOGGER.error("DISASSEMBLY END");
         }
     } 
 

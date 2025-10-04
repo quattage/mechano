@@ -86,7 +86,7 @@ public class LinkDataTracker {
         for(TrackedLink link : elements) {
             out += "\n\t■ " + link.getTime() + " ⇒ " + link.describeConnection() + " ::";
             if(link.getWorld().isClientSide()) {
-                GridConnection conn = LinkDataStorable.getAsClient(link.world, link.connection);
+                GridConnection conn = LinkDataStorage.getAsClient(link.world, link.connection);
                 if(conn instanceof GridCatenary cat)
                     out += "\n\t\t" + "⇄ Verified, " + conn.describeDataScope(link.world) + " :: (" + cat.describeCatenary() + ") @" + conn.hashCode() + "\n";
                 else  out += "\n\t\t⚠ Leaked!\n";

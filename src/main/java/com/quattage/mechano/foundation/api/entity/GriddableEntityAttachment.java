@@ -8,14 +8,14 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccessor;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -39,7 +39,7 @@ import net.neoforged.neoforge.attachment.IAttachmentSerializer;
  * at the world-level, so despite being a Data Attachment, there are
  * no persistence features built into this class directly.
  */
-public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAccessor {
+public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAccess {
 
     public static final IAttachmentSerializer<CompoundTag, GriddableEntityAttachment> SERIALIZER = new IAttachmentSerializer<>() {
         @Override
@@ -112,7 +112,7 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
     public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         if(!entity.level().isClientSide) return null;
         if(!entity.hasData(MechanoData.LINK_ATTACHMENT)) return null;
-        LinkDataStorable.Client storage = LinkDataStorable.getAsClient(entity, false);
+        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(entity, false);
         return storage == null ? null : storage.getAll();
     }
 

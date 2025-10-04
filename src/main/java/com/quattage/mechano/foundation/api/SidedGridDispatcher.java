@@ -11,6 +11,7 @@ import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -112,37 +113,29 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
 
     @SubscribeEvent
     public static void onChunkWatched(ChunkWatchEvent.Sent evt) {
-        LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
+        LinkDataStorage.ServerSectionable storage = LinkDataStorage.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
         storage.forEach(link -> {
             if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SINGLE)) return;
             CatnipServices.NETWORK.sendToClient(
-                evt.getPlayer(), LinkResponsePacket.of(
-                    link.getStartNode(), link.getEndNode(), 
-                    link.getTransmitter(),
-                    GridResponse.TASK_SYNC_ANCHORS
-                ));
+                evt.getPlayer(), LinkResponsePacket.of(link, GridResponse.TASK_SYNC_ANCHORS));
         });
     }
 
     @SubscribeEvent
     public static void onChunkUnwatched(ChunkWatchEvent.UnWatch evt) {
-        LinkDataStorable.ServerSectionable storage = LinkDataStorable.getAsServer(evt.getLevel(), evt.getPos(), false);
+        LinkDataStorage.ServerSectionable storage = LinkDataStorage.getAsServer(evt.getLevel(), evt.getPos(), false);
         if(storage == null) return;
         storage.forEach(link -> {
             if(!link.isBeingTrackedBy(evt.getPlayer(), InsertionPolicy.SINGLE)) return;
             CatnipServices.NETWORK.sendToClient(
-                evt.getPlayer(), LinkResponsePacket.of(
-                    link.getStartNode(), link.getEndNode(), 
-                    link.getTransmitter(),
-                    GridResponse.TASK_DESTROY_LINK_LAZY
-                ));
+                evt.getPlayer(), LinkResponsePacket.of(link, GridResponse.TASK_DESTROY_LINK_LAZY));
         });
     }
 
     @SubscribeEvent
     public static void onEntityWatched(PlayerEvent.StartTracking evt) {
-        LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getTarget(), false);
+        LinkDataStorage.Server storage = LinkDataStorage.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
         // storage.forEach(link -> {
         //     if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
@@ -157,7 +150,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
 
     @SubscribeEvent
     public static void onEntityUnwatched(PlayerEvent.StopTracking evt) {
-        LinkDataStorable.Server storage = LinkDataStorable.getAsServer(evt.getTarget(), false);
+        LinkDataStorage.Server storage = LinkDataStorage.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
         // storage.forEach(link -> {
         //     CatnipServices.NETWORK.sendToClient(
@@ -169,19 +162,27 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         // });
     }
 
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent evt) {
+        if(evt.getEntity().level().isClientSide()) return;
+        Griddable<?> points = GriddableEntityAttachment.of(evt.getEntity(), false);
+        if(points == null) return;
+        points.destroySurrogate();
+    }
+
     /**
      * This is the hook where {@link CatenaryModel} instances get rendered
      * to chunks if both ends of said model are attached to immovable,
      * voxel-adjacent elements. This event collects links attached to
-     * the section via the registered {@link LinkDataStorable data attachment}.
+     * the section via the registered {@link LinkDataStorage data attachment}.
      */
     @SubscribeEvent
     public static void onSectionMeshed(AddSectionGeometryEvent evt) {
         SectionPos pos = SectionPos.of(evt.getSectionOrigin());
         ClientLevel world = (ClientLevel)evt.getLevel(); 
-        LinkDataStorable.ClientSectionable storage = LinkDataStorable.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
+        LinkDataStorage.ClientSectionable storage = LinkDataStorage.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
         if(storage == null) return;
-        LinkDataStorable.Client section = storage.getStorageInSection(pos.getY());
+        LinkDataStorage.Client section = storage.getStorageInSection(pos.getY());
         if(section == null) return;
         evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
     }

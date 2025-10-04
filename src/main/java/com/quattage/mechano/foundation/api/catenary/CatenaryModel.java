@@ -7,7 +7,8 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.switchboard.TrackedStreamable;
+import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
@@ -38,9 +39,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
 
     @Nullable protected Vector3f halfOffset;
 
-    // average accumulated velocity as of the last time the wire's shape was updated
-    public float length = 0f;
-    public float maxLength = 32f;
+    public float span = 0f;
 
     /**
      * Destroying the provided CatenaryModel will ensure that
@@ -51,8 +50,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
     public static void disposeOf(CatenaryModel<?> cat) {
         if(cat == null) return;
         cat.halfOffset = null;
-        cat.length = 0;
-        cat.maxLength = 0;
+        cat.span = 0;
         cat.destroy();
         // also nullify flywheel stuff and cache info if i ever do that in the future
     }
@@ -62,13 +60,13 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * for this Catenary given a known start and end point
      * @return This Catenary for chaining
      */
-    public abstract T setOffset(Vec3 start, Vec3 end);
+    public abstract T setOffset(TransmitterType<?> trns, Vec3 start, Vec3 end);
 
     /**
      * Calculates the {@link #setOffset offset} vector
      * for this catenary given a pair of {@link GridUUID addresses}
      * and enforces their order using the deterministic 
-     * {@link TrackedStreamable#orderedByRenderPriority render priority}
+     * {@link TrackedConstruct#orderedByRenderPriority render priority}
      * to ensure that the sign of the offset vector's length is correct.
      * @param world World to operate within
      * @param start GridUUID starting position
@@ -76,13 +74,13 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, TransmitterType<?> trns, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
 
     /**
      * Calculates the {@link #setOffset offset} vector
      * for this catenary given a pair of {@link GridUUID addresses}
      * and enforces their order using the deterministic 
-     * {@link TrackedStreamable#orderedByRenderPriority render priority}
+     * {@link TrackedConstruct#orderedByRenderPriority render priority}
      * to ensure that the sign of the offset vector's length is correct.
      * @param world World to operate within
      * @param start GridUUID starting position
@@ -90,7 +88,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, TransmitterType<?> trns, @Nullable AnchorPoint start, @Nullable AnchorPoint end, float pTicks);
 
     /**
      * A helper call that sets the first and last
@@ -141,7 +139,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * hit, as well as a strong likelihood to produce poor results,
      * especially at particularly high or low framerates. 
      */
-    public abstract void update();
+    public abstract void update(TransmitterType<?> trns);
 
     /**
      * Runs {@link #update} <code>steps</code> number
@@ -152,9 +150,9 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * result.
      * @param steps
      */
-    public void updateAhead(int steps) {
+    public void updateAhead(TransmitterType<?> trns, int steps) {
         for(int x = 0; x < steps; x++)
-            update();
+            update(trns);
     }
 
     /**
@@ -168,7 +166,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * for Catenary implementations that require it, but this method can still
      * be invoked manually in circumstances where doing so is useful.
      */
-    public abstract CatenaryModel<T> calculateSegmentation();
+    public abstract CatenaryModel<T> calculateSegmentation(TransmitterType<?> trns);
 
     /**
      * Renders this Catenary to the provided stack. For more 
@@ -215,16 +213,8 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      */
     public abstract void drawDebug(Vec3 basis);
 
-    public float getSpan() {
-        return length;
-    }
-
-    public float getMaximumSpan() {
-        return maxLength;
-    }
-
-    public void adjustSpan(LevelReader world, float length) {
-        this.maxLength = length;
+    public void adjustSpan(LevelReader world, float span) {
+        this.span = span;
     }
 
     /**
@@ -232,7 +222,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * determines the length of each uniform segment
      */
     public int getSegmentCount() {
-        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(length * CatenaryAttributes.FEATURESET.getResolution())));
+        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(span * CatenaryAttributes.FEATURESET.getResolution())));
     }  
 
     public Vector3f getGravity(int points) {
@@ -267,4 +257,8 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
     }
 
     protected abstract void destroy();
+
+
+    public abstract void lockSpan();
+    public abstract void unlockSpan();
 }

@@ -42,12 +42,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRenderingContext;
 
-@OnlyIn(Dist.CLIENT)
 public final class GridCatenary extends GridConnection {
 
     private final AnchorPoint start;

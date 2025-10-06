@@ -21,9 +21,10 @@ import net.createmod.catnip.net.base.CatnipPacketRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.util.StringRepresentable;
 import net.neoforged.bus.api.IEventBus;
 
-public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
+public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider, StringRepresentable {
     
     LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
     ANCHOR_C2S(AnchorRequestPacket.class, AnchorRequestPacket.STREAM_CODEC),
@@ -35,30 +36,40 @@ public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider {
     MANIFEST_RESULT_S2C(ManifestResultPacket.class, ManifestResultPacket.STREAM_CODEC),
     ANCHOR_SYNC_S2C(AnchorSyncPacket.class, AnchorSyncPacket.STREAM_CODEC),
     ANCHOR_DESTROY_C2S(AnchorSurrogateDestroyPacket.class, AnchorSurrogateDestroyPacket.STREAM_CODEC),
-    GRIDDABLE_UPDATE_S2C(GriddableUpdatePacket.class, GriddableUpdatePacket.STREAM_CODEC);
+    GRIDDABLE_UPDATE_S2C(GriddableUpdatePacket.class, GriddableUpdatePacket.STREAM_CODEC)
     ;
 
     @Override
     @SuppressWarnings("unchecked")
     public <T extends CustomPacketPayload> CustomPacketPayload.Type<T> getType() {
-        return (CustomPacketPayload.Type<T>) this.type.type();
+        return (CustomPacketPayload.Type<T>)this.type.type();
     }
 
 
     private final CatnipPacketRegistry.PacketType<?> type;
+
     <T extends BasePacketPayload> MechanoPackets(Class<T> cl, StreamCodec<? super RegistryFriendlyByteBuf, T> codec) {
-		String formatted_name = this.name().toLowerCase(Locale.ROOT);
 		this.type = new CatnipPacketRegistry.PacketType<>(
-            new CustomPacketPayload.Type<>(Mechano.asResource(formatted_name)),
+            new CustomPacketPayload.Type<>(Mechano.asResource(this.toString())),
             cl, codec
 		);
 	}
 
     public static void register(IEventBus modBus) {
-        CatnipPacketRegistry registrar = new CatnipPacketRegistry(Mechano.ID, 0);
+        CatnipPacketRegistry registrar = new CatnipPacketRegistry(Mechano.ID, MechanoBuildParameters.VERSION);
         for(MechanoPackets packet : MechanoPackets.values())
             registrar.registerPacket(packet.type);
         registrar.registerAllPackets();
+    }
+
+    @Override
+    public String getSerializedName() {
+        return name().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    public String toString() {
+        return getSerializedName();
     }
 }
 

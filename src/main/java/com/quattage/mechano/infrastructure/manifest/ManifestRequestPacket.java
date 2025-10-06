@@ -11,6 +11,8 @@ import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketPayload {
 
@@ -25,6 +27,7 @@ public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketP
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
         Griddable<?> points = addr.getOrFindGriddable(player.level());
         if(points == null) {

@@ -17,6 +17,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.PushReaction;
@@ -99,6 +100,12 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
     public boolean isConnectorAllowed(LevelReader world, BlockPos connectorPos, BlockState connectorState,
             BlockPos thisPos, BlockState thisState) {
         return false;
+    }
+
+    @Override
+    protected BlockState rotate(BlockState state, Rotation rotation) {
+        // TODO Auto-generated method stub
+        return super.rotate(state, rotation);
     }
 
     @Override

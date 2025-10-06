@@ -2,8 +2,8 @@ package com.quattage.mechano.foundation.item;
 
 import com.quattage.mechano.MechanoClientEvents;
 
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -19,5 +19,5 @@ public interface LeftClickCapturable {
      * @return <code>true</code> if vanilla left click behaviour with this
      * item should be cancelled in favor of the implementation in this method.
      */
-    abstract boolean onLeftClick(LocalPlayer player, ItemStack stack, InteractionHand hand);
+    abstract boolean onLeftClick(Player player, ItemStack stack, InteractionHand hand);
 }

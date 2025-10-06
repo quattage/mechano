@@ -14,6 +14,8 @@ import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public record LinkSwapPacket(AnchorSynchronizer start, AnchorSynchronizer end, GridUUID replace, GridResponse task) implements ClientboundPacketPayload {
     
@@ -39,6 +41,7 @@ public record LinkSwapPacket(AnchorSynchronizer start, AnchorSynchronizer end, G
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
         ClientGrid grid = SidedGridDispatcher.client(player);
         replace.setDataScope(DataScope.BLOCKENTITY);

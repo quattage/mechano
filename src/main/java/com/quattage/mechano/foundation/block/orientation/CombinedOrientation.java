@@ -10,6 +10,7 @@ import net.minecraft.core.Direction.Axis;
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.block.Rotation;
 /***
  * A CombinedOrientation is an implementation of Minecraft's BlockState enums that
  * combines two Direction objects, called localUp and localForward. LocalUp represents the 
@@ -20,9 +21,9 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 public enum CombinedOrientation implements StringRepresentable {
 
     DOWN_NORTH(new Vec3i(180, 180, 0), new Vec3i(0, 0, 180), Direction.DOWN, Direction.NORTH),      // 0
-    DOWN_EAST(new Vec3i(180, 270, 0), new Vec3i(0, 90, 180), Direction.DOWN, Direction.EAST),
-    DOWN_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 180), Direction.DOWN, Direction.SOUTH),
     DOWN_WEST(new Vec3i(180, 90, 0), new Vec3i(0, 270, 180), Direction.DOWN, Direction.WEST),
+    DOWN_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 180), Direction.DOWN, Direction.SOUTH),
+    DOWN_EAST(new Vec3i(180, 270, 0), new Vec3i(0, 90, 180), Direction.DOWN, Direction.EAST),
 
     UP_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 0), Direction.UP, Direction.NORTH),             // 4
     UP_WEST(new Vec3i(0, 270, 0), new Vec3i(0, 90, 0), Direction.UP, Direction.WEST),
@@ -153,6 +154,36 @@ public enum CombinedOrientation implements StringRepresentable {
         if(in > 7) return 3;
         if(in > 3) return 2;
         return 1;
+    }
+
+    public CombinedOrientation applyRotation(Rotation rotation) {
+        if(this.ordinal() < 8) {
+            return switch (rotation) {
+                case CLOCKWISE_180 -> cycleLocalForward(cycleLocalForward(this));
+                case CLOCKWISE_90 -> cycleLocalForward(cycleLocalForward(cycleLocalForward(this)));
+                case COUNTERCLOCKWISE_90 -> cycleLocalForward(this);
+                case NONE -> this;
+            };
+        }
+        switch (rotation) {
+            case CLOCKWISE_180 -> {
+                int ord = ordinal() + 8;
+                if(ord > 23) ord = ordinal() - 8;
+                return CombinedOrientation.values()[ord];
+            }
+            case CLOCKWISE_90 -> {
+                int ord = ordinal() + 4;
+                if(ord > 23) ord = 8 + (ord % 4);
+                return CombinedOrientation.values()[ord];
+            }
+            case COUNTERCLOCKWISE_90 -> {
+                int ord = ordinal() - 4;
+                if(ord < 8) ord = 23 - (ord % 4);
+                return CombinedOrientation.values()[ord];
+            }
+            case NONE -> { return this; }
+        };
+        throw new IllegalStateException("bruh");
     }
 
     private static int getGroupMaxRange(int in) {

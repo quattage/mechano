@@ -28,6 +28,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 
 /**
@@ -51,8 +52,8 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @param world World that the resulting ServerGrid uses to look up {@link GriddableBlockEntity PGBEs}
      * @return a new ServerGrid with data primed from the provided list of grids.
      */
-    public static ServerGrid loadFrom(ListTag subgrids, ServerLevel world) {
-        ServerGrid freshGlobal = new ServerGrid(world,  new ObjectArrayList<>(subgrids.size() + 1));
+    public static ServerGrid loadFrom(ListTag subgrids, Level world) {
+        ServerGrid freshGlobal = new ServerGrid((ServerLevel)world,  new ObjectArrayList<>(subgrids.size() + 1));
         for(int x = 0; x < subgrids.size(); x++) {
             ListTag writtens = subgrids.getList(x);
             if(writtens.isEmpty()) continue;
@@ -115,7 +116,7 @@ public final class ServerGrid extends SidedGridDispatcher {
      * @param world ServerLevel that owns this grid
      * @param subgrids Subgrids to instantiate the new ServerGrid with
      */
-    protected ServerGrid(ServerLevel world, ObjectArrayList<ServerMatrix> subgrids) {
+    protected ServerGrid(Level world, ObjectArrayList<ServerMatrix> subgrids) {
         super(world);
         this.matrices = subgrids;
         if(Mechano.USE_VERBOSE_LINK_TRACKING)

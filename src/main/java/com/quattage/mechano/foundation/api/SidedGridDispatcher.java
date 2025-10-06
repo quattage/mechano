@@ -10,9 +10,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.switchboard.LinkResponsePacket;
@@ -23,17 +21,18 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
-import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -60,8 +59,10 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
             @Override
             public SidedGridDispatcher read(IAttachmentHolder holder, ListTag list, HolderLookup.Provider provider) {
                 SidedGridDispatcher deserializedInstance = null;
-                if(holder instanceof ClientLevel cl) deserializedInstance = ClientGrid.loadFrom(list, cl);
-                else if(holder instanceof ServerLevel sl) deserializedInstance = ServerGrid.loadFrom(list, sl);
+                if(holder instanceof Level world) {
+                    if(world.isClientSide) deserializedInstance = ClientGrid.loadFrom(list, world);
+                    else deserializedInstance = ServerGrid.loadFrom(list, world);
+                }
                 else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got '" + holder.getClass().getSimpleName() + "!'");
                 deserializedInstance.info("Loaded pre-existing grid data");
                 return deserializedInstance;
@@ -96,18 +97,18 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
 
     @SubscribeEvent
     public static void onWorldUnload(LevelEvent.Unload evt) {
-        if(evt.getLevel() instanceof ServerLevel sl) {
-            if(weakServerGrid != null && weakServerGrid.isAttachedTo(sl)) {
-                LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
-                weakServerGrid.clear();
-            }
-        } else if(evt.getLevel() instanceof ClientLevel cl) {
-            if(weakClientGrid != null && weakClientGrid.isAttachedTo(cl)) {
+        LevelAccessor world = evt.getLevel();
+        if(world.isClientSide()) {
+            if(weakClientGrid != null && weakClientGrid.isAttachedTo(world)) {
                 LOGGER.debug("Dumped ClientGrid belonging to '" + weakClientGrid.get().getDimensionName() + "'");
                 weakClientGrid.clear();
             } 
         }
-        SidedGridDispatcher grid = ((Level)evt.getLevel()).getExistingDataOrNull(MechanoData.GRID_ATTACHMENT);
+        else if(weakServerGrid != null && weakServerGrid.isAttachedTo(world)) {
+            LOGGER.debug("Dumped ServerGrid belonging to '" + weakServerGrid.get().getDimensionName() + "'");
+            weakServerGrid.clear();
+        }
+        SidedGridDispatcher grid = world instanceof Level l ? l.getExistingDataOrNull(MechanoData.GRID_ATTACHMENT) : null;
         if(grid != null) grid.onUnload();
     }
 
@@ -170,22 +171,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         points.destroySurrogate();
     }
 
-    /**
-     * This is the hook where {@link CatenaryModel} instances get rendered
-     * to chunks if both ends of said model are attached to immovable,
-     * voxel-adjacent elements. This event collects links attached to
-     * the section via the registered {@link LinkDataStorage data attachment}.
-     */
-    @SubscribeEvent
-    public static void onSectionMeshed(AddSectionGeometryEvent evt) {
-        SectionPos pos = SectionPos.of(evt.getSectionOrigin());
-        ClientLevel world = (ClientLevel)evt.getLevel(); 
-        LinkDataStorage.ClientSectionable storage = LinkDataStorage.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
-        if(storage == null) return;
-        LinkDataStorage.Client section = storage.getStorageInSection(pos.getY());
-        if(section == null) return;
-        evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
-    }
+    
 
     /**
      * To be called by internal registries to populate the world with an initial data attachment
@@ -196,10 +182,10 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     @ApiStatus.Internal
     public static SidedGridDispatcher createNew(IAttachmentHolder holder) {
         SidedGridDispatcher freshInstance = null;
-        if(holder instanceof ClientLevel cl)
-            freshInstance = new ClientGrid(cl);
-        else if(holder instanceof ServerLevel sl)
-            freshInstance = new ServerGrid(sl, new ObjectArrayList<>());
+        if(holder instanceof Level world) {
+            if(world.isClientSide()) freshInstance = new ClientGrid(world);
+            else freshInstance = new ServerGrid(world, new ObjectArrayList<>());
+        }
         else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got " + holder + "!");
         freshInstance.info("Created new grid data");
         return freshInstance;
@@ -300,6 +286,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
      * @return The ClientGrid attached to the provided level
      * @throws IllegalArgumentException if the provided world is not client-sided
      */
+    @OnlyIn(Dist.CLIENT)
     public static @Nullable ClientGrid client(LevelReader world) {
         Objects.requireNonNull(world);
         if(!(world instanceof ClientLevel cl)) throw new IllegalArgumentException("Can't acquire a client-sided dispatcher from server-sided world " + world);
@@ -317,6 +304,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
      * @return The ClientGrid attached to the provided level
      * @throws IllegalArgumentException if the provided player's world is not client-sided
      */
+    @OnlyIn(Dist.CLIENT)
     public static @Nullable ClientGrid client(Player player) {
         return player == null ? null : client(player.level());
     }
@@ -329,6 +317,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
      * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
+    @OnlyIn(Dist.CLIENT)
     public static boolean runOnClient(Level world, Consumer<ClientGrid> cons) {
         Objects.requireNonNull(cons);
         ClientGrid grid = client(world);
@@ -349,6 +338,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
      * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
+    @OnlyIn(Dist.CLIENT)
     public static boolean runOnClient(LevelReader world, Consumer<ClientGrid> cons) {
         Objects.requireNonNull(cons);
         ClientGrid grid = client(world);
@@ -369,6 +359,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
      * @throws IllegalArgumentException if the provided world is not client-sided
      * @throws IllegalStateException if for whatever reason the data attachment's builder fails
      */
+    @OnlyIn(Dist.CLIENT)
     public static boolean runOnClient(Player player, Consumer<ClientGrid> cons) {
         Objects.requireNonNull(cons);
         ClientGrid grid = client(player);
@@ -408,6 +399,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         throw new RuntimeException("Can't get the ServerGrid instance as a client!");
     }
 
+    @OnlyIn(Dist.CLIENT)
     public ClientGrid asClient() {
         if(this instanceof ClientGrid grid) return grid;
         throw new RuntimeException("Can't get the ClientGrid instance as a server!");

@@ -35,6 +35,7 @@ import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.level.Level;
@@ -192,7 +193,9 @@ public class ContraptionUUID extends GridUUID {
     public float getMass(LevelReader world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
         if(!(holder instanceof AbstractContraptionEntity ace)) return TrackedConstruct.DEFAULT_MASS;
-        return ace.getVehicle() instanceof AbstractMinecart ? (float)ace.getBoundingBox().getSize() : TrackedConstruct.DEFAULT_MASS;
+        if(ace.getVehicle() instanceof AbstractMinecart)
+            return Mth.clamp(((float)ace.getBoundingBox().getSize()) * 0.1f, 0.01f, 1f);
+        return TrackedConstruct.DEFAULT_MASS;
     }
 
     @Override

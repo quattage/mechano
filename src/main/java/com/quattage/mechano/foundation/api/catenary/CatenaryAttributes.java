@@ -38,6 +38,8 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * A container class for various catenary-related things
@@ -172,6 +174,7 @@ public class CatenaryAttributes {
      * Provides implementation for drawing individual segments of a wire in different
      * ways
      */
+    @OnlyIn(Dist.CLIENT)
     public static enum ModelType implements StringRepresentable {
 
         SQUARE(SOLID_MATERIAL, (VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, @Nullable Stick previous, Stick current, @Nullable Stick next, 
@@ -241,7 +244,7 @@ public class CatenaryAttributes {
 
     public static class Container {
 
-        private @NotNull ModelType model = ModelType.SQUARE;
+        private int modelType = 0;
         private @NotNull Thickness thick = Thickness.TRIPLE;
         private @NotNull PhysicalMaterial material = PhysicalMaterial.ROPE;
         private @NotNull Soundscape sounds = Soundscape.CABLE;
@@ -249,9 +252,15 @@ public class CatenaryAttributes {
         private boolean canInterconnect = false;
         private boolean ignoresRestrictions = false;
 
+        @OnlyIn(Dist.CLIENT)
         public Container withModelType(ModelType model) {
             if(model == null) return this;
-            this.model = model;
+            this.modelType = model.ordinal();
+            return this;
+        }
+
+        public Container withModelTypeByOrdinal(int ord) {
+            this.modelType = ord;
             return this;
         }
 
@@ -313,8 +322,9 @@ public class CatenaryAttributes {
             return this;
         }
 
+        @OnlyIn(Dist.CLIENT)
         public ModelType getModelType() {
-            return model;
+            return ModelType.values()[modelType];
         }
 
         public Thickness getThickness() {
@@ -341,8 +351,9 @@ public class CatenaryAttributes {
             return material;
         }
 
+        @OnlyIn(Dist.CLIENT)
         public boolean renders() {
-            return model != ModelType.NO_DRAW && thick != Thickness.ZERO;
+            return modelType != ModelType.NO_DRAW.ordinal() && thick != Thickness.ZERO;
         }
     }
 

@@ -31,21 +31,19 @@ import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.ListTag;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.world.level.Level;
 
-@OnlyIn(Dist.CLIENT)
 public final class ClientGrid extends SidedGridDispatcher {
 
     private final AwaitingLinkBuffer buffer = new AwaitingLinkBuffer();
     private LinkDataTracker tracker = null;
     private boolean isLoaded = false;
 
-    public static ClientGrid loadFrom(ListTag serializedGlobals, ClientLevel world) {
+    public static ClientGrid loadFrom(ListTag serializedGlobals, Level world) {
         return new ClientGrid(world);
     }
 
-    public ClientGrid(ClientLevel world) {
+    public ClientGrid(Level world) {
         super(world);
         if(Mechano.USE_VERBOSE_LINK_TRACKING)
             tracker = new LinkDataTracker().enable().withLogging(LOGGER);

@@ -2,17 +2,13 @@ package com.quattage.mechano.foundation.item;
 
 import static com.quattage.mechano.Mechano.lang;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage;
@@ -32,35 +28,17 @@ import com.quattage.mechano.foundation.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererInvoker;
-import com.quattage.mechano.foundation.mixin.client.ItemInHandRendererMixin;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
-import com.quattage.mechano.infrastructure.datagen.SpoolDataProvider;
-import com.simibubi.create.foundation.data.CreateRegistrate;
-import com.tterrag.registrate.builders.ItemBuilder;
-import com.tterrag.registrate.providers.ProviderType;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.ItemInHandRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.client.renderer.item.ItemProperties;
-import net.minecraft.client.renderer.item.ItemPropertyFunction;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.HumanoidArm;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.GameType;
@@ -81,20 +59,20 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * Removes all data from every spool in player's inventory. 
      */
     @OnlyIn(Dist.CLIENT)
-    public static void wipeData(LocalPlayer lp, boolean cancelEarly) {
-        ItemStack held = lp.getMainHandItem();
+    public static void wipeData(Player player, boolean cancelEarly) {
+        ItemStack held = player.getMainHandItem();
         if(held != null && held.getItem() instanceof SpoolItem spool) {
             spool.cancelAwaitingConnection(null, null, held);
             if(cancelEarly) return;
         }
-        held = lp.getOffhandItem();
+        held = player.getOffhandItem();
         if(held != null && held.getItem() instanceof SpoolItem spool) {
             spool.cancelAwaitingConnection(null, null, held);
             if(cancelEarly) return;
         }
         // normally the player is only ever permitted to have one bound
         // spool at a time, but just in case, we check the whole inventory
-        for(ItemStack stack : lp.getInventory().items) {
+        for(ItemStack stack : player.getInventory().items) {
             if(stack != null && stack.getItem() instanceof SpoolItem spool) {
                 spool.cancelAwaitingConnection(null, null, stack);
                 if(cancelEarly) return;
@@ -103,8 +81,8 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static boolean hasAwaiting(LocalPlayer lp) {
-        for(ItemStack stack : lp.getInventory().items) {
+    public static boolean hasAwaiting(Player player) {
+        for(ItemStack stack : player.getInventory().items) {
             if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(UUIDDiscriminator.ATTACHMENT))
                 return true;
         }
@@ -118,15 +96,15 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             return InteractionResultHolder.fail(AnchorSelector.INSTANCE.getHeldStack());
         ItemStack stack = AnchorSelector.INSTANCE.getHeldStack();
         if(!stack.has(UUIDDiscriminator.ATTACHMENT)) 
-            return handleFirstRightClick((LocalPlayer)player, stack, AnchorSelector.INSTANCE.getSelected());
-        return handleSecondRightClick((LocalPlayer)player, stack, AnchorSelector.INSTANCE.getSelected());
+            return handleFirstRightClick(player, stack, AnchorSelector.INSTANCE.getSelected());
+        return handleSecondRightClick(player, stack, AnchorSelector.INSTANCE.getSelected());
     }
 
     /**
      * Called when the player initially selects an anchor, which creates a temporary link and catenary
      * between the selected anchor and the player.
      */
-    private InteractionResultHolder<ItemStack> handleFirstRightClick(LocalPlayer player, ItemStack stack, @Nullable AnchorPoint startAnchor) {
+    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AnchorPoint startAnchor) {
         if(hasAwaiting(player)) return InteractionResultHolder.fail(stack);
         if(startAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
             cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
@@ -151,7 +129,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
     /**
      * Called when the player selects a second anchor, which finalizes the creation of a valid link and catenary
      */
-    private InteractionResultHolder<ItemStack> handleSecondRightClick(LocalPlayer player, ItemStack stack, @Nullable AnchorPoint endAnchor) {
+    private InteractionResultHolder<ItemStack> handleSecondRightClick(Player player, ItemStack stack, @Nullable AnchorPoint endAnchor) {
 
         if(endAnchor == null) {
             cancelAwaitingConnection(null, null, stack);
@@ -161,7 +139,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         GridResponse initialResponse = AnchorSelector.INSTANCE.getSelectedResponse();
         if(!initialResponse.indicatesCompletion()) {
             if(initialResponse.shouldFailHard()) {
-                onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
+                onLeftClick(player, stack, InteractionHand.MAIN_HAND);
                 return InteractionResultHolder.fail(stack);
             }
             return InteractionResultHolder.pass(stack);
@@ -181,7 +159,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         GridResponse result = grid.requestLinkCreation(startAnchor, endAnchor, getTransmitterType(), true);
         if(!result.indicatesCompletion()) {
             if(result.shouldFailHard()) {
-                onLeftClick((LocalPlayer)player, stack, InteractionHand.MAIN_HAND);
+                onLeftClick(player, stack, InteractionHand.MAIN_HAND);
                 return InteractionResultHolder.fail(stack);
             }
             return InteractionResultHolder.pass(stack);
@@ -227,7 +205,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
 
 
     @Override
-    public boolean onLeftClick(LocalPlayer player, ItemStack stack, @Nullable InteractionHand hand) {
+    public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
         if(!stack.has(UUIDDiscriminator.ATTACHMENT)) return false;
         GridUUID addr = stack.get(UUIDDiscriminator.ATTACHMENT);
         if(addr == null) return false;
@@ -268,8 +246,8 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      */
     private void applyDurability(Entity entity, ItemStack stack, float length) {
         if(startingDamage < 0) return;
-        if(entity instanceof LocalPlayer lp) {
-            GameType mode = ((PlayerInfoAccessor)lp).mechano$getPlayerInfo().getGameMode();
+        if(entity instanceof Player player) {
+            GameType mode = ((PlayerInfoAccessor)player).mechano$getPlayerInfo().getGameMode();
             if(mode == null || mode == GameType.CREATIVE || mode == GameType.SPECTATOR)
                 return;
         }            
@@ -294,91 +272,4 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
         float current = max - ((float)stack.getDamageValue() / 2f);
         lang().text(String.format("%.1f", current) + "/" + String.format("%.1f", max) + "m").style(ChatFormatting.GRAY).forGoggles(tooltipComponents);
     }
-
-    /**
-     * Overrides the vanilla {@link ItemInHandRenderer} behaviour as invoked by the
-     * {@link ItemInHandRendererMixin mixin.} You may implement your own logic here 
-     * for determining how the player should hold this spool in first person, or 
-     * you can simply return <code>false</code> here to do nothing and use the 
-     * default pose.
-     * @return <code>true</code> if traditional hand rendering should
-     * be cancelled in favor of a custom implementation defined within
-     * the scope of this method.
-     */
-    public boolean renderInHands(ItemStack item, MultiBufferSource bufferSource, PoseStack matrixStack, AbstractClientPlayer player, ItemInHandRenderer renderer, float swingProgress, float equipProgress, float pitch, float pTicks, int packedLight) {
-
-        float tilt = (((ItemInHandRendererInvoker)renderer).mechano$calculateMapTilt(pitch) * 0.4f) + 0.3f;
-        matrixStack.translate(0f, 0.2f + equipProgress * -1.2f + tilt * -0.3f, -0.72f);
-        matrixStack.mulPose(Axis.XP.rotationDegrees(tilt * -90f));
-
-        if (!player.isInvisible()) {
-            matrixStack.pushPose();
-            matrixStack.mulPose(Axis.YP.rotationDegrees(90));
-            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
-            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.LEFT);
-            matrixStack.popPose();
-        }
-
-        matrixStack.pushPose();
-        matrixStack.mulPose(Axis.YP.rotationDegrees(90).mul(Axis.XN.rotationDegrees(290)));
-        matrixStack.translate(0.2f, -0.3f, 0.17);
-        renderer.renderItem(player, item, ItemDisplayContext.FIRST_PERSON_RIGHT_HAND, false, matrixStack, bufferSource, packedLight);
-        matrixStack.popPose();
-
-        return true;
-    }
-
-    protected void renderSpoolHand(ItemInHandRenderer renderer, AbstractClientPlayer player, PoseStack poseStack, MultiBufferSource buffer, int packedLight, HumanoidArm side) {
-        PlayerRenderer playerrenderer = (PlayerRenderer)((ItemInHandRendererInvoker)renderer)
-            .mechano$getEntityRenderDispatcher().<AbstractClientPlayer>getRenderer(player);
-        poseStack.pushPose();
-        // yoinked from vanilla but with some fudged numbers to make 
-        // the hands look more like what i'm going for here
-        float f = side == HumanoidArm.RIGHT ? 1.0F : -1.0F;
-        poseStack.mulPose(Axis.YP.rotationDegrees(92.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees(30.0F));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(f * -30.0F));
-        poseStack.translate(f * 0.09F, -0.9F, 0.45F);
-        if (side == HumanoidArm.RIGHT) 
-            playerrenderer.renderRightHand(poseStack, buffer, packedLight, player);
-        else playerrenderer.renderLeftHand(poseStack, buffer, packedLight, player);
-
-        poseStack.popPose();
-    }
-
-
-
-
-
-
-
-    // the rest of the code here pertains to registering and using the ItemProperty function
-    // which allows the spool to change texture based on its durability percent
-    public static final ResourceLocation FULLNESS = Mechano.asResource("full");
-    public static ArrayList<ItemBuilder<SpoolItem<?>, CreateRegistrate>> spools = new ArrayList<>();
-
-    @SuppressWarnings("unchecked")
-    public static <T extends SpoolItem<?>> ItemBuilder<T, CreateRegistrate> make(ItemBuilder<T, CreateRegistrate> builder) {
-        spools.add((ItemBuilder<SpoolItem<?>, CreateRegistrate>) builder);
-        return builder
-            .setData(ProviderType.ITEM_MODEL, SpoolDataProvider::generate)
-            .properties(p -> p.stacksTo(1).setNoRepair().craftRemainder(MechanoItems.SPOOL_EMPTY.get().asItem())
-        );
-    }
-
-    public static void registerSpoolProperties() {
-        for(ItemBuilder<SpoolItem<?>, CreateRegistrate> b : spools)
-            ItemProperties.register(b.getEntry(), SpoolItem.FULLNESS, new SpoolFullnessProperty());
-        spools = null;
-    }
-
-    @SuppressWarnings("deprecation")
-    public static class SpoolFullnessProperty implements ItemPropertyFunction {
-        @Override
-        public float call(ItemStack stack, ClientLevel level, LivingEntity entity, int seed) {
-            float out = 1f - ((float)stack.getDamageValue() / stack.getOrDefault(DataComponents.MAX_DAMAGE, 512));
-            return out;
-        }
-    }
-    
 }

@@ -37,6 +37,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class LinkPeekCommand {
@@ -79,8 +81,11 @@ public class LinkPeekCommand {
             ByteBufCodecs.INT, LinkPeekRequestPacket::size,
             LinkPeekRequestPacket::new
         );
+        
         @Override public PacketTypeProvider getTypeProvider() { return MechanoPackets.LINK_PEEK_S2C; }
+        
         @Override
+        @OnlyIn(Dist.CLIENT)
         public void handle(LocalPlayer player) {
 
             final ClientLevel world = (ClientLevel)player.level();

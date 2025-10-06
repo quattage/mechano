@@ -2,22 +2,30 @@ package com.quattage.mechano;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.foundation.api.Griddable;
+import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorGuiLayer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.item.LeftClickCapturable;
+import com.quattage.mechano.foundation.item.MechanoItemProperties;
+import com.quattage.mechano.foundation.item.MechanoItemProperties.SpoolFullnessProperty;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +34,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
@@ -146,11 +155,29 @@ public class MechanoClientEvents {
         SidedGridDispatcher.client(lp).requestAnchorDestruction(new EntityUUID(lp));
     }
 
+    /**
+     * This is the hook where {@link CatenaryModel} instances get rendered
+     * to chunks if both ends of said model are attached to immovable,
+     * voxel-adjacent elements. This event collects links attached to
+     * the section via the registered {@link LinkDataStorage data attachment}.
+     */
+    @SubscribeEvent
+    public static void onSectionMeshed(AddSectionGeometryEvent evt) {
+        SectionPos pos = SectionPos.of(evt.getSectionOrigin());
+        ClientLevel world = (ClientLevel)evt.getLevel(); 
+        LinkDataStorage.ClientSectionable storage = LinkDataStorage.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
+        if(storage == null) return;
+        LinkDataStorage.Client section = storage.getStorageInSection(pos.getY());
+        if(section == null) return;
+        evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
+    }
+
     public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
         evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("anchor_selection"), AnchorGuiLayer::renderOverlay);
     }
 
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {
         evt.registerReloadListener(CATENARY_RESOURCES);
+        ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
     }
 }

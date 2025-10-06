@@ -2,7 +2,6 @@ package com.quattage.mechano.foundation.api.transmitter;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.spool.HookupTransmitter;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.ModelType;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Soundscape;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Thickness;
@@ -16,7 +15,7 @@ public class MechanoTransmissionTypes {
             .builder(PerfectConductor::new)
             .writesToNetwork(null)
             .withAttributes(attr -> {
-                attr.withModelType(ModelType.NO_DRAW);
+                attr.withModelTypeByOrdinal(5);
                 attr.withThickness(Thickness.ZERO);
                 attr.withMaterial(PhysicalMaterial.AIR);
                 attr.withSounds(Soundscape.AIR);
@@ -30,7 +29,7 @@ public class MechanoTransmissionTypes {
             .builder(PerfectInsulator::new)
             .writesToNetwork(null)
             .withAttributes(attr -> {
-                attr.withModelType(ModelType.NO_DRAW);
+                attr.withModelTypeByOrdinal(5);
                 attr.withThickness(Thickness.ZERO);
                 attr.withMaterial(PhysicalMaterial.AIR);
                 attr.withSounds(Soundscape.AIR);
@@ -44,7 +43,7 @@ public class MechanoTransmissionTypes {
             .builder(HookupTransmitter::new)
             .writesToNetwork(null)
             .withAttributes(attr -> {
-                attr.withModelType(ModelType.SQUARE);
+                attr.withModelTypeByOrdinal(0);
                 attr.withThickness(Thickness.TRIPLE);
                 attr.withMaterial(PhysicalMaterial.ROPE);
                 attr.withSounds(Soundscape.CABLE);

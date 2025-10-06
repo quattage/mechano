@@ -15,8 +15,10 @@ import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.platform.CatnipServices;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
@@ -79,12 +81,21 @@ public abstract sealed class GridConnection implements TrackedConstruct, Catenar
         float wA = link.getStart().getMass(world);
         float wB = link.getEnd().getMass(world);
         Vector3f sForce = diff.mul(-Math.abs(forceMagnitude * (wB / (wA + wB))), new Vector3f());
+        // Vector3f sForceN = sForce.normalize(new Vector3f());
         Vector3f eForce = diff.mul(-Math.abs(forceMagnitude * (wA / (wB + wA))), new Vector3f());
+        // Vector3f eForceN = eForce.normalize(new Vector3f());
 
         float sfM = sForce.length() * 20;
         if(sfM > 0.01f) link.getStart().applyForceToAttachment(world, sForce, true);
         float efM = eForce.length() * 20;
         if(efM > 0.01f) link.getEnd().applyForceToAttachment(world, eForce, true);
+
+        if(world.isClientSide()) {
+            VectorHelper.drawDebugBox(start, end);
+            VectorHelper.drawDebugRay(start, sForce.normalize(new Vector3f()).mul(10), Color.RED, "RSF");
+            VectorHelper.drawDebugRay(end, eForce.normalize(new Vector3f()).mul(10), Color.PURPLE, "REF");
+        }
+
         return sfM + efM;
     }
 

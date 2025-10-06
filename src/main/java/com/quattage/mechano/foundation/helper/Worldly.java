@@ -5,6 +5,7 @@ import java.lang.ref.WeakReference;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 
 public interface Worldly {
 
@@ -16,10 +17,10 @@ public interface Worldly {
      * @param worldB
      * @return <code>true</code> if both worlds are the same, or if their dimensions share the same name.
      */
-    public static boolean areWorldsEqual(Level worldA, Level worldB) {
+    public static boolean areWorldsEqual(LevelAccessor worldA, LevelAccessor worldB) {
         if(worldA == null || worldB == null) return false;
-        return worldA == worldB || (worldA.isClientSide == worldB.isClientSide 
-            && worldA.dimension().location().equals(worldB.dimension().location()));
+        return worldA == worldB || (worldA.isClientSide() == worldB.isClientSide() 
+            && worldA.getChunkSource() == worldB.getChunkSource());
     }
 
     public abstract @Nullable Level getWorld();
@@ -54,6 +55,11 @@ public interface Worldly {
         }
 
         public boolean isAttachedTo(Level world) {
+            if(refersTo(null)) return false;
+            return Worldly.areWorldsEqual(get().getWorld(), world);
+        }
+
+        public boolean isAttachedTo(LevelAccessor world) {
             if(refersTo(null)) return false;
             return Worldly.areWorldsEqual(get().getWorld(), world);
         }

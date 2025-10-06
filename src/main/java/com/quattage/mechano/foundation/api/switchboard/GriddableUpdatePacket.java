@@ -18,6 +18,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.entity.Entity;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public record GriddableUpdatePacket(int entityID, @Nullable long[] compositeIDs, boolean contraption) implements ClientboundPacketPayload {
 
@@ -56,6 +58,7 @@ public record GriddableUpdatePacket(int entityID, @Nullable long[] compositeIDs,
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
         ClientLevel world = (ClientLevel) player.level();
         Entity e = world.getEntity(entityID);

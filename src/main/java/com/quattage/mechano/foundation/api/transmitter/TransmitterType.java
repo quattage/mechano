@@ -7,7 +7,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.ModelType;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
 
 import io.netty.buffer.ByteBuf;
@@ -172,7 +171,7 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
         private final Supplier<T> defaultCtor;
 
         private CatenaryAttributes.Container attributes = new CatenaryAttributes.Container()
-            .withModelType(ModelType.NO_DRAW)
+            .withModelTypeByOrdinal(5)
             .withThickness(CatenaryAttributes.Thickness.ZERO)
             .withMaterial(CatenaryAttributes.PhysicalMaterial.AIR);
         private ResourceLocation tex = null;

@@ -6,8 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
-import com.quattage.mechano.foundation.item.SpoolItem;
-import com.quattage.mechano.infrastructure.datagen.MechanoDatagen;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -15,12 +13,10 @@ import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
-import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 @Mod(Mechano.ID)
 public class Mechano {
@@ -47,16 +43,6 @@ public class Mechano {
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);
         MechanoTransmissionTypes.register(modBus);
-        modBus.addListener(this::onCommonSetup);
-        modBus.addListener(MechanoClientEvents::onRegisterLayers);
-        modBus.addListener(MechanoClientEvents::onRegisterReloadListeners);
-        modBus.addListener(EventPriority.LOWEST, MechanoDatagen::collect);
-    }
-
-    public void onCommonSetup(FMLCommonSetupEvent event) {
-        SpoolItem.registerSpoolProperties();
-        // event.enqueueWork(() -> {
-        // });
     }
 
     public static ResourceLocation asResource(String path) {

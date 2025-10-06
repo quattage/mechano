@@ -1,5 +1,6 @@
 package com.quattage.mechano.infrastructure.datagen;
 
+import com.quattage.mechano.foundation.item.MechanoItemProperties;
 import com.quattage.mechano.foundation.item.SpoolItem;
 import com.tterrag.registrate.providers.DataGenContext;
 import com.tterrag.registrate.providers.RegistrateItemModelProvider;
@@ -21,11 +22,11 @@ public class SpoolDataProvider {
         prov.basicItem(depleted);
         prov.basicItem(empty);
         prov.getBuilder(loc.toString()).parent(generated)
-            .override().predicate(SpoolItem.FULLNESS, 0.00f).model(prov.getExistingFile(totallyEmpty)).end()
-            .override().predicate(SpoolItem.FULLNESS, 0.10f).model(prov.getExistingFile(empty)).end()
-            .override().predicate(SpoolItem.FULLNESS, 0.50f).model(prov.getExistingFile(depleted)).end()
-            .override().predicate(SpoolItem.FULLNESS, 0.75f).model(prov.getExistingFile(full)).end()
-            .override().predicate(SpoolItem.FULLNESS, 0.999f).model(prov.getExistingFile(full)).end();
+            .override().predicate(MechanoItemProperties.FULLNESS, 0.00f).model(prov.getExistingFile(totallyEmpty)).end()
+            .override().predicate(MechanoItemProperties.FULLNESS, 0.10f).model(prov.getExistingFile(empty)).end()
+            .override().predicate(MechanoItemProperties.FULLNESS, 0.50f).model(prov.getExistingFile(depleted)).end()
+            .override().predicate(MechanoItemProperties.FULLNESS, 0.75f).model(prov.getExistingFile(full)).end()
+            .override().predicate(MechanoItemProperties.FULLNESS, 0.999f).model(prov.getExistingFile(full)).end();
             
     }
 }

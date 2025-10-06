@@ -15,6 +15,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public record LinkResponsePacket(AnchorSynchronizer start, AnchorSynchronizer end, TransmitterType<?> trns, GridResponse task, short span) implements ClientboundPacketPayload {
 
@@ -43,6 +45,7 @@ public record LinkResponsePacket(AnchorSynchronizer start, AnchorSynchronizer en
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
         ClientGrid grid = SidedGridDispatcher.client(player);
         if(!task.indicatesCompletion()) {

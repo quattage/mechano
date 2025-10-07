@@ -178,7 +178,7 @@ public enum CombinedOrientation implements StringRepresentable {
             }
             case COUNTERCLOCKWISE_90 -> {
                 int ord = ordinal() - 4;
-                if(ord < 8) ord = 23 - (ord % 4);
+                if(ord < 8) ord = 20 - (ord % 4);
                 return CombinedOrientation.values()[ord];
             }
             case NONE -> { return this; }

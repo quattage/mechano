@@ -12,12 +12,11 @@ import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
-import com.quattage.mechano.foundation.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.catenary.SimulatedCatenary;
 import com.quattage.mechano.foundation.api.catenary.WindManager;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryMeshBuffer;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
@@ -159,7 +158,7 @@ public final class GridCatenary extends GridConnection {
         if(lookup != null && lookup.catenary != null) 
             this.catenary = lookup.catenary;
         else {
-            this.catenary = CatenaryAttributes.MeshInitializer.FRESH_SIMULATION_EXPRESSIVE
+            this.catenary = CatenaryRenderFeatures.MeshInitializer.FRESH_SIMULATION_EXPRESSIVE
                 .make(world, start, end, trns.getType());
             if(lookup != null) lookup.catenary = this.catenary;
         }
@@ -190,7 +189,7 @@ public final class GridCatenary extends GridConnection {
         }
         model.setOffset(trns.getType(), start, end);
         model.update(trns.getType());
-        PhysicalMaterial phys = getCatenaryAttributesOrThrow().getPhysicalMaterial();
+        PhysicalMaterial phys = getCatenaryAttributableOrThrow().getPhysicalMaterial();
         GridConnection.simulateKinematics(this, phys, start, end, world);
     }
 
@@ -202,7 +201,7 @@ public final class GridCatenary extends GridConnection {
 
     public boolean isMoving(LevelReader world) {
         if(catenary == null) return canMoveDynamically(world);
-        return getCatenaryAttributesOrThrow().renders() && !catenary.isResting();
+        return getCatenaryAttributableOrThrow().renders() && !catenary.isResting();
     }
 
     public BlockPos getMiddle(LevelReader world) {
@@ -216,6 +215,7 @@ public final class GridCatenary extends GridConnection {
         );
     }
 
+    @Override
     public Vec3 getMiddlePos(LevelReader world) {
         if(!hasPoints()) return Vec3.ZERO;
         Vec3 startPos = start.getPos(world);
@@ -352,7 +352,7 @@ public final class GridCatenary extends GridConnection {
             // we can't use the reusable mesher here since chunk meshing occurs in parallel, but instantiating it here means that we can at least re-use this instance for every catenary in this section
             CatenaryMeshBuffer mesher = CatenaryMeshBuffer.asEmpty();
             for(GridCatenary cat : catenaries) {
-                if(cat == null || !cat.hasPoints() || cat.canMoveDynamically(world) || !cat.getCatenaryAttributesOrThrow().renders()) continue;
+                if(cat == null || !cat.hasPoints() || cat.canMoveDynamically(world) || !cat.getCatenaryAttributableOrThrow().renders()) continue;
                 AnchorPoint point = (AnchorPoint)cat.getPrimaryConstruct(world);
                 Vec3 startPos = point.getAddress().getPos(world, 1f);
                 mesher.bindTo(cat.getTransmitter())

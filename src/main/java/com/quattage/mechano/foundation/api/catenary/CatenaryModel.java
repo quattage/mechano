@@ -6,6 +6,8 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryMeshBuffer;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
@@ -222,11 +224,12 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * determines the length of each uniform segment
      */
     public int getSegmentCount() {
-        return Math.max(CatenaryAttributes.DRAW_MIN, Math.min(CatenaryAttributes.DRAW_MAX, (int)(span * CatenaryAttributes.FEATURESET.getResolution())));
+        return Math.max(CatenaryRenderFeatures.SETTINGS.getMinimumSegments(),
+            Math.min(CatenaryRenderFeatures.SETTINGS.getMaximumSegments(), (int)(span * CatenaryRenderFeatures.SETTINGS.getResolution())));
     }  
 
     public Vector3f getGravity(int points) {
-        return CatenaryAttributes.UP.mul((CatenaryAttributes.MASS / (float)points) * 0.3f, new Vector3f());
+        return CatenaryRenderFeatures.UP.mul((CatenaryRenderFeatures.Point.MASS / (float)points) * 0.3f, new Vector3f());
     }
 
     /**

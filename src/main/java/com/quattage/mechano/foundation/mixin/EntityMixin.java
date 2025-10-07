@@ -23,6 +23,7 @@ import net.minecraft.world.entity.Entity.RemovalReason;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements CatenaryAccess {
+
     @Inject(method = "remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V", at = {@At(value = "TAIL")}, cancellable = false)
     private void mechano$updateSurrogateOnEntityRemove(Entity.RemovalReason reason, CallbackInfo info) {
         Entity cast = (Entity)(Object)this;

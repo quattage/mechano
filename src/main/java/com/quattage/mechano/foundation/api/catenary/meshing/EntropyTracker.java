@@ -1,6 +1,8 @@
-package com.quattage.mechano.foundation.api.catenary;
+package com.quattage.mechano.foundation.api.catenary.meshing;
 
 import org.joml.Vector3f;
+
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 
 /**
  * A helper class for determining whether or not a verlet-based 
@@ -23,7 +25,7 @@ public class EntropyTracker {
     }
 
     public boolean isResting() {
-        if(avgVelocity < CatenaryAttributes.RESTITUTION_SPEED && (Math.abs(accumulatedError - previousAccumulatedError) < epsilon)) {
+        if(avgVelocity < CatenaryRenderFeatures.RESTITUTION_SPEED && (Math.abs(accumulatedError - previousAccumulatedError) < epsilon)) {
             if(tick > 42) return true;
             tick++;
             return false;
@@ -43,7 +45,7 @@ public class EntropyTracker {
 
     public void walk(float newError, int steps) {
         previousAccumulatedError = accumulatedError;
-        accumulatedError = (newError / (float)(steps * CatenaryAttributes.SOLVER_STEPS));
+        accumulatedError = (newError / (float)(steps * CatenaryRenderFeatures.SETTINGS.getSolverSteps()));
         this.avgVelocity /= (float)steps;
     }
 

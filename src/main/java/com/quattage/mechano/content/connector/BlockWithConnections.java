@@ -59,35 +59,28 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
 
     @Override
     protected void neighborChanged(BlockState state, Level world, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
-
         Direction facing = state.getValue(ORIENTATION).getLocalUp().getOpposite();
         BlockPos underPos = pos.relative(facing);
         if(!underPos.equals(neighborPos)) return;
         BlockState underState = world.getBlockState(underPos);
-
         if(underState.getBlock() instanceof ConnectorHostOverridable cho && 
             !cho.isConnectorAllowed(world, pos, state, underPos, underState)) {
                 world.destroyBlock(pos, true);
                 return;
         }
-
         if(isSupported(world, underPos, underState, facing, ROOT_X) 
             || isSupported(world, underPos, underState, facing, ROOT_Y))
                 return;
-
         world.destroyBlock(pos, true);
     }
 
     @Override
     protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
-
         Direction facing = state.getValue(ORIENTATION).getLocalUp().getOpposite();
         BlockPos underPos = pos.relative(facing);
         BlockState underState = world.getBlockState(underPos);
-
         if(underState.getBlock() instanceof ConnectorHostOverridable cho)
             return cho.isConnectorAllowed(world, pos, state, underPos, underState);
-
         return isSupported(world, underPos, underState, facing, ROOT_X) 
             || isSupported(world, underPos, underState, facing, ROOT_Y);
     }
@@ -104,8 +97,8 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
 
     @Override
     protected BlockState rotate(BlockState state, Rotation rotation) {
-        // TODO Auto-generated method stub
-        return super.rotate(state, rotation);
+        CombinedOrientation orient = state.getValue(ORIENTATION);
+        return state.setValue(ORIENTATION, orient.applyRotation(rotation));
     }
 
     @Override

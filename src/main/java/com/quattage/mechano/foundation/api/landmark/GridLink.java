@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -144,10 +143,12 @@ public final class GridLink extends GridConnection {
         if(!canMoveDynamically(world)) return;
         Vec3 start = getStart().getPos(world);
         Vec3 end = getEnd().getPos(world);
-        PhysicalMaterial phys = getCatenaryAttributesOrThrow().getPhysicalMaterial(); 
+        PhysicalMaterial phys = getCatenaryAttributableOrThrow().getPhysicalMaterial(); 
         float force = GridConnection.simulateKinematics(this, phys, start, end, world);
-        if(phys.isBreakable() && (force > phys.getMaxExertion()))
+        if(phys.isBreakable() && (force > phys.getMaxExertion())) {
             SidedGridDispatcher.server(world).destroyLink(getStart(), getEnd());
+            getCatenaryAttributableOrThrow().playBreakEffect(world, this);
+        }
     }
 
     @Override

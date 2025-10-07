@@ -119,7 +119,7 @@ public class AnchorPoint implements TrackedConstruct {
      * @return <code>true</code> if the provided TFP can interact with this AnchorPoint
      */
     public boolean isCompatableWith(TransmitterType<?> type) {
-        if(!type.getCatenaryAttributesOrThrow().shouldApplyRestrictions()) return true;
+        if(!type.getCatenaryAttributableOrThrow().shouldApplyRestrictions()) return true;
         return (bitmask & type.bitmask()) != 0;
     }
 

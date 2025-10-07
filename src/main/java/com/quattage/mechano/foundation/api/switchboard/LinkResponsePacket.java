@@ -3,7 +3,7 @@ package com.quattage.mechano.foundation.api.switchboard;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;

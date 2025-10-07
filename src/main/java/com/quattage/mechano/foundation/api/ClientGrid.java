@@ -4,14 +4,14 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.MeshInitializer;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.catenary.WindManager;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.MeshInitializer;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
@@ -33,6 +33,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.Level;
 
+// this class itself cannot be tagged with @OnlyIn(Dist.CLIENT) because of 
+// how I am abusing polymorphism to make the data attachment side-specific
 public final class ClientGrid extends SidedGridDispatcher {
 
     private final AwaitingLinkBuffer buffer = new AwaitingLinkBuffer();
@@ -45,7 +47,7 @@ public final class ClientGrid extends SidedGridDispatcher {
 
     public ClientGrid(Level world) {
         super(world);
-        if(Mechano.USE_VERBOSE_LINK_TRACKING)
+        if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
             tracker = new LinkDataTracker().enable().withLogging(LOGGER);
     }
 
@@ -91,7 +93,7 @@ public final class ClientGrid extends SidedGridDispatcher {
             GridResponse response = failIfMissing(startAnchor, endAnchor, null);
             if(!response.indicatesCompletion()) return response;
         }
-        CatenaryAttributes.Container attr = type.getCatenaryAttributesOrThrow();
+        CatenaryAttributable.Container attr = type.getCatenaryAttributableOrThrow();
         if(attr.shouldApplyRestrictions()) {
             if(!endAnchor.hasRoom()) return GridResponse.FAIL_DESTINATION_FULL;
             if(!endAnchor.isCompatableWith(type)) return GridResponse.FAIL_DESTINATION_UNSUPPORTED;

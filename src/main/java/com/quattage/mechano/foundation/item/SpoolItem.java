@@ -15,7 +15,7 @@ import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.anchor.AnchorSelector;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
@@ -219,7 +219,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
 
         Vec3 disp = previous.getPos(player.level()).subtract(player.getPosition(1)).normalize();
         float faceDot = (float)player.getViewVector(1).dot(disp);
-        if(faceDot < CatenaryAttributes.DETACH_THRESHOLD) return true;
+        if(faceDot < CatenaryAttributable.DETACH_THRESHOLD) return true;
         GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
         SidedGridDispatcher.client(player).requestLinkDestruction(entityHost.getAnchor(), previous, true);
         cancelAwaitingConnection(addr, null, stack);

@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.api.catenary;
+package com.quattage.mechano.foundation.api.catenary.meshing;
 
 import java.util.Objects;
 
@@ -10,10 +10,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Container;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Stick;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Thickness;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.Stick;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.Thickness;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
@@ -50,6 +50,8 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
 
     public static final CatenaryMeshBuffer REUSABLE = CatenaryMeshBuffer.asEmpty();
 
+    private static final float RAD = 0.707107f;
+
     private @NotNull TransmitterType<?> trns = MechanoTransmissionTypes.HOOKUP;
     private final float[] data = new float[46];
     private @Nullable Vec3 basis;
@@ -81,12 +83,12 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
 
     public CatenaryMeshBuffer bindTo(TransmitterType<?> trns) {
         Objects.requireNonNull(trns);
-        if(!trns.getCatenaryAttributesOrThrow().renders()) {
+        if(!trns.getCatenaryAttributableOrThrow().renders()) {
             Mechano.LOGGER.warn("Cannot bind CatenaryMesher to TransmitterType '" + trns + "' - This type is not renderable!");
             return this;
         }
         this.trns = trns;
-        Thickness t = trns.getCatenaryAttributesOrThrow().getThickness();
+        Thickness t = trns.getCatenaryAttributableOrThrow().getThickness();
         this.data[0] = t.half();
         this.data[41] = t.pixels();
         return this;
@@ -251,7 +253,7 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
     /**
      * Recomputes this extruder's internal matrix with the
      * given forward vector. Local up is assumed to be 
-     * {@link CatenaryAttributes#UP globally-oriented.}
+     * {@link CatenaryAttributable#UP globally-oriented.}
      * <p>
      * All resulting vectors are normalized automatically,
      * except for the given input vector. You must normalze
@@ -259,9 +261,9 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
      * @param forward
      */
     public CatenaryMeshBuffer computeMatrix(Vector3f forward) {
-        data[4] = CatenaryAttributes.UP.x; 
-        data[5] = CatenaryAttributes.UP.y; 
-        data[6] = CatenaryAttributes.UP.z;
+        data[4] = CatenaryRenderFeatures.UP.x; 
+        data[5] = CatenaryRenderFeatures.UP.y; 
+        data[6] = CatenaryRenderFeatures.UP.z;
         data[7] = forward.x; 
         data[8] = forward.y; 
         data[9] = forward.z;
@@ -284,6 +286,29 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
         data[5] *= s;
         data[6] *= s;
 
+        return this;
+    }
+
+
+    /**
+     * Rotates the matrix along its local normal direction so that
+     * the tangent is offset by 45 degrees. This efectively
+     * converts the diamond shape implied by the opposed vectors into a square one.
+     * @return this mesher, for chaining
+     */
+    public CatenaryMeshBuffer shiftMatrix() {
+        float rx = data[1];
+        float ry = data[2];
+        float rz = data[3];
+        float ux = data[4];
+        float uy = data[5];
+        float uz = data[6];
+        data[1] = (data[1] + data[4]) * RAD;
+        data[2] = (data[2] + data[5]) * RAD;
+        data[3] = (data[3] + data[6]) * RAD;
+        data[4] = (-rx + ux) * RAD;
+        data[5] = (-ry + uy) * RAD;
+        data[6] = (-rz + uz) * RAD;
         return this;
     }
 
@@ -484,7 +509,7 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
     public CatenaryMeshBuffer walkUVs(Stick stick, float arclength) {
         data[42] += arclength;
         data[43] = data[42] + stick.getLength() * 8f;
-        if (data[43] > CatenaryAttributes.TEX_DIMS[1]) {
+        if (data[43] > CatenaryRenderFeatures.TEX_DIMS[1]) {
             data[42] = 0;
             data[43] = arclength;
         }
@@ -492,8 +517,8 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
     }
 
     public CatenaryMeshBuffer shiftUVs() {
-        int pix = getCatenaryAttributesOrThrow().getThickness().pixels();
-        int mod = Math.min(pix * 2, CatenaryAttributes.TEX_DIMS[0]);
+        int pix = getCatenaryAttributableOrThrow().getThickness().pixels();
+        int mod = Math.min(pix * 2, CatenaryRenderFeatures.TEX_DIMS[0]);
         data[40] += pix;
         data[40] %= mod;
         data[41] += pix;
@@ -502,7 +527,7 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
     }
 
     public CatenaryMeshBuffer unshiftUVs() {
-        int pix = getCatenaryAttributesOrThrow().getThickness().pixels();
+        int pix = getCatenaryAttributableOrThrow().getThickness().pixels();
         data[40] -= pix;
         data[41] -= pix;
         if(data[40] < 0 || data[41] < 0) {
@@ -518,7 +543,7 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
         lightLookup.setY((int)Math.round(pos.y + basis.y)); 
         lightLookup.setZ((int)Math.round(pos.z + basis.z));
         int blocklight = world.getBrightness(LightLayer.BLOCK, lightLookup);
-        if(CatenaryAttributes.FEATURESET.shouldApplyShadowClamping())
+        if(CatenaryRenderFeatures.SETTINGS.shouldApplyShadowClamping())
             blocklight = Mth.clamp(blocklight, 3, 15);
         return LightTexture.pack(blocklight, world.getBrightness(LightLayer.SKY, lightLookup));
     }
@@ -544,7 +569,7 @@ public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
 
     @Override public void adjustSpan(LevelReader world, float length) {}
     @Override public float calculateSpan() { return -1; }
-    @Override public Container getCatenaryAttributes() { return trns.getCatenaryAttributes(); }
+    @Override public Container getCatenaryAttributable() { return trns.getCatenaryAttributable(); }
 
     @Override
     public @Nullable Level getWorld() {

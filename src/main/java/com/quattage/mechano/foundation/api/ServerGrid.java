@@ -11,7 +11,8 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -119,7 +120,7 @@ public final class ServerGrid extends SidedGridDispatcher {
     protected ServerGrid(Level world, ObjectArrayList<ServerMatrix> subgrids) {
         super(world);
         this.matrices = subgrids;
-        if(Mechano.USE_VERBOSE_LINK_TRACKING)
+        if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
             tracker = new LinkDataTracker().enable().withLogging(LOGGER);
     }
 

@@ -28,9 +28,6 @@ public class Mechano {
 
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
-    // TODO rig this up to config file
-    public static final boolean USE_VERBOSE_LINK_TRACKING = false;
-
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();
         REGISTRATE.registerEventListeners(modBus);
@@ -39,6 +36,7 @@ public class Mechano {
         MechanoEntities.register(modBus);
         MechanoItems.register(modBus);
         MechanoPackets.register(modBus);
+        MechanoSounds.register(modBus);
         MechanoTags.register(modBus);
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);

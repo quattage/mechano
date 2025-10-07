@@ -2,9 +2,8 @@ package com.quattage.mechano.foundation.api.transmitter;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.content.spool.HookupTransmitter;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Soundscape;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Thickness;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable.PhysicalMaterial;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable.Soundscape;
 
 import net.neoforged.bus.api.IEventBus;
 
@@ -14,12 +13,12 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_conductor"), () -> Transmitter
             .builder(PerfectConductor::new)
             .writesToNetwork(null)
-            .withAttributes(attr -> {
-                attr.withModelTypeByOrdinal(5);
-                attr.withThickness(Thickness.ZERO);
-                attr.withMaterial(PhysicalMaterial.AIR);
-                attr.withSounds(Soundscape.AIR);
-                attr.enableInterconnectivity();
+            .withAttributes(attr -> { attr
+                .withModelType(6)
+                .withThickness(0)
+                .withMaterial(PhysicalMaterial.AIR)
+                .withSounds(Soundscape.AIR)
+                .enableInterconnectivity();
             })
             .build()
     );
@@ -28,12 +27,12 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("perfect_insulator"), () -> Transmitter
             .builder(PerfectInsulator::new)
             .writesToNetwork(null)
-            .withAttributes(attr -> {
-                attr.withModelTypeByOrdinal(5);
-                attr.withThickness(Thickness.ZERO);
-                attr.withMaterial(PhysicalMaterial.AIR);
-                attr.withSounds(Soundscape.AIR);
-                attr.enableInterconnectivity();
+            .withAttributes(attr -> { attr
+                .withModelType(6)
+                .withThickness(0)
+                .withMaterial(PhysicalMaterial.AIR)
+                .withSounds(Soundscape.AIR)
+                .enableInterconnectivity();
             })
             .build()
     );
@@ -42,11 +41,11 @@ public class MechanoTransmissionTypes {
         Mechano.asResource("hookup"), () -> Transmitter
             .builder(HookupTransmitter::new)
             .writesToNetwork(null)
-            .withAttributes(attr -> {
-                attr.withModelTypeByOrdinal(0);
-                attr.withThickness(Thickness.TRIPLE);
-                attr.withMaterial(PhysicalMaterial.ROPE);
-                attr.withSounds(Soundscape.CABLE);
+            .withAttributes(attr -> { attr
+                .withModelType(0)
+                .withThickness(3)
+                .withMaterial(PhysicalMaterial.ROPE)
+                .withSounds(Soundscape.CABLE);
             })
             .build()
     );

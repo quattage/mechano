@@ -8,9 +8,7 @@ import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Container;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.PhysicalMaterial;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
@@ -20,6 +18,7 @@ import com.quattage.mechano.foundation.helper.VectorHelper;
 import net.createmod.catnip.platform.CatnipServices;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -328,8 +327,20 @@ public abstract sealed class GridConnection implements TrackedConstruct, Catenar
     }
 
     @Override
-    public Container getCatenaryAttributes() {
-        return trns.getType().getCatenaryAttributes();
+    public Container getCatenaryAttributable() {
+        return trns.getType().getCatenaryAttributable();
+    }
+
+    public Vec3 getMiddlePos(LevelReader world) {
+        if(!hasPoints()) return Vec3.ZERO;
+        Vec3 startPos = getStart().getPos(world);
+        Vec3 endPos = getEnd().getPos(world);
+        return new Vec3((startPos.x + endPos.x) / 2d, (startPos.y + endPos.y) / 2d, (startPos.z + endPos.z) / 2d);
+    }
+
+    public BlockPos getMiddleBlockPos(LevelReader world) {
+        Vec3 middle = getMiddlePos(world);
+        return VectorHelper.toBlockPos(middle);
     }
 
     public static final class ConnectionKey extends GridConnection {

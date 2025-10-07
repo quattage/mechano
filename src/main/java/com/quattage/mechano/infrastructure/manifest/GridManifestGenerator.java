@@ -17,6 +17,7 @@ import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -183,7 +184,7 @@ public class GridManifestGenerator {
             "]   ■▝▝▟▜\n\n⎙ Requested by: '" + player.getDisplayName().getString() + "' at [" + DATE_FT.format(new Date(System.currentTimeMillis())) + "]\n⌂ Attached to: '" + player.level().dimension().location().toString() + "'\n\n";
 
         String additional = "\n\n♡ Dispatched global tracker dump: ♡\n";
-        if(Mechano.USE_VERBOSE_LINK_TRACKING)
+        if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
             additional += SidedGridDispatcher.client(player).getDebugTracker().describeAll();
         else additional += "\n\tLink data tracking is disabled for this session.";
 

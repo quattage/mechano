@@ -8,12 +8,12 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.LinkDataStorage.Client;
 import com.quattage.mechano.foundation.api.LinkDataStorage.ClientSectionable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.ServerSectionable;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridConnection;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
@@ -133,7 +133,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
         IAttachmentHolder holder = key.getStart().getDataStorageHolder(world);
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + describePrimary(world, key));
             return null;
         }
@@ -154,7 +154,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
             if(holder == null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + describePrimary(world, key) + " :: (scope reassigned)");
                 return null;
             }
@@ -188,7 +188,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
         IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.server(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + describePrimary(world, key));
             return null;
         }
@@ -198,7 +198,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             GridLink removed = null;
             if(data != null) removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -215,7 +215,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
             if(holder == null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + (describePrimary(world, key) + " :: (scope reassigned)"));
                 return null;
             }
@@ -224,7 +224,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
                 Server sdata = getAsServer(be, false);
                 if(sdata != null) removed = sdata.pop(world, key);
                 if(removed != null) {
-                    if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                         SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
                     if(sdata.isEmpty())
                         holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -242,7 +242,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             if(data == null) return null;
             GridLink removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -256,7 +256,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             if(data == null) return null;
             GridLink removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -276,7 +276,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
         IAttachmentHolder holder = link.getDataStorageHolder(world);
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.server(world).getDebugTracker().log("Failed to add " + link + " - No holder could be found at " + describePrimary(world, link));
             return false;
         }
@@ -284,7 +284,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         if(holder instanceof LevelChunk chunk) {
             ServerSectionable data = getAsServer(chunk, true);
             if(data.add(world, link)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -293,7 +293,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         if(holder instanceof Entity e) {
             Server data = getAsServer(e, true);
             if(data.add(world, link)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -302,7 +302,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         if(holder instanceof BlockEntity be) {
             Server data = getAsServer(be, true);
             if(data.add(world, link)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.server(world).getDebugTracker().track(world, holder, link);
                 return true;
             }
@@ -392,7 +392,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
         IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.client(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + describePrimary(world, key));
             return null;
         }
@@ -412,7 +412,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
             if(holder == null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().log("Failed to get " + key + " - No holder could be found at " + describePrimary(world, key)+ " :: (scope reassigned)");
                 return null;
             }
@@ -446,7 +446,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
         IAttachmentHolder holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.client(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + describePrimary(world, key));
             return null;
         }
@@ -456,7 +456,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             GridCatenary removed = null;
             if(data != null) removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -473,7 +473,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
 
             holder = key.getPrimaryConstruct(world).getDataStorageHolder(world);
             if(holder == null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().log("Failed to pop " + key + " - No holder could be found at " + describePrimary(world, key) + " :: (scope reassigned)");
                 return null;
             }
@@ -482,7 +482,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
                 Client sdata = getAsClient(be, false);
                 if(sdata != null) removed = sdata.pop(world, key);
                 if(removed != null) {
-                    if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                    if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                         SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
                     if(sdata.isEmpty())
                         holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -500,7 +500,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             if(data == null) return null;
             GridCatenary removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -514,7 +514,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
             if(data == null) return null;
             GridCatenary removed = data.pop(world, key);
             if(removed != null) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().forget(world, holder, removed);
                 if(data.isEmpty())
                     holder.removeData(MechanoData.LINK_ATTACHMENT);
@@ -533,14 +533,14 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         IAttachmentHolder holder = cat.getPrimaryConstruct(world).getDataStorageHolder(world);
 
         if(holder == null) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING)
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                 SidedGridDispatcher.client(world).getDebugTracker().log("Failed to add " + cat + " - No holder could be found at " + describePrimary(world, cat));
             return false;
         }
         if(holder instanceof LevelChunk chunk) {
             ClientSectionable data = getAsClient(chunk, true);
             if(data.add(world, cat)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -549,7 +549,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         if(holder instanceof Entity e) {
             Client data = getAsClient(e, true);
             if(data.add(world, cat)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -558,7 +558,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         if(holder instanceof BlockEntity be) {
             Client data = getAsClient(be, true);
             if(data.add(world, cat)) {
-                if(Mechano.USE_VERBOSE_LINK_TRACKING)
+                if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
                     SidedGridDispatcher.client(world).getDebugTracker().track(world, holder, cat);
                 return true;
             }
@@ -682,7 +682,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override
         @SuppressWarnings("unused")
         public void clearAll(@Nullable SidedGridDispatcher grid) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING && grid != null) {
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES && grid != null) {
                 for(GridCatenary cat : contents)
                     grid.getDebugTracker().forget(grid.getWorld(), null, cat);
             }
@@ -779,7 +779,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override
         @SuppressWarnings("unused")
         public void clearAll(@Nullable SidedGridDispatcher grid) {
-            if(Mechano.USE_VERBOSE_LINK_TRACKING && grid != null) {
+            if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES && grid != null) {
                 for(Client c : contents.values())
                     c.clearAll(grid);
             }

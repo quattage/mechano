@@ -10,8 +10,12 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Point;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Stick;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryMeshBuffer;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.Point;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.Stick;
+import com.quattage.mechano.foundation.api.catenary.meshing.EntropyTracker;
+import com.quattage.mechano.foundation.api.catenary.meshing.MeshExtruder;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
@@ -56,7 +60,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     private void applyDisplacement(Vec3 start, Vec3 end) {
-        if(CatenaryAttributes.FEATURESET.allowsDisplacement() && this.halfOffset != null) {
+        if(CatenaryRenderFeatures.SETTINGS.allowsDisplacement() && this.halfOffset != null) {
             this.forces[4] = (float)start.x - (forces[1] + halfOffset.x);
             this.forces[5] = (float)start.y - (forces[2] + halfOffset.y);
             this.forces[6] = (float)start.z - (forces[3] + halfOffset.z);
@@ -208,7 +212,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         integrateVelocity(getGravity(points.size()), this.forces[10], this.forces[11]);
 
         float error = 0;
-        for(int iter = 0; iter < CatenaryAttributes.SOLVER_STEPS; iter++) {
+        for(int iter = 0; iter < CatenaryRenderFeatures.SETTINGS.getSolverSteps(); iter++) {
             for(Stick stick : sticks) {
                 Vector3f center = stick.getCenter();
                 Vector3f dir = stick.getDir();
@@ -268,7 +272,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     @Override
     public SimulatedCatenary render(VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, float pTicks) {
-        if(!geo.getCatenaryAttributesOrThrow().renders()) {
+        if(!geo.getCatenaryAttributableOrThrow().renders()) {
             Mechano.LOGGER.warn("Attempted to render a CatenaryModel for non-renderable type '" + geo.getTransmitterType() + "'");
             return this;
         }
@@ -280,9 +284,9 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         geo.setLight0(geo.getLight(previous.start.pos));
         geo.setLight1(geo.getLight(previous.end.pos));
         float arclength = 0;
-        MeshExtruder extr = geo.getCatenaryAttributesOrThrow().getModelType().extruder;
+        MeshExtruder extr = geo.getCatenaryAttributableOrThrow().getModelType().extruder;
         if(extr == null)
-            throw new UnsupportedOperationException("Unimplemeneted MeshExtruder for ModelType '" + geo.getCatenaryAttributesOrThrow().getModelType() + "'");
+            throw new UnsupportedOperationException("Unimplemeneted MeshExtruder for ModelType '" + geo.getCatenaryAttributableOrThrow().getModelType() + "'");
         extr.make(buffer, pose, geo, null, previous, sticks.get(1), arclength, true, pTicks);
         for(int x = 1; x < sticks.size() - 1; x++) {
             Stick current = sticks.get(x);
@@ -483,8 +487,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     public boolean hasWind() {
-        return Math.abs(forces[10] - CatenaryAttributes.RESTITUTION_SPEED) > 0.1f 
-            || Math.abs(forces[11] - CatenaryAttributes.RESTITUTION_SPEED) > 0.1f;
+        return Math.abs(forces[10] - CatenaryRenderFeatures.RESTITUTION_SPEED) > 0.1f 
+            || Math.abs(forces[11] - CatenaryRenderFeatures.RESTITUTION_SPEED) > 0.1f;
     }
 
 

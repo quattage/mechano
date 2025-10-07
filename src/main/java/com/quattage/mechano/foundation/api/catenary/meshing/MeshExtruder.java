@@ -1,10 +1,10 @@
-package com.quattage.mechano.foundation.api.catenary;
+package com.quattage.mechano.foundation.api.catenary.meshing;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.Stick;
+import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures.Stick;
 
 @FunctionalInterface
 public interface MeshExtruder {

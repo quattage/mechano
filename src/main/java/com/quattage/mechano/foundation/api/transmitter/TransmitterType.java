@@ -5,8 +5,7 @@ import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributes.CatenaryAttributable;
+import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
 
 import io.netty.buffer.ByteBuf;
@@ -23,7 +22,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttributable { 
 
-    private final CatenaryAttributes.Container attributes;
+    private final CatenaryAttributable.Container attributes;
     private final Supplier<T> defaultConstructor;
     public final @Nullable StreamCodec<ByteBuf, T> streamCodec;
 
@@ -50,7 +49,7 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
         this.packedIndex = (byte)(index - 128);
     }
 
-    protected TransmitterType(Supplier<T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, CatenaryAttributes.Container attributes, ResourceLocation tex) {
+    protected TransmitterType(Supplier<T> defaultConstructor, StreamCodec<ByteBuf, T> streamCodec, CatenaryAttributable.Container attributes, ResourceLocation tex) {
         this.defaultConstructor = defaultConstructor;
         this.streamCodec = streamCodec;
         this.attributes = attributes;
@@ -107,7 +106,7 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
     }
 
     @Override
-    public CatenaryAttributes.Container getCatenaryAttributes() {
+    public CatenaryAttributable.Container getCatenaryAttributable() {
         return this.attributes;
     }
 
@@ -126,12 +125,12 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
 
     @OnlyIn(Dist.CLIENT)
     public RenderType getShader() {
-        return getCatenaryAttributesOrThrow().getModelType().getMaterial(this, false);
+        return getCatenaryAttributableOrThrow().getModelType().getMaterial(this, false);
     }
 
     @OnlyIn(Dist.CLIENT)
     public RenderType getShaderForChunkRendering() {
-        return getCatenaryAttributesOrThrow().getModelType().getMaterial(this, true);
+        return getCatenaryAttributableOrThrow().getModelType().getMaterial(this, true);
     }
 
 
@@ -170,10 +169,10 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
         @Nullable private StreamCodec<ByteBuf, T> streamCodec = null;
         private final Supplier<T> defaultCtor;
 
-        private CatenaryAttributes.Container attributes = new CatenaryAttributes.Container()
-            .withModelTypeByOrdinal(5)
-            .withThickness(CatenaryAttributes.Thickness.ZERO)
-            .withMaterial(CatenaryAttributes.PhysicalMaterial.AIR);
+        private CatenaryAttributable.Container attributes = new CatenaryAttributable.Container()
+            .withModelType(6)
+            .withThickness(0)
+            .withMaterial(CatenaryAttributable.PhysicalMaterial.AIR);
         private ResourceLocation tex = null;
 
         public TransmitterTypeBuilder(Supplier<T> defaultCtor) {
@@ -195,21 +194,21 @@ public class TransmitterType<T extends Transmitter<?>> implements CatenaryAttrib
         }
 
         /**
-         * Define a custom set of {@link CatenaryAttributes.Container catenary attributes}
+         * Define a custom set of {@link CatenaryAttributable.Container catenary attributes}
          * for the rendering pipeline of this TransmitterType's associated catenaries
          */
-        public TransmitterTypeBuilder<T> withAttributes(CatenaryAttributes.Container attributes) {
+        public TransmitterTypeBuilder<T> withAttributes(CatenaryAttributable.Container attributes) {
             this.attributes = attributes;
             return this;
         }
 
         /**
-         * Define a custom set of {@link CatenaryAttributes.Container catenary attributes}
+         * Define a custom set of {@link CatenaryAttributable.Container catenary attributes}
          * for use in rendering and physical calculations. The attributes passed here determine
          * how the wire looks and behaves.
          */
-        public TransmitterTypeBuilder<T> withAttributes(Consumer<CatenaryAttributes.Container> cons) {
-            this.attributes = new CatenaryAttributes.Container();
+        public TransmitterTypeBuilder<T> withAttributes(Consumer<CatenaryAttributable.Container> cons) {
+            this.attributes = new CatenaryAttributable.Container();
             cons.accept(this.attributes);
             return this;
         }

@@ -42,6 +42,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public class ContraptionUUID extends GridUUID {
@@ -145,13 +147,14 @@ public class ContraptionUUID extends GridUUID {
 
     @Override
     public IAttachmentHolder getDataStorageHolder(LevelReader world) {
-        if(cachedACE != null) return cachedACE;
         if(world.isClientSide()) {
+            if(cachedACE != null) return cachedACE;
             Entity e = ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid);
             if(!(e instanceof AbstractContraptionEntity ace)) return null;
             this.cachedACE = ace;
             return ace;
         }
+        if(cachedACE != null) return cachedACE;
         Entity e = ((ServerLevel)world).getEntity(uuid);
         if(!(e instanceof AbstractContraptionEntity ace)) return null;
         this.cachedACE = ace;
@@ -159,6 +162,7 @@ public class ContraptionUUID extends GridUUID {
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
         if(!(holder instanceof AbstractContraptionEntity ace)) return null;

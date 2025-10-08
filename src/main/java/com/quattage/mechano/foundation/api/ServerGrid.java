@@ -188,8 +188,8 @@ public final class ServerGrid extends SidedGridDispatcher {
         GridNode startNode = GridNode.getFrom(getWorld(), start, startPoints);
         GridNode endNode = GridNode.getFrom(getWorld(), end, endPoints);
         if(startNode == null && endNode == null) {
-            Mechano.LOGGER.error("Failed to destroy a link from " + start.toString(getWorld()) + " to " 
-                + end.toString(getWorld()) + " - Neither address contains an in-world Griddable!");
+            Mechano.LOGGER.error("Failed to destroy a link from " + start + " to " 
+                + end + " - Neither address contains an in-world Griddable!");
             return;
         }
         final Set<GridUUID> empties = new HashSet<>();

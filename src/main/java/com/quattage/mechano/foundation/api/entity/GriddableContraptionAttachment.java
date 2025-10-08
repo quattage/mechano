@@ -31,6 +31,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public final class GriddableContraptionAttachment extends GriddableEntityAttachment {
@@ -54,6 +56,7 @@ public final class GriddableContraptionAttachment extends GriddableEntityAttachm
     public void constructAnchors(Builder anchors) {}
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public AnchorArray getAnchors() {
         if(this.anchors != null) return this.anchors;
         DynamicAnchorArray newAnchors = new DynamicAnchorArray();
@@ -71,9 +74,16 @@ public final class GriddableContraptionAttachment extends GriddableEntityAttachm
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public AnchorPoint getAnchor() {
         AnchorArray anchors = getAnchors();
         return anchors.size() <= 0 ? null : anchors.getByIndex(0);
+    }
+
+    @Override
+    public AnchorPoint getAnchor(int index) {
+        AnchorArray anchors = getAnchors();
+        return anchors.size() <= 0 ? null : anchors.getByIndex(index);
     }
 
     public Contraption getContraption() {

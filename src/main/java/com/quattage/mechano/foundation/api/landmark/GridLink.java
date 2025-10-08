@@ -32,8 +32,8 @@ public final class GridLink extends GridConnection {
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
 
-        start.assertNotDestroyed("Failed to instantiate GridLink with invalid starting GridNode at" + start.getAddress().toString(world) + " - This node is invalid or has been previously destroyed!");
-        end.assertNotDestroyed("Failed to instantiate GridLink with invalid ending GridNode at" + end.getAddress().toString(world) + " - This node is invalid or has been previously destroyed!");
+        start.assertNotDestroyed("Failed to instantiate GridLink with invalid starting GridNode at" + start.getAddress() + " - This node is invalid or has been previously destroyed!");
+        end.assertNotDestroyed("Failed to instantiate GridLink with invalid ending GridNode at" + end.getAddress() + " - This node is invalid or has been previously destroyed!");
         if(start.getAddress().equals(end.getAddress()))
             throw new IllegalArgumentException("Can't instantiate a GridLink where both the start and end positions are the same!");
         if(!start.getOwner().equals(end.getOwner()))

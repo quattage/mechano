@@ -380,60 +380,72 @@ public class CatenaryRenderFeatures {
     
     public static enum ScalabilitySettings implements StringRepresentable {
 
-        LOW_RES(false, false, 0.25f, new int[] {45, 3, 24}),
-        BASIC(false, false, 0.5f, new int[] {45, 3, 24}),
-        DISPLACED(false, true, 0.5f, new int[] {45, 5, 32}),
-        DISPLACED_CORRECTED(true, true, 0.5f, new int[] {64, 5, 32}),
-        DISPLACED_CORRECTED_HIGH(true, true, 1f, new int[] {64, 5, 32});
+        LOW_RES(false, false, new float[] {0.25f, 45, 3, 24}),
+        BASIC(false, false, new float[] {0.5f, 45, 3, 24}),
+        DISPLACED(false, true, new float[] {0.5f, 45, 5, 32}),
+        DISPLACED_CORRECTED(true, true, new float[] {0.5f, 64, 5, 32}),
+        DISPLACED_CORRECTED_HIGH(true, true, new float[] {1f, 64, 5, 32});
 
         private final boolean clampShadows = true;
         private final boolean allowsFlipping;
         private final boolean allowsDisplacement;
-        private final float res;
-        private final int[] attrs; // 0 = iterations, 1 = min, 2 = max
+        private final float[] res;
 
-        private ScalabilitySettings(boolean allowsFlipping, boolean allowsProjection, float res, int[] depth) {
+        private ScalabilitySettings(boolean allowsFlipping, boolean allowsProjection, float[] res) {
             this.allowsFlipping = allowsFlipping;
             this.allowsDisplacement = allowsProjection;
             this.res = res;
-            this.attrs = depth;
         }
 
         public float getResolution() {
-            return res;
+            return res[0];
         }
 
+        /**
+         * temporary - TODO refactor to allow multiple light sampling modes
+         */
         public boolean shouldApplyShadowClamping() {
             return clampShadows;
         }
 
+        /**
+         * @return <code>true</code> if catenaries should keep track of whether or not
+         * their primary construct has flipped within the span of one frame. disabling
+         * this feature can save some frame time but may cause visual artifacting
+         */
         public boolean allowsFlipping() {
             return allowsFlipping;
         }
 
-        public boolean allowsDisplacement() {
+        /**
+         * @return <code>true</code> if verlet-based catenaries should attempt
+         * to inherit the velocity of the things they're attached to
+         * enabling this incurs a (very slight) additional computation cost.
+         */
+        public boolean allowsVelocityDisplacement() {
             return allowsDisplacement;
         }
 
         /**
-         * @return how many times the constraint solver should run in verlet-based catenary simulations.
+         * @return how many times the constraint solver should run in verlet-based catenary simulations - 
+         * increasing this number scales the complexity of the default implementation in linear time.
          */
         public int getSolverSteps() {
-            return attrs[0];
+            return (int)res[1];
         }
 
         /**
          * @return the minimum amount of segments that can be hosted by a catenary simulation and still be considered valid.
          */
         public int getMinimumSegments() {
-            return attrs[1];
+            return (int)res[2];
         }
 
         /**
          * @return the maximum amount of segments that a catenary simulation may support at once
          */
         public int getMaximumSegments() {
-            return attrs[2];
+            return (int)res[3];
         }
 
         public ResourceLocation asResource() {

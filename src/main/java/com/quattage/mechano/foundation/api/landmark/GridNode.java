@@ -128,12 +128,9 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     public static @Nullable GridNode getOrCreate(ServerMatrix instantiator, Griddable<?> points, GridUUID address) {
         Objects.requireNonNull(points);
         Objects.requireNonNull(address);
-        if(points.getSurrogate() == null) {
-            throw new IllegalArgumentException("Failed while retrieving GridNode at " + (points.getWorld() == null ? address.toString() 
-            : address.toString(points.getWorld())) + " - The Griddable instance couldn't provide a surrogate!");
-        }
-        instantiator.assertNotDestroyed("Failed while retrieving GridNode at " + (points.getWorld() == null ? address.toString() 
-            : address.toString(points.getWorld())) + " - The matrix bound to the provided surrogate has been destroyed!");
+        if(points.getSurrogate() == null)
+            throw new IllegalArgumentException("Failed while retrieving GridNode at " + address + " - The Griddable instance couldn't provide a surrogate!");
+        instantiator.assertNotDestroyed("Failed while retrieving GridNode at " + address + " - The matrix bound to the provided surrogate has been destroyed!");
         GridNode node = instantiator.nodes.get(address);
         if(node != null) return node;
         node = new GridNode(instantiator, points, address);
@@ -255,11 +252,11 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     public void addLink(GridLink link) {
         assertNotDestroyed();
         if(!link.getStart().equals(this.getAddress())) {
-            throw new IllegalArgumentException("Attempted to add invalid link [" + link.getStart().toString(owner.getWorld()) 
-            + " -> " + link.getEnd().toString(owner.getWorld()) + "] - Unmatched source for GridNode at " + getAddress().toString(owner.getWorld()));
+            throw new IllegalArgumentException("Attempted to add invalid link [" + link.getStart()
+            + " -> " + link.getEnd() + "] - Unmatched source for GridNode at " + getAddress());
         }
         if(links.contains(link)) {
-            Mechano.LOGGER.warn("Skipped the addition of a repeat link [" + link.getStart().toString(owner.getWorld()) + " -> " + link.getEnd().toString(owner.getWorld()) + "]");
+            Mechano.LOGGER.warn("Skipped the addition of a repeat link [" + link.getStart() + " -> " + link.getEnd() + "]");
             return;
         }
         links.add(link);

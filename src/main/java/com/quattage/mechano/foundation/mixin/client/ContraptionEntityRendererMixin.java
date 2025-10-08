@@ -17,8 +17,6 @@ public abstract class ContraptionEntityRendererMixin {
     
     @Inject(method = "render", at = @At(value = "TAIL"), cancellable = false, remap = false)
     private void mechano$renderContraptionCatenaries(AbstractContraptionEntity entity, float yaw, float pTicks, PoseStack poseStack, MultiBufferSource buffers, int overlay, CallbackInfo info) {
-        ((CatenaryAccess)entity).forEachCatenary(cat -> {
-            cat.render(entity, buffers, poseStack, pTicks);
-        });
+        ((CatenaryAccess)entity).forEachCatenary(cat -> { cat.render(entity, buffers, poseStack, pTicks); });
     }
 }

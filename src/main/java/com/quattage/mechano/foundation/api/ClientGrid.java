@@ -237,11 +237,7 @@ public final class ClientGrid extends SidedGridDispatcher {
             return GridResponse.TASK_COMPLETED;
         }
         cat = new GridCatenary(world, startAnchor, endAnchor, trns);
-        ////////////////////////////////////////////////////     
-        //// TEMPORARY UNTIL CHUNK RENDERING RE-ENABLED ////
-        cat.setDataScope(DataScope.BLOCKENTITY); ///////////      <--- TODO lazy ass
-        cat.fixDataScopes(world); //////////////////////////
-        ////////////////////////////////////////////////////
+        cat.fixDataScopes(world);
         MeshInitializer.applyPreexistingSpan(world, cat, span);
         LinkDataStorage.put(world, cat);
         cat.sendLevelUpdates(world);

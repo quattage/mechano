@@ -206,14 +206,17 @@ public enum GridResponse implements StringRepresentable {
             if(!world.isClientSide())
                 throw new IllegalStateException("Cannot apply AnchorSyncHolder on a server-sided world!");
             Griddable<?> points = addr.getOrFindGriddable(world);
+            Mechano.LOGGER.warn("Found holder: " + points);
             if(points == null) {
                 if(log) {
+
                     Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " 
                         + addr + " - No Griddable could be found at this address!");
                 }
                 return null;
             }
             AnchorPoint point = points.getAnchor(addr.getIndex());
+            Mechano.LOGGER.warn("Found anchor: " + point);
             if(point == null) {
                 if(log) {
                     Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " + addr 
@@ -262,11 +265,10 @@ public enum GridResponse implements StringRepresentable {
         @Override public void setDataScope(DataScope scope) { addr.setDataScope(scope); }
         @Override public DataScope getDataScope(LevelReader world) { return addr.getDataScope(world); }
         @Override public void sendLevelUpdates(Level world) { addr.sendLevelUpdates(world); }
-        @Override public String toString() { return addr.toString(); }
         @Override public boolean isUnindexed(GridUUID other) { return addr.isUnindexed(other); }
+        @Override public int getPriority() { return addr.getPriority(); }
+
         public GridUUID getAddress() { return addr; }
-        @Override
-        public int getPriority() { return addr.getPriority(); }
 
         @Override
         public boolean equals(Object obj) {
@@ -278,6 +280,11 @@ public enum GridResponse implements StringRepresentable {
         @Override
         public int hashCode() {
             return addr.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return "Synchronizer@{" + addr + "}";
         }
     }
 

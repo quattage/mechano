@@ -23,6 +23,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -138,29 +139,24 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
     public static void onEntityWatched(PlayerEvent.StartTracking evt) {
         LinkDataStorage.Server storage = LinkDataStorage.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
-        // storage.forEach(link -> {
-        //     if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
-        //     CatnipServices.NETWORK.sendToClient(
-        //         (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
-        //             link.getStartNode(), link.getEndNode(), 
-        //             link.getTransmitter(),
-        //             GridResponse.TASK_SYNC_ANCHORS
-        //         ));
-        // });
+        Mechano.LOGGER.debug("Player '" + evt.getEntity().getName().getString() + "' requested " + storage.size() + " link(s) from '" + evt.getTarget().getClass().getSimpleName() + "'");
+        storage.forEach(link -> {
+            if(!link.isBeingTrackedBy((ServerPlayer)evt.getEntity(), InsertionPolicy.SYMMETRIC)) return;
+            CatnipServices.NETWORK.sendToClient(
+                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(link, GridResponse.TASK_SYNC_ANCHORS));
+        });
     }
 
     @SubscribeEvent
     public static void onEntityUnwatched(PlayerEvent.StopTracking evt) {
         LinkDataStorage.Server storage = LinkDataStorage.getAsServer(evt.getTarget(), false);
         if(storage == null) return;
-        // storage.forEach(link -> {
-        //     CatnipServices.NETWORK.sendToClient(
-        //         (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(
-        //             link.getStartNode(), link.getEndNode(), 
-        //             link.getTransmitter(),
-        //             GridResponse.TASK_FORGET_ANCHORS
-        //         ));
-        // });
+        Mechano.LOGGER.debug("Player '" + evt.getEntity().getName().getString() + "' disposed " + storage.size() + " link(s) from '" + evt.getTarget().getClass().getSimpleName() + "'");
+        storage.forEach(link -> {
+            Mechano.LOGGER.warn("forgetting " + link);
+            CatnipServices.NETWORK.sendToClient(
+                (ServerPlayer)evt.getEntity(), LinkResponsePacket.of(link, GridResponse.TASK_FORGET_ANCHORS));
+        });
     }
 
     @SubscribeEvent

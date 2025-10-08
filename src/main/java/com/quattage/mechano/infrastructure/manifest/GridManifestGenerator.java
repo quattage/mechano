@@ -138,10 +138,10 @@ public class GridManifestGenerator {
         else {
             for(GridLink link : node) {
                 if(!link.startsWith(node.getAddress())) {
-                    out += "\n\t┆\t\t⚠ (unmatched source) [" + link.getStart().toString(world) + "-> " + link.getEnd().toString(world) + "]";
+                    out += "\n\t┆\t\t⚠ (unmatched source) [" + link.getStart() + "-> " + link.getEnd() + "]";
                     continue;
                 }
-                out += "\n\t┆\t\t↪ '" + link.getTransmitter().getType()  + "' to " + link.getEndNode().getAddress().toString(world);
+                out += "\n\t┆\t\t↪ '" + link.getTransmitter().getType()  + "' to " + link.getEndNode().getAddress();
             }
         }
         return out + "\n";

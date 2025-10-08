@@ -196,13 +196,4 @@ public abstract class GridUUID implements Comparable<GridUUID>, TrackedConstruct
     }
 
     public abstract boolean isUnindexed(GridUUID other);
-
-    public String toString(LevelReader world) {
-        return getDiscriminatorType() + "_uuid[" 
-            + getBlockPos(world).getX() + ", " 
-            + getBlockPos(world).getY() + ", " 
-            + getBlockPos(world).getZ() + ", " 
-            + getIndex() 
-            + "]";
-    }
 }

@@ -164,10 +164,10 @@ public enum UUIDDiscriminator implements StringRepresentable {
             return tagCtor.get().newInstance(tag);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this + " - Something went wrong!");
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this + " - Something went wrong!");
         } catch (InstantiationException | NoSuchMethodException e)  {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this 
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this 
                 + " - Class " + clazz.getName() + "' doesn't have a constructor that accepts a " + tag.getClass().getName());
         }
     }
@@ -179,10 +179,10 @@ public enum UUIDDiscriminator implements StringRepresentable {
             return byteBufCtor.get().newInstance(buffer);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this + " - Something went wrong!");
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this + " - Something went wrong!");
         } catch (InstantiationException | NoSuchMethodException e)  {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this 
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this 
                 + " - Class " + clazz.getName() + "' doesn't have a constructor that accepts a " + buffer.getClass().getName());
         }
     }
@@ -194,10 +194,10 @@ public enum UUIDDiscriminator implements StringRepresentable {
             return dynamicCtor.get().newInstance(dyn);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this + " - Something went wrong!");
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this + " - Something went wrong!");
         } catch (InstantiationException | NoSuchMethodException e)  {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't instantiate IdentifiableType '" + this 
+            throw new IllegalStateException("Couldn't instantiate GridUUID '" + this 
                 + " - Class " + clazz.getName() + "' doesn't have a constructor that accepts a " + dyn.getClass().getName());
         }
     }

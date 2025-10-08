@@ -634,7 +634,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
     public abstract void clearAll(@Nullable SidedGridDispatcher grid);
     public default void clearAll() { clearAll(null); }
     public abstract @Nullable T getAndRemoveOrphan(ConnectionKey key);
-
+    public abstract int size();
 
 
 
@@ -716,6 +716,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override public boolean isEmpty() { return contents.isEmpty(); }
         @Override public boolean isClientSide() { return true; }
         @Override public ObjectSet<GridCatenary> getAll() { return contents; }
+        @Override public int size() { return contents.size(); }
     }
 
 
@@ -822,6 +823,13 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override public boolean isEmpty() { return contents.isEmpty(); }
         @Override public boolean isClientSide() { return true; }
         @Override public ObjectSet<GridCatenary> getAll() { throw new UnsupportedOperationException("lol"); }
+        @Override
+        public int size() { 
+            int out = 0;
+            for(Client section : contents.values()) 
+                out += section.size();
+            return out;
+        }
     }
 
 
@@ -889,6 +897,7 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override public boolean isEmpty() { return contents.isEmpty(); }
         @Override public boolean isClientSide() { return false; }
         @Override public ObjectSet<GridLink> getAll() { return contents; }
+        @Override public int size() { return contents.size(); }
     }
 
 
@@ -973,6 +982,13 @@ public sealed interface LinkDataStorage<T extends GridConnection> permits Client
         @Override public boolean isEmpty() { return contents.isEmpty(); }
         @Override public boolean isClientSide() { return false; }
         @Override public ObjectSet<GridLink> getAll() { throw new UnsupportedOperationException("lol"); }
+        @Override
+        public int size() {
+            int out = 0;
+            for(Server section : contents.values())
+                out += section.size();
+            return out;
+        }
     }
 
 

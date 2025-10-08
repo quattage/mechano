@@ -60,7 +60,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     private void applyDisplacement(Vec3 start, Vec3 end) {
-        if(CatenaryRenderFeatures.SETTINGS.allowsDisplacement() && this.halfOffset != null) {
+        if(CatenaryRenderFeatures.SETTINGS.allowsVelocityDisplacement() && this.halfOffset != null) {
             this.forces[4] = (float)start.x - (forces[1] + halfOffset.x);
             this.forces[5] = (float)start.y - (forces[2] + halfOffset.y);
             this.forces[6] = (float)start.z - (forces[3] + halfOffset.z);

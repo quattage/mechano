@@ -9,84 +9,83 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.anchor.AnchorArray;
-import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.SurrogateNode;
+import com.quattage.mechano.foundation.api.anchor.AnchorCollection;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.switchboard.GriddableUpdatePacket;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
 /**
  * A mirror implementation of {@link GriddableBlockEntity} built
  * for externally registered Entities, rather than around a bespoke
- * BlockEntity implementation. This object can be attached to any 
- * entity in Minecraft, vanilla or otherwise, using Neoforge's
- * Data Attachments system. Nothing here is actually synced or
- * serialized, since that's all handled by the {@link SidedGridDispatcher}
- * at the world-level, so despite being a Data Attachment, there are
- * no persistence features built into this class directly.
+ * BlockEntity or Entity implementation. This object can be attached 
+ * to any entity in Minecraft, vanilla or otherwise, using Neoforge's
+ * Data Attachments system. This class is not currently designed to be 
+ * extended and is only for being attached to Player entities while wires
+ * are being created. If I ever get back to this in the future, some kind
+ * of registry system will exist to allow the creation of custom AnchorPoint
+ * and circuit configurations for vanilla entities
  */
 public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAccess {
 
-    public static final IAttachmentSerializer<CompoundTag, GriddableEntityAttachment> SERIALIZER = new IAttachmentSerializer<>() {
-        @Override
-        public GriddableEntityAttachment read(IAttachmentHolder holder, CompoundTag tag,
-                net.minecraft.core.HolderLookup.Provider provider) {
-            if(holder instanceof AbstractContraptionEntity ace) {
-                GriddableContraptionAttachment gca = new GriddableContraptionAttachment(ace);
-                gca.readCompositeFrom(tag);
-                return gca;
-            }
-            return new GriddableEntityAttachment(holder);
-        }
-        @Override
-        public @Nullable CompoundTag write(GriddableEntityAttachment attachment,
-                net.minecraft.core.HolderLookup.Provider provider) {
-            if(attachment instanceof GriddableContraptionAttachment gca && !gca.getCompositeUUIDs().isEmpty())
-                return gca.writeCompositeTo(new CompoundTag());
+    @SuppressWarnings("unchecked")
+    public static <T extends Entity> @Nullable Griddable<T> of(T hostEntity, boolean force) {
+        if(hostEntity == null) {
+            Mechano.LOGGER.warn("Tried (and failed) to get Griddable for null entity!");
             return null;
         }
-    };
-
-    protected Entity entity;
-    protected AnchorArray anchors;
-    protected final SurrogateNode surrogate = new SurrogateNode(this);
-
-    @SuppressWarnings("unchecked")
-    public static <T extends Entity> @Nullable Griddable<T> of(T e, boolean force) {
-        if(e instanceof Griddable<?> ap) return (Griddable<T>)ap;
-        if(e instanceof AbstractContraptionEntity ace) {
+        if(hostEntity instanceof Griddable<?> sub) return (Griddable<T>)sub;
+        Griddable<T> data = (Griddable<T>)hostEntity.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+        if(data != null) return data;
+        if(hostEntity instanceof AbstractContraptionEntity ace) {
             if(force) {
                 GriddableContraptionAttachment gca = new GriddableContraptionAttachment(ace);
                 ace.setData(MechanoData.ANCHOR_ATTACHMENT, gca);
                 return (Griddable<T>)gca;
             }
-            GriddableEntityAttachment data = ace.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
-            if(data == null) return null;
-            if(data instanceof GriddableContraptionAttachment) return (Griddable<T>) data;
-            ace.removeData(MechanoData.ANCHOR_ATTACHMENT);
-            return null;
+            return data;
         }
-        if(e == null) {
-            Mechano.LOGGER.warn("Tried (and failed) to get Griddable for null entity!");
-            return null;
-        }
-        if(force) return (Griddable<T>)e.getData(MechanoData.ANCHOR_ATTACHMENT);
-        return (Griddable<T>)e.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+        return force ? (Griddable<T>)hostEntity.getData(MechanoData.ANCHOR_ATTACHMENT) : data;
     }
+
+    public static final IAttachmentSerializer<CompoundTag, GriddableEntityAttachment> SERIALIZER = new IAttachmentSerializer<>() {
+        @Override
+        public GriddableEntityAttachment read(IAttachmentHolder holder, CompoundTag tag, HolderLookup.Provider provider) {
+            if(!(holder instanceof Entity e)) {
+                throw new IllegalArgumentException("GriddableEntityAttachments cannot be de-serialized to any non-entity holder type, got '" 
+                    + holder.getClass().getSimpleName() + "!'" );
+            }
+            GriddableEntityAttachment attachment = (GriddableEntityAttachment)GriddableEntityAttachment.of(e, true);
+            attachment.readFrom(tag);
+            return attachment;
+        }
+        @Override
+        public @Nullable CompoundTag write(GriddableEntityAttachment attachment, HolderLookup.Provider provider) {
+            return attachment.writeTo(new CompoundTag());
+        }
+    };
+
+    protected Entity entity;
+    protected AnchorCollection anchors;
+    protected final SurrogateNode surrogate = new SurrogateNode(this);
 
     /**
      * This constructor is only used by the {@link MechanoData data attachment registry}.
@@ -99,16 +98,11 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
         if(!(holder instanceof Entity entity))
             throw new IllegalArgumentException("GriddableEntityAttachments can only be attached to entities, got " + holder + "!");
         this.entity = entity;
-        // TODO provisions for optional anchor construction to allow APIs to declare circuits for entities
-        constructAnchors(null);
+        this.anchors = null;
     }
 
     @Override
-    public void constructAnchors(Builder anchors) {
-        this.anchors = AnchorArray.ofSingle((new AnchorPoint(new EntityUUID(entity.getUUID(), 0), 0, 0, 0, 1.7f, true, 2)));
-    }
-
-    @Override
+    @OnlyIn(Dist.CLIENT)
     public @Nullable ObjectSet<GridCatenary> getCatenaries() {
         if(!entity.level().isClientSide) return null;
         if(!entity.hasData(MechanoData.LINK_ATTACHMENT)) return null;
@@ -117,13 +111,25 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
     }
 
     @Override
-    public AnchorArray getAnchors() {
-        return anchors;
+    @OnlyIn(Dist.CLIENT)
+    public AnchorCollection getAnchors() {
+        /**
+         * TODO TEMPORARY!!!!!
+         * the only place this is used is for drawing in-progress wires to/from the player while they're making a spool
+         * if there's ever an additional use-case for this there needs to be some kind of registry-specific wrapped object
+         * for creating circuits and AnchorPoints for vanilla entities
+         */
+        if(anchors == null) this.anchors = AnchorCollection.asSingle((new AnchorPoint(new EntityUUID(entity.getUUID(), 0), 0, 0, 0, 1.7f, true, 2)));
+        return this.anchors;
     }
 
-    @Override
-    public AnchorPoint getAnchor(int index) {
-        return anchors.getByIndex(0);
+    /**
+     * Syncs attachment-specific data from the server to all clients currently laoding this object.
+     * @param world
+     */
+    public void broadcast(LevelReader world) {
+        if(world.isClientSide()) return;
+        CatnipServices.NETWORK.sendToClientsTrackingEntity(entity, GriddableUpdatePacket.of(this));
     }
 
     @Override
@@ -154,5 +160,13 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
     @Override
     public Vec3 getSourcePosition() {
         return entity == null ? Vec3.ZERO : entity.position();
+    }
+
+    public CompoundTag writeTo(CompoundTag in) {
+        return in;
+    }
+
+    public void readFrom(CompoundTag in) {
+        return;
     }
 }

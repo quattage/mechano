@@ -164,7 +164,7 @@ public abstract sealed class SidedGridDispatcher implements Worldly permits Clie
         if(evt.getEntity().level().isClientSide()) return;
         Griddable<?> points = GriddableEntityAttachment.of(evt.getEntity(), false);
         if(points == null) return;
-        points.destroySurrogate();
+        points.getSurrogate().destroy();
     }
 
     

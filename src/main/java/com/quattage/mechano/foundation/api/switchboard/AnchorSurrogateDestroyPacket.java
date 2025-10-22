@@ -19,6 +19,6 @@ public record AnchorSurrogateDestroyPacket(GridUUID addr) implements Serverbound
     @Override public void handle(ServerPlayer player) { 
         Griddable<?> points = addr.getOrFindGriddable(player.level());
         if(points == null) return;
-        points.destroySurrogate();
+        points.getSurrogate().destroy();
     }
 }

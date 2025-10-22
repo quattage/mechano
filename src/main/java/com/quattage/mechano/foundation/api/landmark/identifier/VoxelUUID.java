@@ -11,8 +11,8 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.SurrogateNode;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 
 import io.netty.buffer.ByteBuf;
@@ -135,7 +135,7 @@ public class VoxelUUID extends GridUUID {
         if(!(be instanceof Griddable host)) return null;
         if(getIndex() < 0 || getIndex() > host.getAnchors().size()) 
             return null;
-        return host.getAnchor(getIndex());
+        return host.getAnchors().get(getIndex());
     }
 
     @Override

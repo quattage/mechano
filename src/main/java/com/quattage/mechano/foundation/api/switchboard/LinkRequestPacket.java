@@ -11,8 +11,6 @@ import net.createmod.catnip.net.base.ServerboundPacketPayload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 
 public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?> transmitter, GridResponse task) implements ServerboundPacketPayload {
@@ -31,7 +29,6 @@ public record LinkRequestPacket(GridUUID start, GridUUID end, TransmitterType<?>
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
         ServerGrid global = SidedGridDispatcher.server(player);
         if(!task.indicatesCompletion()) return;

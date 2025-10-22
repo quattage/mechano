@@ -14,10 +14,10 @@ import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.Griddable.Visual;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable.HoldingSummary;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;

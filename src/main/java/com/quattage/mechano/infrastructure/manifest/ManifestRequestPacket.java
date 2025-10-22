@@ -34,9 +34,9 @@ public record ManifestRequestPacket(GridUUID addr) implements ClientboundPacketP
             CatnipServices.NETWORK.sendToServer(new ManifestResponsePacket("\n\t┆\t\t" + "▪ Error (Host Not found)"));
             return;
         }
-        String out = (points.getSurrogate().isSynced(player.level()) ? "Synced, " : "Unsynced, ") + points.getAnchors().size() + " anchors: ";
+        String out = (points.getSurrogate().isSynced() ? "Synced, " : "Unsynced, ") + points.getAnchors().size() + " anchors: ";
         for(int x = 0; x < points.getAnchors().size(); x++) {
-            AnchorPoint anchor = points.getAnchor(x);
+            AnchorPoint anchor = points.getAnchors().get(x);
             if(anchor == null) {
                 out += "\n\t┆\t\t\t▪ Error (null anchor)";
                 continue;

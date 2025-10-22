@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper;
+package com.quattage.mechano.foundation.api.math;
 
 import net.minecraft.core.Vec3i;
 

@@ -15,10 +15,10 @@ import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.api.catenary.SimulatedCatenary;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.theme.Color;
 import net.minecraft.Util;
@@ -403,6 +403,7 @@ public class CatenaryRenderFeatures {
 
         /**
          * temporary - TODO refactor to allow multiple light sampling modes
+         
          */
         public boolean shouldApplyShadowClamping() {
             return clampShadows;

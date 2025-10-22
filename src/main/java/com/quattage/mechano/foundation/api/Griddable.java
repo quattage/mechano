@@ -4,24 +4,21 @@ package com.quattage.mechano.foundation.api;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.anchor.AnchorArray;
+import com.quattage.mechano.foundation.api.anchor.AnchorCollection;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.transmitter.Transmitable;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -35,29 +32,6 @@ import net.neoforged.api.distmarker.OnlyIn;
  * <code>@OnlyIn</code> annotation.
  */
 public interface Griddable<T> {
-
-    @OnlyIn(Dist.CLIENT)
-    public void constructAnchors(AnchorArray.Builder anchors);
-
-    @OnlyIn(Dist.CLIENT)
-    public AnchorArray getAnchors();
-
-    @OnlyIn(Dist.CLIENT)
-    public default AnchorPoint getAnchor(int index) {
-        return getAnchors().getByIndex(index);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public default AnchorPoint getAnchor() {
-        return getAnchors().getByIndex(0);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public default void refreshAnchors(BlockState newState) {
-        if(newState == null) return;
-        getAnchors().updateOrientation(newState);
-    }
-
 
     public static boolean assertPairExists(Griddable<?> startPoints, Griddable<?> endPoints, GridUUID start, GridUUID end) {
         if(startPoints == null && endPoints == null) {
@@ -77,43 +51,29 @@ public interface Griddable<T> {
         return true;
     }
 
+    /**
+     * @return An AnchorCollection containing {@link AnchorPoint} instances described by this Griddable.
+     * If this Griddable has no Anchors, return an {@link AnchorCollection#asEmpty() empty} collection.
+     */
     @OnlyIn(Dist.CLIENT)
-    public default boolean containsAnchor(AnchorPoint anchor) {
-        if(anchor == null || anchor.getAddress().getIndex() < 0 || anchor.getAddress().getIndex() >= getAnchors().size()) 
-            return false;
+    public @NotNull AnchorCollection getAnchors();
 
-        return createSupplementaryAddress().isVeryApproximately(getWorld(), anchor.getAddress());
-        // for(int x = 0; x < getAnchors().size(); x++) {
-        //     AnchorPoint other = getAnchor(x);
-        //     if(other == null) continue;
-        //     if(anchor.getAddress().equals(other.getAddress()))
-        //         return true;
-        // }
-        // return false;
-    }
 
-    public default CompoundTag writeAnchorData(CompoundTag tag) {
-        ListTag list = new ListTag();
-        for(int x = 0; x < getAnchors().size(); x++) {
-            AnchorPoint anchor = getAnchor(x);
-            list.add(anchor.writeTo(new CompoundTag()));
-        }
-        tag.put("anchors", list);
-        return tag;
-    }
+    /**
+     * @return A {@link SurrogateNode} responsible for accessing the
+     * {@link SidedGridDispatcher GridAPI}. When in doubt, just
+     * instantiate one as a final instance varaible and return it here.
+     */
+    public @NotNull SurrogateNode getSurrogate();
 
-    public default void readAnchorData(CompoundTag tag) {
-        ListTag list = tag.getList("anchors", Tag.TAG_COMPOUND);
-        for(int x = 0; x < list.size(); x++)
-            getAnchor(x).initializeFrom(list.getCompound(x));
-    }
 
     public Level getWorld();
-    public SurrogateNode getSurrogate();
+
+    
 
     /**
      * Provides a supplementary {@link GridUUID}. This UUID
-     * should always have an index of 1.
+     * should always have an index of 0.
      * It is reccomended to avoid caching behaviours when returning
      * UUIDs from this method, since such behaviour is already 
      * implemented by the {@link SurrogateNode}.
@@ -129,16 +89,6 @@ public interface Griddable<T> {
      */
     public default String describeState() {
         return null;
-    }
-
-    /**
-     * Destroys this holder's surrogate, which 
-     * removes worldly references in the {@link ServerGrid}.
-     * Calls to this method will destroy connections made to this
-     * holder.
-     */
-    public default void destroySurrogate() {
-        getSurrogate().destroy();
     }
 
     /**
@@ -184,16 +134,18 @@ public interface Griddable<T> {
     }
 
     /**
-     * This method can be used as a way to tack on additional logic to the
-     * {@link SidedGridDispatcher GridAPI} syncing cycle whenever 
-     * connections are made or {@link GridNode GridNodes} are updated. 
-     * Called on both logical sides.
+     * This method can be used as a way to add additional logic to the
+     * {@link SidedGridDispatcher GridAPI} syncing cycle whenever
+     * connections are made or {@link AnchorPoint} instances belonging
+     * to this Griddable are updated as a response to some server-sided
+     * event. This method should not alter the AnchorPoints themselves, but
+     * may be used as a way for individual Griddable subclasses to handle
+     * additional effects, sounds, or rendering features.
      * @param world World to operate within
      * @param index The index of the AnchorPoint that was updated.
      */
-    public default void onAnchorSynced(Level world, int index) {
-        
-    }
+    @OnlyIn(Dist.CLIENT)
+    public default void onAnchorSynced(ClientLevel world, int index) {}
 
     public abstract T getSource();
     public abstract Vec3 getSourcePosition();

@@ -11,9 +11,9 @@ import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.createmod.catnip.theme.Color;
@@ -152,6 +152,7 @@ public abstract sealed class GridConnection implements TrackedConstruct, Catenar
     }
 
     public GridConnection fixDataScopes(LevelReader world, boolean save) {
+        if(!hasPoints()) return this;
         DataScope startScope = this.getStart().getDataScope(world);
         DataScope endScope = this.getEnd().getDataScope(world);
         if(save) {
@@ -165,6 +166,15 @@ public abstract sealed class GridConnection implements TrackedConstruct, Catenar
             if(startScope != DataScope.STATIC_CHUNK && endScope == DataScope.STATIC_CHUNK)
                 this.getEnd().setDataScope(DataScope.BLOCKENTITY);
         }
+        return this;
+    }
+
+    public GridConnection forceNonStatic(LevelReader world) {
+        if(!hasPoints()) return this;
+        if(getStart().getDataScope(world) == DataScope.STATIC_CHUNK)
+            getStart().setDataScope(DataScope.BLOCKENTITY);
+        if(getEnd().getDataScope(world) == DataScope.STATIC_CHUNK)
+            getEnd().setDataScope(DataScope.BLOCKENTITY);
         return this;
     }
 

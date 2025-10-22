@@ -15,12 +15,12 @@ import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.SurrogateNode;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
 import com.simibubi.create.content.contraptions.StructureTransform;
@@ -40,7 +40,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -129,14 +128,12 @@ public class ContraptionUUID extends GridUUID {
     public @Nullable Griddable<?> getOrFindGriddable(LevelReader world) {
         IAttachmentHolder holder = getDataStorageHolder(world);
         if(!(holder instanceof AbstractContraptionEntity ace)) return null;
-        if(world.isClientSide()) {
-            Contraption c = ace.getContraption();
-            if(c == null) return null;
-            if(c.presentBlockEntities == null) return null;
-            BlockEntity be = c.presentBlockEntities.get(structurePos);
-            return be instanceof GriddableBlockEntity gbe ? gbe : null;
+        GriddableEntityAttachment data = ace.getExistingDataOrNull(MechanoData.ANCHOR_ATTACHMENT);
+        if(data == null) {
+            data = new GriddableContraptionAttachment(ace);
+            ace.setData(MechanoData.ANCHOR_ATTACHMENT, data);
         }
-        return ace.getData(MechanoData.ANCHOR_ATTACHMENT);
+        return data;
     }
 
     @Override
@@ -164,14 +161,9 @@ public class ContraptionUUID extends GridUUID {
     @Override
     @OnlyIn(Dist.CLIENT)
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
-        IAttachmentHolder holder = getDataStorageHolder(world);
-        if(!(holder instanceof AbstractContraptionEntity ace)) return null;
-        Contraption c = ace.getContraption();
-        if(c == null || c.presentBlockEntities == null || c.presentBlockEntities.isEmpty()) 
-            return null;
-        BlockEntity be = c.presentBlockEntities.get(structurePos);
-        if(!(be instanceof GriddableBlockEntity gbe)) return null;
-        return gbe.getAnchor();
+        Griddable<?> data = getOrFindGriddable(world);
+        if(!(data instanceof GriddableContraptionAttachment gca)) return null;
+        return gca.getAnchors().get(getIndex());
     }
 
     @Override

@@ -11,10 +11,10 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder(Mechano.ID)
 @PrefixGameTestTemplate(false)
-public class OrientationTests {
+public class StateIntegrityTests {
 
 
-    @GameTest(template = "empty", batch="integrityTests")
+    @GameTest(template = "empty", batch="stateIntegrityTests")
     public static void checkOrientations(GameTestHelper test) {
         String result = "";
 

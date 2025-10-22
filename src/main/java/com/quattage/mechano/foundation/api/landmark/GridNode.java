@@ -15,8 +15,8 @@ import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
 import com.quattage.mechano.foundation.api.ServerMatrix;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.foundation.api.SurrogateNode;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse;
@@ -67,7 +67,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         if(points == null) return null;
         SurrogateNode surrogate = points.getSurrogate();
         if(surrogate == null) return null;
-        if(!surrogate.isSynced(world)) return null;
+        if(!surrogate.isSynced()) return null;
         ServerMatrix matrix = surrogate.getOwnerMatrix();
         if(matrix == null || matrix.nodes == null) return null;
         return matrix.nodes.get(addr);
@@ -78,7 +78,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
      * no node at this address exists.
      * <p>
      * Note that if the returned GridNode is newly created, it will be blank. 
-     * Blank GridNodes that have no links should not persist in the LocalMatrix 
+     * Blank GridNodes that have no links should not persist in the ServerMatrix 
      * for long, since they represent dead ends.
      * @param instantiator The ServerMatrix that is responsible for calling this method. This matrix will be searched
      * for the provided address.
@@ -105,7 +105,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         }
         node = new GridNode(instantiator, points, address);
         instantiator.nodes.add(node);
-        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        points.getSurrogate().sync(instantiator);
         return node;
     }
 
@@ -115,7 +115,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
      * a constituent {@link Griddable} to search for pre-existing nodes.
      * <p>
      * Note that if the returned GridNode is newly created, it will be blank. 
-     * Blank GridNodes that have no links should not persist in the LocalMatrix 
+     * Blank GridNodes that have no links should not persist in the ServerMatrix 
      * for long, since they represent dead ends.
      * @param instantiator The ServerMatrix that is responsible for calling this method. This matrix will be searched
      * for the provided address.
@@ -135,7 +135,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         if(node != null) return node;
         node = new GridNode(instantiator, points, address);
         instantiator.nodes.add(node);
-        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        points.getSurrogate().sync(instantiator);
         return node;
     }
 
@@ -145,7 +145,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         Objects.requireNonNull(points);
         GridNode node = new GridNode(instantiator, points, address);
         instantiator.nodes.add(node);
-        points.getSurrogate().sync(instantiator.getWorld(), instantiator);
+        points.getSurrogate().sync(instantiator);
         return node;
     }
 
@@ -197,7 +197,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
         owner.nodes.remove(this.address);
         this.address = newAddress;
         this.host = newHolder;
-        newHolder.getSurrogate().sync(world, owner);
+        newHolder.getSurrogate().sync(owner);
         owner.nodes.add(this);
         for(GridLink link : links) {
             link.getStartNode().address = newAddress;
@@ -230,13 +230,13 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
                     Mechano.LOGGER.warn("Response '" + response + "' ignored due to bad syncing context");
                     return;
                 }
-                getGriddable().getSurrogate().sync(getOwner().getWorld(), getOwner());
-                getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
+                getGriddable().getSurrogate().sync(getOwner());
+                // getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
                 AnchorSynchronizer.of(this).sendToClients(world);
             }
             case TASK_DESTROY_LINK, TASK_DESTROY_LINK_LAZY, TASK_FORGET_ANCHORS -> {
-                getGriddable().getSurrogate().forgetIfNeeded(getOwner().getWorld());
-                getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
+                getGriddable().getSurrogate().forgetIfNeeded();
+                // getGriddable().onAnchorSynced(getOwner().getWorld(), getAddress().getIndex());
                 AnchorSynchronizer.of(this).sendToClients(world);
             }
             case null, default -> Mechano.LOGGER.error("Respose type '" + response + "' is unsupported for braodcasting");
@@ -309,7 +309,7 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     @ApiStatus.Internal
     public void swapOwner(ServerMatrix owner) {
         this.owner = owner;
-        host.getSurrogate().sync(owner.getWorld(), owner);
+        host.getSurrogate().sync(owner);
     }
 
     public Griddable<?> getGriddable() {
@@ -352,7 +352,6 @@ public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
     }
 
     public void nullify() {
-        this.links.clear(); // GC friendly? idk
         this.links = null;
         this.host = null;
     }

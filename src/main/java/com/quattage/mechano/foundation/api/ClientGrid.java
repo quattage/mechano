@@ -32,6 +32,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.Level;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 // this class itself cannot be tagged with @OnlyIn(Dist.CLIENT) because of 
 // how I am abusing polymorphism to make the data attachment side-specific
@@ -84,6 +86,7 @@ public final class ClientGrid extends SidedGridDispatcher {
      * before proceeding
      * @return {@link UpdateResponser}
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse requestLinkCreation(AnchorPoint startAnchor, AnchorPoint endAnchor, TransmitterType<?> type, boolean verify) {
 
         Objects.requireNonNull(startAnchor);
@@ -113,7 +116,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         return GridResponse.TASK_CREATE_LINK;
     }
 
-
+    @OnlyIn(Dist.CLIENT)
     public GridResponse requestLinkDestruction(AnchorPoint startAnchor, AnchorPoint endAnchor, boolean verify) {
         if(startAnchor == null || endAnchor == null) return GridResponse.FAIL_GENERIC;
         if(verify) {
@@ -124,6 +127,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         return GridResponse.TASK_DESTROY_LINK;
     }
 
+    @OnlyIn(Dist.CLIENT)
     public GridResponse requestAnchorDestruction(GridUUID id) {
         CatnipServices.NETWORK.sendToServer(new AnchorRequestPacket(id, GridResponse.TASK_FORGET_ANCHORS));
         return GridResponse.TASK_FORGET_ANCHORS;
@@ -141,23 +145,24 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param schedule <code>true</code> if this action should be deferred for 
      * later in the {@link AwaitingLinkBuffer buffer} in the event of failure
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse handleCatenaryCreation(AnchorSynchronizer start, AnchorSynchronizer end, float span, TransmitterType<?> trns, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_CREATE_LINK);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
         if(!response.indicatesCompletion()) {
             if(mode == ProcessMode.IMMEDIATE) return response;
             buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_CREATE_LINK);
             return GridResponse.TASK_COMPLETED;
         }
-        GridCatenary cat = new GridCatenary(world, startAnchor, endAnchor, trns);
-        LinkDataStorage.put(world, MeshInitializer.applyPreexistingSpan(world, cat, span));
-        cat.sendLevelUpdates(world);
+        GridCatenary cat = new GridCatenary(getWorld(), startAnchor, endAnchor, trns);
+        LinkDataStorage.put(getWorld(), MeshInitializer.applyPreexistingSpan(getWorld(), cat, span));
+        cat.sendLevelUpdates(getWorld());
         return GridResponse.TASK_COMPLETED;
     }
 
@@ -169,14 +174,15 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param end ending {@link AnchorSyncHolder}
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse handleCatenaryDestruction(AnchorSynchronizer start, AnchorSynchronizer end, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, start, end);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
         GridCatenary cat = LinkDataStorage.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
         if(cat == null) {
             if(mode == ProcessMode.IMMEDIATE) return GridResponse.FAIL_CATENARY_NOT_FOUND;
@@ -197,11 +203,12 @@ public final class ClientGrid extends SidedGridDispatcher {
      * time of invocation, this method is preferable over {@link #handleCatenaryDestruction()}.
      * @return {@link GridResponse#TASK_COMPLETED}
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse ensureCatenaryDestroyed(AnchorSynchronizer start, AnchorSynchronizer end) {
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
-        GridCatenary cat = LinkDataStorage.popAsClient(world, new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
-        if(cat != null) cat.sendLevelUpdates(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
+        GridCatenary cat = LinkDataStorage.popAsClient(getWorld(), new ConnectionKey(start.getAddress(), end.getAddress()).fixDataScopes(world));
+        if(cat != null) cat.sendLevelUpdates(getWorld());
         wipeSpoolProgress(startAnchor, endAnchor);
         return GridResponse.TASK_COMPLETED;
     }
@@ -217,14 +224,15 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param trns {@link TransmitterType} to use for creating a new catenary if none coudl be found
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse handleCatenarySync(AnchorSynchronizer start, AnchorSynchronizer end, float span, TransmitterType<?> trns, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, start, end, trns, span, GridResponse.TASK_SYNC_ANCHORS);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
         if(!response.indicatesCompletion()) {
             if(mode == ProcessMode.IMMEDIATE) return response;
@@ -238,6 +246,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         }
         cat = new GridCatenary(world, startAnchor, endAnchor, trns);
         cat.fixDataScopes(world);
+        cat.forceNonStatic(world); // TEMPORARY MEASURE UNTIL CHUNK BAKING WORKS
         MeshInitializer.applyPreexistingSpan(world, cat, span);
         LinkDataStorage.put(world, cat);
         cat.sendLevelUpdates(world);
@@ -258,14 +267,15 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param newStart {@link GridUUID} to replace <code>start</code> with
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse swapStartingPoint(AnchorSynchronizer start, AnchorSynchronizer end, GridUUID newStart, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, start, end, newStart, GridResponse.TASK_SWAP_START);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
         if(startAnchor == null && endAnchor != null)
             startAnchor = newStart.getAnchor(getWorld());
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
@@ -300,14 +310,15 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param newStart {@link GridUUID} to replace <code>end</code> with
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse swapEndingPoint(AnchorSynchronizer start, AnchorSynchronizer end, GridUUID newEnd, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, start, end, newEnd, GridResponse.TASK_SWAP_END);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint startAnchor = start.applyAndGet(world);
-        AnchorPoint endAnchor = end.applyAndGet(world);
+        AnchorPoint startAnchor = start.applyAndGet(getWorld());
+        AnchorPoint endAnchor = end.applyAndGet(getWorld());
         if(endAnchor == null && startAnchor != null)
             endAnchor = newEnd.getAnchor(getWorld());
         GridResponse response = failIfMissing(startAnchor, endAnchor, null);
@@ -336,6 +347,7 @@ public final class ClientGrid extends SidedGridDispatcher {
      * @param cat The catenary to reassert
      * @param mode {@link ProcessMode} to determine {@link AwaitingLinkBuffer scheduling} behaviour
      */
+    @OnlyIn(Dist.CLIENT)
     public GridResponse reassertCatenary(GridCatenary cat, ProcessMode mode) {
         tryLoad();
         if(mode == ProcessMode.SCHEDULE) {
@@ -349,12 +361,13 @@ public final class ClientGrid extends SidedGridDispatcher {
         return GridResponse.TASK_COMPLETED;
     }
 
+    @OnlyIn(Dist.CLIENT)
     public GridResponse syncSingleAnchor(AnchorSynchronizer synchronizer, ProcessMode mode) {
         if(mode == ProcessMode.SCHEDULE) {
             buffer.deferForLater(this, synchronizer);
             return GridResponse.TASK_COMPLETED;
         }
-        AnchorPoint anchor = synchronizer.applyAndGet(world, false);
+        AnchorPoint anchor = synchronizer.applyAndGet(getWorld(), false);
         if(anchor == null) {
             if(mode == ProcessMode.IMMEDIATE) return GridResponse.FAIL_BOTH_ENDS_MISSING;
             buffer.deferForLater(this, synchronizer);
@@ -363,6 +376,7 @@ public final class ClientGrid extends SidedGridDispatcher {
         return GridResponse.TASK_COMPLETED;
     }
 
+    @OnlyIn(Dist.CLIENT)
     private GridResponse failIfMissing(AnchorPoint startAnchor, AnchorPoint endAnchor, @Nullable GridResponse operation) {
         boolean startExists = startAnchor != null;
         boolean endExists = endAnchor != null;

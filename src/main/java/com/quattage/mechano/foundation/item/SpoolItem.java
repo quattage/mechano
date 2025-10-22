@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
-import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.ClientGrid;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage;
@@ -104,31 +103,33 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
      * Called when the player initially selects an anchor, which creates a temporary link and catenary
      * between the selected anchor and the player.
      */
-    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AnchorPoint startAnchor) {
+    @OnlyIn(Dist.CLIENT)
+    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AnchorPoint targetAnchor) {
         if(hasAwaiting(player)) return InteractionResultHolder.fail(stack);
-        if(startAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
-            cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
+        if(targetAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
+            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-        Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
-        if(playerPoints == null || !playerPoints.getAnchor().hasRoom()) {
-            cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
+        AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
+        if(selfAnchor == null) {
+            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
             return InteractionResultHolder.fail(stack);
         }
-        GridResponse result = SidedGridDispatcher.client(player).requestLinkCreation(playerPoints.getAnchor(), startAnchor, getTransmitterType(), true);
+        GridResponse result = SidedGridDispatcher.client(player).requestLinkCreation(selfAnchor, targetAnchor, getTransmitterType(), true);
         startingDamage = stack.getDamageValue();
         if(!result.indicatesCompletion()) {
-            cancelAwaitingConnection(startAnchor.getAddress(), null, stack);
-            Mechano.LOGGER.warn("Link request returned failure state '" + result + "' (Requested by '" + player.getName() + "', from " + startAnchor + " -> " + playerPoints.getAnchor() + ")");
+            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
+            Mechano.LOGGER.warn("Link request returned failure state '" + result + "' (Requested by '" + player.getName() + "', from " + targetAnchor + " -> " + selfAnchor + ")");
             return InteractionResultHolder.fail(stack);
         }
-        stack.set(UUIDDiscriminator.ATTACHMENT, startAnchor.getAddress());
+        stack.set(UUIDDiscriminator.ATTACHMENT, targetAnchor.getAddress());
         return InteractionResultHolder.success(stack);
     }
 
     /**
      * Called when the player selects a second anchor, which finalizes the creation of a valid link and catenary
      */
+    @OnlyIn(Dist.CLIENT)
     private InteractionResultHolder<ItemStack> handleSecondRightClick(Player player, ItemStack stack, @Nullable AnchorPoint endAnchor) {
 
         if(endAnchor == null) {
@@ -165,7 +166,7 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
             return InteractionResultHolder.pass(stack);
         }
         Griddable<?> playerPoints = GriddableEntityAttachment.of(player, true);
-        result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchor(), true);
+        result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchors().get(0), true);
         applyDurability(player, stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
         stack.remove(UUIDDiscriminator.ATTACHMENT);
         startingDamage = -1;
@@ -212,16 +213,16 @@ public abstract class SpoolItem<T extends Transmitter<?>> extends Item implement
 
         AnchorPoint previous = addr.getAnchor((ClientLevel)player.level());
         if(previous == null) {
-            GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-            SidedGridDispatcher.client(player).requestLinkDestruction(entityHost.getAnchor(), previous, true);
+            AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
+            SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
             return true;
         }
 
         Vec3 disp = previous.getPos(player.level()).subtract(player.getPosition(1)).normalize();
         float faceDot = (float)player.getViewVector(1).dot(disp);
         if(faceDot < CatenaryAttributable.DETACH_THRESHOLD) return true;
-        GriddableEntityAttachment entityHost = player.getData(MechanoData.ANCHOR_ATTACHMENT);
-        SidedGridDispatcher.client(player).requestLinkDestruction(entityHost.getAnchor(), previous, true);
+        AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
+        SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
         cancelAwaitingConnection(addr, null, stack);
         if(hand != null) {
             player.swing(hand);

@@ -17,7 +17,7 @@ public class MechanoDatagen {
     public static void collect(GatherDataEvent event) {
         addGenerators();
         RegistrateDataProvider provider = new RegistrateDataProvider(Mechano.REGISTRATE, Mechano.ID, event);
-        Mechano.REGISTRATE.setDataProvider(provider);
+        // Mechano.REGISTRATE.setDataProvider(provider);
         event.getGenerator().addProvider(true, provider);
     }
 

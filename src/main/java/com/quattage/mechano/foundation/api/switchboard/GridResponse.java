@@ -10,8 +10,8 @@ import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.SurrogateNode;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
@@ -31,6 +31,8 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public enum GridResponse implements StringRepresentable {
@@ -200,8 +202,11 @@ public enum GridResponse implements StringRepresentable {
             return enabled;
         }
 
-        public @Nullable AnchorPoint applyAndGet(Level world) { return applyAndGet(world, false); }
-        public @Nullable AnchorPoint applyAndGet(Level world, boolean log) {
+        @OnlyIn(Dist.CLIENT)
+        public @Nullable AnchorPoint applyAndGet(ClientLevel world) { return applyAndGet(world, false); }
+
+        @OnlyIn(Dist.CLIENT)
+        public @Nullable AnchorPoint applyAndGet(ClientLevel world, boolean log) {
             Objects.requireNonNull(world);
             if(!world.isClientSide())
                 throw new IllegalStateException("Cannot apply AnchorSyncHolder on a server-sided world!");
@@ -215,7 +220,7 @@ public enum GridResponse implements StringRepresentable {
                 }
                 return null;
             }
-            AnchorPoint point = points.getAnchor(addr.getIndex());
+            AnchorPoint point = points.getAnchors().get(addr.getIndex());
             Mechano.LOGGER.warn("Found anchor: " + point);
             if(point == null) {
                 if(log) {
@@ -235,8 +240,8 @@ public enum GridResponse implements StringRepresentable {
                 return null;
             }
             if(point.getCurrentConnections() > 0)
-                surrogate.sync(world, null);
-            else surrogate.forgetIfNeeded(world);
+                surrogate.sync(null);
+            else surrogate.forgetIfNeeded();
             points.onAnchorSynced(world, getIndex());
             return point;
         }

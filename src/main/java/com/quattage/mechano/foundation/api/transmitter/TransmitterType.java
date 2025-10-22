@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
 import com.quattage.mechano.foundation.api.catenary.CatenaryModelProvider;
+import com.quattage.mechano.foundation.api.transmitter.TransmitterType.TransmitterTypeBuilder;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;

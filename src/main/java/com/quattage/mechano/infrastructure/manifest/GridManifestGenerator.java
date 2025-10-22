@@ -29,6 +29,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.LevelReader;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class GridManifestGenerator {
 
@@ -129,7 +131,7 @@ public class GridManifestGenerator {
 
         out += "\n\t┆\t▸ Data scope: " + node.getAddress().describeDataScope(world);
         out += "\n\t┆\t⌕ Dispatch: ";
-        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced(world) ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().getIndex()) : "no accelerated reference");
+        out += "\n\t┆\t\t▸ Server Status: " + (points.getSurrogate().isSynced() ? ("Synced to Matrix " + points.getSurrogate().getOwnerMatrix().getIndex()) : "no accelerated reference");
         out += "\n\t┆\t\t▸ Client Status: " + requestClientInfoFrom(node.getAddress());
         out += "\n\t┆\t☍ Links:";
 
@@ -175,6 +177,7 @@ public class GridManifestGenerator {
             clientResponseTask.complete(data);
     }
 
+    @OnlyIn(Dist.CLIENT)
     public void handleComplete(LocalPlayer player, String message) {
         String directory = Minecraft.getInstance().gameDirectory.getAbsolutePath();
         directory += "/logs/grid_manifest.log";

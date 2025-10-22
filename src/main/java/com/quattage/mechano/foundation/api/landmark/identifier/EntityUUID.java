@@ -12,11 +12,11 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.SurrogateNode;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -90,7 +90,7 @@ public class EntityUUID extends GridUUID {
 
     @Override
     public @Nullable AnchorPoint getAnchor(ClientLevel world) {
-        return getOrFindGriddable(world) == null ? null : getOrFindGriddable(world).getAnchor(index);
+        return getOrFindGriddable(world) == null ? null : getOrFindGriddable(world).getAnchors().get(index);
     }
 
     @Override

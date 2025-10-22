@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.test;
 
-import com.quattage.mechano.foundation.api.anchor.AnchorArray.Builder;
+import com.quattage.mechano.foundation.api.anchor.AnchorCollection.DynamicAnchorArray;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 
 import net.minecraft.core.BlockPos;
@@ -16,18 +16,18 @@ public class TestAxisBlockEntity extends GriddableBlockEntity {
     }
 
     @Override
-    public void constructAnchors(Builder anchors) {
-        anchors
-        .add()
+    public void constructAnchors(DynamicAnchorArray builder) {
+        builder
+        .newAnchor()
             .connections(5)
             .radius(2)
             .at(16, 10, 6)
-            .make()
-        .add()
-            .at(0, 6, 11)
+            .addTo(this)
+        .newAnchor()
             .connections(2)
             .radius(2)
-            .make();
+            .at(0, 6, 11)
+            .add();
     }
 
     @Override

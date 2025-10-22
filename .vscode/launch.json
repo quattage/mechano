@@ -12,11 +12,11 @@
       "projectName": "mechano",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\Projects\\mechano\\build\\moddev\\clientRunProgramArgs.txt"
+        "@D:\\Projects\\mechano\\build\\moddev\\clientRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\Projects\\mechano\\build\\moddev\\clientRunVmArgs.txt",
-        "-Dfml.modFolders\u003dmechano%%E:\\Projects\\mechano\\bin\\main"
+        "@D:\\Projects\\mechano\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmechano%%D:\\Projects\\mechano\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -34,11 +34,11 @@
       "projectName": "mechano",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\Projects\\mechano\\build\\moddev\\dataRunProgramArgs.txt"
+        "@D:\\Projects\\mechano\\build\\moddev\\dataRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\Projects\\mechano\\build\\moddev\\dataRunVmArgs.txt",
-        "-Dfml.modFolders\u003dmechano%%E:\\Projects\\mechano\\bin\\main"
+        "@D:\\Projects\\mechano\\build\\moddev\\dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmechano%%D:\\Projects\\mechano\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -56,11 +56,11 @@
       "projectName": "mechano",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\Projects\\mechano\\build\\moddev\\gameTestServerRunProgramArgs.txt"
+        "@D:\\Projects\\mechano\\build\\moddev\\gameTestServerRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\Projects\\mechano\\build\\moddev\\gameTestServerRunVmArgs.txt",
-        "-Dfml.modFolders\u003dmechano%%E:\\Projects\\mechano\\bin\\main"
+        "@D:\\Projects\\mechano\\build\\moddev\\gameTestServerRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmechano%%D:\\Projects\\mechano\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -78,11 +78,11 @@
       "projectName": "mechano",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@E:\\Projects\\mechano\\build\\moddev\\serverRunProgramArgs.txt"
+        "@D:\\Projects\\mechano\\build\\moddev\\serverRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@E:\\Projects\\mechano\\build\\moddev\\serverRunVmArgs.txt",
-        "-Dfml.modFolders\u003dmechano%%E:\\Projects\\mechano\\bin\\main"
+        "@D:\\Projects\\mechano\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmechano%%D:\\Projects\\mechano\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},

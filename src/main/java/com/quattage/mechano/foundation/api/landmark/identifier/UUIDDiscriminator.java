@@ -3,7 +3,6 @@ package com.quattage.mechano.foundation.api.landmark.identifier;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Base64;
 import java.util.Locale;
 
 import com.mojang.datafixers.util.Pair;
@@ -32,10 +31,7 @@ public enum UUIDDiscriminator implements StringRepresentable {
 
     private static final String PREFIX = "type";
 
-    public static final Codec<byte[]> B64_CODEC = Codec.STRING.xmap(
-        s -> Base64.getDecoder().decode(s),
-        bytes -> Base64.getEncoder().encodeToString(bytes)
-    );
+    
 
     public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID> STREAM_CODEC = new StreamCodec<>() {
         @Override
@@ -55,9 +51,7 @@ public enum UUIDDiscriminator implements StringRepresentable {
             UUIDDiscriminator  type = input.getDiscriminatorType();
             RecordBuilder<T> builder = ops.mapBuilder();
             builder.add(PREFIX, type.ordinal(), Codec.INT);
-            try {
-                input.writeTo(builder);
-            } catch (Exception e) {
+            try { input.writeTo(builder); } catch (Exception e) {
                 String message = "Unknown error occured while encoding UUID type '" + type + "'";
                 Mechano.LOGGER.error(message);
                 e.printStackTrace();

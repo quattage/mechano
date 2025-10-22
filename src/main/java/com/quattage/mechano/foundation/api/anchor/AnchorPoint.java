@@ -6,20 +6,22 @@ import java.util.List;
 import java.util.Objects;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage.DataScope;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.EntityUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
@@ -46,7 +48,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * built specifically to store transformation and hitbox data in
  * world-space.
  */
-@OnlyIn(Dist.CLIENT)
 public class AnchorPoint implements TrackedConstruct {
 
     private GridUUID address;
@@ -54,6 +55,17 @@ public class AnchorPoint implements TrackedConstruct {
     private boolean enabled;
     private Vector3f offset;
     public int bitmask;
+
+    @OnlyIn(Dist.CLIENT)
+    public static @Nullable AnchorPoint getLocal(@Nullable Player player) {
+        if(player == null) player = Minecraft.getInstance().player;
+        Griddable<?> points = GriddableEntityAttachment.of(player, true);
+        if(points == null) return null;
+        AnchorCollection anchors = points.getAnchors();
+        if(anchors == null) return null;
+        AnchorPoint out = anchors.get(0);
+        return out != null && out.hasRoom() ? out : null;
+    }
 
     public AnchorPoint(GridUUID addr, float px, float py, float pz, float size, boolean enabled, int maxc) {
         Objects.requireNonNull(addr);
@@ -362,7 +374,7 @@ public class AnchorPoint implements TrackedConstruct {
     /**
      * A fluent-ish builder for instantiating AnchorPoints in BlockEntities
      */
-    public static class Builder {
+    public static class Builder<T extends AnchorCollection> {
 
         private float offx = 0f;
         private float offy = 0f;
@@ -370,10 +382,11 @@ public class AnchorPoint implements TrackedConstruct {
         private float size = 2;
         private boolean enabled;
         private int max = 2;
-        private final AnchorArray.Builder prev;
+        private final T destination;
 
-        public Builder(AnchorArray.Builder prev) {
-            this.prev = prev;
+        public Builder(T prev) {
+            Objects.requireNonNull(prev);
+            this.destination = prev;
             this.enabled = true;
         }
 
@@ -395,7 +408,7 @@ public class AnchorPoint implements TrackedConstruct {
          * @param z 
          * @return
          */
-        public Builder at(float x, float y, float z) {
+        public Builder<T> at(float x, float y, float z) {
             this.offx = x;
             this.offy = y;
             this.offz = z;
@@ -407,7 +420,7 @@ public class AnchorPoint implements TrackedConstruct {
          * @param size
          * @return
          */
-        public Builder radius(float size) {
+        public Builder<T> radius(float size) {
             this.size = size;
             return this;
         }
@@ -418,7 +431,7 @@ public class AnchorPoint implements TrackedConstruct {
          * @param max
          * @return
          */
-        public Builder connections(int max) {
+        public Builder<T> connections(int max) {
             this.max = max;
             return this;
         }
@@ -429,21 +442,37 @@ public class AnchorPoint implements TrackedConstruct {
          * invisible and disable interactions with it.
          * @return
          */
-        public Builder hiddenByDefault() {
+        public Builder<T> hiddenByDefault() {
             this.enabled = false;
             return this;
         }
 
-        public AnchorArray.Builder make() {
-            prev.add(this);
-            return prev;
+        /**
+         * Adds the AnchorPoint 
+         */
+        public T addTo(Griddable<?> points) {
+            Objects.requireNonNull(points);
+            GridUUID addr = points.createSupplementaryAddress();
+            AnchorPoint newAnchor = make(addr.indexedCopy(destination.size()));
+            destination.add(newAnchor);
+            return destination;
         }
 
-        protected AnchorPoint make(BlockPos pos, int index) {
-            return new AnchorPoint(new VoxelUUID(pos, index), offx, offy, offz, size, enabled, max);
+        /**
+         * Adds a new AnchorPoint by copying the address
+         * from the previously added AnchorPoint. 
+         */
+        public T add() {
+            if(destination.isEmpty())
+                throw new IllegalStateException("Couldn't add AnchorPoint with piggybacking add operation becuase the backing collection contained no prevously instantiated AnchorPoints!");
+            AnchorPoint last = destination.get(destination.size() - 1);
+            AnchorPoint newAnchor = make(last.getAddress().indexedCopy(destination.size()));
+            destination.add(newAnchor);
+            return destination;
         }
 
         protected AnchorPoint make(GridUUID override) {
+            Objects.requireNonNull(override);
             return new AnchorPoint(override, offx, offy, offz, size, enabled, max);
         }
     }

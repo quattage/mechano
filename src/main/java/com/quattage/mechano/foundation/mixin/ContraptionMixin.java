@@ -66,7 +66,7 @@ public abstract class ContraptionMixin implements MovingGriddableAccessor, Caten
         if(!(actor instanceof GriddableMovementBehaviour gmb)) return;
         BlockEntity be = world.getBlockEntity(add);
         if(!(be instanceof GriddableBlockEntity gbe)) return;
-        if(!gbe.getSurrogate().isSynced(world)) return;
+        if(!gbe.getSurrogate().isSynced()) return;
         mechano$griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), add));
     }
 
@@ -90,20 +90,20 @@ public abstract class ContraptionMixin implements MovingGriddableAccessor, Caten
         mechano$griddables.add(new TransientStructureContainer(gmb, gbe, block.pos(), targetPos));
     }
 
-    @Inject(method="onEntityCreated", at = { @At(value = "TAIL") })
+    @Inject(method="onEntityCreated", at = { @At(value = "TAIL") }, cancellable = false, remap = false)
     private void mechano$onContraptionPrepare(AbstractContraptionEntity entity, CallbackInfo info) {
         invokeAssemble(entity);
         mechano$griddables.clear(); // clear the array because its contents have to be re-acquired later
     }
 
-    @Inject(method = "onEntityInitialize", at = { @At(value = "HEAD") })
+    @Inject(method = "onEntityInitialize", at = { @At(value = "HEAD") }, cancellable = false, remap = false)
     private void mechano$onEntityInit(Level world, AbstractContraptionEntity entity, CallbackInfo info) {
         if(!world.isClientSide) return;
         Contraption cast = (Contraption)(Object)this;
         if(cast.presentBlockEntities == null || cast.presentBlockEntities.isEmpty()) 
             return;
         GriddableContraptionAttachment data = new GriddableContraptionAttachment(entity);
-        data.getAnchors(); // apply aliased addresses to all constituant griddables and cache the result
+        data.getAnchors(); // apply aliased addresses to all constituent griddables and cache the result
         entity.setData(MechanoData.ANCHOR_ATTACHMENT, data);
     }
 

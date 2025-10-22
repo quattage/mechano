@@ -32,7 +32,7 @@ public abstract class EntityMixin implements CatenaryAccess {
                 return;
         Griddable<?> points = GriddableEntityAttachment.of(cast, false);
         if(points == null) return;
-        points.destroySurrogate();
+        points.getSurrogate().destroy();
     }
 
     @Inject(method = "tick()V", at = {@At(value = "TAIL")}, cancellable = false)

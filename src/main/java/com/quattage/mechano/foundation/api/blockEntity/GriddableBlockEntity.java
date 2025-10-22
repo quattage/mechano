@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
@@ -11,16 +12,17 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.Griddable;
 import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.anchor.AnchorArray;
+import com.quattage.mechano.foundation.api.SurrogateNode;
+import com.quattage.mechano.foundation.api.anchor.AnchorCollection;
+import com.quattage.mechano.foundation.api.anchor.AnchorCollection.DynamicAnchorArray;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
 import com.quattage.mechano.foundation.api.entity.GriddableContraptionAttachment;
+import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.foundation.api.landmark.GridCatenary;
 import com.quattage.mechano.foundation.api.landmark.identifier.ContraptionUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
 import com.quattage.mechano.foundation.api.landmark.identifier.VoxelUUID;
-import com.quattage.mechano.foundation.api.switchboard.AnchorSyncPacket;
 import com.quattage.mechano.foundation.api.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.foundation.mixin.ContraptionMixin;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -30,13 +32,11 @@ import com.simibubi.create.content.contraptions.StructureTransform;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.createmod.catnip.gui.element.GuiGameElement;
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -49,63 +49,43 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity>, CatenaryAccess {
 
-    // always empty on the server
-    private AnchorArray anchors = AnchorArray.EMPTY;
+    private @Nullable AnchorCollection anchors; // always null server-side, and instantiated lazily on the client
     private final SurrogateNode surrogate = new SurrogateNode(this);
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
-        // TODO this should probably be moved out of the constructor
-        AnchorArray.Builder unbuiltAnchors = AnchorArray.construct(this);
-        constructAnchors(unbuiltAnchors);
-        this.anchors = unbuiltAnchors.confirm(getBlockPos());
     }
 
-    @Override
-    public abstract void constructAnchors(AnchorArray.Builder anchors);
-
-    public void applyContraptionOverride(GriddableContraptionAttachment newHost, BlockPos structurePos) {
-        Objects.requireNonNull(newHost);
-        if(!newHost.getWorld().isClientSide) return;
-        for(int x = 0; x < anchors.size(); x++) {
-            AnchorPoint anchor = anchors.getByIndex(x);
+    @OnlyIn(Dist.CLIENT)
+    public void applyContraptionOverride(GriddableContraptionAttachment contraptionHost, BlockPos structurePos) {
+        Objects.requireNonNull(contraptionHost);
+        for(int x = 0; x < getAnchors().size(); x++) {
+            AnchorPoint anchor = getAnchors().get(x);
             if(anchor == null) continue;
             GridUUID address = anchor.getAddress();
             if(address instanceof VoxelUUID)
-                anchor.replaceAddress(new ContraptionUUID(newHost.getSource().getUUID(), structurePos, x));
+                anchor.replaceAddress(new ContraptionUUID(contraptionHost.getSource().getUUID(), structurePos, x));
         }
-        surrogate.forceAddressChange(newHost.getSurrogate().getOrCreateAddress());
+        surrogate.forceHostHandoff(contraptionHost);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    protected abstract void constructAnchors(DynamicAnchorArray builder);
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public @NotNull AnchorCollection getAnchors() {
+        if(anchors != null) return anchors;
+        DynamicAnchorArray builder = AnchorCollection.asDynamic();
+        constructAnchors(builder);
+        anchors = builder.toArray();
+        return anchors;
     }
 
     @Override
-    public void onAnchorSynced(Level world, int index) {
-        if(!world.isClientSide) return;
+    @OnlyIn(Dist.CLIENT)
+    public void onAnchorSynced(ClientLevel world, int index) {
         invalidateRenderBoundingBox();
-    }
-
-    @Override
-    public void tick() {
-        if(!level.isClientSide) return;
-        if(!surrogate.isSynced(level)) return;
-        forEachCatenary(cat -> cat.tick((ClientLevel)level));
-    }
-
-    @Override
-    protected AABB createRenderBoundingBox() {
-        if(!level.isClientSide || !surrogate.isSynced(level)) 
-            return super.createRenderBoundingBox();
-        return AABB.INFINITE;
-    }
-
-    @Override
-    public void onLoad() {
-        // the anchorpoint holder is set to empty on the server despite
-        // being initially populated on both sides, this is stupid and dumb!!
-        // who wrote this!?? (me, i did)
-        if(!level.isClientSide)
-            this.anchors = AnchorArray.EMPTY;
-        super.onLoad();
-        anchors.updateOrientation(getBlockState());
     }
 
     @Override
@@ -118,6 +98,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
+    @OnlyIn(Dist.CLIENT)
     public Visual getVisual() {
         return (selected, tooltip, posX, posY, graphics) -> {
             GuiGameElement.of(getBlockState().getBlock().asItem())
@@ -127,15 +108,38 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        if(level.isClientSide())
+            getAnchors().updateOrientations(getBlockState());
+    }
+
+    @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
         super.onRefresh(world, pos, oldState, newState);
-        anchors.updateOrientation(newState);
+        if(world.isClientSide())
+            getAnchors().updateOrientations(newState);
     }
 
     @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
         super.onBlockBroken(world, pos, oldState, newState);
-        destroySurrogate();
+        getSurrogate().destroy();
+    }
+
+    @Override
+    public void tick() {
+        if(!surrogate.isSynced()) return;
+        if(level.isClientSide) {
+            forEachCatenary(cat -> cat.tick((ClientLevel)level));
+        }
+    }
+
+    @Override
+    protected AABB createRenderBoundingBox() {
+        if(!level.isClientSide || !surrogate.isSynced()) 
+            return super.createRenderBoundingBox();
+        return AABB.INFINITE;
     }
 
     @Override
@@ -144,23 +148,8 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    public AnchorArray getAnchors() {
-        return anchors;
-    }
-
-    @Override
     public GridUUID createSupplementaryAddress() {
         return new VoxelUUID(getBlockPos(), 0);
-    }
-
-    @Override
-    public SurrogateNode getSurrogate() {
-        return surrogate;
-    }
-
-    @Override
-    public String describeState() {
-        return "Block '" + getBlockState().getBlock().getName().getString() + "'";
     }
 
     @Override
@@ -173,14 +162,29 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         return getBlockPos().getCenter();
     }
 
+    @Override 
+    public SurrogateNode getSurrogate() { 
+        return surrogate; 
+    }
+
+    @Override
+    public String describeState() {
+        return "GriddableBE '" + getBlockState().getBlock().getName().getString() + "'";
+    }
+
+    @Override
+    public String toString() {
+        return describeState();
+    }
+
     @Override
     protected void saveTo(CompoundTag tag, Provider registries) {
-        writeAnchorData(tag);
+
     }
 
     @Override
     protected void loadFrom(CompoundTag tag, Provider registries) {
-        readAnchorData(tag);
+        
     }
 
 
@@ -210,7 +214,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             // Mechano.LOGGER.error("ASSEMBLY START");
             Objects.requireNonNull(data);
             if(!(data.getWorld() instanceof ServerLevel world) 
-                || !container.blockEntity.surrogate.isSynced(world)) 
+                || !container.blockEntity.surrogate.isSynced()) 
                     return;
             if(!ServerGrid.ALLOW_DYNAMIC_REASSERTIONS) {
                 container.blockEntity.surrogate.destroy();
@@ -220,7 +224,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             container.blockEntity.getSurrogate().forEachAssociated(node -> {
                 // GridUUID before = node.getAddress().copy();
                 node.replaceHolder(world, data, new ContraptionUUID(data, container.structurePos, node.getAddress().getIndex()), true);
-                data.markParticipatingSubsurrogate(container.blockEntity.getSurrogate(), container.structurePos);
+                // data.markParticipatingSubsurrogate(container.blockEntity.getSurrogate(), container.structurePos);
                 // Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
             });
             // Mechano.LOGGER.error("ASSEMBLY END");
@@ -240,12 +244,12 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
             Objects.requireNonNull(data);
             if(!(data.getWorld() instanceof ServerLevel world) || !ServerGrid.ALLOW_DYNAMIC_REASSERTIONS)
                 return;
-            data.forEachAssociated(transform, node -> {
-                // GridUUID before = node.getAddress().copy();
-                node.replaceHolder(world, container.blockEntity, container.blockEntity.getSurrogate().getOrCreateAddress(), false);
-                CatnipServices.NETWORK.sendToClientsTrackingChunk((ServerLevel)data.getSource().level(), new ChunkPos(data.getSource().getOnPos()), new AnchorSyncPacket(AnchorSynchronizer.of(node)));
-                // Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
-            });
+            // data.forEachAssociated(transform, node -> {
+            //     // GridUUID before = node.getAddress().copy();
+            //     node.replaceHolder(world, container.blockEntity, container.blockEntity.getSurrogate().getOrCreateAddress(), false);
+            //     CatnipServices.NETWORK.sendToClientsTrackingChunk((ServerLevel)data.getSource().level(), new ChunkPos(data.getSource().getOnPos()), new AnchorSyncPacket(AnchorSynchronizer.of(node)));
+            //     // Mechano.LOGGER.warn("Replaced " + before + " with " + node.getAddress());
+            // });
             data.getSource().removeData(MechanoData.ANCHOR_ATTACHMENT);
             // Mechano.LOGGER.error("DISASSEMBLY END");
         }
@@ -278,9 +282,9 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         }
 
         public default void invokeAssemble(AbstractContraptionEntity thisEntity) {
-            GriddableContraptionAttachment newData = new GriddableContraptionAttachment(thisEntity);
-            thisEntity.setData(MechanoData.ANCHOR_ATTACHMENT, newData);
-            forEachGriddable(container -> container.behaviour.onContraptionAssembled(newData, container));
+            Griddable<?> data = GriddableEntityAttachment.of(thisEntity, true);
+            forEachGriddable(container -> container.behaviour.onContraptionAssembled((GriddableContraptionAttachment)data, container));
+            // ((GriddableContraptionAttachment)data).broadcast(thisEntity.level());
         }
 
         public default void invokeDisassemble(AbstractContraptionEntity thisEntity, StructureTransform transform) {

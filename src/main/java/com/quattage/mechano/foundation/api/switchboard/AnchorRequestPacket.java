@@ -9,8 +9,6 @@ import net.createmod.catnip.net.base.ServerboundPacketPayload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 
 public record AnchorRequestPacket(GridUUID addr,GridResponse task) implements ServerboundPacketPayload {
@@ -27,13 +25,12 @@ public record AnchorRequestPacket(GridUUID addr,GridResponse task) implements Se
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
         Griddable<?> points = addr.getOrFindGriddable(player.level());
         if(points == null || !task.indicatesCompletion()) return;
         switch(task) {
             case TASK_SYNC_ANCHORS -> throw new UnsupportedOperationException("OH NOES! WE FORGOT TO IMPLEMENT THIS!!!! LOL");
-            case TASK_FORGET_ANCHORS -> points.destroySurrogate();
+            case TASK_FORGET_ANCHORS -> points.getSurrogate().destroy();
             case null, default -> GridResponse.logUnhandled(task, this);
         }
     }

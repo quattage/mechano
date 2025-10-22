@@ -65,12 +65,12 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
     
     @Override
     public boolean shouldRender(T be, Vec3 cameraPos) {
-        if(be.getSurrogate() != null && be.getSurrogate().isSynced(be.getLevel())) return true;
+        if(be.getSurrogate() != null && be.getSurrogate().isSynced()) return true;
         return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
     }
 
     @Override
     public boolean shouldRenderOffScreen(T be) {
-        return be.getSurrogate() != null && be.getSurrogate().isSynced(be.getLevel());
+        return be.getSurrogate() != null && be.getSurrogate().isSynced();
     }
 }

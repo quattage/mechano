@@ -11,7 +11,6 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.anchor.SurrogateNode;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.GridPath;
@@ -98,7 +97,7 @@ public class ServerMatrix implements Worldly {
                     continue;
                 }
                 SurrogateNode surrogate = node.getAddress().getSurrogate(parent.getWorld());
-                if(surrogate != null) surrogate.forgetIfNeeded(parent.getWorld());
+                if(surrogate != null) surrogate.forgetIfNeeded();
                 node.nullify();
             }
         }
@@ -112,15 +111,15 @@ public class ServerMatrix implements Worldly {
     }
 
     /**
-     * Performs a Flood-Fill to locate discontinuities in this LocalMatrix's
+     * Performs a Flood-Fill to locate discontinuities in this ServerMatrix's
      * underlying matrix. (https://en.wikipedia.org/wiki/Flood_fill) 
      * <p>
-     * Calls to this method will <strong>not</strong> modify this LocalMatrix
+     * Calls to this method will <strong>not</strong> modify this ServerMatrix
      * in-place. Instead, a list of ServerMatrices is formed as a result of the 
      * discontinuities contained within this one.
-     * @return List of new LocalMatrix instances. The list will be empty if this 
-     * LocalMatrix contains no discontinuities.
-     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
+     * @return List of new ServerMatrix instances. The list will be empty if this 
+     * ServerMatrix contains no discontinuities.
+     * @throws IllegalStateException if this ServerMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public @Nullable List<ServerMatrix> splitDiscontinuities() {
         assertNotDestroyed();
@@ -157,7 +156,7 @@ public class ServerMatrix implements Worldly {
      * @param start Address to begin searching from
      * @param end Address to search for
      * @return The resulting {@link GridPath} or null if no path could be found
-     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
+     * @throws IllegalStateException if this ServerMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public @Nullable GridPath findPathBetween(GridUUID start, GridUUID end) {
         assertNotDestroyed();
@@ -202,12 +201,12 @@ public class ServerMatrix implements Worldly {
     }
 
     /**
-     * Retrieve every node in this LocalMatrix belonging to the given
+     * Retrieve every node in this ServerMatrix belonging to the given
      * Address, while ignoring that address's index. All {@link GridNode GridNodes} 
      * that point to the given address will be added to the returned list.
      * @param addr Address to get all occurances of
      * @return A list of all GridNode objects belonging to the given BlockPos
-     * @throws IllegalStateException if this LocalMatrix has been {@link ServerMatrix#destroy destroyed.}
+     * @throws IllegalStateException if this ServerMatrix has been {@link ServerMatrix#destroy destroyed.}
      */
     public List<GridNode> getAllOccurancesOf(GridUUID addr) {
         assertNotDestroyed();
@@ -222,9 +221,9 @@ public class ServerMatrix implements Worldly {
 
     /**
      * Merges the contents of the provided {@link NodeMap}
-     * into this LocalMatrix.
+     * into this ServerMatrix.
      * @param otherNodes Nodes to add
-     * @return <code>true</code> if this LocalMatrix was modified.
+     * @return <code>true</code> if this ServerMatrix was modified.
      */
     public boolean addAll(NodeMap otherNodes) {
         assertNotDestroyed();
@@ -246,7 +245,7 @@ public class ServerMatrix implements Worldly {
      * @param address
      * @param expectedCount (Optional) How many nodes should be looked 
      * for at the non-indexed address. Defaults to {@link GridUUID#MAX_SHARED_OCCUPANCY}
-     * @return <code>true</code> if this LocalMatrix was modified as a result
+     * @return <code>true</code> if this ServerMatrix was modified as a result
      * of this call.
      */
     public boolean destroy(GridUUID address) {
@@ -260,7 +259,7 @@ public class ServerMatrix implements Worldly {
      * @param address
      * @param expectedCount (Optional) How many nodes should be looked 
      * for at the non-indexed address. Defaults to {@link GridUUID#MAX_SHARED_OCCUPANCY}
-     * @return <code>true</code> if this LocalMatrix was modified as a result
+     * @return <code>true</code> if this ServerMatrix was modified as a result
      * of this call.
      */
     public boolean destroy(GridUUID address, int expectedCount) {
@@ -400,22 +399,52 @@ public class ServerMatrix implements Worldly {
         this.index = index;
     }
 
+    
+
     /**
-     * Nullifies references in this LocalMatrix for when it is removed.<p>
-     * Note that this method does <strong>NOT</strong> broadcast
-     * changes or do any syncing - This method is specifically
-     * to mark grids as stale so they aren't used anymore.
-     * <p>
-     * If this method is called on a LocalMatrix that's actively being
-     * used, all hell will break lose.
+     * This method resets all instance variables in this ServerMatrix to
+     * <code>null</code> as a way to guarantee that it has been made 
+     * inaccessible. Subsequent access to ServerMatrix instances after
+     * they've been destroyed will result in a {@link #assertNotDestroyed() hard throw}<p>
+     * This method is designed to be invoked after a ServerMatrix has been
+     * made empty by some matrix modification operation, since empty grids
+     * shouldn't be held in memory. <p>
+     * Note that this method does <strong>NOT</strong> broadcast changes 
+     * or do any syncing to clients. This method is specifically to mark 
+     * grids as stale to find and seal memory leaks. It also may or may not
+     * yield a (very) marginal increase to GC performance, but I can't be 
+     * bothered to actually profile that.
+     * @see {@link #destroyAndSync}
      */
     public void destroy() {
         index = -1;
         nodes = null;
     }
 
+    /**
+     * The client-friendly version of {@link #destroy()}
+     * that marks this grid for removal, clears all grid
+     * references, and syncs to all relevent clients.
+     * <p>
+     * This method shouldn't be used during iterative processes
+     * since doing so can be unsafe and rather expensive.
+     * In most cases (aside from unit tests) the {@link ServerGrid}
+     * will do this automatically without incuring the extra overhead,
+     * since operations that result matrix modification are handled
+     * more intelligently.
+     * @see {@link #destroy()}
+     */
+    public void destroyAndSync() {
+        for(GridNode node : nodes) {
+            node.getSurrogate(getWorld()).forget();
+            node.broadcast(getWorld());
+            node.nullify();
+        }
+        destroy();
+    }
+
     public void assertNotDestroyed() {
-        assertNotDestroyed("An operation attempted to run on a LocalMatrix that has already been destroyed. (A LocalMatrix was probably leaked!)");
+        assertNotDestroyed("An operation attempted to run on a ServerMatrix that has already been destroyed. (A ServerMatrix was probably leaked!)");
     }
 
     protected boolean isDestroyed() {

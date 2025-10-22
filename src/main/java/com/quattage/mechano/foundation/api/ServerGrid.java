@@ -9,10 +9,10 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
-import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.foundation.api.landmark.GridLink;
 import com.quattage.mechano.foundation.api.landmark.GridNode;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
@@ -41,7 +41,6 @@ public final class ServerGrid extends SidedGridDispatcher {
     public static final boolean ALLOW_DYNAMIC_REASSERTIONS = true;
 
     public ObjectArrayList<ServerMatrix> matrices;
-    private LinkDataTracker tracker = null;
 
     private @Nullable Set<DeferredMember> deferred = new HashSet<>();
 
@@ -120,8 +119,6 @@ public final class ServerGrid extends SidedGridDispatcher {
     protected ServerGrid(Level world, ObjectArrayList<ServerMatrix> subgrids) {
         super(world);
         this.matrices = subgrids;
-        if(CatenaryRenderFeatures.LOG_LOCAL_CATENARIES)
-            tracker = new LinkDataTracker().enable().withLogging(LOGGER);
     }
 
 
@@ -140,6 +137,25 @@ public final class ServerGrid extends SidedGridDispatcher {
     @Override
     protected void onUnload() {
         deferred = new HashSet<>();
+    }
+
+    /**
+     * This method can be invoked by unit tests or
+     * by commands as a way to clear all grid data
+     * safely in any situation where such a task is 
+     * useful or necessary.
+     */
+    public void wipe() {
+        if(matrices != null) {
+            for(ServerMatrix matrix : matrices) {
+                if(matrix == null) continue;
+                matrix.destroyAndSync();
+            }
+        }
+        if(getWorld() != null)
+            getWorld().removeData(MechanoData.GRID_ATTACHMENT);        
+        this.deferred = null;
+        this.matrices = null;
     }
 
     @Override
@@ -227,8 +243,8 @@ public final class ServerGrid extends SidedGridDispatcher {
         if(!Griddable.assertPairExists(startPoints, endPoints, start, end)) 
             return;
 
-        boolean isStartSynced = startPoints.getSurrogate().isSynced(getWorld());
-        boolean isEndSynced = endPoints.getSurrogate().isSynced(getWorld());
+        boolean isStartSynced = startPoints.getSurrogate().isSynced();
+        boolean isEndSynced = endPoints.getSurrogate().isSynced();
 
         if(isStartSynced && isEndSynced) {
             ServerMatrix startPG = startPoints.getSurrogate().getOwnerMatrix();
@@ -239,8 +255,8 @@ public final class ServerGrid extends SidedGridDispatcher {
                 GridNode startNode = GridNode.getOrCreate(startPG, startPoints, start);
                 GridNode endNode = GridNode.getOrCreate(startPG, endPoints, end);
                 GridLink newLink = new GridLink(world, startNode, endNode, type.make(), CatenaryAttributable.makeSpan(world, startNode, endNode, type, null));
-                startPoints.getSurrogate().sync(world, startPG);
-                endPoints.getSurrogate().sync(world, startPG);
+                startPoints.getSurrogate().sync(startPG);
+                endPoints.getSurrogate().sync(startPG);
                 if(startNode.hasLink(newLink)) {
                     newLink.sendToClientsTracking(getWorld(), LinkResponsePacket.of(newLink, GridResponse.FAIL_DUPLICATE));
                     return;
@@ -252,8 +268,8 @@ public final class ServerGrid extends SidedGridDispatcher {
             ServerMatrix merged = mergeMatrices(startPG, endPG);
             GridNode startNode = GridNode.getOrCreate(merged, startPoints, start);
             GridNode endNode = GridNode.getOrCreate(merged, endPoints, end);
-            startPoints.getSurrogate().sync(world, merged);
-            endPoints.getSurrogate().sync(world, merged);
+            startPoints.getSurrogate().sync(merged);
+            endPoints.getSurrogate().sync(merged);
             linkUnsafe(startNode, endNode, type.make(), true);
             return;
         }
@@ -262,7 +278,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             GridNode startNode = startPoints.getSurrogate().constituents().get(start);
             GridNode endNode = GridNode.getOrCreate(startPoints.getSurrogate().getOwnerMatrix(), endPoints, end);
             startPoints.getSurrogate().constituents().add(endNode);
-            endPoints.getSurrogate().sync(getWorld(), startPoints.getSurrogate().getOwnerMatrix());
+            endPoints.getSurrogate().sync(startPoints.getSurrogate().getOwnerMatrix());
             endPoints.onAddedToMatrix(getWorld(), startPoints.getSurrogate().getOwnerMatrix());
             linkUnsafe(startNode, endNode, type.make(), true);
             return;
@@ -272,7 +288,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             GridNode startNode = GridNode.getOrCreate(endPoints.getSurrogate().getOwnerMatrix(), startPoints, start); 
             GridNode endNode = endPoints.getSurrogate().constituents().get(end);
             endPoints.getSurrogate().constituents().add(startNode);
-            startPoints.getSurrogate().sync(getWorld(), endPoints.getSurrogate().getOwnerMatrix());
+            startPoints.getSurrogate().sync(endPoints.getSurrogate().getOwnerMatrix());
             startPoints.onAddedToMatrix(getWorld(), endPoints.getSurrogate().getOwnerMatrix());
             linkUnsafe(startNode, endNode, type.make(), true);
             return;
@@ -464,7 +480,7 @@ public final class ServerGrid extends SidedGridDispatcher {
 
     @Override
     protected LinkDataTracker getDebugTracker() {
-        return tracker;
+        return null;
     }
 
     private static record DeferredMember(@Nullable GridNode root, ServerMatrix instantiator, GridUUID address, @Nullable ListTag links) {

@@ -17,10 +17,10 @@ import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatur
 import com.quattage.mechano.foundation.api.catenary.meshing.EntropyTracker;
 import com.quattage.mechano.foundation.api.catenary.meshing.MeshExtruder;
 import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.foundation.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.helper.Duo;
-import com.quattage.mechano.foundation.helper.VectorHelper;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;

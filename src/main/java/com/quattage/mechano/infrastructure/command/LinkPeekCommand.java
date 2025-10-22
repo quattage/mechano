@@ -12,8 +12,8 @@ import com.quattage.mechano.foundation.api.LinkDataStorage;
 import com.quattage.mechano.foundation.api.ServerGrid;
 import com.quattage.mechano.foundation.api.SidedGridDispatcher;
 import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.helper.VectorHelper;
-import com.quattage.mechano.foundation.helper.VectorHelper.Ray;
+import com.quattage.mechano.foundation.api.math.VectorHelper;
+import com.quattage.mechano.foundation.api.math.VectorHelper.Ray;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;

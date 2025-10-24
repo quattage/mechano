@@ -9,9 +9,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity.MovingGriddableAccessor;
+import com.quattage.mechano.api.catenary.CatenaryAccess;
+import com.quattage.mechano.api.landmark.GridCatenary;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
 import com.simibubi.create.content.contraptions.StructureTransform;

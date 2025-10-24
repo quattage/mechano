@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.foundation.api.transmitter.MechanoTransmissionTypes;
+import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 

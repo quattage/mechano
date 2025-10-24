@@ -1,6 +1,6 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.api.catenary.CatenaryAttributable;
+import com.quattage.mechano.api.catenary.CatenaryAttributable;
 
 import net.neoforged.bus.api.IEventBus;
 

@@ -13,14 +13,14 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBuildParameters;
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.ServerMatrix;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.catenary.meshing.CatenaryRenderFeatures;
-import com.quattage.mechano.foundation.api.landmark.GridLink;
-import com.quattage.mechano.foundation.api.landmark.GridNode;
-import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
+import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.ServerMatrix;
+import com.quattage.mechano.api.SidedGridDispatcher;
+import com.quattage.mechano.api.catenary.meshing.CatenaryRenderFeatures;
+import com.quattage.mechano.api.griddable.Griddable;
+import com.quattage.mechano.api.identifier.GridUUID;
+import com.quattage.mechano.api.landmark.GridLink;
+import com.quattage.mechano.api.landmark.GridNode;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;

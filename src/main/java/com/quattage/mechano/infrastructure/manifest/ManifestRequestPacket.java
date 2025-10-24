@@ -1,10 +1,10 @@
 package com.quattage.mechano.infrastructure.manifest;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.anchor.AnchorPoint;
-import com.quattage.mechano.foundation.api.landmark.identifier.GridUUID;
-import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.api.anchor.AnchorPoint;
+import com.quattage.mechano.api.griddable.Griddable;
+import com.quattage.mechano.api.identifier.GridUUID;
+import com.quattage.mechano.api.identifier.UUIDDiscriminator;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;

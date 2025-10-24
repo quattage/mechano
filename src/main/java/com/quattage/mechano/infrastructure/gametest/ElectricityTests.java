@@ -8,11 +8,11 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.circuit.BatteryDatasheet;
-import com.quattage.mechano.foundation.api.circuit.EnergyStore;
-import com.quattage.mechano.foundation.api.circuit.LeadAcidBattery;
-import com.quattage.mechano.foundation.api.circuit.VoltageDecay;
-import com.quattage.mechano.foundation.api.circuit.Watt;
+import com.quattage.mechano.api.circuit.BatteryDatasheet;
+import com.quattage.mechano.api.circuit.EnergyStore;
+import com.quattage.mechano.api.circuit.LeadAcidBattery;
+import com.quattage.mechano.api.circuit.VoltageDecay;
+import com.quattage.mechano.api.circuit.Watt;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -43,24 +43,25 @@ public class ElectricityTests {
     }
 
     @GameTest(template = "empty", batch="electricityTests")
-    public static void dumpLeadAcidVoC(GameTestHelper test) {
+    public static void dumpLeadAcidVoCDischarge(GameTestHelper test) {
         runBatteryCycleTest("discharge", () -> {
             LeadAcidBattery battery = new LeadAcidBattery();
             return battery.fillEnergy();
-        }, battery -> {
-            return battery.discharge(40);
-        }, test);
+        }, battery -> battery.discharge(50), test);
+    }
+
+    @GameTest(template = "empty", batch="electricityTests")
+    public static void dumpLeadAcidVoCCharge(GameTestHelper test) {
+        Watt uniform = new Watt(120, 40);
+        runBatteryCycleTest("charge", LeadAcidBattery::new
+            , battery -> battery.charge(uniform), test);
     }
 
     private static void runBatteryCycleTest(String actionName, Supplier<EnergyStore> batterySupplier, Function<EnergyStore, @Nullable Watt> action, GameTestHelper test) {
         String csv = "Tick,SoC,OCV,VTerm,Amps,Charge\n";
         EnergyStore battery = batterySupplier.get();
-        battery.fillEnergy();
-
-        // sample (a little bit more than) a 1 hour battery cycle
-        int res = 50;
-        for(int x = 0; x < 72800; x++) {
-            if(battery.isEmpty()) break;
+        int res = 250;
+        for(int x = 0; x < 90000; x++) { // This works out to be ~75 minutes of sampling. Extra time is needed to account for c rate for a full 1 hour cycle
             double soc = battery.getStateOfCharge();
             double ocv = battery.getDatasheet().getExpectedVoltage(soc);
             Watt delivered = action.apply(battery);
@@ -68,19 +69,16 @@ public class ElectricityTests {
                 test.fail("battery cycle test at sample " + x + " for EnergyStore of type '" + battery.getClass().getSimpleName() + "' produced a null watt value!");
                 return;
             }
-            // 72000 samples is too dense for excel
+            // don't write every sample to the csv since doing so creates a dataset too dense for viewing
             if(x % res == 0) {
                 double vterm = delivered.getVoltage();
                 double power = delivered.get();
                 double current = power / vterm;
                 csv += x + "," + String.format("%.6f", soc) + "," + String.format("%.6f", ocv) + "," + String.format("%.6f", vterm) + "," + String.format("%.6f", current) + "," + battery.getStoredCharge().toString() + "\n";
             }
-            // if(battery.isFull()) break;
         }
         dumpCSV(test, battery.getClass().getSimpleName().toLowerCase() + "_" + actionName, csv);
     }
-
-
 
 
     private static void dumpCSV(GameTestHelper test, String filename, String contents) {

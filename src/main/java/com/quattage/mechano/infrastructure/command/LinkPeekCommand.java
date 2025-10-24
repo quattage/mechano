@@ -8,12 +8,12 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.foundation.api.LinkDataStorage;
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.api.math.VectorHelper;
-import com.quattage.mechano.foundation.api.math.VectorHelper.Ray;
+import com.quattage.mechano.api.LinkDataStorage;
+import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.SidedGridDispatcher;
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.math.VectorOperations.Ray;
 
 import net.createmod.catnip.net.base.ClientboundPacketPayload;
 import net.createmod.catnip.platform.CatnipServices;
@@ -105,7 +105,7 @@ public class LinkPeekCommand {
                 }
             }
             if(holder == null) {
-                Ray ray = VectorHelper.getLookingRay(player, DeltaTracker.ONE.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
+                Ray ray = VectorOperations.getLookingRay(player, DeltaTracker.ONE.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
                 List<Entity> nearbyEntities = world.getEntitiesOfClass(Entity.class, AABB.ofSize(player.position(), 10d, 10d, 10d));
                 for(Entity e : nearbyEntities) {
                     Optional<Vec3> clip = e.getBoundingBox().clip(ray.start, ray.end);

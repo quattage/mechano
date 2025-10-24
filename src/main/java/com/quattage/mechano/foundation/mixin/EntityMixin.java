@@ -10,11 +10,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.quattage.mechano.foundation.api.Griddable;
-import com.quattage.mechano.foundation.api.LinkDataStorage;
-import com.quattage.mechano.foundation.api.catenary.CatenaryAccess;
-import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.api.LinkDataStorage;
+import com.quattage.mechano.api.catenary.CatenaryAccess;
+import com.quattage.mechano.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.api.griddable.Griddable;
+import com.quattage.mechano.api.landmark.GridCatenary;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 
 import it.unimi.dsi.fastutil.objects.ObjectSet;

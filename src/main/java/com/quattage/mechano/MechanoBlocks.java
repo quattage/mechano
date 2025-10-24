@@ -5,9 +5,9 @@ import static com.simibubi.create.api.behaviour.movement.MovementBehaviour.movem
 import static com.simibubi.create.foundation.data.ModelGen.customItemModel;
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
 import com.quattage.mechano.content.connector.SingleConnectorBlock;
 import com.quattage.mechano.content.test.TestAxisBlock;
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity.GriddableMovementBehaviour;
 import com.quattage.mechano.infrastructure.datagen.DynamicStateGenerator;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.tterrag.registrate.util.entry.BlockEntry;

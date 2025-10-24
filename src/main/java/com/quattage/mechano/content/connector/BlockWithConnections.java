@@ -2,9 +2,9 @@ package com.quattage.mechano.content.connector;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.foundation.api.blockEntity.SimpleBlockEntity;
-import com.quattage.mechano.foundation.api.blockEntity.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.blockEntity.SimpleBlockEntity;
+import com.quattage.mechano.api.blockEntity.SimpleBlockEntity.BERefreshable;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;

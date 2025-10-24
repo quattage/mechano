@@ -1,8 +1,8 @@
 package com.quattage.mechano;
 
+import com.quattage.mechano.api.blockEntity.renderer.GriddableBlockEntityRenderer;
 import com.quattage.mechano.content.connector.SingleConnectorBlockEntity;
 import com.quattage.mechano.content.test.TestAxisBlockEntity;
-import com.quattage.mechano.foundation.api.blockEntity.renderer.GriddableBlockEntityRenderer;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 import net.neoforged.bus.api.IEventBus;

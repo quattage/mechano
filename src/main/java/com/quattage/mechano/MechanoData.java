@@ -3,10 +3,10 @@ package com.quattage.mechano;
 
 import java.util.function.Supplier;
 
-import com.quattage.mechano.foundation.api.LinkDataStorage;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.entity.GriddableEntityAttachment;
-import com.quattage.mechano.foundation.api.landmark.GridConnection;
+import com.quattage.mechano.api.LinkDataStorage;
+import com.quattage.mechano.api.SidedGridDispatcher;
+import com.quattage.mechano.api.entity.GriddableEntityAttachment;
+import com.quattage.mechano.api.landmark.GridConnection;
 
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;

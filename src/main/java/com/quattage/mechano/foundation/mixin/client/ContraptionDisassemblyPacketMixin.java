@@ -6,10 +6,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.quattage.mechano.foundation.api.ClientGrid;
-import com.quattage.mechano.foundation.api.LinkDataStorage;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
-import com.quattage.mechano.foundation.api.landmark.GridCatenary;
+import com.quattage.mechano.api.ClientGrid;
+import com.quattage.mechano.api.LinkDataStorage;
+import com.quattage.mechano.api.SidedGridDispatcher;
+import com.quattage.mechano.api.landmark.GridCatenary;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.ContraptionDisassemblyPacket;
 import com.simibubi.create.content.contraptions.StructureTransform;

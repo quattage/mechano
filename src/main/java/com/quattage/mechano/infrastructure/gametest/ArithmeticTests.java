@@ -6,7 +6,7 @@ import java.util.Random;
 import java.util.function.BiFunction;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.math.BifrucatedLong;
+import com.quattage.mechano.foundation.math.Bifrucated64;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -28,51 +28,51 @@ public class ArithmeticTests {
     @GameTest(template = "empty", batch="arithmeticTests", attempts=64)
     public static void fixedPointConversionsExact(GameTestHelper test) {
         BigDecimal input = new BigDecimal(random(Integer.MAX_VALUE));
-        BifrucatedLong converter = new BifrucatedLong(input.toPlainString());
+        Bifrucated64 converter = new Bifrucated64(input.toPlainString());
         BigDecimal output = converter.bigValue();
-        if(fuzzyEquals(input, output, BifrucatedLong.EPSILON)) test.succeed();
+        if(fuzzyEquals(input, output, Bifrucated64.EPSILON)) test.succeed();
         else test.fail("expected " + input + ", got " + output);
     }
 
     @GameTest(template = "empty", batch="arithmeticTests")
     public static void fixedAdd(GameTestHelper test) {
-        runFixedReferenceTest(test, (a, b) -> (a.add(b, MathContext.DECIMAL128)), BifrucatedLong::add);
+        runFixedReferenceTest(test, (a, b) -> (a.add(b, MathContext.DECIMAL128)), Bifrucated64::add);
     }
 
     @GameTest(template = "empty", batch="arithmeticTests", attempts=64)
     public static void fixedSubtract(GameTestHelper test) {
-        runFixedReferenceTest(test, (a, b) -> (a.subtract(b, MathContext.DECIMAL128).max(BigDecimal.ZERO)), BifrucatedLong::subtract);
+        runFixedReferenceTest(test, (a, b) -> (a.subtract(b, MathContext.DECIMAL128).max(BigDecimal.ZERO)), Bifrucated64::subtract);
     }
 
     @GameTest(template = "empty", batch="arithmeticTests", attempts=64)
     public static void fixedSubtractExact(GameTestHelper test) {
         BigDecimal stimulusA = new BigDecimal(random(Integer.MAX_VALUE));
         BigDecimal stimulusB = new BigDecimal(0.00000004d);
-        BifrucatedLong testA = new BifrucatedLong(stimulusA);
-        BifrucatedLong testB = new BifrucatedLong(stimulusB);
+        Bifrucated64 testA = new Bifrucated64(stimulusA);
+        Bifrucated64 testB = new Bifrucated64(stimulusB);
         BigDecimal expected = stimulusA.subtract(stimulusB, MathContext.DECIMAL128);
-        BifrucatedLong response = testA.mutableCopy().subtract(testB);
-        if(fuzzyEquals(expected, response.bigValue(), BifrucatedLong.EPSILON)) test.succeed();
+        Bifrucated64 response = testA.mutableCopy().subtract(testB);
+        if(fuzzyEquals(expected, response.bigValue(), Bifrucated64.EPSILON)) test.succeed();
         else test.fail("expected " + expected + ", got " + response);
     }
 
-    private static void runFixedReferenceTest(GameTestHelper test, BiFunction<BigDecimal, BigDecimal, BigDecimal> stimulus, BiFunction<BifrucatedLong, BifrucatedLong, BifrucatedLong> response) {
+    private static void runFixedReferenceTest(GameTestHelper test, BiFunction<BigDecimal, BigDecimal, BigDecimal> stimulus, BiFunction<Bifrucated64, Bifrucated64, Bifrucated64> response) {
         BigDecimal a = new BigDecimal(random()), b = new BigDecimal(random()), parsedValue;
-        BifrucatedLong testA = new BifrucatedLong(a.toPlainString());
-        BifrucatedLong testB = new BifrucatedLong(b.toPlainString());
+        Bifrucated64 testA = new Bifrucated64(a.toPlainString());
+        Bifrucated64 testB = new Bifrucated64(b.toPlainString());
         BigDecimal referenceValue = stimulus.apply(a, b);
-        BifrucatedLong actualValue = response.apply(testA, testB);
+        Bifrucated64 actualValue = response.apply(testA, testB);
         if(actualValue == null) { test.fail("(" + a + ", " + b + ") Response function returned a null value!"); return; }
         String realValueAsString = actualValue.toString();
         try { parsedValue = new BigDecimal(realValueAsString); } catch(NullPointerException | NumberFormatException e) {
             test.fail("(" + a + ", " + b + ") string parse failure: expected " + String.format("%.2f", referenceValue) + ", got " + realValueAsString);
             return;
         }
-        if(!fuzzyEquals(referenceValue, parsedValue, BifrucatedLong.EPSILON)) {
+        if(!fuzzyEquals(referenceValue, parsedValue, Bifrucated64.EPSILON)) {
             test.fail("(" + a + ", " + b + ") string value mismatch: expected " + String.format("%.2f", referenceValue) + ", got " + String.format("%.2f", parsedValue));
             return;
         }
-        if(!fuzzyEquals(referenceValue, actualValue.bigValue(), BifrucatedLong.EPSILON)) {
+        if(!fuzzyEquals(referenceValue, actualValue.bigValue(), Bifrucated64.EPSILON)) {
             test.fail("(" + a + ", " + b + ") raw value mismatch: expected " + String.format("%.2f", referenceValue) + ", got " + String.format("%.2f", actualValue.doubleValue()));
             return;
         }

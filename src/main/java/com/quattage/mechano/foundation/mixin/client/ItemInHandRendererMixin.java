@@ -6,7 +6,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.foundation.api.landmark.identifier.UUIDDiscriminator;
+import com.quattage.mechano.api.identifier.UUIDDiscriminator;
 import com.quattage.mechano.foundation.item.MapLikeItemHoldable;
 import com.quattage.mechano.foundation.item.SpoolItem;
 

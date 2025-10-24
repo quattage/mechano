@@ -4,10 +4,10 @@ import javax.annotation.Nullable;
 
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.api.math.VectorHelper;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.VerticallyOrientedBlock;
+import com.quattage.mechano.foundation.math.VectorOperations;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
 
@@ -391,7 +391,7 @@ public class DirectionTransformer {
 
     public static Axis fromDisplacement(Vector3f offset) {
         Vector3f disp = new Vector3f(Math.abs(0.5f - offset.x), Math.abs(0.5f - offset.y), Math.abs(0.5f - offset.z));
-        float greatest = VectorHelper.getGreatest(disp);
+        float greatest = VectorOperations.getGreatest(disp);
         if(greatest == disp.x) return Axis.X;
         if(greatest == disp.y) return Axis.Y;
         return Axis.Z;

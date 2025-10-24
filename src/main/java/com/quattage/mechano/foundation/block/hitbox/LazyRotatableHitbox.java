@@ -5,8 +5,8 @@ import java.util.Objects;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.api.math.VectorRotationRepresentable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.math.VectorRotationRepresentable;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

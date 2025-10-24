@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.foundation.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;

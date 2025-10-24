@@ -3,8 +3,8 @@ package com.quattage.mechano.infrastructure.command;
 import java.util.UUID;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.quattage.mechano.foundation.api.ServerGrid;
-import com.quattage.mechano.foundation.api.SidedGridDispatcher;
+import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.SidedGridDispatcher;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;

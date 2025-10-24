@@ -2,12 +2,9 @@ package com.quattage.mechano.foundation.math;
 
 import java.math.BigDecimal;
 
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
-import com.mojang.serialization.RecordBuilder;
 import com.mojang.serialization.codecs.PrimitiveCodec;
 import com.quattage.mechano.Mechano;
 

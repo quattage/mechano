@@ -111,14 +111,14 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     public void onLoad() {
         super.onLoad();
         if(level.isClientSide())
-            getAnchors().updateOrientations(getBlockState());
+            getAnchors().updateOrientation(getBlockState());
     }
 
     @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
         super.onRefresh(world, pos, oldState, newState);
         if(world.isClientSide())
-            getAnchors().updateOrientations(newState);
+            getAnchors().updateOrientation(newState);
     }
 
     @Override

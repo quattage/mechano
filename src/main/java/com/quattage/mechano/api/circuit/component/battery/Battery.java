@@ -1,21 +1,25 @@
-package com.quattage.mechano.api.circuit;
+package com.quattage.mechano.api.circuit.component.battery;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.circuit.CircuitComponent;
+import com.quattage.mechano.api.circuit.Terminal;
+import com.quattage.mechano.api.circuit.Watt;
 import com.quattage.mechano.foundation.math.Bifrucated64;
 
 /**
  * The basic structue of a charge-based battery model storing
  * amp-hours at voltages that fluctuate with SoC and environmental factors.
  */
-public abstract class EnergyStore {
+public abstract class Battery implements CircuitComponent {
 
-    protected static final double DELTA = 0.05d / 3600d;
+    private final Terminal[] terminals;
 
     protected final Bifrucated64 internalCharge;
 
-    public EnergyStore() {
+    public Battery(Terminal negative, Terminal positive) {
+        this.terminals = Terminal.pair(negative, positive);
         this.internalCharge = Bifrucated64.ZERO.mutableCopy();
     }
 
@@ -41,6 +45,11 @@ public abstract class EnergyStore {
     public abstract Watt charge(Watt energy);
     public abstract Watt discharge(double current);
 
+    @Override
+    public Terminal getTerminal(int index) {
+        return terminals[index];
+    }
+
     /**
      * A battery's SoC describes its fullness as <code>storedAh / ratedAh</code>
      * @return A double, usually falling in the range of <code>[0, 1] (inclusive)</code>, but may be greater than 1 in some circumstances.
@@ -49,23 +58,26 @@ public abstract class EnergyStore {
         return (double)Math.max((internalCharge.doubleValue() / getDatasheet().getRatedCapacity()), 0d);
     }
 
-    /**
-     * In charge-based energy systems, the stored charge is the amount of power
-     * currently residing in the energy store. Power != energy, so this number
-     * is an amp-hours, not joules. In order to get the total joules 
-     * currently in this battery, you'd need to integrate the voltage curve.
-     * @return amp-hours currently contained within this energy store
-     */
+    @Override
+    public double getVoltage() {
+        return getDatasheetSafe().getExpectedVoltage(getStateOfCharge());
+    }
+
+    @Override
+    public double getCurrent() {
+        return getVoltage() / getDatasheetSafe().getInternalResistance();
+    }
+    
+    @Override
     public Bifrucated64 getStoredCharge() {
         return internalCharge;
     }
 
-    /**
-     * @return The voltage potential that this battery posesses
-     * at its current fullness.
-     */
-    public double getDischargeVoltage() {
-        return getDatasheetSafe().getExpectedVoltage(getStateOfCharge());
+    
+
+    @Override
+    public double getInstantaneousPower() {
+        return getVoltage() * internalCharge.doubleValue();
     }
 
     /**
@@ -84,12 +96,12 @@ public abstract class EnergyStore {
         return getDatasheetSafe().getExpectedVoltage(0);
     }
 
-    public EnergyStore eraseEnergy() {
+    public Battery eraseEnergy() {
         this.internalCharge.zeroOut();
         return this;
     }
 
-    public EnergyStore fillEnergy() {
+    public Battery fillEnergy() {
         this.internalCharge.setValue(getDatasheetSafe().getRatedCapacity());
         return this;
     }

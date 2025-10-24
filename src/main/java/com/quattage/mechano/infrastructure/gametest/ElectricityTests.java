@@ -8,11 +8,11 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.circuit.BatteryDatasheet;
-import com.quattage.mechano.api.circuit.EnergyStore;
-import com.quattage.mechano.api.circuit.LeadAcidBattery;
 import com.quattage.mechano.api.circuit.VoltageDecay;
 import com.quattage.mechano.api.circuit.Watt;
+import com.quattage.mechano.api.circuit.component.battery.Battery;
+import com.quattage.mechano.api.circuit.component.battery.BatteryDatasheet;
+import com.quattage.mechano.api.circuit.component.battery.LeadAcidBattery;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -57,9 +57,9 @@ public class ElectricityTests {
             , battery -> battery.charge(uniform), test);
     }
 
-    private static void runBatteryCycleTest(String actionName, Supplier<EnergyStore> batterySupplier, Function<EnergyStore, @Nullable Watt> action, GameTestHelper test) {
+    private static void runBatteryCycleTest(String actionName, Supplier<Battery> batterySupplier, Function<Battery, @Nullable Watt> action, GameTestHelper test) {
         String csv = "Tick,SoC,OCV,VTerm,Amps,Charge\n";
-        EnergyStore battery = batterySupplier.get();
+        Battery battery = batterySupplier.get();
         int res = 250;
         for(int x = 0; x < 90000; x++) { // This works out to be ~75 minutes of sampling. Extra time is needed to account for c rate for a full 1 hour cycle
             double soc = battery.getStateOfCharge();

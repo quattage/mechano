@@ -71,8 +71,6 @@ public interface Griddable<T> {
 
     public Level getWorld();
 
-    
-
     /**
      * Provides a supplementary {@link GridUUID}. This UUID
      * should always have an index of 0.

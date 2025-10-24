@@ -19,6 +19,7 @@ import com.quattage.mechano.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.math.VectorOperations;
 
 import net.minecraft.client.Minecraft;
@@ -49,7 +50,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * world-space.
  */
 @OnlyIn(Dist.CLIENT)
-public class AnchorPoint implements TrackedConstruct {
+public class AnchorPoint implements TrackedConstruct, OrientationUpdatable {
 
     private GridUUID address;
     private byte[] data;
@@ -176,21 +177,7 @@ public class AnchorPoint implements TrackedConstruct {
         data[4] = Byte.MIN_VALUE;
     }
 
-    /**
-     * Updates the location and hitbox of this AnchorPoint
-     * to reflect the data contained within the given BlockState
-     * @param state state to extract orientation data
-     */
-    public void updateOrientation(BlockState state) {
-        offset = VectorOperations.rotate(getRaw(), DirectionTransformer.extract(state));
-    }
-
-    /**
-     * Updates the location and hitbox of this AnchorPoint
-     * to reflect the orientation in the provided CombinedOrientation.
-     * Automatically rebuilds the hitbox as a result.
-     * @param dir Orientation to use when transforming this AnchorPoint
-     */
+    @Override
     public void updateOrientation(CombinedOrientation dir) {
         offset = VectorOperations.rotate(getRaw(), dir);
     }

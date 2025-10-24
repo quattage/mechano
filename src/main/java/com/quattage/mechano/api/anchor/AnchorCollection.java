@@ -13,16 +13,15 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
-public interface AnchorCollection extends Iterable<AnchorPoint> {
+public interface AnchorCollection extends Iterable<AnchorPoint>, OrientationUpdatable {
 
     public static AnchorArray asEmpty() {
         return new AnchorArray(new AnchorPoint[0]);
@@ -54,8 +53,8 @@ public interface AnchorCollection extends Iterable<AnchorPoint> {
         return size() <= 0;
     }
 
-    default void updateOrientations(BlockState state) {
-        CombinedOrientation dir = DirectionTransformer.extract(state);
+    @Override
+    default void updateOrientation(CombinedOrientation dir) {
         forEach(ap -> { ap.updateOrientation(dir); });
     }
     
@@ -262,6 +261,11 @@ public interface AnchorCollection extends Iterable<AnchorPoint> {
                     action.accept(ap);
                 }
             }
+        }
+
+        @Override
+        public void updateOrientation(CombinedOrientation dir) {
+            throw new UnsupportedOperationException("Orientations cannot be updated for aliased maps");
         }
     }
 }

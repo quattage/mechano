@@ -1,10 +1,11 @@
-package com.quattage.mechano.api.circuit;
+package com.quattage.mechano.api.circuit.component.battery;
 
 import java.util.Objects;
 import java.util.function.Function;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.quattage.mechano.api.circuit.VoltageDecay;
 import com.quattage.mechano.api.circuit.VoltageDecay.DataPoint;
 import com.quattage.mechano.foundation.math.Bifrucated64;
 

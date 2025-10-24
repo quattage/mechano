@@ -11,7 +11,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerPlayer;
 
 
-public record AnchorRequestPacket(GridUUID addr,GridResponse task) implements ServerboundPacketPayload {
+public record AnchorRequestPacket(GridUUID addr, GridResponse task) implements ServerboundPacketPayload {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, AnchorRequestPacket> STREAM_CODEC = StreamCodec.composite(
         UUIDDiscriminator.STREAM_CODEC, AnchorRequestPacket::addr,
@@ -29,7 +29,6 @@ public record AnchorRequestPacket(GridUUID addr,GridResponse task) implements Se
         Griddable<?> points = addr.getOrFindGriddable(player.level());
         if(points == null || !task.indicatesCompletion()) return;
         switch(task) {
-            case TASK_SYNC_ANCHORS -> throw new UnsupportedOperationException("OH NOES! WE FORGOT TO IMPLEMENT THIS!!!! LOL");
             case TASK_FORGET_ANCHORS -> points.getSurrogate().destroy();
             case null, default -> GridResponse.logUnhandled(task, this);
         }

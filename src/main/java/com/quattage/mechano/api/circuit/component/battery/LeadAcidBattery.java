@@ -1,17 +1,24 @@
-package com.quattage.mechano.api.circuit;
+package com.quattage.mechano.api.circuit.component.battery;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.circuit.CircuitComponent;
+import com.quattage.mechano.api.circuit.Terminal;
+import com.quattage.mechano.api.circuit.Watt;
+import com.quattage.mechano.api.circuit.Terminal.BasicTerminal;
 import com.quattage.mechano.foundation.math.Bifrucated64;
 
-public class LeadAcidBattery extends EnergyStore {
+public class LeadAcidBattery extends Battery {
 
     // peukert min, peukert max, and an arbitrary reisistive falloff
     protected static final float[] FACMAP = new float[] {0.15f, 1.2f, 1.0f};
 
     public LeadAcidBattery() {
-        super();
+        super(new BasicTerminal(), new BasicTerminal());
+    }
+
+    public LeadAcidBattery(Terminal negative, Terminal positive) {
+        super(negative, positive);
     }
 
     @Override
@@ -41,7 +48,7 @@ public class LeadAcidBattery extends EnergyStore {
         double etaOv = (vt <= maxVolts) ? 1d : Math.max(0d, 1d - FACMAP[2] * ((vt - maxVolts) / maxVolts));
         double etaEff = Math.max(0d, Math.min(1d, data.getChargeEfficiency() * etaRate * alpha * etaOv));
         double deltaAmps = imax * etaEff;
-        internalCharge.add(deltaAmps * DELTA);
+        internalCharge.add(deltaAmps * CircuitComponent.DELTA_AH);
         return new Watt(vt, deltaAmps);
     }
 
@@ -57,7 +64,13 @@ public class LeadAcidBattery extends EnergyStore {
             float falloff = (1.0f - (float)Math.exp(-60f * (float)soc)) / (1f - (float)Math.exp(-10d));
             current *= Math.max(0.001, falloff);
         }
-        internalCharge.subtract(current * DELTA);
+        internalCharge.subtract(current * CircuitComponent.DELTA_AH);
         return new Watt(realVoltage, current);
+    }
+
+    @Override
+    public Terminal getTerminal(int index) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getTerminal'");
     }
 }

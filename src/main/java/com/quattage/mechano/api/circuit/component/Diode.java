@@ -1,29 +1,31 @@
 package com.quattage.mechano.api.circuit.component;
 
+import com.quattage.mechano.api.circuit.topology.Terminal;
+import com.quattage.mechano.api.griddable.Griddable;
+
 import java.util.Arrays;
 import java.util.Collection;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.circuit.topology.CircuitComponent;
-import com.quattage.mechano.api.circuit.topology.Terminal;
-import com.quattage.mechano.api.griddable.Griddable;
 
-public class Resistor extends CircuitComponent {
+public class Diode extends CircuitComponent {
 
+    private static final float VT = 0.026f;
     private final Terminal[] terminals;
-    private final float ohms;
+    private final float ampRating;
 
-    public Resistor(float ohms) {
-        super("Resistor");
-        this.terminals = Terminal.pair(this);
-        this.ohms = ohms;
+    public Diode(float ampRating) {
+        super("Diode");
+        this.terminals = Terminal.functionalPair(this);
+        this.ampRating = ampRating;
     }
 
     @Override
-	public Collection<Terminal> getTerminals() {
-		return Arrays.asList(terminals);
-	}
+    public Collection<Terminal> getTerminals() {
+        return Arrays.asList(terminals);
+    }
 
     @Override
     public double getVoltage() {
@@ -32,7 +34,8 @@ public class Resistor extends CircuitComponent {
 
     @Override
     public double getCurrent() {
-        return getVoltage() / (double)ohms;
+        // unimplemented
+        return 0;
     }
 
     @Override

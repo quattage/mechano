@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.item;
+package com.quattage.mechano.foundation;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -17,7 +17,7 @@ public interface MapLikeItemHoldable {
     /**
      * Overrides the vanilla {@link ItemInHandRenderer} behaviour as invoked by the
      * {@link ItemInHandRendererMixin mixin.} You may implement your own logic here 
-     * for determining how the player should hold this spool in first person, or 
+     * for determining how the player should hold this item in first person, or 
      * you can simply return <code>false</code> here to do nothing and use the 
      * default pose.
      * @return <code>true</code> if traditional hand rendering should

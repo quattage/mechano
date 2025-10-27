@@ -18,9 +18,8 @@ import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
-import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -36,7 +35,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -47,7 +45,8 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * An AnchorPoint is the client-sided mirror implementation of the
  * {@link com.quattage.mechano.api.landmark.GridNode GridNode},
  * built specifically to store transformation and hitbox data in
- * world-space.
+ * world-space. The AnchorPoint allows for terminals to be directly
+ * interacted with by the player in the world.
  */
 @OnlyIn(Dist.CLIENT)
 public class AnchorPoint implements TrackedConstruct, OrientationUpdatable {
@@ -440,7 +439,7 @@ public class AnchorPoint implements TrackedConstruct, OrientationUpdatable {
          */
         public T addTo(Griddable<?> points) {
             Objects.requireNonNull(points);
-            GridUUID addr = points.createSupplementaryAddress();
+            GridUUID addr = points.createAddress();
             AnchorPoint newAnchor = make(addr.indexedCopy(destination.size()));
             destination.add(newAnchor);
             return destination;

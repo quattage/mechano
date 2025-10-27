@@ -18,7 +18,7 @@ import com.quattage.mechano.api.landmark.GridCatenary;
 import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import net.createmod.catnip.theme.Color;
 import net.minecraft.Util;

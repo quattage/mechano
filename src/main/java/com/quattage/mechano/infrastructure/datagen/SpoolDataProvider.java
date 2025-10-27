@@ -1,7 +1,7 @@
 package com.quattage.mechano.infrastructure.datagen;
 
-import com.quattage.mechano.foundation.item.MechanoItemProperties;
-import com.quattage.mechano.foundation.item.SpoolItem;
+import com.quattage.mechano.api.item.SpoolItem;
+import com.quattage.mechano.foundation.MechanoItemProperties;
 import com.tterrag.registrate.providers.DataGenContext;
 import com.tterrag.registrate.providers.RegistrateItemModelProvider;
 

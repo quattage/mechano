@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.identifier.UUIDDiscriminator;
-import com.quattage.mechano.foundation.item.MapLikeItemHoldable;
-import com.quattage.mechano.foundation.item.SpoolItem;
+import com.quattage.mechano.api.item.SpoolItem;
+import com.quattage.mechano.foundation.MapLikeItemHoldable;
 
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;

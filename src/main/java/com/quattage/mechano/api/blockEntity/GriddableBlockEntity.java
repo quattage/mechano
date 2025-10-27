@@ -15,6 +15,7 @@ import com.quattage.mechano.api.anchor.AnchorCollection;
 import com.quattage.mechano.api.anchor.AnchorPoint;
 import com.quattage.mechano.api.anchor.AnchorCollection.DynamicAnchorArray;
 import com.quattage.mechano.api.catenary.CatenaryAccess;
+import com.quattage.mechano.api.circuit.topology.CircuitComponent;
 import com.quattage.mechano.api.entity.GriddableContraptionAttachment;
 import com.quattage.mechano.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.api.griddable.Griddable;
@@ -50,6 +51,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable<BlockEntity>, CatenaryAccess {
 
     private @Nullable AnchorCollection anchors; // always null server-side, and instantiated lazily on the client
+    private @Nullable CircuitComponent circuit; // instantiated lazily
     private final SurrogateNode surrogate = new SurrogateNode(this);
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -69,6 +71,19 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         surrogate.forceHostHandoff(contraptionHost);
     }
 
+    /**
+     * Provides a {@link DynamicAnchorArray} for fluent
+     * construction of fresh {@link AnchorPoint} instances.
+     * Here's an example of how to use it:
+     * <pre>
+     * builder.newAnchor()
+            .at(8, 16, 8)   // pixel measurements relative to the origin of the block - you can use blockbench to derive these
+            .connections(3) // this AnchorPoint can support up to 3 connections
+            .radius(1.7f)   // the physical size of this AnchorPoint's hitbox
+            .addTo(this);   // flush this anchorpoint into the statically-typed array that will be created as a result of this call
+        </pre>
+     * @param builder
+     */
     @OnlyIn(Dist.CLIENT)
     protected abstract void constructAnchors(DynamicAnchorArray builder);
 
@@ -80,6 +95,15 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         constructAnchors(builder);
         anchors = builder.toArray();
         return anchors;
+    }
+
+    protected abstract void constructCircuit();
+
+    @Override
+    public @NotNull CircuitComponent getCircuit() {
+        if(circuit != null) return circuit;
+        // TODO factory framework for circuits
+        return null;
     }
 
     @Override
@@ -148,7 +172,7 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     }
 
     @Override
-    public GridUUID createSupplementaryAddress() {
+    public GridUUID createAddress() {
         return new VoxelUUID(getBlockPos(), 0);
     }
 

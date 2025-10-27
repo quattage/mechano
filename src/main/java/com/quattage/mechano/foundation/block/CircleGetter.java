@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper.shape;
+package com.quattage.mechano.foundation.block;
 
 import java.util.function.Function;
 

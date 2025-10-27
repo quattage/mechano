@@ -1,5 +1,11 @@
 package com.quattage.mechano.api.circuit;
 
+/**
+ * A library of LUTs for mapping an arbitrary (usually scalar)
+ * value to open-circuit voltage. A VoltageDecay object can be 
+ * stored by an energy producer/consumer to declare a voltage 
+ * output in response to state of charge, thermal load, RPM, etc.
+ */
 public interface VoltageDecay {
 
     /**
@@ -29,6 +35,11 @@ public interface VoltageDecay {
         return Math.clamp(in, nominal(), minimal());
     }
 
+    /**
+     * A single voltage value.
+     * This implementation is used in place of a LUT or decay
+     * function for a constant voltage response regardless of SoC
+     */
     public static class Constant implements VoltageDecay {
 
         public final float voltage;
@@ -47,6 +58,9 @@ public interface VoltageDecay {
 
     }
 
+    /**
+     * A single sloped line.
+     */
     public static class Linear implements VoltageDecay {
         
         private final float min;
@@ -145,7 +159,7 @@ public interface VoltageDecay {
     /**
      * A LUT with a stairstepped cubic interpolation that creates
      * smooth transitions where each datapoint forms a ridge when graphed.
-     * This is useful if you're lut is low resolution and you'd like to add additional dynamism.
+     * This is particularly useful creating sigmoid-like graphs.
      */
     public static class SteppedLUT extends LUT {
 
@@ -169,8 +183,8 @@ public interface VoltageDecay {
     }
 
     /**
-     * A LUT using catmull-rom cubic spline interpolation to generate a curve that loosely
-     * follows the provided dataset.
+     * A LUT using catmull-rom cubic spline interpolation to generate
+     * a curve that conforms to the provided dataset.
      */
     public static class CubicLUT extends LUT {
 
@@ -184,12 +198,10 @@ public interface VoltageDecay {
 
         @Override
         protected double processDatapoint(double lookup, int x, DataPoint current, DataPoint next) {
-
             DataPoint previous = (x > 0) ? table[x - 1] : current;
             DataPoint supernext = (x < table.length - 2) ? table[x + 2] : next;
             double t = Math.max(0f, Math.min(1f, (lookup - current.soc) / (next.soc - current.soc)));
             double t2 = t * t, t3 = t2 * t;
-
             // catmull–Rom spline interpolation
             return 0.5f * (
                 (2f * current.volts) +

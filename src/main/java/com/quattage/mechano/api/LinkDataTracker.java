@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 
 import com.quattage.mechano.api.landmark.GridCatenary;
 import com.quattage.mechano.api.landmark.GridConnection;
-import com.quattage.mechano.foundation.helper.Worldly;
+import com.quattage.mechano.foundation.WorldReturnable;
 
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -96,7 +96,7 @@ public class LinkDataTracker {
         return out;
     }
 
-    public static class TrackedLink implements Worldly {
+    public static class TrackedLink implements WorldReturnable {
 
         private final long time;
         private final LevelReader world;

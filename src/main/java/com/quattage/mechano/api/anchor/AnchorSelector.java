@@ -17,7 +17,7 @@ import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.api.transmitter.Transmitable;
 import com.quattage.mechano.api.transmitter.Transmitable.HoldingSummary;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;

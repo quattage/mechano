@@ -2,11 +2,10 @@ package com.quattage.mechano.api.circuit.component.battery;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.circuit.CircuitComponent;
-import com.quattage.mechano.api.circuit.Terminal;
 import com.quattage.mechano.api.circuit.Watt;
-import com.quattage.mechano.api.circuit.Terminal.BasicTerminal;
-import com.quattage.mechano.foundation.math.Bifrucated64;
+import com.quattage.mechano.api.circuit.topology.CircuitComponent;
+import com.quattage.mechano.api.griddable.Griddable;
+import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 public class LeadAcidBattery extends Battery {
 
@@ -14,11 +13,7 @@ public class LeadAcidBattery extends Battery {
     protected static final float[] FACMAP = new float[] {0.15f, 1.2f, 1.0f};
 
     public LeadAcidBattery() {
-        super(new BasicTerminal(), new BasicTerminal());
-    }
-
-    public LeadAcidBattery(Terminal negative, Terminal positive) {
-        super(negative, positive);
+        super("LeadAcidBattery");
     }
 
     @Override
@@ -69,8 +64,8 @@ public class LeadAcidBattery extends Battery {
     }
 
     @Override
-    public Terminal getTerminal(int index) {
+    public void tick(Griddable<?> host) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getTerminal'");
+        throw new UnsupportedOperationException("Unimplemented method 'tick'");
     }
 }

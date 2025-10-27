@@ -1,5 +1,5 @@
 
-package com.quattage.mechano.foundation.math;
+package com.quattage.mechano.foundation.numeric;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;

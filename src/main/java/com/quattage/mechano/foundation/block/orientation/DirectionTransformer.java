@@ -7,7 +7,7 @@ import org.joml.Vector3f;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.SimpleOrientedBlock;
 import com.quattage.mechano.foundation.block.VerticallyOrientedBlock;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.RotatedPillarKineticBlock;
 

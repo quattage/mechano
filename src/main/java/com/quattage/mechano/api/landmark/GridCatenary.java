@@ -23,7 +23,7 @@ import com.quattage.mechano.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.api.transmitter.Transmitter;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.helper.Duo;
+import com.quattage.mechano.foundation.numeric.Duo;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.StructureTransform;
 

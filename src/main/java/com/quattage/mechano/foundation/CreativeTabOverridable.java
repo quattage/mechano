@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper;
+package com.quattage.mechano.foundation;
 
 import org.jetbrains.annotations.Nullable;
 

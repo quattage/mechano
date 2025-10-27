@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper.shape;
+package com.quattage.mechano.foundation.block;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Consumer;

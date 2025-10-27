@@ -7,7 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import com.quattage.mechano.api.circuit.VoltageDecay;
 import com.quattage.mechano.api.circuit.VoltageDecay.DataPoint;
-import com.quattage.mechano.foundation.math.Bifrucated64;
+import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 public class BatteryDatasheet implements Cloneable {
 

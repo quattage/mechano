@@ -18,7 +18,7 @@ import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.api.transmitter.Transmitter;
 import com.quattage.mechano.api.transmitter.TransmitterRegistry;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.helper.Worldly;
+import com.quattage.mechano.foundation.WorldReturnable;
 
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -46,7 +46,7 @@ import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRender
  * This class will probably be abstracted or replaced when
  * I move over to flywheel and/or make use of compute shaders.
  */
-public class CatenaryMeshBuffer implements CatenaryAttributable, Worldly {
+public class CatenaryMeshBuffer implements CatenaryAttributable, WorldReturnable {
 
     public static final CatenaryMeshBuffer REUSABLE = CatenaryMeshBuffer.asEmpty();
 

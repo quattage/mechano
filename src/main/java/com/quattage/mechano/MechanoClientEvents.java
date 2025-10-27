@@ -12,11 +12,11 @@ import com.quattage.mechano.api.catenary.CatenaryModelProvider;
 import com.quattage.mechano.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.identifier.EntityUUID;
+import com.quattage.mechano.api.item.SpoolItem;
 import com.quattage.mechano.api.landmark.GridCatenary;
-import com.quattage.mechano.foundation.item.LeftClickCapturable;
-import com.quattage.mechano.foundation.item.MechanoItemProperties;
-import com.quattage.mechano.foundation.item.MechanoItemProperties.SpoolFullnessProperty;
-import com.quattage.mechano.foundation.item.SpoolItem;
+import com.quattage.mechano.foundation.LeftClickCapturable;
+import com.quattage.mechano.foundation.MechanoItemProperties;
+import com.quattage.mechano.foundation.MechanoItemProperties.SpoolFullnessProperty;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
 import net.minecraft.client.Minecraft;
@@ -87,7 +87,7 @@ public class MechanoClientEvents {
 
         if(!instance.options.getCameraType().isFirstPerson()) return;
         ((CatenaryAccess)player).forEachCatenary(cat -> {
-            if(!cat.getPrimaryConstruct(player.level()).equals(GriddableEntityAttachment.of(player, false).createSupplementaryAddress()))
+            if(!cat.getPrimaryConstruct(player.level()).equals(GriddableEntityAttachment.of(player, false).createAddress()))
                 return;
             cat.render(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
                 Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));

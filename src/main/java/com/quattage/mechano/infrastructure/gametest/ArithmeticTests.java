@@ -6,7 +6,7 @@ import java.util.Random;
 import java.util.function.BiFunction;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.foundation.math.Bifrucated64;
+import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;

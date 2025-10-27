@@ -1,8 +1,9 @@
-package com.quattage.mechano.foundation.item;
+package com.quattage.mechano.foundation;
 
 import java.util.ArrayList;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.item.SpoolItem;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.builders.ItemBuilder;
 

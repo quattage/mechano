@@ -143,7 +143,7 @@ public class GriddableEntityAttachment implements Griddable<Entity>, CatenaryAcc
     }
 
     @Override
-    public GridUUID createSupplementaryAddress() {
+    public GridUUID createAddress() {
         return new EntityUUID(entity.getUUID(), 0);
     }
 

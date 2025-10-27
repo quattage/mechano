@@ -1,6 +1,9 @@
 package com.quattage.mechano.content.connector;
 
+import org.jetbrains.annotations.NotNull;
+
 import com.quattage.mechano.api.anchor.AnchorCollection.DynamicAnchorArray;
+import com.quattage.mechano.api.circuit.topology.CircuitComponent;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -22,6 +25,12 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
             .connections(3)
             .radius(1.7f)
             .addTo(this);
+    }
+
+    @Override
+    protected void constructCircuit() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'constructCircuit'");
     }
 }
 

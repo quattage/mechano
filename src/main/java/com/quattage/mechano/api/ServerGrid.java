@@ -247,6 +247,7 @@ public final class ServerGrid extends SidedGridDispatcher {
         boolean isStartSynced = startPoints.getSurrogate().isSynced();
         boolean isEndSynced = endPoints.getSurrogate().isSynced();
 
+        // nodes both belong to a grid
         if(isStartSynced && isEndSynced) {
             ServerMatrix startPG = startPoints.getSurrogate().getOwnerMatrix();
             ServerMatrix endPG = endPoints.getSurrogate().getOwnerMatrix();
@@ -275,6 +276,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
+        // start belongs to a grid, but end doesnt
         if(isStartSynced && !isEndSynced) {
             GridNode startNode = startPoints.getSurrogate().constituents().get(start);
             GridNode endNode = GridNode.getOrCreate(startPoints.getSurrogate().getOwnerMatrix(), endPoints, end);
@@ -285,6 +287,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
+        // end belongs to a grid, but start doesn't
         if(!isStartSynced && isEndSynced) {
             GridNode startNode = GridNode.getOrCreate(endPoints.getSurrogate().getOwnerMatrix(), startPoints, start); 
             GridNode endNode = endPoints.getSurrogate().constituents().get(end);
@@ -295,6 +298,7 @@ public final class ServerGrid extends SidedGridDispatcher {
             return;
         }
 
+        // neither node belongs to a grid
         if(!isStartSynced && !isEndSynced) {
             ServerMatrix newNodes = ServerMatrix.createAndPrepare(this);
             GridNode startNode = GridNode.createNew(newNodes, startPoints, start);

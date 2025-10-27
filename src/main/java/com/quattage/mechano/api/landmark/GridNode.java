@@ -22,7 +22,7 @@ import com.quattage.mechano.api.identifier.UUIDDiscriminator;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.api.switchboard.LinkSwapPacket;
 import com.quattage.mechano.api.switchboard.GridResponse.AnchorSynchronizer;
-import com.quattage.mechano.foundation.helper.Worldly;
+import com.quattage.mechano.foundation.WorldReturnable;
 
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -45,7 +45,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * A GridNode is the primary functional element of the {@link SidedGridDispatcher Grid API} 
  * and provides access to the Y axis of an adjacency list defined by the {@link ServerMatrix}.
  */
-public class GridNode extends GridUUID implements Iterable<GridLink>, Worldly {
+public class GridNode extends GridUUID implements Iterable<GridLink>, WorldReturnable {
 
     /**
      * The only time this can be reassigned is if 

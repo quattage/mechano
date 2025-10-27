@@ -13,7 +13,7 @@ import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.api.transmitter.Transmitter;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.createmod.catnip.theme.Color;

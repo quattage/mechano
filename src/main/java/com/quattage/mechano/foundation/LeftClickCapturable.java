@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.item;
+package com.quattage.mechano.foundation;
 
 import com.quattage.mechano.MechanoClientEvents;
 

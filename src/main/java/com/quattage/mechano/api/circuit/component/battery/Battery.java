@@ -1,27 +1,34 @@
 package com.quattage.mechano.api.circuit.component.battery;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.circuit.CircuitComponent;
-import com.quattage.mechano.api.circuit.Terminal;
 import com.quattage.mechano.api.circuit.Watt;
-import com.quattage.mechano.foundation.math.Bifrucated64;
+import com.quattage.mechano.api.circuit.topology.CircuitComponent;
+import com.quattage.mechano.api.circuit.topology.Terminal;
+import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 /**
  * The basic structue of a charge-based battery model storing
  * amp-hours at voltages that fluctuate with SoC and environmental factors.
  */
-public abstract class Battery implements CircuitComponent {
+public abstract class Battery extends CircuitComponent {
 
-    private final Terminal[] terminals;
+    protected final Terminal[] terminals;
+    protected final Bifrucated64 internalCharge = Bifrucated64.ZERO.mutableCopy();
 
-    protected final Bifrucated64 internalCharge;
-
-    public Battery(Terminal negative, Terminal positive) {
-        this.terminals = Terminal.pair(negative, positive);
-        this.internalCharge = Bifrucated64.ZERO.mutableCopy();
+    public Battery(String chemicalName) {
+        super(chemicalName);
+        this.terminals = Terminal.polarPair(this);
     }
+
+    @Override
+	public Collection<Terminal> getTerminals() {
+		return Arrays.asList(terminals);
+	}
 
     /**
      * Construct a new {@link BatteryDatasheet datasheet} defining
@@ -45,11 +52,6 @@ public abstract class Battery implements CircuitComponent {
     public abstract Watt charge(Watt energy);
     public abstract Watt discharge(double current);
 
-    @Override
-    public Terminal getTerminal(int index) {
-        return terminals[index];
-    }
-
     /**
      * A battery's SoC describes its fullness as <code>storedAh / ratedAh</code>
      * @return A double, usually falling in the range of <code>[0, 1] (inclusive)</code>, but may be greater than 1 in some circumstances.
@@ -62,29 +64,22 @@ public abstract class Battery implements CircuitComponent {
     public double getVoltage() {
         return getDatasheetSafe().getExpectedVoltage(getStateOfCharge());
     }
-
-    @Override
-    public double getCurrent() {
-        return getVoltage() / getDatasheetSafe().getInternalResistance();
-    }
     
     @Override
     public Bifrucated64 getStoredCharge() {
         return internalCharge;
     }
 
-    
-
     @Override
-    public double getInstantaneousPower() {
-        return getVoltage() * internalCharge.doubleValue();
+    public double getCurrent() {
+        return getVoltage() / getDatasheetSafe().getInternalResistance();
     }
 
     /**
      * @return The voltage potential that this battery posesses when 
      * it is completely full
      */
-    public double getNominalVoltage() {
+    public double getNomonalChargeVoltage() {
         return getDatasheetSafe().getExpectedVoltage(1);
     }
 
@@ -92,7 +87,7 @@ public abstract class Battery implements CircuitComponent {
      * @return The voltage potential that this battery posesses
      * when it is considered to be empty
      */
-    public double getMinimumVoltage() {
+    public double getMinimumChargeVoltage() {
         return getDatasheetSafe().getExpectedVoltage(0);
     }
 

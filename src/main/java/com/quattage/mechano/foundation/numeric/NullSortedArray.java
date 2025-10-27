@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper;
+package com.quattage.mechano.foundation.numeric;
 
 import java.util.Arrays;
 import java.util.Collection;

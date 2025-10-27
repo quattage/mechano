@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.helper;
+package com.quattage.mechano.foundation;
 
 import java.lang.ref.WeakReference;
 
@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 
-public interface Worldly {
+public interface WorldReturnable {
 
     /**
      * Compares both worlds based on their reference
@@ -30,10 +30,10 @@ public interface Worldly {
 
     /**
      * A weakly referenced object that contains logic for comparing against a
-     * {@link Worldly} object, which considers the dimension of a {@link Level} 
+     * {@link WorldReturnable} object, which considers the dimension of a {@link Level} 
      * when comparing.
      */
-    public static class WorldlyReference<T extends Worldly> extends WeakReference<T> {
+    public static class WorldlyReference<T extends WorldReturnable> extends WeakReference<T> {
 
         public WorldlyReference(T referent) { super(referent); }
 
@@ -45,23 +45,23 @@ public interface Worldly {
          * Determines whether or not this WorldlyReference refers to the given
          * world, stipulating that the world has to bo belong to the same
          * dimension in order to be functionally identical.
-         * {@link Worldly}
+         * {@link WorldReturnable}
          * @param worldly
          * @return <code>true</code> if this WorldlyReference 
          */
-        public boolean isAttachedTo(Worldly worldly) {
+        public boolean isAttachedTo(WorldReturnable worldly) {
             if(worldly == null) return false;
             return isAttachedTo(worldly.getWorld());
         }
 
         public boolean isAttachedTo(Level world) {
             if(refersTo(null)) return false;
-            return Worldly.areWorldsEqual(get().getWorld(), world);
+            return WorldReturnable.areWorldsEqual(get().getWorld(), world);
         }
 
         public boolean isAttachedTo(LevelAccessor world) {
             if(refersTo(null)) return false;
-            return Worldly.areWorldsEqual(get().getWorld(), world);
+            return WorldReturnable.areWorldsEqual(get().getWorld(), world);
         }
     }
 }

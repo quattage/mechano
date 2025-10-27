@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.math;
+package com.quattage.mechano.foundation.numeric;
 
 import java.math.BigDecimal;
 

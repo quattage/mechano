@@ -15,7 +15,7 @@ import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.landmark.GridConnection.InsertionPolicy;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.api.switchboard.LinkResponsePacket;
-import com.quattage.mechano.foundation.helper.Worldly;
+import com.quattage.mechano.foundation.WorldReturnable;
 import com.quattage.mechano.infrastructure.manifest.GridManifestGenerator;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -47,7 +47,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * to the level.
  */
 @EventBusSubscriber
-public abstract sealed class SidedGridDispatcher implements Worldly permits ClientGrid, ServerGrid {
+public abstract sealed class SidedGridDispatcher implements WorldReturnable permits ClientGrid, ServerGrid {
 // these words aren't in the bible
     
     protected static final Logger LOGGER = LogUtils.getLogger();

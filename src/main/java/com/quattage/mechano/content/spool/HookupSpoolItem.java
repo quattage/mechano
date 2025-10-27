@@ -1,8 +1,8 @@
 package com.quattage.mechano.content.spool;
 
+import com.quattage.mechano.api.item.SpoolItem;
 import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.item.SpoolItem;
 
 public class HookupSpoolItem extends SpoolItem<HookupTransmitter> {
 

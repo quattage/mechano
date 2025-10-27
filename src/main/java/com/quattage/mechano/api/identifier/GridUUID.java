@@ -11,7 +11,7 @@ import com.quattage.mechano.api.anchor.AnchorPoint;
 import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.griddable.SurrogateNode;
 import com.quattage.mechano.api.switchboard.TrackedConstruct;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.platform.CatnipServices;

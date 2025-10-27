@@ -130,14 +130,14 @@ public final class SurrogateNode {
 
     /**
      * The first call to this method creates & stores an internal reference to the 
-     * {@link Griddable#createSupplementaryAddress() supplementary address} returned
+     * {@link Griddable#createAddress() supplementary address} returned
      * by the {@link Griddable host} of this SurrogateNode. Subsequent calls will
      * refer to this stored reference. 
      * @return {@link GridUUID unindexed address} of this SurrogateNode
      */
     public GridUUID getOrCreateAddress() {
         if(this.addr != null) return this.addr;
-        this.addr = host.createSupplementaryAddress();
+        this.addr = host.createAddress();
         return this.addr;
     }
 

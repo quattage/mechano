@@ -19,8 +19,8 @@ import com.quattage.mechano.api.catenary.meshing.CatenaryRenderFeatures.Stick;
 import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.switchboard.TrackedConstruct;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.helper.Duo;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.Duo;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.createmod.catnip.outliner.Outliner;

@@ -36,7 +36,7 @@ public final class GriddableContraptionAttachment extends GriddableEntityAttachm
     }
 
     @Override
-    public GridUUID createSupplementaryAddress() {
+    public GridUUID createAddress() {
         return new ContraptionUUID(entity.getUUID(), BlockPos.ZERO, 0);
     }
 

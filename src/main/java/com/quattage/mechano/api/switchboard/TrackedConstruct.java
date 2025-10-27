@@ -12,7 +12,7 @@ import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.landmark.GridCatenary;
 import com.quattage.mechano.api.landmark.GridConnection;
 import com.quattage.mechano.api.landmark.GridLink;
-import com.quattage.mechano.foundation.helper.Duo;
+import com.quattage.mechano.foundation.numeric.Duo;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
 import net.minecraft.client.Minecraft;

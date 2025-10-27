@@ -19,7 +19,7 @@ import com.quattage.mechano.api.landmark.GridNode;
 import com.quattage.mechano.api.landmark.GridPath;
 import com.quattage.mechano.api.landmark.NodeMap;
 import com.quattage.mechano.api.switchboard.GridResponse;
-import com.quattage.mechano.foundation.helper.Worldly;
+import com.quattage.mechano.foundation.WorldReturnable;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -30,7 +30,7 @@ import net.minecraft.server.level.ServerLevel;
  * Represents a single localized cluster made of nodes and links,
  * where each node has continuity with every other node in the cluster.
  */
-public class ServerMatrix implements Worldly {
+public class ServerMatrix implements WorldReturnable {
 
     private ServerGrid globalGrid;
     private int index = -1;
@@ -469,7 +469,7 @@ public class ServerMatrix implements Worldly {
         if(!(obj instanceof ServerMatrix that)) return false;
         if(this.isDestroyed() && that.isDestroyed())
             return this.index == that.index;
-        return this.index == that.index && Worldly.areWorldsEqual(this.getWorld(), that.getWorld());
+        return this.index == that.index && WorldReturnable.areWorldsEqual(this.getWorld(), that.getWorld());
     }
 
     @Override

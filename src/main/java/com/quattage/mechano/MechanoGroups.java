@@ -1,6 +1,6 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.foundation.helper.CreativeTabOverridable;
+import com.quattage.mechano.foundation.CreativeTabOverridable;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;

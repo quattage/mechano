@@ -20,7 +20,7 @@ import com.quattage.mechano.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.griddable.SurrogateNode;
 import com.quattage.mechano.api.switchboard.TrackedConstruct;
-import com.quattage.mechano.foundation.math.VectorOperations;
+import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.Contraption;
 import com.simibubi.create.content.contraptions.StructureTransform;

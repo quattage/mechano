@@ -11,7 +11,10 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerMatrix;
 import com.quattage.mechano.api.SidedGridDispatcher;
 import com.quattage.mechano.api.anchor.AnchorCollection;
+import com.quattage.mechano.api.anchor.AnchorCollection.DynamicAnchorArray;
 import com.quattage.mechano.api.anchor.AnchorPoint;
+import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.circuit.topology.CircuitComponent;
 import com.quattage.mechano.api.identifier.GridUUID;
 import com.quattage.mechano.api.landmark.GridLink;
 import com.quattage.mechano.api.landmark.GridNode;
@@ -26,6 +29,17 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 /**
+ * The {@link SidedGridDispatcher GridAPI} exposes all of its implementation-specific requirements 
+ * in the Griddable interface. 
+ * <h3>Griddables all must meet the following requirements:</h3>
+ * <ul>
+ * <li>Provide a valid {@link AnchorCollection} for clients. This method is never hit on the server.</li>
+ * <li>Instantiate a unique {@link SurrogateNode} for handling creation/destroy/sync events on both the client and the server</li>
+ * <li>Instantiate a valid {@link GridUUID} which points to this Griddable hashing in the grid's matrix
+ * <li>Provide a {@link CircuitComponent} instance for handling the electric behaviour of this Griddable.
+ * </ul>
+ * 
+ * 
  * Griddable grants implementations the ability to utilize the {@link SidedGridDispatcher GridAPI}
  * to store and use {@link GridNode GridNodes,} {@link GridLink GridLinks,}
  * and {@link AnchorPoint AnchorPoints}. 
@@ -56,6 +70,7 @@ public interface Griddable<T> {
     /**
      * @return An AnchorCollection containing {@link AnchorPoint} instances described by this Griddable.
      * If this Griddable has no Anchors, return an {@link AnchorCollection#asEmpty() empty} collection.
+     * It is reccomended to use the factory provided by {@link DynamicAnchorArray} to {@link GriddableBlockEntity}
      */
     @OnlyIn(Dist.CLIENT)
     public @NotNull AnchorCollection getAnchors();
@@ -68,19 +83,25 @@ public interface Griddable<T> {
      */
     public @NotNull SurrogateNode getSurrogate();
 
-
-    public Level getWorld();
-
     /**
      * Provides a supplementary {@link GridUUID}. This UUID
-     * should always have an index of 0.
-     * It is reccomended to avoid caching behaviours when returning
-     * UUIDs from this method, since such behaviour is already 
-     * implemented by the {@link SurrogateNode}.
+     * should always have an index of 0 and coorespond to this
+     * Griddable's location or unique address. The {@link SurrogateNode}
+     * provided by {@link #getSurrogate} will store this UUID for use.
      * @return A new GridUUID instance describing the non-indexed 
      * location of this Griddable.
      */
-    public GridUUID createSupplementaryAddress();
+    public @NotNull GridUUID createAddress();
+
+    /**
+     * @return A {@link CircuitComponent} responsible for ticking
+     * the actual electric behaviour that occurs within this griddable
+     * itself. If you don't require any deliberate circuit functionality,
+     * just store and return an instance of {@link com.quattage.mechano.api.circuit.component.Passthrough Passthrough}
+     */
+    public @NotNull CircuitComponent getCircuit();
+
+    public Level getWorld();
 
     /**
      * A decorative string used for debugging for display in the 

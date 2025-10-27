@@ -13,6 +13,7 @@ import com.quattage.mechano.api.catenary.WindManager;
 import com.quattage.mechano.api.catenary.meshing.CatenaryRenderFeatures;
 import com.quattage.mechano.api.catenary.meshing.CatenaryRenderFeatures.MeshInitializer;
 import com.quattage.mechano.api.identifier.GridUUID;
+import com.quattage.mechano.api.item.SpoolItem;
 import com.quattage.mechano.api.landmark.GridCatenary;
 import com.quattage.mechano.api.landmark.GridConnection;
 import com.quattage.mechano.api.landmark.GridConnection.ConnectionKey;
@@ -24,7 +25,6 @@ import com.quattage.mechano.api.switchboard.AwaitingLinkBuffer.ProcessMode;
 import com.quattage.mechano.api.switchboard.GridResponse.AnchorSynchronizer;
 import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.item.SpoolItem;
 import com.simibubi.create.content.contraptions.Contraption;
 
 import net.createmod.catnip.platform.CatnipServices;

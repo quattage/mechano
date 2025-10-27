@@ -1,4 +1,4 @@
-package com.quattage.mechano.foundation.item;
+package com.quattage.mechano.api.item;
 
 import static com.quattage.mechano.Mechano.lang;
 
@@ -27,6 +27,7 @@ import com.quattage.mechano.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.quattage.mechano.api.transmitter.Transmitable;
 import com.quattage.mechano.api.transmitter.Transmitter;
+import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
 
 import net.createmod.catnip.platform.CatnipServices;

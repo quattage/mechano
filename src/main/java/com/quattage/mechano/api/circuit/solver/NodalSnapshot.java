@@ -1,18 +1,25 @@
 package com.quattage.mechano.api.circuit.solver;
 
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.ejml.data.DMatrixRMaj;
+import org.ejml.data.DMatrixSparseCSC;
+
+import com.quattage.mechano.api.circuit.solver.NodalSolver.ConvergenceStatus;
 import com.quattage.mechano.api.circuit.topology.Circuit;
 import com.quattage.mechano.api.circuit.topology.Joint;
-import com.quattage.mechano.foundation.numeric.SparseDoubleMatrix;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class NodalSnapshot {
     
-    private SparseDoubleMatrix matrix;
-    private double[] rhs;
+    private DMatrixSparseCSC A;
+    private DMatrixRMaj x;
+    private DMatrixRMaj b;
     private Object2IntOpenHashMap<Joint> indices;
     private int size = 0;
     private int sources = 0;
+    protected AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.UNFINISHED_UNPOPULATED);
 
     public NodalSnapshot() {}
 
@@ -27,8 +34,9 @@ public class NodalSnapshot {
     public NodalSnapshot loadOnto(Circuit circuit, int size, int sourceCount) {
         this.size = size - 1;  // its assumed that there's always one ground joint
         this.sources = sourceCount;
-        this.rhs = new double[totalSize()];
-        this.matrix = new SparseDoubleMatrix(this.size + sourceCount, this.size + sourceCount);
+        this.b = createWorkingVector();
+        this.x = createWorkingVector();
+        this.A = new DMatrixSparseCSC(this.size + sourceCount, this.size + sourceCount);
         this.indices = new Object2IntOpenHashMap<>();
         int index = 0;
         for(Joint joint : circuit.getJoints()) {
@@ -64,22 +72,49 @@ public class NodalSnapshot {
         return size + sources;
     }
 
-    public SparseDoubleMatrix matrix() {
-        return matrix;
+    public int matrixArea() {
+        return (size * size) + sources;
     }
 
-    public double[] rhs() {
-        return rhs;
+    /**
+     * Ax=b
+     * @return A (Matrix [n * n])
+     */
+    public DMatrixSparseCSC termA() {
+        return A;
+    }
+
+    /**
+     * Ax=b
+     * @return x (Vector[n])
+     */
+    public DMatrixRMaj termX() {
+        return x;
+    }
+
+    /**
+     * Ax=b
+     * @return b (Vector[n])
+     */
+    public DMatrixRMaj termB() {
+        return b;
+    }
+
+    public DMatrixRMaj createWorkingVector() {
+        return new DMatrixRMaj(A.getNumRows());
     }
 
     public void stampMatrix(int row, int col, double value) {
-        if(row < 0 || col < 0) return;
-        matrix.setValue(row, col, matrix.get(row, col) + value);
+        A.unsafe_set(row, col, A.get(row, col) + value);
     }
 
     public void stampRHS(int index, double value) {
         if(index < 0) return;
-        rhs[index] = value;
+        b.set(index, value);
+    }
+
+    public ConvergenceStatus getStatus() {
+        return status.get();
     }
 
     /**

@@ -21,6 +21,11 @@ public abstract class CircuitComponent implements StringRepresentable {
     }
 
     /**
+     * Gets all pins associated with this component.
+     * (ex. a Diode would return a list of two members: [anode, cathode])
+     * If this component is compositional (like a Circuit object), calls to
+     * this method will need to construct a collection of terminals, which
+     * may be rather expensive.
      * @return all pins attached to this component
      */
     public abstract Collection<Terminal> getTerminals();

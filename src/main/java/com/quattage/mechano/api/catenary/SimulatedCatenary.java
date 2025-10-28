@@ -100,7 +100,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     /**
      * Initializes a Verlet Integration simulation for this Catenary. Calls to this 
      * method populate this Catenary's internal points array to the size necessary 
-     * to span across this wire's {@link #offset magnitude vector.} As a result of 
+     * to span across this catenary's {@link #offset magnitude vector.} As a result of 
      * this call, each {@link Point} and {@link Stick} is aligned in a straight 
      * line. No offsets or simulated constraints are applied until at least one call 
      * to {@link #update} is made.
@@ -162,7 +162,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     /**
-     * Extends this wire by the given amount of segments
+     * Extends this catenary by the given amount of segments
      * while retaining velocity data for all pre-existing 
      * {@link Point points} and {@link Stick sticks}.
      * This method is called internally
@@ -191,16 +191,16 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     /**
      * A call to this method represents a sigular update
-     * of a discrete Verlet Integration simulation. 
-     * This wire will seek a state of minimal potential energy
+     * of a discrete Verlet Integration simulation as 
+     * well as an iterative stable constraint solver.
+     * This catenary will seek a state of minimal potential energy
      * by applying gravity and inertia.
      * <p>
-     * Note that this simulation 
-     * accumulates a realistic result over time, and so needs 
-     * to be called several times for results to display 
-     * immediately. See  {@link #updateAhead} to automatically
-     * call call this method multiple times.
-     * @throws IllegalStateException if this Catenary doesn't have {@link #setOffset an offset} or hasn't been {@link #initialize initialized} at least once.
+     * Note that simulation-based implementations require
+     * multiple iterations to resolve to a stable output.
+     * See {@link #updateAhead} to automatically invoke 
+     * this method as many times as needed.
+     * @throws IllegalStateException if this Catenary doesn't have {@link #setOffset an offset} initialized
     */
     @Override
     public void update(TransmitterType<?> trns) {
@@ -265,7 +265,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             );
             point.lastPos.set(point.pos);
             point.pos.add(vel);
-
             tracker.apply(vel);
         }
     }
@@ -367,7 +366,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         debugVelocities();
     }
 
-    private void debugVelocities() {
+    public void debugVelocities() {
         Vec3 center = new Vec3(forces[1], forces[2], forces[3]);
         Vec3 start = new Vec3(forces[1] + halfOffset.x, forces[2] + halfOffset.y, forces[3] + halfOffset.z);
         Vec3 end = new Vec3(forces[1] - halfOffset.x, forces[2] - halfOffset.y, forces[3] - halfOffset.z);
@@ -406,8 +405,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     /**
-     * Apply an upward force to the middle of the wire
-     * to add some extra visual interest when the wire is 
+     * Apply an upward force to the middle of the catenary
+     * to add some extra visual interest when the catenary is 
      * created.
      */
     public void kick(float strength) {

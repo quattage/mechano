@@ -22,6 +22,12 @@ public class VectorOperations {
 
     private static final float eps = 1e-7f;
 
+    public static double dot(double[] a, double[] b) {
+        double sum = 0;
+        for(int x = 0; x < a.length; x++) sum += a[x] * b[x];
+        return sum;
+    }
+
     public static boolean isGreater(Vec3 a, Vec3 b) {
         return a.x > b.x && a.y > b.y && a.z > b.z();
     }

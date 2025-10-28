@@ -23,9 +23,15 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  * the table. Modifying operations ({@link #add}, {@link #subtract},
  * {@link #operate}, and {@link #setValue}) will
  * avoid storing values that are functionally equivalent to zero.
+ * 
+ * 
+ * This class was written for the mechano project but has since been 
+ * replaced with the EJML library in the interest of vectorization optimizations.
+ * This class was designed without the ability to take advantage of SIMD inlining.
  */
 public class SparseDoubleMatrix {
 
+    private static final int DEFAULT_PRELOAD = 3;
     private final double EPSILON = 0.00001d;
     
     private int rows;
@@ -35,7 +41,7 @@ public class SparseDoubleMatrix {
     public SparseDoubleMatrix(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
-        this.elements = new Int2ObjectOpenHashMap<Int2DoubleOpenHashMap>();
+        this.elements = new Int2ObjectOpenHashMap<Int2DoubleOpenHashMap>(DEFAULT_PRELOAD);
     }
 
     public double setValue(int row, int col, double value) {
@@ -44,7 +50,7 @@ public class SparseDoubleMatrix {
         Int2DoubleOpenHashMap trgtRow = elements.get(row);
         if(trgtRow == null) {
             if(isZero) return 0;
-            trgtRow = new Int2DoubleOpenHashMap(3);
+            trgtRow = new Int2DoubleOpenHashMap(DEFAULT_PRELOAD);
             elements.put(row, trgtRow);
         }
         return isZero ? trgtRow.remove(col) : trgtRow.put(col, value);
@@ -123,6 +129,15 @@ public class SparseDoubleMatrix {
         return this;
     }
 
+    /**
+     * Sets all values within this sparse matrix
+     * to zero.
+     */
+    public void zeroOut() {
+        elements.clear();
+        elements.trim(DEFAULT_PRELOAD);
+    }
+
     public void growToFit(int totalRows, int totalCols) { growToFit(totalRows, totalCols, true); }
 
     /**
@@ -149,14 +164,14 @@ public class SparseDoubleMatrix {
      * @see #minimize
      */
     public void trim() {
-        elements.trim();
+        elements.trim(DEFAULT_PRELOAD);
         for(Int2DoubleOpenHashMap col : elements.values())
-            col.trim();
+            col.trim(DEFAULT_PRELOAD);
     }
 
     /**
      * Shrinks the underlying table so that all values
-     * {@link #findAllZeros equivalent to zero} are stripped.
+     * {@link #findAllFloatingZeros equivalent to zero} are stripped.
      * This method is useful to significantly reduce memory
      * footprint after some kind of initialization step
      * fills this matrix with values. This method doesn't 
@@ -167,20 +182,20 @@ public class SparseDoubleMatrix {
      * @see #trim
      */
     public void minimize() {
-        final List<int[]> zeros = findAllZeros();
+        final List<int[]> zeros = findAllFloatingZeros();
         for(int[] coord : zeros) clearValue(coord[0], coord[1]);
         trim();
     }
 
     /**
-     * Finds every value that is zero (or approxmiately zero such that 
-     * <code>value < 0.00001d</code>) in this sparse matrix. Returns a 
-     * list of coordinates describing the location of all these zeros
-     * within this matrix.
+     * A "floating" zero is a value in this matrix that is explicitly
+     * defined as zero or near zero such that <code>value < 0.00001d</code>.
+     * This method does not return zeros that are implicitly defined by the
+     * lack of a mapping to a given coordinate. 
      * @return A list of coordinates, where each memeber is a primitive 
      * integer array <code>[row, col]</code>
      */
-    public List<int[]> findAllZeros() {
+    public List<int[]> findAllFloatingZeros() {
         List<int[]> output = new ArrayList<>(this.area());
         for(Int2ObjectMap.Entry<Int2DoubleOpenHashMap> row : elements.int2ObjectEntrySet()) {
             for(Int2DoubleMap.Entry col : row.getValue().int2DoubleEntrySet()) {
@@ -190,6 +205,8 @@ public class SparseDoubleMatrix {
         }
         return output;
     }
+
+    
 
     private boolean isEquivalentToZero(double value) {
         return Math.abs(value) <= EPSILON;
@@ -289,10 +306,12 @@ public class SparseDoubleMatrix {
 
     /**
      * Gets the contents of this matrix as a formatted
-     * string with whitespace and line breaks. 
+     * string with whitespace and line breaks. The 
+     * resulting string will resemble a table and
+     * inclued zeros in place of unallocated space.
      * @return A single string spanning multiple lines
      */
-    public String asString() {
+    public String asDenseString() {
         String out = "";
         for(int row = 0; row < rows; row++) {
             String rowContents = "";

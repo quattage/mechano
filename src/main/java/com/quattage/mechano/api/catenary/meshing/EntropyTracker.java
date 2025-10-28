@@ -66,7 +66,7 @@ public class EntropyTracker {
      * suggests its instantiating catenary is cascading.
      */
     public boolean isCascading() {
-        return avgVelocity > 1e10 || Float.isNaN(avgVelocity) || accumulatedError > 500;
+        return Math.abs(avgVelocity) > 1e10 || Float.isNaN(avgVelocity) || accumulatedError > 500;
     }
 
     public void softReset() {

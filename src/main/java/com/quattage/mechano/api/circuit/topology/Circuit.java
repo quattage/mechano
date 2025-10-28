@@ -2,7 +2,7 @@ package com.quattage.mechano.api.circuit.topology;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
+import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +14,6 @@ import com.quattage.mechano.api.griddable.Griddable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 public class Circuit extends CircuitComponent {
     
@@ -23,13 +22,13 @@ public class Circuit extends CircuitComponent {
     public static final double EPSILON = 0.01d;
 
     protected ObjectArrayList<CircuitComponent> components;
-    protected ObjectSet<Joint> joints;
+    protected ObjectArrayList<Joint> joints;
     private @Nullable NodalSnapshot snapshot;
 
     public Circuit() {
         super("Circuit");
         this.components = new ObjectArrayList<>();
-        this.joints = new ObjectOpenHashSet<>();
+        this.joints = new ObjectArrayList<>();
         this.joints.add(new GroundedJoint(this));
     }
 
@@ -75,6 +74,17 @@ public class Circuit extends CircuitComponent {
         joints.remove(jointB);
         return Joint.combine(jointA, jointB);
     }
+    
+    public Joint attachTerminalToGround(Terminal term) {
+        Joint ground = getCommonGround();
+        ground.attach(term);
+        return ground;
+    }
+
+
+    public Joint getCommonGround() {
+        return joints.get(-1);
+    }
 
     public boolean detachTerminals(Collection<Terminal> terminals) {
         if(terminals == null || terminals.size() <= 0) return false;
@@ -91,8 +101,6 @@ public class Circuit extends CircuitComponent {
         }
         return modified;
     }
-    
-    
 
     public boolean arePinsConnected(Terminal a, Terminal b) {
         return a.hasJoint() && b.hasJoint() && a.getJoint() == b.getJoint();
@@ -100,13 +108,17 @@ public class Circuit extends CircuitComponent {
 
     @Override
     public Collection<Terminal> getTerminals() {
-        Mechano.LOGGER.warn("Invalid attempt to query a Circuit for pins returned an empty list.");
-        return Collections.singleton(null);
+        ObjectOpenHashSet<Terminal> output = new ObjectOpenHashSet<>(components.size() * 3);
+        for(CircuitComponent component : components)
+            output.addAll(component.getTerminals());
+        output.trim();
+        return output;
     }
 
     @Override
     public void tick(Griddable<?> host) {
-        
+        beginSolverStep();
+
     }
 
     public void beginSolverStep() {
@@ -118,7 +130,7 @@ public class Circuit extends CircuitComponent {
         }
     }
 
-    public Set<Joint> getJoints() {
+    public List<Joint> getJoints() {
         return joints;
     }
 

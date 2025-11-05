@@ -1,15 +1,12 @@
 package com.quattage.mechano.content.connector;
 
-import org.jetbrains.annotations.NotNull;
-
-import com.quattage.mechano.api.anchor.AnchorCollection.DynamicAnchorArray;
-import com.quattage.mechano.api.circuit.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.topology.Node.Joint;
+import com.quattage.mechano.foundation.block.orientation.Relative;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
 
@@ -18,19 +15,17 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    protected void constructAnchors(DynamicAnchorArray builder) {
-        builder.newAnchor()
-            .at(8, 16, 8) 
-            .connections(3)
-            .radius(1.7f)
-            .addTo(this);
+    public void constructCircuit(CircuitFactory circuit) {
+        Joint passive = circuit.newJoint();
+        circuit.wireJack("Wire Attachment")
+            .attachedTo(passive)
+            .x(0).y(16).z(0)
+            .size(4).make();
+        circuit.blockJack("Bottom Face")
+            .attachedTo(passive)
+            .face(Relative.BOTTOM)
+            .make();
     }
-
-    @Override
-    protected void constructCircuit() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'constructCircuit'");
-    }
+    
 }
 

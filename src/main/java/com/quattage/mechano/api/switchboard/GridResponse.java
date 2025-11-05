@@ -1,39 +1,16 @@
 package com.quattage.mechano.api.switchboard;
 
 import java.util.Locale;
-import java.util.Objects;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.LinkDataStorage.DataScope;
-import com.quattage.mechano.api.anchor.AnchorPoint;
-import com.quattage.mechano.api.griddable.Griddable;
-import com.quattage.mechano.api.griddable.SurrogateNode;
-import com.quattage.mechano.api.identifier.GridUUID;
-import com.quattage.mechano.api.identifier.UUIDDiscriminator;
-import com.quattage.mechano.api.landmark.GridNode;
 
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
+import net.createmod.catnip.theme.Color;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 public enum GridResponse implements StringRepresentable {
 
@@ -79,13 +56,13 @@ public enum GridResponse implements StringRepresentable {
     private final HighlightMode mode;
     
 
-    private GridResponse(boolean isTask, boolean shouldFailHard, HighlightMode mode) { 
+    GridResponse(boolean isTask, boolean shouldFailHard, HighlightMode mode) { 
         this.isTask = isTask; 
         this.shouldFailHard = shouldFailHard;
         this.mode = mode;
     }
 
-    private GridResponse(boolean isTask, boolean shouldFailHard) {
+    GridResponse(boolean isTask, boolean shouldFailHard) {
         this.isTask = isTask; 
         this.shouldFailHard = shouldFailHard;
         this.mode = HighlightMode.HIDE;
@@ -97,7 +74,7 @@ public enum GridResponse implements StringRepresentable {
      * @return If <code>false</code>, this task represents a failure.
      */
     public boolean indicatesCompletion() {
-        return isTask;
+        return this.isTask;
     }
 
     /**
@@ -105,219 +82,49 @@ public enum GridResponse implements StringRepresentable {
      * @return If <code>true</code>, implementations should reset connection progress.
      */
     public boolean shouldFailHard() {
-        return shouldFailHard;
+        return this.shouldFailHard;
     }
 
     /**
      * @return the {@link HighlightMode} associated with this response
      */
     public HighlightMode getVisibility() {
-        return mode; 
+        return this.mode; 
     }
 
     @Override
     public String getSerializedName() {
-        return "response_" + name().toLowerCase(Locale.ROOT);
+        return "response_" + this.name().toLowerCase(Locale.ROOT);
     }
 
     @Override
     public String toString() {
-        return getSerializedName();
+        return this.getSerializedName();
     }
 
     public ResourceLocation getKey() {
-        return Mechano.asResource(getSerializedName());
+        return Mechano.asResource(this.getSerializedName());
     }
-
-    /**
-     * A minified version of the {@link GridNode} that can be serialized
-     * to and from a StreamCodec for sending in packets. This class is used
-     * in the {@Link AnchorSyncPacket}, which can be sent from this class
-     * with the {@link #sendToClients helper method.} 
-     */
-    public static class AnchorSynchronizer extends GridUUID {
-
-        private final GridUUID addr;
-        private final byte connections;
-        private final boolean enabled;
-
-        public static boolean assertAnchorsExist(AnchorPoint startAnchor, AnchorPoint endAnchor) {
-            if(startAnchor == null && endAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting or ending AnchorPoints for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            } if(startAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            } if(endAnchor == null) {
-                Mechano.LOGGER.warn("Assertion failed - Couldn't find starting AnchorPoint for link (" + startAnchor + " -> " + endAnchor + ")");
-                return false;
-            }
-            return true;
-        }
-
-        public static AnchorSynchronizer of(GridNode node) {
-            return new AnchorSynchronizer(node, true);
-        }
-
-        public static AnchorSynchronizer of(GridUUID addr) {
-            return new AnchorSynchronizer(addr, Byte.MIN_VALUE, true);
-        }
-
-        public static AnchorSynchronizer of(GridUUID addr, int connections) {
-            return new AnchorSynchronizer(addr, (byte)(connections - 128), true);
-        }
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, AnchorSynchronizer> STREAM_CODEC = StreamCodec.composite(
-            UUIDDiscriminator.STREAM_CODEC, AnchorSynchronizer::getAddr,
-            ByteBufCodecs.BYTE, AnchorSynchronizer::getConnections,
-            ByteBufCodecs.BOOL, AnchorSynchronizer::isEnabled,
-            AnchorSynchronizer::new
-        );
-
-        private AnchorSynchronizer(GridUUID addr, byte connections, boolean enabled) {
-            this.addr = addr;
-            this.connections = connections;
-            this.enabled = enabled;
-        }
-
-        private AnchorSynchronizer(GridNode node, boolean enabled) {
-            this.addr = node.getAddress();
-            this.connections = node.hasLinks() ? (byte)(node.getLinkCount() - 128) : Byte.MIN_VALUE;
-            this.enabled = enabled;
-        }
-
-        public void sendToClients(ServerLevel world) {
-            addr.sendToClientsTracking(world, new AnchorSyncPacket(this));
-        }
-
-        private GridUUID getAddr() {
-            return addr;
-        }
-
-        private byte getConnections() {
-            return connections;
-        }
-
-        private boolean isEnabled() {
-            return enabled;
-        }
-
-        @OnlyIn(Dist.CLIENT)
-        public @Nullable AnchorPoint applyAndGet(ClientLevel world) { return applyAndGet(world, false); }
-
-        @OnlyIn(Dist.CLIENT)
-        public @Nullable AnchorPoint applyAndGet(ClientLevel world, boolean log) {
-            Objects.requireNonNull(world);
-            if(!world.isClientSide())
-                throw new IllegalStateException("Cannot apply AnchorSyncHolder on a server-sided world!");
-            Griddable<?> points = addr.getOrFindGriddable(world);
-            Mechano.LOGGER.warn("Found holder: " + points);
-            if(points == null) {
-                if(log) {
-
-                    Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " 
-                        + addr + " - No Griddable could be found at this address!");
-                }
-                return null;
-            }
-            AnchorPoint point = points.getAnchors().get(addr.getIndex());
-            Mechano.LOGGER.warn("Found anchor: " + point);
-            if(point == null) {
-                if(log) {
-                    Mechano.LOGGER.error("Failed to apply AnchorSyncHolder to AnchorPoint at " + addr 
-                        + " - An Griddable could be found, but it has no AnchorPoint at the required index! (" + addr + ")");
-                }
-                return null;
-            }
-            point.setConectionCount(connections);
-            point.setEnabled(enabled);
-            SurrogateNode surrogate = points.getSurrogate();
-            if(surrogate == null) {
-                if(log) {
-                    Mechano.LOGGER.error("Failed apply AnchorSyncHolder to AnchorPoint at " + addr 
-                        + " - Couldn't locate a valid sorrogate node belonging to the AnchorPoint at this address!");
-                }
-                return null;
-            }
-            if(point.getCurrentConnections() > 0)
-                surrogate.sync(null);
-            else surrogate.forgetIfNeeded();
-            points.onAnchorSynced(world, getIndex());
-            return point;
-        }
-
-        // implementation deferred to internal address for convenience
-        @Override public @Nullable AnchorPoint getAnchor(ClientLevel world) { return addr.getAnchor(world); }
-        @Override public @Nullable Griddable<?> getOrFindGriddable(LevelReader world) { return addr.getOrFindGriddable(world); }
-        @Override public @Nullable SurrogateNode getSurrogate(LevelReader world) { return addr.getSurrogate(world); }
-        @Override public @Nullable IAttachmentHolder getDataStorageHolder(LevelReader world) { return addr.getDataStorageHolder(world); }
-        @Override public boolean isInFrustum(LevelReader world, @NotNull Frustum view) { return addr.isInFrustum(world, view); }
-        @Override public boolean isBeingTrackedBy(ServerPlayer player) { return addr.isBeingTrackedBy(player); }
-        @Override public boolean canMoveDynamically(LevelReader world) { return addr.canMoveDynamically(world); }
-        @Override public int getIndex() { return addr.getIndex(); }
-        @Override public float getMass(LevelReader world) { return addr.getMass(world); }
-        @Override public UUIDDiscriminator getDiscriminatorType() { return addr.getDiscriminatorType(); }
-        @Override public GridUUID indexedCopy(int index) { return addr.indexedCopy(index); }
-        @Override public BlockPos getBlockPos(LevelReader world) { return addr.getBlockPos(world); }
-        @Override public String describeDataScope(LevelReader world) { return addr.describeDataScope(world) + " (Queried from AnchorSyncHolder)"; }
-        @Override public Vec3 getPos(LevelReader world) { return addr.getPos(world); }
-        @Override public Vec3 getPos(LevelReader world, float pTicks) { return addr.getPos(world, pTicks); }
-        @Override public Vec3 getOffsetPos(LevelReader world, float ox, float oy, float oz) { return addr.getOffsetPos(world, ox, oy, oz); }
-        @Override public Vec3 getOffsetPos(LevelReader world, float pTicks, float ox, float oy, float oz) { return addr.getOffsetPos(world, pTicks, ox, oy, oz); }
-        @Override public void writeTo(CompoundTag tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
-        @Override public void writeTo(ByteBuf buffer) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
-        @Override public void writeTo(RecordBuilder<?> tag) { throw new UnsupportedOperationException("AnchorSyncHolders cannot be written directly!"); }
-        @Override public void setDataScope(DataScope scope) { addr.setDataScope(scope); }
-        @Override public DataScope getDataScope(LevelReader world) { return addr.getDataScope(world); }
-        @Override public void sendLevelUpdates(Level world) { addr.sendLevelUpdates(world); }
-        @Override public boolean isUnindexed(GridUUID other) { return addr.isUnindexed(other); }
-        @Override public int getPriority() { return addr.getPriority(); }
-
-        public GridUUID getAddress() { return addr; }
-
-        @Override
-        public boolean equals(Object obj) {
-            if(obj instanceof GridUUID that) 
-                return this.addr.equals(that);
-            return false;
-        }
-        
-        @Override
-        public int hashCode() {
-            return addr.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Synchronizer@{" + addr + "}";
-        }
-    }
-
 
     public static enum HighlightMode {
         /**
          * Shows the vanilla-style black outline around the targeted AnchorPoint
          */
-        SHOW_PASSIVE,
+        SHOW_PASSIVE(null),
         /**
          * Shows a green AABB drawn by Create's outliner
          */
-        SHOW_SUCCESS,
+        SHOW_SUCCESS(new Color(0, 255, 0)),
         /**
          * Shows a red AABB drawn by Create's outliner
          */
-        SHOW_FAILURE,
-        /**
-         * Shows nothing at all
-         */
-        HIDE;
+        SHOW_FAILURE(new Color(255, 0, 0)),
+        HIDE(null);
 
-        public boolean isVisible() {
-            return this != HIDE;
-        }
-
-        public boolean isHighlighted() {
-            return this == SHOW_SUCCESS || this == SHOW_FAILURE;
-        }
+        private final Color color;
+        HighlightMode(Color color) { this.color = color; }
+        public boolean isVisible() { return this != HIDE; }
+        public boolean isHighlighted() { return this.color != null; }
+        public @Nullable Color getColor() { return color; }
     }
 }

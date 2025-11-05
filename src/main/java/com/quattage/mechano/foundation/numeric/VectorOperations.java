@@ -1,28 +1,42 @@
 
+
 package com.quattage.mechano.foundation.numeric;
 
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.simibubi.create.AllSpecialTextures;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class VectorOperations {
 
     private static final float eps = 1e-7f;
 
-    public static double dot(double[] a, double[] b) {
+    @OnlyIn(Dist.CLIENT)
+    public static boolean isInWorld(Vec3 pos) {
+        Minecraft mc = Minecraft.getInstance();
+        return mc != null && mc.level != null && mc.level.getWorldBorder().isWithinBounds(pos);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static boolean isInWorld(Vector3d pos) {
+        Minecraft mc = Minecraft.getInstance();
+        return mc != null && mc.level != null && mc.level.getWorldBorder().isWithinBounds(pos.x, pos.z);
+    }
+
+    public static double innerProduct(double[] a, double[] b) {
         double sum = 0;
         for(int x = 0; x < a.length; x++) sum += a[x] * b[x];
         return sum;
@@ -37,7 +51,7 @@ public class VectorOperations {
     }
 
     public static boolean approxEqual(Vec3 a, Vec3 b) {
-        return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps && Math.abs(a.z - b.z) < eps;
+        return Math.abs(a.x - b.x) < VectorOperations.eps && Math.abs(a.y - b.y) < VectorOperations.eps && Math.abs(a.z - b.z) < VectorOperations.eps;
     }
 
     /**
@@ -74,7 +88,7 @@ public class VectorOperations {
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos) {
-        drawDebugBox(pos, toColor(pos), "debug_" + pos.hashCode());
+        VectorOperations.drawDebugBox(pos, VectorOperations.toColor(pos), "debug_" + pos.hashCode());
     }
 
     /***
@@ -82,21 +96,21 @@ public class VectorOperations {
      */
     public static void drawDebugBox(Vec3... positions) {
         for(Vec3 pos : positions)
-            drawDebugBox(pos, toColor(pos), "debug_" + pos.hashCode());
+            VectorOperations.drawDebugBox(pos, VectorOperations.toColor(pos), "debug_" + pos.hashCode());
     }
 
     /***
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos, String hash) {
-        drawDebugBox(pos, toColor(pos), hash);
+        VectorOperations.drawDebugBox(pos, VectorOperations.toColor(pos), hash);
     }
     
     /***
      * Draws a simple debug box at the given Vec3 position
      */
     public static void drawDebugBox(Vec3 pos, Color color) {
-        drawDebugBox(pos, color, "debug_" + pos.hashCode());
+        VectorOperations.drawDebugBox(pos, color, "debug_" + pos.hashCode());
     }
 
     /***
@@ -161,7 +175,7 @@ public class VectorOperations {
      * @return A new AABB at the given Vec3
      */
     public static AABB toAABB(Vector3d pos, float s) {
-        return toAABB(new Vec3(pos.x, pos.y, pos.z), s);
+        return VectorOperations.toAABB(new Vec3(pos.x, pos.y, pos.z), s);
     }
 
     /***
@@ -171,7 +185,7 @@ public class VectorOperations {
      * @return A new AABB at the given Vec3
      */
     public static AABB toAABB(Vector3f pos, float s) {
-        return toAABB(new Vec3(pos.x, pos.y, pos.z), s);
+        return VectorOperations.toAABB(new Vec3(pos.x, pos.y, pos.z), s);
     }
 
     
@@ -182,7 +196,7 @@ public class VectorOperations {
      * @return A new AABB at the given BlockPos
      */
     public static AABB toAABB(BlockPos pos, float s) {
-        return toAABB(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) , s);
+        return VectorOperations.toAABB(new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) , s);
     }
 
     /***
@@ -193,7 +207,7 @@ public class VectorOperations {
      * @return A new Color derived from the input vector
      */
     public static Color toColor(Vec3 vec) {
-        return toColor(vec, 8);
+        return VectorOperations.toColor(vec, 8);
     }
 
     /***
@@ -205,64 +219,17 @@ public class VectorOperations {
      */
     public static Color toColor(Vec3 vec, int variation) {
         if(variation < 2) variation = 2;
-
         Vec3i norm = new Vec3i(
             (int)Math.abs(vec.x % variation),
             (int)Math.abs(vec.y % variation),
             (int)Math.abs(vec.z % variation)
         );
-
         Color out = new Color(
             (int)((norm.getX() / 8f) * 255),
             (int)((norm.getY() / 8f) * 255),
             (int)((norm.getZ() / 8f) * 255)
         );
-
         return out;
-    }
-
-    /***
-     * Casts coordinates of a Vec3 to ints and returns a BlockPos
-     * @param vec Vector to cast
-     * @return A converted BlockPos
-     */
-    public static BlockPos toBlockPos(Vec3 vec) {
-        return new BlockPos(
-            (int)Math.floor(vec.x), 
-            (int)Math.floor(vec.y), 
-            (int)Math.floor(vec.z)
-        );
-    }
-
-    /***
-     * Casts coordinates of a Vec3 to ints and returns a BlockPos
-     * @param vec Vector to cast
-     * @return A converted BlockPos
-     */
-    public static BlockPos toBlockPos(Vector3f vec) {
-        return new BlockPos(
-            (int)vec.x, 
-            (int)vec.y, 
-            (int)vec.z
-        );
-    }
-
-    /***
-     * Identical to Vec3.normalize() in principal, but 
-     * with slightly more control when needed.
-     * @param vec Vector to normalize
-     * @param magnitude Magnitude to normalize to
-     * @return a normalized Vector3f.
-     */
-    @SuppressWarnings("deprecation")
-    public static Vector3f normalizeToLength(Vector3f vec, float magnitude) {
-                        // TODO why is this deprecated
-        float scalar = (float)(Mth.fastInvSqrt(Math.fma(vec.x(), vec.x(), Math.fma(vec.y(), vec.y(), vec.z() * vec.z()))) * magnitude);
-        return new Vector3f(
-            vec.x() * scalar,
-            vec.y() * scalar,
-            vec.z() * scalar
-        );     
     }
 
     /***
@@ -295,268 +262,5 @@ public class VectorOperations {
         public String toString() {
             return "Ray[" + end + "]";
         }
-    }
-
-
-
-
-
-    // i dont care
-    public static Vector3f rotate(Vector3f vec, CombinedOrientation dir) {
-        return switch (dir) {
-            case DOWN_EAST -> new Vector3f(
-                                inv(vec.z),
-                                inv(vec.y),
-                                inv(vec.x)
-                            );
-            case DOWN_NORTH -> new Vector3f(
-                                inv(vec.z),
-                                inv(vec.y),
-                                vec.x
-                            );
-            case DOWN_SOUTH -> new Vector3f(
-                                vec.x,
-                                inv(vec.y),
-                                inv(vec.z)
-                            );
-            case DOWN_WEST -> new Vector3f(
-                                vec.z,
-                                inv(vec.y),
-                                vec.x
-                            );
-            case EAST_DOWN -> new Vector3f(
-                                vec.y,
-                                vec.z,
-                                vec.x
-                            );
-            case EAST_NORTH -> new Vector3f(
-                                vec.y,
-                                inv(vec.x),
-                                vec.z
-                            );
-            case EAST_SOUTH -> new Vector3f(
-                                vec.y,
-                                vec.x,
-                                inv(vec.z)
-                            );
-            case EAST_UP -> new Vector3f(
-                                vec.y,
-                                inv(vec.z),
-                                inv(vec.x)
-                            );
-            case NORTH_DOWN -> new Vector3f(
-                                vec.x,
-                                vec.z,
-                                inv(vec.y)
-                            );
-            case NORTH_EAST -> new Vector3f(
-                                inv(vec.z),
-                                vec.x,
-                                inv(vec.y)
-                            );
-            case NORTH_UP -> new Vector3f(
-                                inv(vec.x),
-                                inv(vec.z),
-                                inv(vec.y)
-                            );
-            case NORTH_WEST -> new Vector3f(
-                                vec.z,
-                                inv(vec.x),
-                                inv(vec.y)
-                            );
-            case SOUTH_DOWN -> new Vector3f(
-                                inv(vec.x),
-                                vec.z,
-                                vec.y
-                            );
-            case SOUTH_EAST -> new Vector3f(
-                                inv(vec.z),
-                                inv(vec.x),
-                                vec.y
-                            );
-            case SOUTH_UP -> new Vector3f(
-                                vec.x,
-                                inv(vec.z),
-                                vec.y
-                            );
-            case SOUTH_WEST -> new Vector3f(
-                                vec.z,
-                                vec.x,
-                                vec.y
-                            );
-            case UP_EAST -> new Vector3f(
-                                inv(vec.z),
-                                vec.y,
-                                vec.x
-                            );
-            case UP_NORTH -> vec;
-            case UP_SOUTH -> new Vector3f(
-                                inv(vec.x),
-                                vec.y,
-                                inv(vec.z)
-                            );
-            case UP_WEST -> new Vector3f(
-                                vec.z,
-                                vec.y,
-                                inv(vec.x)
-                            );
-            case WEST_DOWN -> new Vector3f(
-                                inv(vec.y),
-                                vec.z,
-                                inv(vec.x)
-                            );
-            case WEST_NORTH -> new Vector3f(
-                                inv(vec.y),
-                                vec.x,
-                                vec.z
-                            );
-            case WEST_SOUTH -> new Vector3f(
-                                inv(vec.y),
-                                inv(vec.x),
-                                inv(vec.z)
-                            );
-            case WEST_UP -> new Vector3f(
-                                inv(vec.y),
-                                inv(vec.z),
-                                vec.x
-                            );
-        };
-    }
-
-
-
-
-
-
-
-
-    // still dont care
-    public static Vec3 rotate(Vec3 vec, CombinedOrientation dir) {
-        return switch (dir) {
-            case DOWN_EAST -> new Vec3(
-                                inv(vec.z),
-                                inv(vec.y),
-                                inv(vec.x)
-                            );
-            case DOWN_NORTH -> new Vec3(
-                                inv(vec.z),
-                                inv(vec.y),
-                                vec.x
-                            );
-            case DOWN_SOUTH -> new Vec3(
-                                vec.x,
-                                inv(vec.y),
-                                inv(vec.z)
-                            );
-            case DOWN_WEST -> new Vec3(
-                                vec.z,
-                                inv(vec.y),
-                                vec.x
-                            );
-            case EAST_DOWN -> new Vec3(
-                                vec.y,
-                                vec.z,
-                                vec.x
-                            );
-            case EAST_NORTH -> new Vec3(
-                                vec.y,
-                                inv(vec.x),
-                                vec.z
-                            );
-            case EAST_SOUTH -> new Vec3(
-                                vec.y,
-                                vec.x,
-                                inv(vec.z)
-                            );
-            case EAST_UP -> new Vec3(
-                                vec.y,
-                                inv(vec.z),
-                                inv(vec.x)
-                            );
-            case NORTH_DOWN -> new Vec3(
-                                vec.x,
-                                vec.z,
-                                inv(vec.y)
-                            );
-            case NORTH_EAST -> new Vec3(
-                                inv(vec.z),
-                                vec.x,
-                                inv(vec.y)
-                            );
-            case NORTH_UP -> new Vec3(
-                                inv(vec.x),
-                                inv(vec.z),
-                                inv(vec.y)
-                            );
-            case NORTH_WEST -> new Vec3(
-                                vec.z,
-                                inv(vec.x),
-                                inv(vec.y)
-                            );
-            case SOUTH_DOWN -> new Vec3(
-                                inv(vec.x),
-                                vec.z,
-                                vec.y
-                            );
-            case SOUTH_EAST -> new Vec3(
-                                inv(vec.z),
-                                inv(vec.x),
-                                vec.y
-                            );
-            case SOUTH_UP -> new Vec3(
-                                vec.x,
-                                inv(vec.z),
-                                vec.y
-                            );
-            case SOUTH_WEST -> new Vec3(
-                                vec.z,
-                                vec.x,
-                                vec.y
-                            );
-            case UP_EAST -> new Vec3(
-                                inv(vec.z),
-                                vec.y,
-                                vec.x
-                            );
-            case UP_NORTH -> vec;
-            case UP_SOUTH -> new Vec3(
-                                inv(vec.x),
-                                vec.y,
-                                inv(vec.z)
-                            );
-            case UP_WEST -> new Vec3(
-                                vec.z,
-                                vec.y,
-                                inv(vec.x)
-                            );
-            case WEST_DOWN -> new Vec3(
-                                inv(vec.y),
-                                vec.z,
-                                inv(vec.x)
-                            );
-            case WEST_NORTH -> new Vec3(
-                                inv(vec.y),
-                                vec.x,
-                                vec.z
-                            );
-            case WEST_SOUTH -> new Vec3(
-                                inv(vec.y),
-                                inv(vec.x),
-                                inv(vec.z)
-                            );
-            case WEST_UP -> new Vec3(
-                                inv(vec.y),
-                                inv(vec.z),
-                                vec.x
-                            );
-        };
-    }
-
-    private static double inv(double in) {
-        return in + ((0.5d - in) * 2.0d);
-    }
-
-    private static float inv(float in) {
-        return in + ((0.5f - in) * 2.0f);
     }
 }

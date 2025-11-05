@@ -32,8 +32,8 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
     private static final ObjectArrayList<LazyRotatableHitbox> all = new ObjectArrayList<>();
     @SubscribeEvent
     public static void clearStale(PlayerLoggedOutEvent evt) {
-        for(int x = 0; x < all.size(); x++)
-            all.get(x).orientations = null;
+        for(int x = 0; x < LazyRotatableHitbox.all.size(); x++)
+            LazyRotatableHitbox.all.get(x).orientations = null;
     }
 
     // the unrotated shape at (0, 0, 0), or UP_NORTH
@@ -47,7 +47,7 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
             throw new IllegalArgumentException("Attempted to create a Hitbox from an empty shape!");
         this.rootShape = rootShape.optimize();
         this.orientations = null;
-        all.add(this);
+        LazyRotatableHitbox.all.add(this);
     }
 
     /**
@@ -64,13 +64,22 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
             return rootShape;
         if(tokens.length == 1) {
             Object arg = tokens[0];
-            if(arg == null) return rootShape;
-            if(arg instanceof BlockState state)
-                return getAndCache(DirectionTransformer.getAbsoluteRotation(state));
-            if(arg instanceof VectorRotationRepresentable vrr)
-                return getAndCache(vrr.getRotation());
-            if(arg instanceof Vec3i vec) 
-                return getAndCache(vec);
+            switch (arg) {
+                case null -> {
+                    return rootShape;
+                }
+                case BlockState state -> {
+                    return getAndCache(DirectionTransformer.getAbsoluteRotation(state));
+                }
+                case VectorRotationRepresentable vrr -> {
+                    return getAndCache(vrr.getRotation());
+                }
+                case Vec3i vec -> {
+                    return getAndCache(vec);
+                }
+                default -> {
+                }
+            }
             Mechano.LOGGER.error("Couldn't get orientation shape for token '" + arg + "' (" + arg.getClass().getTypeName() + 
                 ") - This token is not a valid substitute for an orientation (Expected BlockState, Vec3i, VectorRotationRepresentable) The default shape has been provided as a fallback!");
             return get();

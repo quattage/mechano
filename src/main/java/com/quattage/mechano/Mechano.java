@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.api.transmitter.MechanoTransmissionTypes;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -22,7 +21,7 @@ import net.neoforged.fml.common.Mod;
 public class Mechano {
 
     public static final String ID = "mechano";
-    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(ID)
+    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.ID)
         .defaultCreativeTab((ResourceKey<CreativeModeTab>) null);
     public static final Logger LOGGER = LogUtils.getLogger();
 
@@ -30,7 +29,7 @@ public class Mechano {
 
     public Mechano(IEventBus modBus, ModContainer container) {
         ModLoadingContext ctx = ModLoadingContext.get();
-        REGISTRATE.registerEventListeners(modBus);
+        Mechano.REGISTRATE.registerEventListeners(modBus);
         MechanoBlocks.register(modBus);
         MechanoBlockEntities.register(modBus);
         MechanoEntities.register(modBus);
@@ -40,20 +39,19 @@ public class Mechano {
         MechanoTags.register(modBus);
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);
-        MechanoTransmissionTypes.register(modBus);
     }
 
     public static ResourceLocation asResource(String path) {
-        return ResourceLocation.fromNamespaceAndPath(ID, path);
+        return ResourceLocation.fromNamespaceAndPath(Mechano.ID, path);
     }
 
     public static ResourceLocation defer(DataGenContext<?, ?> ctx, String append) {
-        return defer(ctx, append, ctx.getId().getPath());
+        return Mechano.defer(ctx, append, ctx.getId().getPath());
     }
 
     public static ResourceLocation defer(DataGenContext<?, ?> ctx, String append, String realName) {
         String resource = ctx.getId().getNamespace() + ":block/" + append + "/" + realName;
-        return ResourceLocation.fromNamespaceAndPath(ID, resource);
+        return ResourceLocation.fromNamespaceAndPath(Mechano.ID, resource);
     }
 
     public static ResourceLocation extend(DataGenContext<?, ?> ctx, String rootType, String item) {
@@ -85,6 +83,6 @@ public class Mechano {
     }
 
     public static LangBuilder lang() {
-        return new LangBuilder(ID);
+        return new LangBuilder(Mechano.ID);
     }
 }

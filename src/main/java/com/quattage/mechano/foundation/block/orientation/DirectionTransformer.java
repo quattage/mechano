@@ -50,7 +50,7 @@ public class DirectionTransformer {
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalForward();
 
         if(block instanceof SimpleOrientedBlock) 
-            return toDirection(state.getValue(SimpleOrientedBlock.ORIENTATION).getOrient());
+            return DirectionTransformer.toDirection(state.getValue(SimpleOrientedBlock.ORIENTATION).getOrient());
 
         if(block instanceof VerticallyOrientedBlock)
             return state.getValue(VerticallyOrientedBlock.ORIENTATION).getLocalFacing();
@@ -65,10 +65,10 @@ public class DirectionTransformer {
             return state.getValue(DirectionalKineticBlock.FACING);
 
         if(block instanceof RotatedPillarBlock)
-            return toDirection(state.getValue(RotatedPillarBlock.AXIS));
+            return DirectionTransformer.toDirection(state.getValue(RotatedPillarBlock.AXIS));
         
         if(block instanceof RotatedPillarKineticBlock)
-            return toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
+            return DirectionTransformer.toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
 
         if(block instanceof Block)
             return Direction.NORTH;
@@ -108,10 +108,10 @@ public class DirectionTransformer {
             return state.getValue(DirectionalKineticBlock.FACING);
 
         if(block instanceof RotatedPillarBlock)
-            return toDirection(state.getValue(RotatedPillarBlock.AXIS));
+            return DirectionTransformer.toDirection(state.getValue(RotatedPillarBlock.AXIS));
 
         if(block instanceof RotatedPillarKineticBlock)
-            return toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
+            return DirectionTransformer.toDirection(state.getValue(RotatedPillarKineticBlock.AXIS));
 
         if(block instanceof Block)
             return Direction.UP;
@@ -121,28 +121,40 @@ public class DirectionTransformer {
 
     @Nullable
     public static <R extends Enum<R> & StringRepresentable> Direction getForward(Property<R> group, R prop) {
-        if(prop instanceof CombinedOrientation o) return o.getLocalForward();
-        if(prop instanceof VerticalOrientation o) return o.getLocalFacing();
-        if(prop instanceof SimpleOrientation o) return toDirection(o.getOrient());
-        if(prop instanceof Direction.Axis o) return toDirection(o);
-        if(prop instanceof Direction o) return o;
-        return null;
+        return switch (prop) {
+            case CombinedOrientation o -> o.getLocalForward();
+            case VerticalOrientation o -> o.getLocalFacing();
+            case SimpleOrientation o -> DirectionTransformer.toDirection(o.getOrient());
+            case Direction.Axis o -> DirectionTransformer.toDirection(o);
+            case Direction o -> o;
+            case null, default -> null;
+        };
     }
 
     @Nullable
     public static <R extends Enum<R> & StringRepresentable> Direction getUp(Property<R> group, R prop) {
-        if(prop instanceof CombinedOrientation o) return o.getLocalUp();
-        if(prop instanceof VerticalOrientation o) return o.getLocalVertical();
-        if(prop instanceof SimpleOrientation o) return o.getCardinal();
-        if(prop instanceof Direction.Axis o) {
-            if(group.getPossibleValues().size() > 2)
-                return toDirection(o);
-            else return Direction.UP;
-        }
-        if(prop instanceof Direction o) {
-            if(group.getPossibleValues().size() > 4) 
-                return o;
-            else return Direction.UP;
+        switch (prop) {
+            case CombinedOrientation o -> {
+                return o.getLocalUp();
+            }
+            case VerticalOrientation o -> {
+                return o.getLocalVertical();
+            }
+            case SimpleOrientation o -> {
+                return o.getCardinal();
+            }
+            case Direction.Axis o -> {
+                if(group.getPossibleValues().size() > 2)
+                    return DirectionTransformer.toDirection(o);
+                else return Direction.UP;
+            }
+            case Direction o -> {
+                if(group.getPossibleValues().size() > 4) 
+                    return o;
+                else return Direction.UP;
+            }
+            case null, default -> {
+            }
         }
         return null;
     }
@@ -193,37 +205,37 @@ public class DirectionTransformer {
         if(block instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION);
         if(block instanceof SimpleOrientedBlock) 
-            return convert(state.getValue(SimpleOrientedBlock.ORIENTATION));
+            return DirectionTransformer.convert(state.getValue(SimpleOrientedBlock.ORIENTATION));
         if(block instanceof VerticallyOrientedBlock)
-            return convert(state.getValue(VerticallyOrientedBlock.ORIENTATION));
+            return DirectionTransformer.convert(state.getValue(VerticallyOrientedBlock.ORIENTATION));
         if(block instanceof HorizontalDirectionalBlock)
-            return convert(state.getValue(HorizontalDirectionalBlock.FACING));
+            return DirectionTransformer.convert(state.getValue(HorizontalDirectionalBlock.FACING));
         if(block instanceof DirectionalBlock)
-            return convert(state.getValue(DirectionalBlock.FACING));
+            return DirectionTransformer.convert(state.getValue(DirectionalBlock.FACING));
         if(block instanceof DirectionalKineticBlock)
-            return convert(state.getValue(DirectionalKineticBlock.FACING));
+            return DirectionTransformer.convert(state.getValue(DirectionalKineticBlock.FACING));
         if(block instanceof RotatedPillarBlock)
-            return convert(toDirection(state.getValue(RotatedPillarBlock.AXIS)));
+            return DirectionTransformer.convert(DirectionTransformer.toDirection(state.getValue(RotatedPillarBlock.AXIS)));
         if(block instanceof RotatedPillarKineticBlock)
-            return convert(toDirection(state.getValue(RotatedPillarKineticBlock.AXIS)));
+            return DirectionTransformer.convert(DirectionTransformer.toDirection(state.getValue(RotatedPillarKineticBlock.AXIS)));
         return CombinedOrientation.NORTH_UP;
     }
 
     public static Vec3i getAbsoluteRotation(BlockState state) {
         if(state.getBlock() instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getAbsoluteRotation();
-        Direction up = getUp(state);
-        Direction forward = getForward(state);
-        if(forward == up) return dir2Vec(up);
+        Direction up = DirectionTransformer.getUp(state);
+        Direction forward = DirectionTransformer.getForward(state);
+        if(forward == up) return DirectionTransformer.dir2Vec(up);
         return CombinedOrientation.combine(up, forward).getAbsoluteRotation();
     }
 
     public static Vec3i getStateRotation(BlockState state) {
         if(state.getBlock() instanceof CombinedOrientedBlock)
             return state.getValue(CombinedOrientedBlock.ORIENTATION).getStateRotation();
-        Direction up = getUp(state);
-        Direction forward = getForward(state);
-        if(forward == up) return dir2Vec(up);
+        Direction up = DirectionTransformer.getUp(state);
+        Direction forward = DirectionTransformer.getForward(state);
+        if(forward == up) return DirectionTransformer.dir2Vec(up);
         return CombinedOrientation.combine(up, forward).getStateRotation();
     }
 
@@ -237,7 +249,7 @@ public class DirectionTransformer {
     }
 
     public static boolean sharesLocalUp(BlockState first, BlockState second) {
-        return getUp(first) == getUp(second);
+        return DirectionTransformer.getUp(first) == DirectionTransformer.getUp(second);
     }
 
     /***
@@ -256,7 +268,7 @@ public class DirectionTransformer {
      * @return
      */
     public static boolean isAmbiguous(BlockState state) {
-        return getUp(state).equals(getForward(state));
+        return DirectionTransformer.getUp(state).equals(DirectionTransformer.getForward(state));
     } 
 
     public static BlockState rotate(BlockState state) {
@@ -281,11 +293,11 @@ public class DirectionTransformer {
      */
     public static boolean isDistinctionRequired(BlockState state) {
         if(state.getBlock() instanceof HorizontalDirectionalBlock) return false;
-        return !isAmbiguous(state);
+        return !DirectionTransformer.isAmbiguous(state);
     }
 
     public static boolean isHorizontal(BlockState state) {
-        Direction up = getUp(state);
+        Direction up = DirectionTransformer.getUp(state);
         return up.getAxis().isHorizontal();
     }
 
@@ -315,7 +327,7 @@ public class DirectionTransformer {
         int dirAIndex = -1;
         int dirBIndex = -1;
 
-        Direction[] plane = getPlaneFromAxis(axis);
+        Direction[] plane = DirectionTransformer.getPlaneFromAxis(axis);
         for(int x = 0; x < plane.length; x++) {
             if(plane[x] == dirA)
                 dirAIndex = x;
@@ -324,7 +336,7 @@ public class DirectionTransformer {
             x++;
         }
 
-        boolean invert = isPositive(dirA) == isPositive(dirB);
+        boolean invert = DirectionTransformer.isPositive(dirA) == DirectionTransformer.isPositive(dirB);
 
         if(Math.abs(dirAIndex - dirBIndex) == 1 || Math.abs(dirAIndex - dirBIndex) == plane.length - 1)
             return dirAIndex < dirBIndex ? (invert ? 1 : -1) : (invert ? -1 : 1);
@@ -332,7 +344,7 @@ public class DirectionTransformer {
     }
 
     public static Direction getComplementingDirection(Direction dir, Axis axis) {
-        Direction[] plane = getPlaneFromAxis(axis);
+        Direction[] plane = DirectionTransformer.getPlaneFromAxis(axis);
 
         for(int x = 0; x < plane.length; x++) {
             if(plane[x] == dir) {
@@ -347,7 +359,7 @@ public class DirectionTransformer {
 
     public static BlockPos[] getAllCorners(BlockPos center, Axis axis) {
 
-        Direction[] plane = getPlaneFromAxis(axis);
+        Direction[] plane = DirectionTransformer.getPlaneFromAxis(axis);
 
         BlockPos[] out = new BlockPos[4];
         out[0] = center.relative(plane[0]).relative(plane[1]);
@@ -359,7 +371,7 @@ public class DirectionTransformer {
 
     public static BlockPos[] getAllAdjacent(BlockPos center, Axis axis) {
 
-        Direction[] plane = getPlaneFromAxis(axis);
+        Direction[] plane = DirectionTransformer.getPlaneFromAxis(axis);
 
         BlockPos[] out = new BlockPos[4];
         out[0] = center.relative(plane[0]);
@@ -370,7 +382,7 @@ public class DirectionTransformer {
     }
 
     public static Pair<BlockPos, BlockPos> getPositiveCorners(BlockPos center, Axis axis) {
-        Direction[] plane = getPlaneFromAxis(axis);
+        Direction[] plane = DirectionTransformer.getPlaneFromAxis(axis);
         BlockPos c1 = center.relative(plane[0]).relative(plane[1]);
         BlockPos c2 = center.relative(plane[2]).relative(plane[3]);
         return Pair.of(c1, c2);

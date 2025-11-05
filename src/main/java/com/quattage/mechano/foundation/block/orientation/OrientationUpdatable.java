@@ -1,5 +1,7 @@
 package com.quattage.mechano.foundation.block.orientation;
 
+import org.joml.Vector3f;
+
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -12,7 +14,7 @@ public interface OrientationUpdatable {
      * match the orientation described by the given BlockState.
      * @param state state to extract orientation data
      */
-    public default void updateOrientation(BlockState state) {
+    default void updateOrientation(BlockState state) {
         updateOrientation(state);
     }
     /**
@@ -20,5 +22,7 @@ public interface OrientationUpdatable {
      * match the given orientation
      * @param dir Orientation to use when transforming this AnchorPoint
      */
-    public abstract void updateOrientation(CombinedOrientation dir);
+    void updateOrientation(CombinedOrientation dir);
+
+    default void updateOrientation(Vector3f rotation) {}
 }

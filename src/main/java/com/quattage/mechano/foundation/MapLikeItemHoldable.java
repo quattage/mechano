@@ -12,8 +12,14 @@ import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public interface MapLikeItemHoldable {
+
+    @OnlyIn(Dist.CLIENT)
+    boolean shouldRenderSpecial(ItemStack item);
+    
     /**
      * Overrides the vanilla {@link ItemInHandRenderer} behaviour as invoked by the
      * {@link ItemInHandRendererMixin mixin.} You may implement your own logic here 
@@ -24,7 +30,8 @@ public interface MapLikeItemHoldable {
      * be cancelled in favor of a custom implementation defined within
      * the scope of this method.
      */
-    public static boolean renderInHands(ItemStack item, MultiBufferSource bufferSource, PoseStack matrixStack, AbstractClientPlayer player, ItemInHandRenderer renderer, float swingProgress, float equipProgress, float pitch, float pTicks, int packedLight) {
+    @OnlyIn(Dist.CLIENT)
+    static boolean renderInHands(ItemStack item, MultiBufferSource bufferSource, PoseStack matrixStack, AbstractClientPlayer player, ItemInHandRenderer renderer, float swingProgress, float equipProgress, float pitch, float pTicks, int packedLight) {
 
         float tilt = (((ItemInHandRendererInvoker)renderer).mechano$calculateMapTilt(pitch) * 0.4f) + 0.3f;
         matrixStack.translate(0f, 0.2f + equipProgress * -1.2f + tilt * -0.3f, -0.72f);
@@ -33,8 +40,8 @@ public interface MapLikeItemHoldable {
         if (!player.isInvisible()) {
             matrixStack.pushPose();
             matrixStack.mulPose(Axis.YP.rotationDegrees(90));
-            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
-            renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.LEFT);
+            MapLikeItemHoldable.renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
+            MapLikeItemHoldable.renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.LEFT);
             matrixStack.popPose();
         }
 
@@ -47,7 +54,8 @@ public interface MapLikeItemHoldable {
         return true;
     }
 
-    public static void renderSpoolHand(ItemInHandRenderer renderer, AbstractClientPlayer player, PoseStack poseStack, MultiBufferSource buffer, int packedLight, HumanoidArm side) {
+    @OnlyIn(Dist.CLIENT)
+    static void renderSpoolHand(ItemInHandRenderer renderer, AbstractClientPlayer player, PoseStack poseStack, MultiBufferSource buffer, int packedLight, HumanoidArm side) {
         PlayerRenderer playerrenderer = (PlayerRenderer)((ItemInHandRendererInvoker)renderer)
             .mechano$getEntityRenderDispatcher().<AbstractClientPlayer>getRenderer(player);
         poseStack.pushPose();

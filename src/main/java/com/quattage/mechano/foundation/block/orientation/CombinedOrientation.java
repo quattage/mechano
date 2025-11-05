@@ -2,6 +2,8 @@ package com.quattage.mechano.foundation.block.orientation;
 
 import java.util.Locale;
 
+import org.joml.Quaternionf;
+
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.Util;
@@ -52,21 +54,22 @@ public enum CombinedOrientation implements StringRepresentable {
 
     private final Direction localUp;
     private final Direction localForward;
-
     private final Vec3i stateRotation;
     private final Vec3i absRotation;
+    private final Quaternionf rotation;
 
-    private static final Int2ObjectMap<CombinedOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), b -> {
-        for(CombinedOrientation direction : values()) {
-            b.put(lookupKey(direction.localUp, direction.localForward), direction);
+    private static final Int2ObjectMap<CombinedOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(CombinedOrientation.values().length), b -> {
+        for(CombinedOrientation direction : CombinedOrientation.values()) {
+            b.put(CombinedOrientation.lookupKey(direction.localUp, direction.localForward), direction);
         }
     });
 
-    private CombinedOrientation(Vec3i stateRotation, Vec3i absRotation, Direction localUp, Direction localForward) {
+    CombinedOrientation(Vec3i stateRotation, Vec3i absRotation, Direction localUp, Direction localForward) {
         this.localUp = localUp;
         this.localForward = localForward;
         this.stateRotation = stateRotation;
         this.absRotation = absRotation;
+        this.rotation = new Quaternionf().rotationXYZ((float)Math.toRadians(absRotation.getX()), (float)Math.toRadians(absRotation.getY()), (float)Math.toRadians(absRotation.getZ()));
     }
 
     private static int lookupKey(Direction localUp, Direction localForward) {
@@ -93,8 +96,8 @@ public enum CombinedOrientation implements StringRepresentable {
         if(localUp.getAxis() == localForward.getAxis())
             throw new IllegalStateException("A CombinedOrientation facing '" + localUp.toString().toUpperCase() 
                 + "' cannot possess a local '" + localForward.toString().toUpperCase() + "' direction!");
-        int i = lookupKey(localUp, localForward);
-        return COMBINED_LOOKUP.get(i);
+        int i = CombinedOrientation.lookupKey(localUp, localForward);
+        return CombinedOrientation.COMBINED_LOOKUP.get(i);
     }
 
     public Direction getLocalUp() {
@@ -103,6 +106,10 @@ public enum CombinedOrientation implements StringRepresentable {
 
     public Direction getLocalForward() {
         return this.localForward;
+    }
+
+    public Quaternionf getRotation() {
+        return rotation;
     }
 
     public static CombinedOrientation next(CombinedOrientation in) {
@@ -117,7 +124,7 @@ public enum CombinedOrientation implements StringRepresentable {
     public static CombinedOrientation cycleLocalForward(CombinedOrientation in) {
         int pos = in.ordinal();
         int newPos = pos + 1;
-        if(newPos >= getGroupMaxRange(pos))
+        if(newPos >= CombinedOrientation.getGroupMaxRange(pos))
                 newPos -= 4;
         return CombinedOrientation.values()[newPos];
     }
@@ -130,7 +137,7 @@ public enum CombinedOrientation implements StringRepresentable {
      */
     public static CombinedOrientation cycle(CombinedOrientation in) {
         int pos = in.ordinal();
-        if(getGroupIndex(in) < 3) { 
+        if(CombinedOrientation.getGroupIndex(in) < 3) { 
             pos += 4;
             if(pos > 23) pos -= 23;
             if(pos < 8) pos = 8 + (pos % 4);
@@ -144,7 +151,7 @@ public enum CombinedOrientation implements StringRepresentable {
 
     private static int getGroupIndex(CombinedOrientation in) {
         int pos = in.ordinal();
-        return getGroupIndex(pos);
+        return CombinedOrientation.getGroupIndex(pos);
     }
 
     private static int getGroupIndex(int in) {
@@ -159,9 +166,9 @@ public enum CombinedOrientation implements StringRepresentable {
     public CombinedOrientation applyRotation(Rotation rotation) {
         if(this.ordinal() < 8) {
             return switch (rotation) {
-                case CLOCKWISE_180 -> cycleLocalForward(cycleLocalForward(this));
-                case CLOCKWISE_90 -> cycleLocalForward(cycleLocalForward(cycleLocalForward(this)));
-                case COUNTERCLOCKWISE_90 -> cycleLocalForward(this);
+                case CLOCKWISE_180 -> CombinedOrientation.cycleLocalForward(CombinedOrientation.cycleLocalForward(this));
+                case CLOCKWISE_90 -> CombinedOrientation.cycleLocalForward(CombinedOrientation.cycleLocalForward(CombinedOrientation.cycleLocalForward(this)));
+                case COUNTERCLOCKWISE_90 -> CombinedOrientation.cycleLocalForward(this);
                 case NONE -> this;
             };
         }
@@ -187,7 +194,7 @@ public enum CombinedOrientation implements StringRepresentable {
     }
 
     private static int getGroupMaxRange(int in) {
-        return getGroupIndex(in) * 4;
+        return CombinedOrientation.getGroupIndex(in) * 4;
     }
 
     public Vec3i getStateRotation() {

@@ -2,10 +2,8 @@
 package com.quattage.mechano.api.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.anchor.AnchorPoint;
-import com.quattage.mechano.api.anchor.AnchorSelector;
+import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.api.catenary.WindManager;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -14,7 +12,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implements BlockEntityRenderer<T> {
 
@@ -27,7 +24,7 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
         if(player == null) return;
         double reach = player.getAttributes().getValue(Attributes.ENTITY_INTERACTION_RANGE);
         tickAnchors(player, be, reach);
-        renderMovingWires(be, bufferSource, poseStack, partialTick);
+        // renderMovingWires(be, bufferSource, poseStack, partialTick);
     }
 
     /**
@@ -44,33 +41,31 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
      * @param be
      */
     public void tickAnchors(LocalPlayer player, T be, double reach) {
-        be.getAnchors().forEach(anchor -> {
-            float distance = (float)anchor.distanceTo(player);
-            if(distance > reach * 1.5f) return;
-            AnchorSelector.INSTANCE.trackForThisFrame(be, anchor, distance);
+        be.getExposedAncillaries().forEach(joint -> {
+            JackSelector.getInstance().trackForThisFrame(player, be, joint);
         });
     }
 
-    public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
-        be.forEachCatenary(cat -> {
-            if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel())) return;
-            cat.render(be, bufferSource, matrixStack, pTicks);
-        });
-    }
+    // public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
+    //     be.forEachCatenary(cat -> {
+    //         if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel())) return;
+    //         cat.render(be, bufferSource, matrixStack, pTicks);
+    //     });
+    // }
 
     @Override
     public AABB getRenderBoundingBox(T be) {
         return be.getRenderBoundingBox();
     }
     
-    @Override
-    public boolean shouldRender(T be, Vec3 cameraPos) {
-        if(be.getSurrogate() != null && be.getSurrogate().isSynced()) return true;
-        return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
-    }
+    // @Override
+    // public boolean shouldRender(T be, Vec3 cameraPos) {
+    //     if(be.getSurrogate() != null && be.getSurrogate().isSynced()) return true;
+    //     return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
+    // }
 
-    @Override
-    public boolean shouldRenderOffScreen(T be) {
-        return be.getSurrogate() != null && be.getSurrogate().isSynced();
-    }
+    // @Override
+    // public boolean shouldRenderOffScreen(T be) {
+    //     return be.getSurrogate() != null && be.getSurrogate().isSynced();
+    // }
 }

@@ -16,8 +16,8 @@ public class MechanoCommands {
     
     @SubscribeEvent
     public static void register(RegisterCommandsEvent evt) {
-        LiteralCommandNode<CommandSourceStack> root = evt.getDispatcher().register(makeRoot());
-        root.addChild(CatnipCommands.buildRedirect("grid", makeGrid()));
+        LiteralCommandNode<CommandSourceStack> root = evt.getDispatcher().register(MechanoCommands.makeRoot());
+        root.addChild(CatnipCommands.buildRedirect("grid", MechanoCommands.makeGrid()));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> makeRoot() {
@@ -27,9 +27,6 @@ public class MechanoCommands {
 
     private static LiteralCommandNode<CommandSourceStack> makeGrid() {
         return Commands.literal("grid")
-            .then(GridDumpCommand.make())
-            .then(GridWipeCommand.make())
-            .then(LinkPeekCommand.make())
             .build();
     }
 }

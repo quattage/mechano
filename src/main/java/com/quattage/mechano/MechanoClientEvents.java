@@ -1,41 +1,20 @@
 package com.quattage.mechano;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.LinkDataStorage;
-import com.quattage.mechano.api.SidedGridDispatcher;
-import com.quattage.mechano.api.anchor.AnchorGuiLayer;
-import com.quattage.mechano.api.anchor.AnchorPoint;
-import com.quattage.mechano.api.anchor.AnchorSelector;
-import com.quattage.mechano.api.catenary.CatenaryAccess;
-import com.quattage.mechano.api.catenary.CatenaryModel;
-import com.quattage.mechano.api.catenary.CatenaryModelProvider;
-import com.quattage.mechano.api.entity.GriddableEntityAttachment;
-import com.quattage.mechano.api.griddable.Griddable;
-import com.quattage.mechano.api.identifier.EntityUUID;
-import com.quattage.mechano.api.item.SpoolItem;
-import com.quattage.mechano.api.landmark.GridCatenary;
+import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.foundation.LeftClickCapturable;
-import com.quattage.mechano.foundation.MechanoItemProperties;
-import com.quattage.mechano.foundation.MechanoItemProperties.SpoolFullnessProperty;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.item.ItemProperties;
-import net.minecraft.core.SectionPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
-import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -43,13 +22,12 @@ import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
-import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
-    private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
+    // private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
 
     public static boolean shouldRenderOverlay(Minecraft mc) {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
@@ -62,14 +40,14 @@ public class MechanoClientEvents {
      */
     @SubscribeEvent
     public static <T extends LivingEntity, M extends EntityModel<T>> void onRenderLiving(RenderLivingEvent.Pre<T, M> evt) {
-        LivingEntity e = evt.getEntity();
-        Griddable<?> holder = GriddableEntityAttachment.of(e, false);
-        if(holder == null) return;
-        float pTicks = evt.getPartialTick();
-        ((CatenaryAccess)e).forEachCatenary(cat -> {
-            Vec3 offsetOverride = e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
-            cat.render(e, offsetOverride, evt.getMultiBufferSource(), evt.getPoseStack(), pTicks);
-        });
+        // LivingEntity e = evt.getEntity();
+        // Griddable<?> holder = GriddableEntityAttachment.of(e, false);
+        // if(holder == null) return;
+        // float pTicks = evt.getPartialTick();
+        // ((CatenaryAccess)e).forEachCatenary(cat -> {
+        //     Vec3 offsetOverride = e.getRopeHoldPosition(pTicks).subtract(e.getPosition(pTicks));
+        //     cat.render(e, offsetOverride, evt.getMultiBufferSource(), evt.getPoseStack(), pTicks);
+        // });
     }
 
     /**
@@ -82,16 +60,16 @@ public class MechanoClientEvents {
         Minecraft instance = Minecraft.getInstance();
         if(instance == null) return;
         LocalPlayer player = instance.player;
-        AnchorSelector.INSTANCE.tick(player, evt.getPartialTick());
+        JackSelector.getInstance().tick(player, evt.getPartialTick());
         if(player == null) return;
 
-        if(!instance.options.getCameraType().isFirstPerson()) return;
-        ((CatenaryAccess)player).forEachCatenary(cat -> {
-            if(!cat.getPrimaryConstruct(player.level()).equals(GriddableEntityAttachment.of(player, false).createAddress()))
-                return;
-            cat.render(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
-                Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
-        });
+        // if(!instance.options.getCameraType().isFirstPerson()) return;
+        // ((CatenaryAccess)player).forEachCatenary(cat -> {
+        //     if(!cat.getPrimaryConstruct(player.level()).equals(GriddableEntityAttachment.of(player, false).createAddress()))
+        //         return;
+        //     cat.render(player, new Vec3(0, player.getBbHeight() * 0.9f, 0), 
+        //         Minecraft.getInstance().renderBuffers().bufferSource(), new PoseStack(), evt.getPartialTick().getGameTimeDeltaPartialTick(false));
+        // });
     }
 
 
@@ -102,7 +80,7 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static void onRenderStageComplete(RenderLevelStageEvent evt) {
         if(evt.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
-        AnchorSelector.INSTANCE.drawTrackedAnchors(
+        JackSelector.getInstance().drawTrackedAnchors(
             evt.getCamera(), evt.getPoseStack(), 
             ((RenderBuffersAccessor)evt.getLevelRenderer())
                 .mechano$getRenderBuffers()
@@ -118,19 +96,19 @@ public class MechanoClientEvents {
      */
     @SubscribeEvent
     public static void onRenderHighlight(RenderHighlightEvent.Block evt) {
-        evt.setCanceled(AnchorSelector.INSTANCE.hasSelection());
+        evt.setCanceled(JackSelector.getInstance().hasSelection());
     }
 
     /**
      * Suppresses the inclusion of "Durability: xx/xx" tooltips 
      * on spools that request to do so.
      */
-    @SubscribeEvent
-    public static void onTooltipGather(RenderTooltipEvent.GatherComponents evt) {
-        if(!(evt.getItemStack().getItem() instanceof SpoolItem schpool)) return;
-        if(!schpool.hidesDefaultTooltip()) return;
-        evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
-    }
+    // @SubscribeEvent
+    // public static void onTooltipGather(RenderTooltipEvent.GatherComponents evt) {
+    //     if(!(evt.getItemStack().getItem() instanceof SpoolItem schpool)) return;
+    //     if(!schpool.hidesDefaultTooltip()) return;
+    //     evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
+    // }
 
     @SubscribeEvent
     public static void onLeftClick(InputEvent.MouseButton.Pre evt) {
@@ -148,36 +126,29 @@ public class MechanoClientEvents {
             evt.setCanceled(lcc.onLeftClick(player, stack, InteractionHand.OFF_HAND));
     }
 
-    @SubscribeEvent 
-    public static void onChangeMode(ClientPlayerChangeGameTypeEvent evt) { 
-        LocalPlayer lp = Minecraft.getInstance().player;
-        if(evt.getNewGameType() != GameType.SPECTATOR) return;
-        SidedGridDispatcher.client(lp).requestAnchorDestruction(new EntityUUID(lp));
-    }
-
     /**
      * This is the hook where {@link CatenaryModel} instances get rendered
      * to chunks if both ends of said model are attached to immovable,
      * voxel-adjacent elements. This event collects links attached to
      * the section via the registered {@link LinkDataStorage data attachment}.
      */
-    @SubscribeEvent
-    public static void onSectionMeshed(AddSectionGeometryEvent evt) {
-        SectionPos pos = SectionPos.of(evt.getSectionOrigin());
-        ClientLevel world = (ClientLevel)evt.getLevel(); 
-        LinkDataStorage.ClientSectionable storage = LinkDataStorage.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
-        if(storage == null) return;
-        LinkDataStorage.Client section = storage.getStorageInSection(pos.getY());
-        if(section == null) return;
-        evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
-    }
+    // @SubscribeEvent
+    // public static void onSectionMeshed(AddSectionGeometryEvent evt) {
+    //     SectionPos pos = SectionPos.of(evt.getSectionOrigin());
+    //     ClientLevel world = (ClientLevel)evt.getLevel(); 
+    //     LinkDataStorage.ClientSectionable storage = LinkDataStorage.getAsClient(world.getChunk(pos.getX(), pos.getZ()), false);
+    //     if(storage == null) return;
+    //     LinkDataStorage.Client section = storage.getStorageInSection(pos.getY());
+    //     if(section == null) return;
+    //     evt.addRenderer(ctx -> GridCatenary.renderToSection(world, pos, evt.getSectionOrigin(), section.getAll(), ctx));
+    // }
 
     public static void onRegisterLayers(RegisterGuiLayersEvent evt) {
-        evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("anchor_selection"), AnchorGuiLayer::renderOverlay);
+        evt.registerAbove(VanillaGuiLayers.HOTBAR, Mechano.asResource("anchor_selection"), (graphics, deltas) -> { JackSelector.getInstance().renderOverlay(Minecraft.getInstance(), graphics, deltas); });
     }
 
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {
-        evt.registerReloadListener(CATENARY_RESOURCES);
-        ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
+        // evt.registerReloadListener(MechanoClientEvents.CATENARY_RESOURCES);
+        // ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
     }
 }

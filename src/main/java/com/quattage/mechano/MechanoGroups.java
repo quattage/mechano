@@ -23,7 +23,7 @@ public class MechanoGroups {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> BASE = 
         TAB_REGISTRY.register("base", () -> CreativeModeTab.builder()
             .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
-            .icon(() -> MechanoBlocks.TEST_AXIS.asItem().getDefaultInstance())
+            .icon(() -> MechanoBlocks.CONNECTOR_SINGLE.asItem().getDefaultInstance())
             .title(Component.translatable("itemGroup." + Mechano.ID + ".base"))
             .displayItems(new GroupExclusionsGenerator(MechanoGroups.BASE))
             .build()

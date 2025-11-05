@@ -24,7 +24,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  * {@link #operate}, and {@link #setValue}) will
  * avoid storing values that are functionally equivalent to zero.
  * 
- * 
  * This class was written for the mechano project but has since been 
  * replaced with the EJML library in the interest of vectorization optimizations.
  * This class was designed without the ability to take advantage of SIMD inlining.
@@ -41,7 +40,7 @@ public class SparseDoubleMatrix {
     public SparseDoubleMatrix(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
-        this.elements = new Int2ObjectOpenHashMap<Int2DoubleOpenHashMap>(DEFAULT_PRELOAD);
+        this.elements = new Int2ObjectOpenHashMap<Int2DoubleOpenHashMap>(SparseDoubleMatrix.DEFAULT_PRELOAD);
     }
 
     public double setValue(int row, int col, double value) {
@@ -50,7 +49,7 @@ public class SparseDoubleMatrix {
         Int2DoubleOpenHashMap trgtRow = elements.get(row);
         if(trgtRow == null) {
             if(isZero) return 0;
-            trgtRow = new Int2DoubleOpenHashMap(DEFAULT_PRELOAD);
+            trgtRow = new Int2DoubleOpenHashMap(SparseDoubleMatrix.DEFAULT_PRELOAD);
             elements.put(row, trgtRow);
         }
         return isZero ? trgtRow.remove(col) : trgtRow.put(col, value);
@@ -135,7 +134,7 @@ public class SparseDoubleMatrix {
      */
     public void zeroOut() {
         elements.clear();
-        elements.trim(DEFAULT_PRELOAD);
+        elements.trim(SparseDoubleMatrix.DEFAULT_PRELOAD);
     }
 
     public void growToFit(int totalRows, int totalCols) { growToFit(totalRows, totalCols, true); }
@@ -164,9 +163,9 @@ public class SparseDoubleMatrix {
      * @see #minimize
      */
     public void trim() {
-        elements.trim(DEFAULT_PRELOAD);
+        elements.trim(SparseDoubleMatrix.DEFAULT_PRELOAD);
         for(Int2DoubleOpenHashMap col : elements.values())
-            col.trim(DEFAULT_PRELOAD);
+            col.trim(SparseDoubleMatrix.DEFAULT_PRELOAD);
     }
 
     /**
@@ -324,6 +323,7 @@ public class SparseDoubleMatrix {
         return "{\n" + out + "}";
     }
 
+    @Override
     public String toString() {
         return "SparseMatrix[" + rows + ", " + cols + "]";
     }

@@ -5,8 +5,10 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.catenary.CatenaryModel;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.numeric.Duo;
+import com.quattage.mechano.foundation.tracking.DataSourceIdentifier.ScopeSpecifier;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
 import net.minecraft.client.Minecraft;
@@ -23,7 +25,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
- * The TrackedConstruct interface indicates that implementing
+ * The TrackedObject interface indicates that implementing
  * subclasses require the ability to dynamically associate
  * with an {@link IAttachmentHolder attachment holder} and
  * determine at any time whether or not said attachment holder
@@ -36,13 +38,13 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * targeting relevent players and for comparing multiple instances 
  * by arbitrary priority or by approximate mass. 
  */
-public interface TrackedConstruct {
+public interface TrackedObject extends ScopeSpecifier {
 
     float DEFAULT_MASS = 65535f;
 
     /**
      * Sends the provided packet to all clients that can see or are loading this
-     * TrackedConstruct. 
+     * TrackedObject. 
      * Generally, the cost incurred by iterating over the entire list of ServerPlayers
      * is worth it when determining visibility, since it vastly improves the stability
      * and performance of the {@link ServerGrid ServerGrid's} packet handling.
@@ -70,11 +72,12 @@ public interface TrackedConstruct {
      */
     void sendLevelUpdates(Level world);
 
-    @OnlyIn(Dist.CLIENT) boolean isInFrustum(LevelReader world, @NotNull Frustum view);
+    @OnlyIn(Dist.CLIENT) 
+    boolean isInFrustum(LevelReader world, @NotNull Frustum view);
 
     @OnlyIn(Dist.CLIENT)
     default boolean isVisibleOnScreen(LevelReader world) {
-        return isVisibleOnScreen(world, TrackedConstruct.getFrustum());
+        return isVisibleOnScreen(world, TrackedObject.getFrustum());
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -83,33 +86,12 @@ public interface TrackedConstruct {
     }
 
     /**
-     * Gets the {@Link IAttachmentHolder Attachment Holder} that cooresponds
-     * this streamer's associated {@Link DataScope}.
+     * Gets the {@link IAttachmentHolder NeoForge data attachment holder} 
+     * associated with this TrackedObject, if one exists.
      * @param world
      * @return
      */
-    IAttachmentHolder getDataStorageHolder(LevelReader world);
-
-    /**
-     * Used by the {@Link GridManifestGenerator} to create a human-readible 
-     * string containing information about the data holder returned by 
-     * {@link #getDataStorageHolder} for debugging purposes.
-     * @param world World to operate within
-     */
-    String describeDataScope(LevelReader world);
-
-    /**
-     * @return The {@link DataScope} for this TrackedConstruct.
-     */
-    DataScope getDataScope(LevelReader world);
-
-    /**
-     * Sets the {@link DataScope} for this TrackedConstruct, which 
-     * is optionally supported by some subclasses that allow changing
-     * DataScope at runtime.
-     * @param scope
-     */
-    default void setDataScope(DataScope scope) {}
+    @Nullable IAttachmentHolder getDataStorageHolder();
 
     /**
      * The priority of a streamable object is a loose approximation of
@@ -130,27 +112,25 @@ public interface TrackedConstruct {
      * Used when applying forces to attached objects if those
      * objects can move.
      * @param world world to operate within
-     * @return approximate mass (of no particular unit or guaranteed precision) of this TrackedConstruct
+     * @return approximate mass (of no particular unit or guaranteed precision) of this TrackedObject
      */
     float getMass(LevelReader world);
 
-    /**
-     * Determines whether or not this TrackedConstruct represents
-     * some kind of movable construct or if a {@link CatenaryModel}
-     * interacting with this TrackedConstruct is actively moving.
-     * This method is used to determine whether or not a 
-     * {@link GridCatenary} is able to bake itself to the LevelChunk
-     * or not.
-     * @return <code>true</code> if this TrackedConstruct can move without 
-     * causing LevelChunk remeshing
-     */
-    default boolean canMoveDynamically(LevelReader world) {
-        return getDataScope(world) != DataScope.STATIC_CHUNK;
-    }
-
-    default boolean canReceiveVelocity(LevelReader world) {
+    default boolean canReceiveVelocity() {
         return false;
     }
+
+    /**
+     * Determines whether or not this TrackedObject refers to 
+     * an object that is rendered continuously. <p>
+     * Entities and BlockEntities are examples of objects that
+     * are remeshed each frame, and so are logically distinct from
+     * a Griddable that is attached to a LevelChunk. This method is 
+     * used to determine whether or not attached Catenaries need to 
+     * be simulated on the client.
+     * @return <code>true</code> if this TrackedObject can move without 
+     */
+    boolean isDynamic();
 
     /**
      * Broadcasts a {@link GridResponse} pertaining to this tracked
@@ -184,29 +164,29 @@ public interface TrackedConstruct {
 
     /**
      * Enforces a deterministic (if somewhat arbitrary) insertion order
-     * between two {@link TrackedConstruct streamable constructs} 
+     * between two {@link TrackedObject streamable constructs} 
      * <p>
      * This method is primarily used to decide which {@link GridUUID end} 
      * of a {@link GridConnection} should take render priority when drawing 
      * {@link CatenaryModel catenary meshes}. The code that does this can be 
      * found in the {@link LinkDataStorage polymorphic data store
      * @param world World to operate within.
-     * @param start The first TrackedConstruct to check
-     * @param end The second TrackedConstruct to check (order is completely arbitrary here)
+     * @param start The first TrackedObject to check
+     * @param end The second TrackedObject to check (order is completely arbitrary here)
      * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
      * the render priority will additionally use frustum culling when necessary 
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
-     * @return The {@link TrackedConstruct} that takes priority over the other out 
+     * @return The {@link TrackedObject} that takes priority over the other out 
      * of the two provided. Will never be null.
      */
-    static <T extends TrackedConstruct> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end) {
-        return TrackedConstruct.orderedByAssertionPriority(world, start, end, false);
+    static <T extends TrackedObject> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end) {
+        return TrackedObject.orderedByAssertionPriority(world, start, end, false);
     }
 
     /**
      * Enforces a deterministic (if somewhat arbitrary) renderer
-     * priority between any two {@link TrackedConstruct streamable constructs} 
+     * priority between any two {@link TrackedObject streamable constructs} 
      * (Usually just {@link GridUUID GridUUIDs})
      * This method is primarily used to decide which end of a {@link GridConnection}
      * should take render priority when drawing {@link CatenaryModel catenary meshes}, 
@@ -215,28 +195,28 @@ public interface TrackedConstruct {
      * {@link LinkDataStorage polymorphic data store}
      * @param <T>
      * @param world World to operate within.
-     * @param start The first TrackedConstruct to check
-     * @param end The second TrackedConstruct to check (order is completely arbitrary here)
+     * @param start The first TrackedObject to check
+     * @param end The second TrackedObject to check (order is completely arbitrary here)
      * @param useFrustum (Optional, defaults to false) - If <code>true</code>,
      * the render priority will additionally use frustum culling when necessary 
      * to distinguish render priority. Frustum culling can only occur on the client,
      * so if this is passed as <code>true</code> on the server, it will be ignored.
-     * @return The {@link TrackedConstruct} that takes priority over the other out 
+     * @return The {@link TrackedObject} that takes priority over the other out 
      * of the two provided. Will never be null.
      */
-    static <T extends TrackedConstruct> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end, boolean useFrustum) {
+    static <T extends TrackedObject> Duo<T> orderedByAssertionPriority(LevelReader world, T start, T end, boolean useFrustum) {
         if(start == null && end != null) { 
-            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedConstruct - The provided starting streamable was null.");
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedObject - The provided starting streamable was null.");
             return Duo.of(end, start);
         } if(start != null && end == null) { 
-            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedConstruct - The provided ending streamable was null.");
+            Mechano.LOGGER.warn("Potential issue encountered while ordering TrackedObject - The provided ending streamable was null.");
             return Duo.of(start, end);
         } if(start == null && end == null)
-            throw new IllegalStateException("Can't assert priority between two null TrackedConstruct instances!");
+            throw new IllegalStateException("Can't assert priority between two null TrackedObject instances!");
 
         if(world != null) {
-            final boolean canStartMove = start.canMoveDynamically(world);
-            final boolean canEndMove = end.canMoveDynamically(world);
+            final boolean canStartMove = start.isDynamic();
+            final boolean canEndMove = end.isDynamic();
             if(canStartMove && !canEndMove)
                 return Duo.of(start, end);
             if(canEndMove && !canStartMove)
@@ -262,19 +242,19 @@ public interface TrackedConstruct {
     }
 
     /**
-     * Enfores a sorting order when distinguishing between two TrackedConstruct objects based on their {@link #getMass mass}.
+     * Enfores a sorting order when distinguishing between two TrackedObject objects based on their {@link #getMass mass}.
      * This method will return <code>null</code> in cases where neither construct is movable.
      * @param world
-     * @return {@link Duo} containing both input TrackedConstruct instances, where the first is heavier than the second
+     * @return {@link Duo} containing both input TrackedObject instances, where the first is heavier than the second
      */
-    static <T extends TrackedConstruct> @Nullable Duo<T> orderedByMass(LevelReader world, @Nullable T start, @Nullable T end) {
-        if(!start.canReceiveVelocity(world) && !end.canReceiveVelocity(world)) return null;
-        if(!start.canMoveDynamically(world) && !end.canMoveDynamically(world)) return null;
-        float startWeight = start == null ? TrackedConstruct.DEFAULT_MASS : (start.canMoveDynamically(world) && start.canReceiveVelocity(world) ? start.getMass(world) : TrackedConstruct.DEFAULT_MASS);
-        float endWeight = end == null ? TrackedConstruct.DEFAULT_MASS : (end.canMoveDynamically(world) && end.canReceiveVelocity(world) ? end.getMass(world) : TrackedConstruct.DEFAULT_MASS);
+    static <T extends TrackedObject> @Nullable Duo<T> orderedByMass(LevelReader world, @Nullable T start, @Nullable T end) {
+        if(!start.canReceiveVelocity() && !end.canReceiveVelocity()) return null;
+        if(!start.isDynamic() && !end.isDynamic()) return null;
+        float startWeight = start == null ? TrackedObject.DEFAULT_MASS : (start.isDynamic() && start.canReceiveVelocity() ? start.getMass(world) : TrackedObject.DEFAULT_MASS);
+        float endWeight = end == null ? TrackedObject.DEFAULT_MASS : (end.isDynamic() && end.canReceiveVelocity() ? end.getMass(world) : TrackedObject.DEFAULT_MASS);
         if(startWeight - endWeight < 0.05f) return Duo.of(end, start);
-        if(startWeight - endWeight > 0.05f) {
-        }
+        // if(startWeight - endWeight > 0.05f) {
+        // }
         return Duo.of(start, end);
     }
 

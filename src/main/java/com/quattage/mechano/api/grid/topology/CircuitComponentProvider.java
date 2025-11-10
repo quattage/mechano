@@ -9,7 +9,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public interface CircuitComponentProvider<T> {
+public interface CircuitComponentProvider {
     /**
      * Evalutaes the provided {@link Node} and returns a {@link GridResponse response}
      * indicating whether or not the targeted joint should be highlighted by the {@link JackSelector selector}
@@ -22,4 +22,6 @@ public interface CircuitComponentProvider<T> {
      */
     @OnlyIn(Dist.CLIENT)
     GridResponse evaluateTarget(ClientLevel world, AncillaryJack target);
+
+    CircuitComponent getComponent();
 }

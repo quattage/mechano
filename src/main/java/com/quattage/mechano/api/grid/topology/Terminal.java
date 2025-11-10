@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.Griddable;
 
 import net.minecraft.resources.ResourceLocation;
 
@@ -48,12 +49,33 @@ public class Terminal implements CircuitComponent {
     }
 
     /**
-     * the parent component of a Terminal isn't the joint its connected to, 
-     * rather the CircuitComponent that created it. 
+     * @return The CircuitComponent that created this Terminal.
+     * For example, if this Terminal represents a capacitor's positive pin,
+     * this method will return the capacitor itself.
+     * @see #getControllingCircuit()
      */
     @Override
     public CircuitComponent getParentComponent() {
         return owner;
+    }
+
+    /**
+     * @return The Circuit that this Terminal's 
+     * {@link #getParentComponent() parent component} belongs to
+     * @see #getParentComponent()
+     */
+    public @Nullable Circuit getControllingCircuit() {
+        CircuitComponent parent = getParentComponent();
+        if(parent == null) return null;
+        CircuitComponent superparent = parent.getParentComponent();
+        return superparent instanceof Circuit c ? c : null;
+    }
+
+    @Override
+    public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+        CircuitComponent component = getParentComponent();
+        if(component == null) return;
+        component.updateOwnership(source, parent, index);
     }
 
     @Override
@@ -73,12 +95,12 @@ public class Terminal implements CircuitComponent {
     }
 
     public String describeSelf() {
-        return owner == null ? "No owner" : owner.getComponentID() + "'s '" + getComponentID() + " terminal";
+        return owner == null ? "No owner" : owner.getComponentID() + "'s " + getComponentID();
     }
 
     @Override public void saturate() {}
     @Override public void reset() {}
-    @Override public String getComponentID() { return "Terminal"; }
+    @Override public String getComponentID() { return id; }
 
     @Override
     public ResourceLocation asResource() {
@@ -97,4 +119,15 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public int size() { return isSignificant() ? 1 : 0; }
+
+
+    @Override
+    public String toString() {
+        return describeSelf();
+    }
+
+    @Override
+    public CircuitComponent.Type getType() {
+        return CircuitComponent.Type.TERMINAL;
+    }
 }

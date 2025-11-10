@@ -10,11 +10,11 @@ import com.quattage.mechano.api.grid.solver.NodalSnapshot;
 import com.quattage.mechano.api.grid.solver.NodalSnapshot.Stamper;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.BasicComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
 import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.api.grid.topology.Terminal;
 
-public class Resistor extends BasicComponent implements Stamper {
+public class Resistor extends FunctionalComponent implements Stamper {
 
     private final Terminal[] terminals;
     private final float ohms;
@@ -53,4 +53,6 @@ public class Resistor extends BasicComponent implements Stamper {
             snapshot.stampMatrix(bI, aI, -g);
         }
     }
+
+    
 }

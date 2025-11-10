@@ -9,17 +9,21 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.BasicComponent;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.Resistor;
 import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.Node.Joint;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
-import com.quattage.mechano.api.griddable.Griddable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.resources.ResourceLocation;
 
-
-public class Circuit extends BasicComponent {
+/**
+ * A graph which, in and of itself, is a CircuitComponent, but this graph
+ * 
+ */
+public class Circuit implements CircuitComponent {
     
     public static final double DELTA = 0.05d;
     public static final double DELTA_AH = Circuit.DELTA / 3600d;
@@ -28,31 +32,49 @@ public class Circuit extends BasicComponent {
     protected ObjectArrayList<CircuitComponent> components;
     protected ObjectArrayList<Node> nodes;
 
+    public static Circuit ofSingleResistor(float ohms) {
+        Circuit out = new Circuit();
+        Resistor res = new Resistor(ohms);
+        out.addComponent(res);
+        Joint jA = new Joint(out);
+        Joint jB = new Joint(out);
+        out.addJoint(jA);
+        out.addJoint(jB);
+        jA.attach(res.pinA());
+        jB.attach(res.pinB());
+        return out;
+    }
+
     public Circuit() {
-        super("Circuit");
         this.components = new ObjectArrayList<>();
         this.nodes = new ObjectArrayList<>(3);
         this.nodes.add(new GroundedJoint(this));
     }
 
-    public Circuit(Griddable<?> source, @Nullable GroundedJoint ground, ObjectArrayList<CircuitComponent> components, Set<Node> preload) {
-        super("Circuit");
+    public Circuit(Griddable source, @Nullable GroundedJoint ground, ObjectArrayList<CircuitComponent> components, Set<Node> preload) {
         this.components = components;
         this.nodes = new ObjectArrayList<>(preload.size() + 3);
         if(ground != null && ground.isSignificant()) {
             ground.updateOwnership(this, -1);
             this.nodes.add(ground);
         }
-        for(Node n : preload) {
+        for(CircuitComponent c : components)
+            c.updateOwnership(this, 0);
+        for(Node n : preload) { 
             this.nodes.add(n);
-            n.updateOwnership(n, this.nodes.size() - 1);
+            n.updateOwnership(source, n, this.nodes.size() - 1);
         }
         trim(true);
     }
 
+    public CircuitComponent getComponent(int index) {
+        return !isSignificant() ? null : components.get(index);
+    }
+
     public void addComponent(CircuitComponent component) {
-        component.assertCanBeOwnedBy(this);
+        component.assertCanBeOwnedBy(this);        
         this.components.add(component);
+        component.updateOwnership(this, 0);
     }
 
     public boolean removeComponent(CircuitComponent component) {
@@ -62,6 +84,12 @@ public class Circuit extends BasicComponent {
         return true;
     }
 
+    /**
+     * Attach any two terminals together. 
+     * @param termA
+     * @param termB
+     * @return
+     */
     public Node attachTerminals(Terminal termA, Terminal termB) {
         if(termA.getParentComponent() != this || termB.getParentComponent() != this) {
             throw new IllegalArgumentException("Failed while attempting to link terminals " 
@@ -94,6 +122,12 @@ public class Circuit extends BasicComponent {
         return Joint.combine(jointA, jointB);
     }
 
+    public Node attachTerminalToGround(Terminal termA) {
+        Node ground = getOrCreateCommonGround();
+        ground.attach(termA);
+        return ground;
+    }
+
     public void removeJoint(Node joint) {
         if(joint.getParentComponent() != this) {
             Mechano.LOGGER.warn("Skipped attempt to remove Joint instance from a non-owning circuit.");
@@ -114,8 +148,10 @@ public class Circuit extends BasicComponent {
 
     public void addJoint(Node joint) {
         if(joint.isGrounded()) {
+            if(this.isGrounded())
+                throw new IllegalArgumentException("Cannot add a GroundedJoint to a Circuit that already contains one!");
             joint.updateOwnership(this, 0);
-            this.nodes.set(0, joint);
+            this.nodes.addFirst(joint);
             for(int x = 1; x < nodes.size(); x++)
                 nodes.get(x).updateOwnership(this, x);
             return;
@@ -124,12 +160,12 @@ public class Circuit extends BasicComponent {
         this.nodes.add(joint);
     }
 
-    public Node getCommonGround() {
-        Node n = nodes.get(0);
-        if(n.isGrounded()) return n;
-        n = new GroundedJoint(this);
-        addJoint(n);
-        return n;
+    public Node getOrCreateCommonGround() {
+        Node fn = nodes.getFirst();
+        if(fn != null && fn.isGrounded()) return fn;
+        fn = new GroundedJoint(this);
+        addJoint(fn);
+        return fn;
     }
 
     /**
@@ -266,5 +302,32 @@ public class Circuit extends BasicComponent {
     @Override
     public int size() {
         return nodes.size();
+    }
+
+    @Override
+    public String getComponentID() {
+        return "Circuit";
+    }
+
+    @Override
+    public ResourceLocation asResource() {
+        return Mechano.asResource(getComponentID());
+    }
+
+    @Override
+    public boolean isGrounded() {
+        Node fn = this.nodes.getFirst();
+        return fn != null && fn.isGrounded();
+    }
+
+    @Override
+    public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+        Mechano.LOGGER.warn("Skipped invalid attempt to update ownership of top-level circuit");
+        return;
+    }
+
+    @Override
+    public CircuitComponent.Type getType() {
+        return CircuitComponent.Type.CIRCUIT;
     }
 }

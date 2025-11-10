@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -93,6 +94,11 @@ public interface CircuitComponent extends StringRepresentable {
      */
     int size();
 
+    CircuitComponent.Type getType();
+
+    default void updateOwnership(CircuitComponent parent, int index) { updateOwnership(null, parent, index); }
+    void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index);
+
 
     /**
      * Used to enforce a parent/child relationship for components and the 
@@ -143,11 +149,12 @@ public interface CircuitComponent extends StringRepresentable {
 
 
 
-    public abstract class BasicComponent implements CircuitComponent {
+    public abstract class FunctionalComponent implements CircuitComponent {
 
         private final String componentID;
+        private CircuitComponent parent;
 
-        public BasicComponent(String componentID) {
+        public FunctionalComponent(String componentID) {
             CircuitComponent.checkID(componentID);
             this.componentID = componentID;
         }
@@ -168,12 +175,42 @@ public interface CircuitComponent extends StringRepresentable {
             return false;
         }
 
-
         @Override
         public String toString() {
             return componentID + "[" + describeState() + "]@" + hashCode();
         }
 
+        @Override
+        public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+            this.parent = parent;
+        }
+
+        @Override
+        public @Nullable CircuitComponent getParentComponent() {
+            return parent;
+        }
+
+        
+        @Override
+        public CircuitComponent.Type getType() {
+            return CircuitComponent.Type.FUNCTIONAL_COMPONENT;
+        }
+
+        /**
+         * A helper method specific to some functional components to quickly
+         * get a terminal of a certain type, or <code>null</code> if this particular
+         * component does not contain said terminal.
+         * @return The pin "A" (arbitrary for when polarity doesn't matter) or null if one doesn't exist here.
+         */
+        @Nullable public Terminal pinA() { return null; }
+
+        /**
+         * A helper method specific to some functional components to quickly
+         * get a terminal of a certain type, or <code>null</code> if this particular
+         * component does not contain said terminal.
+         * @return The pin "B" (arbitrary for when polarity doesn't matter) or null if one doesn't exist here.
+         */
+        @Nullable public Terminal pinB() { return null; }
 
         /**
          * A helper method specific to some functional components to quickly
@@ -181,28 +218,28 @@ public interface CircuitComponent extends StringRepresentable {
          * component does not contain said terminal.
          * @return The anode terminal, or null if one doesn't exist here.
          */
-        @Nullable Terminal anode() { return null; }
+        @Nullable public Terminal anode() { return null; }
         /**
          * A helper method specific to some functional components to quickly
          * get a terminal of a certain type, or <code>null</code> if this particular
          * component does not contain said terminal.
          * @return The cathode terminal, or null if one doesn't exist here.
          */
-        @Nullable  Terminal cathode() { return null; }
+        @Nullable public Terminal cathode() { return null; }
             /**
          * A helper method specific to some functional components to quickly
          * get a terminal of a certain type, or <code>null</code> if this particular
          * component does not contain said terminal.
          * @return The positive terminal, or null if one doesn't exist here.
          */
-        @Nullable  Terminal positive() { return anode(); }
+        @Nullable public Terminal positive() { return anode(); }
         /**
          * A helper method specific to some functional components to quickly
          * get a terminal of a certain type, or <code>null</code> if this particular
          * component does not contain said terminal.
          * @return The negative terminal, or null if one doesn't exist here.
          */
-        @Nullable  Terminal negative() { return cathode(); }
+        @Nullable public Terminal negative() { return cathode(); }
 
         /**
          * A helper method specific to some functional components to quickly
@@ -210,21 +247,21 @@ public interface CircuitComponent extends StringRepresentable {
          * component does not contain said terminal.
          * @return The source terminal, or null if one doesn't exist here. Only applies to FETs.
          */
-        @Nullable  Terminal source() { return null; }
+        @Nullable public Terminal source() { return null; }
         /**
          * A helper method specific to some functional components to quickly
          * get a terminal of a certain type, or <code>null</code> if this particular
          * component does not contain said terminal.
          * @return The drain terminal, or null if one doesn't exist here. Only applies to FETs.
          */
-        @Nullable  Terminal drain() { return null; }
+        @Nullable public Terminal drain() { return null; }
         /**
          * A helper method specific to some functional components to quickly
          * get a terminal of a certain type, or <code>null</code> if this particular
          * component does not contain said terminal.
          * @return The gate terminal, or null if one doesn't exist here. Only applies to FETs.
          */
-        @Nullable  Terminal gate() { return null; }
+        @Nullable public Terminal gate() { return null; }
 
         /**
          * A helper method specific to some functional components to quickly
@@ -232,7 +269,7 @@ public interface CircuitComponent extends StringRepresentable {
          * component does not contain said terminal.
          * @return The base terminal, or null if one doesn't exist here. Only applies to transistors.
          */
-        @Nullable  Terminal base() { return null; }
+        @Nullable public Terminal base() { return null; }
         
         /**
          * A helper method specific to some functional components to quickly
@@ -240,7 +277,7 @@ public interface CircuitComponent extends StringRepresentable {
          * component does not contain said terminal.
          * @return The emitter terminal, or null if one doesn't exist here. Only applies to transistors.
          */
-        @Nullable  Terminal emitter() { return null; }
+        @Nullable public Terminal emitter() { return null; }
 
         /**
          * A helper method specific to some functional components to quickly
@@ -248,6 +285,27 @@ public interface CircuitComponent extends StringRepresentable {
          * component does not contain said terminal.
          * @return The collector terminal, or null if one doesn't exist here. Only applies to transistors.
          */
-        @Nullable  Terminal collector() { return null; }
+        @Nullable public Terminal collector() { return null; }
+
+    }
+
+
+    public enum Type implements StringRepresentable {
+        CIRCUIT,
+        EMITTER_NODE,
+        ANCILLARY_NODE,
+        TERMINAL,
+        FUNCTIONAL_COMPONENT,
+        TRANSMITTER;
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
+        @Override
+        public String toString() {
+            return getSerializedName();
+        }
     }
 }

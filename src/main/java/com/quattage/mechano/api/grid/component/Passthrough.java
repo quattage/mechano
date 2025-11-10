@@ -7,16 +7,16 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.BasicComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
 import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.api.grid.topology.Terminal;
 
 /**
  * A component that does literally nothing
  */
-public class Passthrough extends BasicComponent {
+public class Passthrough extends FunctionalComponent {
     public Passthrough() { super("Empty"); }
-    @Override public Collection<Terminal> getTerminals() { return Collections.singleton(null); }
+    @Override public Collection<Terminal> getTerminals() { return Collections.emptyList(); }
     @Override public void forEachJoint(Consumer<Node> cons) { return; }
     @Override public @Nullable CircuitComponent getParentComponent() { return null; }
     @Override public boolean isSignificant() { return false; }

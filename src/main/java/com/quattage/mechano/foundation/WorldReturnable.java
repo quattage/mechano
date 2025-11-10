@@ -17,15 +17,19 @@ public interface WorldReturnable {
      * @param worldB
      * @return <code>true</code> if both worlds are the same, or if their dimensions share the same name.
      */
-    public static boolean areWorldsEqual(LevelAccessor worldA, LevelAccessor worldB) {
+    static boolean areWorldsEqual(LevelAccessor worldA, LevelAccessor worldB) {
         if(worldA == null || worldB == null) return false;
         return worldA == worldB || (worldA.isClientSide() == worldB.isClientSide() 
             && worldA.getChunkSource() == worldB.getChunkSource());
     }
 
-    public abstract @Nullable Level getWorld();
-    public default String getDimensionName() {
-        return getWorld() == null ? "__NULL" : getWorld().dimension().location().toString();
+    @Nullable Level getWorld();
+    default String getDimensionName() {
+        return WorldReturnable.getDimensionName(getWorld());
+    }
+
+    static String getDimensionName(@Nullable Level world) {
+        return world == null ? "NULL" : world.dimension().location().toString();
     }
 
     /**

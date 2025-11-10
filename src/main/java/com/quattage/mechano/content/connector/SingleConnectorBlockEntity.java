@@ -26,6 +26,5 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
             .face(Relative.BOTTOM)
             .make();
     }
-    
 }
 

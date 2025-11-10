@@ -12,7 +12,6 @@ import com.quattage.mechano.api.grid.topology.Terminal;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
 import com.quattage.mechano.api.grid.topology.ancillary.BlockJack;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
-import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;
 
@@ -113,7 +112,7 @@ public class CircuitFactory {
      * Places the CircuitFactory in a state where it cannot be reused.
      * @return A new CircuitComponent instance conforming to the attributes in this builder
      */
-    public CircuitComponent make(Griddable<?> source) {
+    public CircuitComponent make(Griddable source) {
         assertNotConsumed();
         if(components.size() <= 0 && preload.size() <= 0 && !ground.isSignificant()) 
             throw new IllegalStateException("Attempted to create a CircuitComponent from a factory with no components or nodes!");

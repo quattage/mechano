@@ -1,6 +1,7 @@
 package com.quattage.mechano;
 
 import com.quattage.mechano.api.JackSelector;
+import com.quattage.mechano.api.catenary.CatenaryModel;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
@@ -41,7 +42,7 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static <T extends LivingEntity, M extends EntityModel<T>> void onRenderLiving(RenderLivingEvent.Pre<T, M> evt) {
         // LivingEntity e = evt.getEntity();
-        // Griddable<?> holder = GriddableEntityAttachment.of(e, false);
+        // Griddable holder = GriddableEntityAttachment.of(e, false);
         // if(holder == null) return;
         // float pTicks = evt.getPartialTick();
         // ((CatenaryAccess)e).forEachCatenary(cat -> {

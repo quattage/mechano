@@ -14,10 +14,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.api.grid.topology.Terminal;
-import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import net.createmod.catnip.outliner.Outliner;
@@ -41,7 +41,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public abstract class AncillaryJack implements Node {
 
     private final String componentID;
-    private @Nullable Griddable<?> source;
+    private @Nullable Griddable source;
     private @Nullable Node parent;
     private boolean isVisible = true;
 
@@ -58,7 +58,7 @@ public abstract class AncillaryJack implements Node {
      * @param attached (Optional) The {@link Node} that this ancillary is attached to
      */
     public void 
-    attachTo(@Nullable Griddable<?> source, @Nullable Node attached) { 
+    attachTo(@Nullable Griddable source, @Nullable Node attached) { 
         this.source = source; 
         this.parent = attached;
     }
@@ -69,10 +69,10 @@ public abstract class AncillaryJack implements Node {
      * @param source The Griddable that own this ancillary
      * @param attached (Optional) The {@link Node} that this ancillary is attached to
      */
-    public void attachTo(Griddable<?> source) { attachTo(source, this.parent); }
+    public void attachTo(Griddable source) { attachTo(source, this.parent); }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
         attachTo(source);
     }
 
@@ -190,11 +190,11 @@ public abstract class AncillaryJack implements Node {
      * If this method is not called, ancillaries will not work correctly.
      * @param source
      */
-    public void loadOnto(Griddable<?> source) {
+    public void loadOnto(Griddable source) {
         this.source = source;
     }
 
-    public @NotNull Griddable<?> getSource() {
+    public @NotNull Griddable getSource() {
         return source;
     }
 
@@ -287,13 +287,13 @@ public abstract class AncillaryJack implements Node {
     }
 
     @Override
-    public boolean attach(Griddable<?> source, AncillaryJack jack) {
+    public boolean attach(Griddable source, AncillaryJack jack) {
         assertAttached();
         return parent.attach(source, jack);
     }
 
     @Override
-    public boolean detach(Griddable<?> source, AncillaryJack jack) {
+    public boolean detach(Griddable source, AncillaryJack jack) {
         assertAttached();
         return parent.detach(source, jack);
     }
@@ -314,6 +314,7 @@ public abstract class AncillaryJack implements Node {
     public int getIndex() {
         assertAttached();
         return parent.getIndex();
+
     }
 
     @Override
@@ -331,4 +332,14 @@ public abstract class AncillaryJack implements Node {
     @Override public boolean hasAncillaries() { return true; }
 
     private void assertAttached() { if(parent == null) throw new IllegalArgumentException("This AncillaryJack is not attached to a node"); }
+
+    @Override
+    public Type getType() {
+        return CircuitComponent.Type.ANCILLARY_NODE;
+    }
+
+    @Override
+    public boolean isSignificant() {
+        return parent != null && parent.isSignificant();
+    }
 }

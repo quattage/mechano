@@ -10,10 +10,10 @@ import org.joml.Vector3d;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.MechanoClientEvents;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
-import com.quattage.mechano.api.griddable.Griddable;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
@@ -37,7 +37,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ItemLike;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -64,7 +63,7 @@ public class JackSelector {
      * @param source The griddable that owns <code>joint</code>
      * @param joint the joint to be added
      */
-    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?> source, AncillaryJack joint) {
+    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable source, AncillaryJack joint) {
         if(tracker == null) {
             tracker = Minecraft.getInstance().player;
             if(tracker == null)
@@ -94,7 +93,7 @@ public class JackSelector {
             nearbyJoints.clear();
             return;
         }
-        CircuitComponentProvider<?> prov = hands.get();
+        CircuitComponentProvider prov = hands.get();
         accumulateTooltip(lp, prov);
         accumulateTooltip(lp, selected.get());
         nearbyJoints.clear();
@@ -108,7 +107,7 @@ public class JackSelector {
             tt.addToTooltip(tooltip, lp.isShiftKeyDown());
     }
 
-    public void updateClosest(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider<?> prov, DeltaTracker deltas) { 
+    public void updateClosest(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
         lookedThisFrame = false;
         while(!nearbyJoints.isEmpty()) {
             final TargetAncillary sel = nearbyJoints.poll();
@@ -306,8 +305,8 @@ public class JackSelector {
         }
     }
 
-    protected static record HoldingSummary(LocalPlayer player, InteractionHand hand, ItemStack stack, CircuitComponentProvider<? extends ItemLike> obj) {
-        public CircuitComponentProvider<? extends ItemLike> get() { return obj; }
+    protected static record HoldingSummary(LocalPlayer player, InteractionHand hand, ItemStack stack, CircuitComponentProvider obj) {
+        public CircuitComponentProvider get() { return obj; }
         public boolean isHoldingReleventItem() { return player != null && hand != null && obj != null && stack != null; }
         @Override public final String toString() {
             return "'" + player.getName().getString() + "'' is holding '" + obj + "' in their (" + hand + ")";

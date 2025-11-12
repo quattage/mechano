@@ -24,5 +24,6 @@ public interface OrientationUpdatable {
      */
     void updateOrientation(CombinedOrientation dir);
 
+    // TODO impl
     default void updateOrientation(Vector3f rotation) {}
 }

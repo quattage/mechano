@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.Resistor;
+import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.Node.Joint;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
@@ -36,8 +37,8 @@ public class Circuit implements CircuitComponent {
         Circuit out = new Circuit();
         Resistor res = new Resistor(ohms);
         out.addComponent(res);
-        Joint jA = new Joint(out);
-        Joint jB = new Joint(out);
+        Node jA = new Joint(out);
+        Node jB = new Joint(out);
         out.addJoint(jA);
         out.addJoint(jB);
         jA.attach(res.pinA());
@@ -95,31 +96,31 @@ public class Circuit implements CircuitComponent {
             throw new IllegalArgumentException("Failed while attempting to link terminals " 
                 + termA + ", " + termB + " - These terminals don't belong to this circuit!");
         }
-        Node jointA = termA.getJoint(), jointB = termB.getJoint();
-        if(jointA == null && jointB == null) {
+        Node nodeB = termA.getJoint(), nodeA = termB.getJoint();
+        if(nodeB == null && nodeA == null) {
             Joint newJoint = new Joint(this, nodes.size());
             nodes.add(newJoint);
             newJoint.attach(termA);
             newJoint.attach(termB);
             return newJoint;
         }
-        if(jointA != null && jointB == null) {
-            jointA.attach(termB);
-            return jointA;
+        if(nodeB != null && nodeA == null) {
+            nodeB.attach(termB);
+            return nodeB;
         }
-        if(jointA == null && jointB != null) {
-            jointB.attach(termA);
-            return jointB;
+        if(nodeB == null && nodeA != null) {
+            nodeA.attach(termA);
+            return nodeA;
         }
-        if(jointA.involves(termB)) return jointA;
-        if(jointB.involves(termA)) return jointB;
+        if(nodeB.involves(termB)) return nodeB;
+        if(nodeA.involves(termA)) return nodeA;
         // prioritize merging onto the grounded joint
-        if(jointB.isGrounded()) {
-            removeJoint(jointA);
-            return Joint.combine(jointB, jointA);
+        if(nodeA.isGrounded()) {
+            removeJoint(nodeB);
+            return NodeUnionSet.collapse(nodeA, nodeB);
         }
-        removeJoint(jointB);
-        return Joint.combine(jointA, jointB);
+        removeJoint(nodeA);
+        return NodeUnionSet.collapse(nodeB, nodeA);
     }
 
     public Node attachTerminalToGround(Terminal termA) {
@@ -248,7 +249,7 @@ public class Circuit implements CircuitComponent {
     }
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
+    public void forEachNode(Consumer<Node> cons) {
         for(Node j : nodes) {
             if(!j.isSignificant()) continue;
             cons.accept(j);
@@ -277,7 +278,7 @@ public class Circuit implements CircuitComponent {
             } else out += "\n\t\t- No ancillaries";
             if(node.hasConnections()) {
                 out += "\n\t\t- Terminals:";
-                for(Terminal t : node.getAllConnections())
+                for(Terminal t : node.getTerminals())
                     out += "\n\t\t\t" + t.describeSelf();
             } else out += "\n\t\t- No terminals";
         }
@@ -328,6 +329,6 @@ public class Circuit implements CircuitComponent {
 
     @Override
     public CircuitComponent.Type getType() {
-        return CircuitComponent.Type.CIRCUIT;
+        return CircuitComponent.Type.COMPOSING_CIRCUIT;
     }
 }

@@ -160,7 +160,6 @@ public class JackSelector {
         else selected.get().drawToOutliner(selected.get().getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
     }
 
-    @SuppressWarnings("unchecked")
     private HoldingSummary getHolding(LocalPlayer player) {
         if(player == null) throw new NullPointerException("Couldn't instantiate a HoldingSummary - Player is null!");
         ItemStack stack = player.getMainHandItem();

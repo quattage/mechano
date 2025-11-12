@@ -1,6 +1,5 @@
 package com.quattage.mechano.foundation.block.hitbox;
 
-import java.util.Map;
 import java.util.Objects;
 
 import com.quattage.mechano.Mechano;
@@ -22,6 +21,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al1, HitboxRepresentable hr1, 
         String al2, HitboxRepresentable hr2
     ) {
+        stateTree.ensureCapacity(2);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
     }
@@ -33,6 +33,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al2, HitboxRepresentable hr2, 
         String al3, HitboxRepresentable hr3
     ) {
+        stateTree.ensureCapacity(3);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
@@ -46,10 +47,12 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al3, HitboxRepresentable hr3, 
         String al4, HitboxRepresentable hr4
     ) {
+        stateTree.ensureCapacity(4);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
         stateTree.put(al4, hr4);
+        stateTree.trim();
     }
 
 
@@ -61,11 +64,13 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al4, HitboxRepresentable hr4,
         String al5, HitboxRepresentable hr5
     ) {
+        stateTree.ensureCapacity(5);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
         stateTree.put(al4, hr4);
         stateTree.put(al5, hr5);
+        stateTree.trim();
     }
 
 
@@ -78,12 +83,14 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al5, HitboxRepresentable hr5,
         String al6, HitboxRepresentable hr6
     ) {
+        stateTree.ensureCapacity(6);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
         stateTree.put(al4, hr4);
         stateTree.put(al5, hr5);
         stateTree.put(al6, hr6);
+        stateTree.trim();
     }
 
     // 7 members
@@ -96,6 +103,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al6, HitboxRepresentable hr6,
         String al7, HitboxRepresentable hr7
     ) {
+        stateTree.ensureCapacity(7);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
@@ -103,6 +111,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         stateTree.put(al5, hr5);
         stateTree.put(al6, hr6);
         stateTree.put(al7, hr7);
+        stateTree.trim();
     }
 
 
@@ -117,6 +126,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         String al7, HitboxRepresentable hr7,
         String al8, HitboxRepresentable hr8
     ) {
+        stateTree.ensureCapacity(8);
         stateTree.put(al1, hr1);
         stateTree.put(al2, hr2);
         stateTree.put(al3, hr3);
@@ -125,6 +135,7 @@ public class HitboxStateTree implements HitboxRepresentable {
         stateTree.put(al6, hr6);
         stateTree.put(al7, hr7);
         stateTree.put(al8, hr8);
+        stateTree.trim();
     }
 
 
@@ -135,7 +146,7 @@ public class HitboxStateTree implements HitboxRepresentable {
 
 
     // the actual implementation starts here
-    private final Map<String, HitboxRepresentable> stateTree = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectOpenHashMap<String, HitboxRepresentable> stateTree = new Object2ObjectOpenHashMap<>();
 
     @Override
     public VoxelShape get(Object... tokens) {
@@ -151,16 +162,15 @@ public class HitboxStateTree implements HitboxRepresentable {
 
         Object arg = tokens[0];
         HitboxRepresentable acquired = stateTree.get(tokens[0]);
-        if(arg instanceof String str) 
-            acquired = stateTree.get(str);
-        else if(arg instanceof StringRepresentable sr)
-            acquired = stateTree.get(sr.getSerializedName());
-        else if(arg instanceof EnumProperty prop)
-            acquired = stateTree.get(prop.toString());
-        
+        switch (arg) {
+            case String str -> acquired = stateTree.get(str);
+            case StringRepresentable sr -> acquired = stateTree.get(sr.getSerializedName());
+            case EnumProperty<?> prop -> acquired = stateTree.get(prop.toString());
+            case null, default -> {
+            }
+        }
 
         if(acquired != null) return acquired.get(minusFirst(tokens));
-
         Mechano.LOGGER.error("Couldn't acquire VoxelShape from unknown token '" + tokens[0] + "' (" + tokens[0].getClass().getTypeName() + ")");
         return VoxelShapeBuilder.CUBE;
     }

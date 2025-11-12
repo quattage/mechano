@@ -20,6 +20,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.hitbox.HitboxRepresentable;
 import com.quattage.mechano.foundation.block.hitbox.HitboxStateTree;
 import com.quattage.mechano.foundation.block.hitbox.LazyRotatableHitbox;
+import com.quattage.mechano.foundation.block.hitbox.MechanoHitboxes;
 import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder;
 import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder.ShapeAccumulator;
 import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder.TemporaryShape;
@@ -32,7 +33,9 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.IEventBus;
 
-
+/**
+ * Generates the {@link MechanoHitboxes} class during datagen.
+ */
 public class HitboxDataProvider {
 
     public static void generate(RegistrateGenericProvider provider) {
@@ -116,6 +119,9 @@ public class HitboxDataProvider {
             Mechano.LOGGER.info("Generated " + count + " hitboxes in " + elapsed + "ms");
         }
 
+        /**
+         * Generates the static elements of the class including its header and hitter method
+         */
         private StringBuilder generateClassFile(String generatedName) {
             StringBuilder cls = new StringBuilder();
             cls.append("package " + "com.quattage." + Mechano.ID + ".foundation.block.hitbox;\n\n");
@@ -137,7 +143,9 @@ public class HitboxDataProvider {
             cls.append("import " + imp.getCanonicalName() + (doubleBreak ? ";\n\n" : ";\n"));
         }
 
-
+        /**
+         * Traverses a single Json model file
+         */
         private void readModel(StringBuilder cls, Object2ObjectOpenHashMap<String[], ShapeAccumulator> hitboxes, String filename, TemporaryShape shape, List<Map<String, Map<String, Object>>> modelFile) {
             if(!filename.matches("[a-z1-9_.]+")) {
                 Mechano.LOGGER.error("Error reading file '" + filename + "' - This file contains characters that are not allowed! (Non [a-z1-9_.])");

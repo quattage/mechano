@@ -20,18 +20,15 @@ public interface Node extends CircuitComponent {
 
     double getVoltage();
     void setVoltage(double volts);
-    Collection<Terminal> getAllConnections();
     default boolean hasConnections() { return size() > 0; }
     Collection<AncillaryJack> getAllAncillaries();
     boolean hasAncillaries();
     int getIndex();
-
     boolean attach(Terminal pin);
     boolean detach(Terminal pin);
     boolean attach(@Nullable Griddable source, AncillaryJack jack);
     boolean detach(@Nullable Griddable source, AncillaryJack jack);
     boolean involves(Terminal pin);
-    
     @Override default boolean isSignificant() { return hasConnections() || hasAncillaries(); }
     void dispose();
     
@@ -47,33 +44,6 @@ public interface Node extends CircuitComponent {
         protected @Nullable List<AncillaryJack> ancillaries = null;
         private double voltagePotential = 0;
         private int index;
-
-        /**
-         * Merges all of the circuit data from <code>b</code>
-         * into <code>a</code> and disposes of <code>b</code>.
-         * Any subsequent access to the disposed joint will
-         * throw errors.
-         * @param a Joint destination
-         * @param b Joint source
-         * @return <code>a</code>, with the additional data from <code>b</code>
-         */
-        public static Joint combine(Joint a, Joint b) {
-            if(a == b) return a;
-            a.attachedPins.ensureCapacity(a.attachedPins.size() + b.attachedPins.size());
-            for(Terminal t : b.getTerminals()) {
-                t.setConnectedTo(a);
-                if(t.getJoint() == a) continue;
-                a.attachedPins.add(t);
-            }
-            b.dispose();
-            return a;
-        }
-
-        public static Joint combine(Node a, Node b) {
-            if(a instanceof Joint aj && b instanceof Joint bj)
-                return Joint.combine(aj, bj);
-            throw new IllegalArgumentException("shut up");
-        }
 
         public Joint(CircuitComponent parent, int index) {
             this.parent = parent;
@@ -129,27 +99,28 @@ public interface Node extends CircuitComponent {
             return removed;
 		}
 
-
         @Override public String getComponentID() { return "Joint"; }
         @Override public ResourceLocation asResource() { return Mechano.asResource(getSerializedName()); }
         @Override public void saturate() {}
         @Override public void reset() {}
         @Override public double getVoltage() { return voltagePotential; }
         @Override public void setVoltage(double volts) { this.voltagePotential = volts; }
-        @Override public Collection<Terminal> getAllConnections() { return attachedPins; }
         @Override public boolean isGrounded() { return false; }
         @Override public String describeState() { return attachedPins.size() + " pins, " + ancillaries.size() + " ancillaries, " + String.format("%.3f", voltagePotential) + " volts (ungrounded)"; }
         @Override public boolean involves(Terminal pin) { return pin != null && pin.getJoint() == this; }
         @Override public boolean hasConnections() { return attachedPins != null && !attachedPins.isEmpty(); }
         @Override public @Nullable CircuitComponent getParentComponent() { return parent; }
-        @Override public Collection<Terminal> getTerminals() { return attachedPins; }
-        @Override public void forEachJoint(Consumer<Node> cons) { cons.accept(this); }
+        @Override public void forEachNode(Consumer<Node> cons) { cons.accept(this); }
         @Override public int size() { return attachedPins.size(); }
 
         @Override
         public Collection<AncillaryJack> getAllAncillaries() {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
+        }
+
+        @Override public Collection<Terminal> getTerminals() { 
+            return attachedPins; 
         }
 
         @Override
@@ -174,13 +145,11 @@ public interface Node extends CircuitComponent {
             for(AncillaryJack jack : ancillaries)
                 jack.attachTo(source, this);
         }
-        
+
         @Override
         public String toString() {
             return "Node[" + describeState() + "]";
         }
-
-        
     }
 
 
@@ -243,12 +212,10 @@ public interface Node extends CircuitComponent {
             return removed;
 		}
 
-        @Override public Collection<Terminal> getTerminals() { return attachedPins; }
-        @Override public void forEachJoint(Consumer<Node> cons) { cons.accept(this); }
+        @Override public void forEachNode(Consumer<Node> cons) { cons.accept(this); }
         @Override public String getComponentID() { return "GroundedJoint"; }
         @Override public String describeState() { return attachedPins.size() + ancillaries.size() + " ancillaries, " + " pin(s), 0.000 volts (grounded)"; }
         @Override public ResourceLocation asResource() { return Mechano.asResource(getSerializedName()); }
-        @Override public Collection<Terminal> getAllConnections() { return attachedPins; }
         @Override public void setVoltage(double volts) { return; }
         @Override public double getVoltage() { return 0; }
         @Override public @Nullable CircuitComponent getParentComponent() { return parent; }
@@ -265,14 +232,17 @@ public interface Node extends CircuitComponent {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
         }
-        
+
+        @Override public Collection<Terminal> getTerminals() { 
+            return attachedPins; 
+        }
+
         @Override public void updateOwnership(Griddable source, CircuitComponent parent, int index) { 
             this.parent = parent; 
             if(source == null || !hasAncillaries()) return;
             for(AncillaryJack jack : ancillaries)
                 jack.attachTo(source, this);
         }
-        
 
         @Override
         public String toString() {

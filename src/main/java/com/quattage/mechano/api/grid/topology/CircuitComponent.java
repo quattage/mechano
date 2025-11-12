@@ -34,7 +34,7 @@ public interface CircuitComponent extends StringRepresentable {
      * @return all terminals attached to this component
      */
     Collection<Terminal> getTerminals();
-    void forEachJoint(Consumer<Node> cons);
+    void forEachNode(Consumer<Node> cons);
 
     /**
      * The arbitrary identifier for this component. This identifier 
@@ -127,13 +127,12 @@ public interface CircuitComponent extends StringRepresentable {
      * the given filter. 
      * @param filter
      * @return A list containing all relevent joints. This list will never be
-     * empty, but will instead return <code>null</code>.
-     */
+     * empty, but will instead return <cogetAllNodesMatching  */
     @Nullable default List<Node> getAllJointsMatching(Predicate<Node> filter) {
         Objects.requireNonNull(filter);
         if(!this.isSignificant()) return null;
         List<Node> collected = new ObjectArrayList<>();
-        this.forEachJoint(joint -> {
+        this.forEachNode(joint -> {
             if(!filter.test(joint)) return;
             collected.add(joint);
         });
@@ -291,7 +290,7 @@ public interface CircuitComponent extends StringRepresentable {
 
 
     public enum Type implements StringRepresentable {
-        CIRCUIT,
+        COMPOSING_CIRCUIT,
         EMITTER_NODE,
         ANCILLARY_NODE,
         TERMINAL,

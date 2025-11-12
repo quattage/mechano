@@ -1,5 +1,7 @@
 package com.quattage.mechano.api.blockEntity;
 
+import java.util.function.Consumer;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
@@ -11,16 +13,20 @@ import com.quattage.mechano.api.grid.LazyJointHolder;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
+import com.quattage.mechano.foundation.tracking.GridUUID;
+import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -28,7 +34,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
-public abstract class GriddableBlockEntity extends ElectricBlockEntity implements Griddable {
+public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable {
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
     private final LazyJointHolder joints = new LazyJointHolder();
@@ -56,9 +62,18 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     public abstract void constructCircuit(CircuitFactory circuit);
 
     @Override
+    public GridUUID getAddress() {
+        return new VoxelUUID(getBlockPos());
+    }
+
+    @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
-        super.onBlockBroken(world, pos, oldState, newState);
-        // getSurrogate().destroy();
+        joints.invalidate();
+    }
+
+    @Override
+    public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
+        getExposedAncillaries().updateOrientation(newState);
     }
 
     @Override
@@ -71,11 +86,21 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
         return super.createRenderBoundingBox();
     }
 
-    @Override public String describeState() { return "GriddableBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     }
-    @Override public String toString() { return describeState(); }
-    @Override public LazyJointHolder getExposedAncillaries() { return joints.updateAncillaries(circuit); }
-    @Override public Vector3d getSourcePos() { Vec3i pos = getBlockPos(); return new Vector3d(pos.getX(), pos.getY(), pos.getZ()); }
-    @Override public Quaternionf getSourceRotation() { return DirectionTransformer.extract(this.getBlockState()).getRotation(); }
+    @Override 
+    public LazyJointHolder getExposedAncillaries() { 
+        return joints.getOrCollectAncillaries(circuit); 
+    }
+    
+    @Override 
+    public Vector3d getSourcePos() { 
+        Vec3i pos = getBlockPos(); 
+        return new Vector3d(pos.getX(), pos.getY(), pos.getZ()); 
+    }
+
+    @Override 
+    public Quaternionf getSourceRotation() { 
+        return DirectionTransformer.extract(this.getBlockState()).getRotation(); 
+    }
 
     @Override
     public int getPriority() {
@@ -122,5 +147,30 @@ public abstract class GriddableBlockEntity extends ElectricBlockEntity implement
     @Override
     public DataSourceIdentifier getSourceScope() {
         return DataSourceIdentifier.VOXEL;
+    }
+
+    @Override
+    public void forEachNeighbor(Consumer<Griddable> cons) {
+        BlockEntity adjBE = null;
+        for(Direction dir : Direction.values()) {
+            adjBE = level.getBlockEntity(getBlockPos().relative(dir));
+            if(adjBE instanceof GriddableBlockEntity gbe)
+                cons.accept(gbe);
+        }
+    }
+
+    @Override
+    public boolean isDynamic() {
+        return false;
+    }
+
+    @Override 
+    public String describeState() { 
+        return "GriddableBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     
+    }
+    
+    @Override 
+    public String toString() { 
+        return describeState(); 
     }
 }

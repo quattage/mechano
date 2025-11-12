@@ -57,8 +57,7 @@ public abstract class AncillaryJack implements Node {
      * @param source The Griddable that own this ancillary
      * @param attached (Optional) The {@link Node} that this ancillary is attached to
      */
-    public void 
-    attachTo(@Nullable Griddable source, @Nullable Node attached) { 
+    public void attachTo(@Nullable Griddable source, @Nullable Node attached) { 
         this.source = source; 
         this.parent = attached;
     }
@@ -219,9 +218,9 @@ public abstract class AncillaryJack implements Node {
     }
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
+    public void forEachNode(Consumer<Node> cons) {
         assertAttached();
-        parent.forEachJoint(cons);
+        parent.forEachNode(cons);
     }
 
     @Override
@@ -260,12 +259,6 @@ public abstract class AncillaryJack implements Node {
     public void setVoltage(double volts) {
         if(parent == null) return;
         parent.setVoltage(volts);
-    }
-
-    @Override
-    public Collection<Terminal> getAllConnections() {
-        assertAttached();
-        return parent.getAllConnections();
     }
 
     @Override

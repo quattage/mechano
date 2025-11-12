@@ -11,6 +11,8 @@ import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.neoforged.api.distmarker.Dist;
@@ -20,17 +22,20 @@ import net.neoforged.api.distmarker.OnlyIn;
  * Stores AncillaryJack instances on the client so that
  * they don't have to be looked up every render tick
  */
-public class LazyJointHolder {
+public class LazyJointHolder implements OrientationUpdatable {
 
     private @Nullable AncillaryJack[] exposedJoints;
 
     @Nullable
     @OnlyIn(Dist.CLIENT)
-    public LazyJointHolder updateAncillaries(CircuitComponent component) {
-        if(exposedJoints != null || component == null || !component.isSignificant()) return this;
+    public LazyJointHolder getOrCollectAncillaries(CircuitComponent component) {
+        
+        if((exposedJoints != null && exposedJoints.length > 0) || component == null || !component.isSignificant()) 
+            return this;
+
         if(component instanceof Circuit) {
             Set<AncillaryJack> found = new ObjectOpenHashSet<>(component.size());
-            component.forEachJoint(joint -> {
+            component.forEachNode(joint -> {
                 if(joint == null) throw new NullPointerException("Encountered a null pointer while updating ancillaries for lazy holder");
                 found.addAll(joint.getAllAncillaries());
             });
@@ -49,6 +54,14 @@ public class LazyJointHolder {
     @OnlyIn(Dist.CLIENT)
     public void invalidate() {
         exposedJoints = null;
+    }
+
+    @Override
+    public void updateOrientation(CombinedOrientation dir) {
+        forEach(jack -> {
+            if(jack instanceof OrientationUpdatable ou)
+                ou.updateOrientation(dir);
+        });
     }
 
     @OnlyIn(Dist.CLIENT)

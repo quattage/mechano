@@ -3,6 +3,7 @@ package com.quattage.mechano.api.grid;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -11,6 +12,7 @@ import org.joml.Vector3f;
 import com.quattage.mechano.api.SidedGridDispatcher;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -39,9 +41,11 @@ public interface Griddable extends CircuitProvider, TrackedObject {
     LazyJointHolder getExposedAncillaries();
     Vector3d getSourcePos();
     Quaternionf getSourceRotation();
-    BlockPos getBlockPos();
+    BlockPos getBlockPos(); 
+    GridUUID getAddress();
 
     @Override default boolean isDynamic() { return true; };
+    default void forEachNeighbor(Consumer<Griddable> cons) {}
 
     @Override
     default void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {

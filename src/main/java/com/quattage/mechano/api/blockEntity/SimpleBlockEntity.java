@@ -23,7 +23,14 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         super(type, pos, state);
     }
 
-    public abstract void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState);
+    /**
+     * Called by {@link BERefreshable} whenever this BE's cooresponding block is broken.
+     * @param world World to operate within (A LevelReader - the world cannot be modified within the scope of this method)
+     * @param pos The position of the modified block
+     * @param oldState The state that existed before this call was made
+     * @param newState The state that exists now
+     */
+    public abstract void onBlockBroken(Level world, BlockPos pos, @Nullable BlockState oldState, BlockState newState);
 
     /**
      * Called by {@link BERefreshable} whenever this BE's cooresponding block is placed or updated in any way
@@ -32,11 +39,12 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
      * @param oldState The state that existed before this call was made
      * @param newState The state that exists now
      */
-    public abstract void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState);
+    public abstract void onRefresh(LevelReader world, BlockPos pos, @Nullable BlockState oldState, BlockState newState);
 
     /**
      * Save up-to-date information and variables pertaining to 
-     * this BlockEntity so that they may persist.
+     * this BlockEntity so that they may persist after chunks
+     * are unloaded.
      * @param tag CompoundTag to save data to
      * @param registries
      */
@@ -91,9 +99,9 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
 
     /**
      * An overridden implementation of Create's IBE designed to accomodate the slightly lighter weight
-     * SimpleBlockEntities and AnchorPoint refreshing
+     * SimpleBlockEntities that don't need to make use of Create's behaviour system
      */
-    public static interface BERefreshable<B extends SimpleBlockEntity> extends IBE<B> {
+    public interface BERefreshable<B extends SimpleBlockEntity> extends IBE<B> {
 
         @Override
         default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_,

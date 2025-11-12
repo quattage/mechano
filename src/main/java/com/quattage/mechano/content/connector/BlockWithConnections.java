@@ -38,9 +38,9 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
 
         Level world = context.getLevel();
-        CombinedOrientation orient = CombinedOrientation.cycleLocalForward(state.getValue(ORIENTATION));
+        CombinedOrientation orient = CombinedOrientation.cycleLocalForward(state.getValue(CombinedOrientedBlock.ORIENTATION));
         BlockPos pos = context.getClickedPos();
-        BlockState rotated = state.setValue(ORIENTATION, orient);
+        BlockState rotated = state.setValue(CombinedOrientedBlock.ORIENTATION, orient);
 
         if(!rotated.canSurvive(world, pos))
 			return InteractionResult.PASS;
@@ -59,7 +59,7 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
 
     @Override
     protected void neighborChanged(BlockState state, Level world, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
-        Direction facing = state.getValue(ORIENTATION).getLocalUp().getOpposite();
+        Direction facing = state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp().getOpposite();
         BlockPos underPos = pos.relative(facing);
         if(!underPos.equals(neighborPos)) return;
         BlockState underState = world.getBlockState(underPos);
@@ -68,21 +68,21 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
                 world.destroyBlock(pos, true);
                 return;
         }
-        if(isSupported(world, underPos, underState, facing, ROOT_X) 
-            || isSupported(world, underPos, underState, facing, ROOT_Y))
+        if(isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_X) 
+            || isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_Y))
                 return;
         world.destroyBlock(pos, true);
     }
 
     @Override
     protected boolean canSurvive(BlockState state, LevelReader world, BlockPos pos) {
-        Direction facing = state.getValue(ORIENTATION).getLocalUp().getOpposite();
+        Direction facing = state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp().getOpposite();
         BlockPos underPos = pos.relative(facing);
         BlockState underState = world.getBlockState(underPos);
         if(underState.getBlock() instanceof ConnectorHostOverridable cho)
             return cho.isConnectorAllowed(world, pos, state, underPos, underState);
-        return isSupported(world, underPos, underState, facing, ROOT_X) 
-            || isSupported(world, underPos, underState, facing, ROOT_Y);
+        return isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_X) 
+            || isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_Y);
     }
 
     private boolean isSupported(LevelReader world, BlockPos relative, BlockState underState, Direction facing, VoxelShape root) {
@@ -97,8 +97,8 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
 
     @Override
     protected BlockState rotate(BlockState state, Rotation rotation) {
-        CombinedOrientation orient = state.getValue(ORIENTATION);
-        return state.setValue(ORIENTATION, orient.applyRotation(rotation));
+        CombinedOrientation orient = state.getValue(CombinedOrientedBlock.ORIENTATION);
+        return state.setValue(CombinedOrientedBlock.ORIENTATION, orient.applyRotation(rotation));
     }
 
     @Override

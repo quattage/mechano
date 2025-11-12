@@ -92,17 +92,14 @@ public class CircuitFactory {
         return this;
     }
 
-
-    
-
-    public Joint newJoint() {
+    public Node newJoint() {
         assertNotConsumed();
-        Joint j = new Joint(null);
+        Node j = new Joint(null);
         supply(j);
         return j;
     }
 
-    public Joint ground() {
+    public Node ground() {
         assertNotConsumed();
         return ground();
     }

@@ -139,9 +139,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
     }
 
     private final Class<? extends GridUUID> clazz; 
+    private WeakReference<Constructor<? extends GridUUID>> tagCtor = new WeakReference<>(null);;
     private WeakReference<Constructor<? extends GridUUID>> byteBufCtor = new WeakReference<>(null);
     private WeakReference<Constructor<? extends GridUUID>> dynamicCtor = new WeakReference<>(null);;
-    private WeakReference<Constructor<? extends GridUUID>> tagCtor = new WeakReference<>(null);;
 
     <R extends GridUUID> DataSourceIdentifier(Class<R> clazz) {
         this.clazz = clazz;

@@ -17,7 +17,7 @@ import com.quattage.mechano.api.grid.topology.Terminal;
 public class Passthrough extends FunctionalComponent {
     public Passthrough() { super("Empty"); }
     @Override public Collection<Terminal> getTerminals() { return Collections.emptyList(); }
-    @Override public void forEachJoint(Consumer<Node> cons) { return; }
+    @Override public void forEachNode(Consumer<Node> cons) { return; }
     @Override public @Nullable CircuitComponent getParentComponent() { return null; }
     @Override public boolean isSignificant() { return false; }
 }

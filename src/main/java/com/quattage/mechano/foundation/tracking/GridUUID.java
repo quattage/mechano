@@ -12,6 +12,7 @@ import com.quattage.mechano.foundation.tracking.DataSourceIdentifier.ScopeSpecif
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
 
 public abstract class GridUUID implements ScopeSpecifier {
 
@@ -24,6 +25,10 @@ public abstract class GridUUID implements ScopeSpecifier {
 
     protected CircuitComponent.Type targetType;
     protected int data;
+
+    public GridUUID() {
+        
+    }
 
     public GridUUID(CompoundTag tag) {
         this.targetType = CircuitComponent.Type.values()[tag.getByte("cpt")];
@@ -38,6 +43,11 @@ public abstract class GridUUID implements ScopeSpecifier {
     public GridUUID(Dynamic<?> dyn) {
         this.targetType = CircuitComponent.Type.values()[dyn.get("cpt").asInt(0)];
         this.data  = dyn.get("exd").asInt(0);
+    }
+
+    public GridUUID withData(int data) {
+        this.data = data;
+        return this;
     }
 
     public final CircuitComponent.Type getReferentType() {
@@ -70,8 +80,6 @@ public abstract class GridUUID implements ScopeSpecifier {
 
     abstract String describeData();
 
-    
-
 
 
 
@@ -79,6 +87,11 @@ public abstract class GridUUID implements ScopeSpecifier {
     public static class VoxelUUID extends GridUUID {
 
         private BlockPos pos;
+
+        public VoxelUUID(BlockPos pos) {
+            Objects.requireNonNull(pos);
+            this.pos = pos;
+        }
 
         public VoxelUUID(CompoundTag tag) {
             super(tag);
@@ -142,6 +155,12 @@ public abstract class GridUUID implements ScopeSpecifier {
     public static class EntityUUID extends GridUUID {
 
         private UUID uuid;
+
+        public EntityUUID(Entity e) {
+            Objects.requireNonNull(e);
+            if(e.getUUID() == null) 
+                throw new NullPointerException("Couldn't instantiate EntityUUID - The entity '" + e + "' didn't return a valid UUID!");
+        }
 
         public EntityUUID(CompoundTag tag) {
             super(tag);

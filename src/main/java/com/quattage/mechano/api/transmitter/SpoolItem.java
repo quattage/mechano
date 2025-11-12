@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.item;
+package com.quattage.mechano.api.transmitter;
 
 import java.util.List;
 
@@ -7,23 +7,14 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.LinkDataStorage;
 import com.quattage.mechano.api.SidedGridDispatcher;
-import com.quattage.mechano.api.anchor.AnchorPoint;
-import com.quattage.mechano.api.anchor.AnchorSelector;
 import com.quattage.mechano.api.catenary.CatenaryAttributable;
-import com.quattage.mechano.api.entity.GriddableEntityAttachment;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.identifier.EntityUUID;
-import com.quattage.mechano.api.identifier.UUIDDiscriminator;
-import com.quattage.mechano.api.landmark.GridCatenary;
-import com.quattage.mechano.api.landmark.GridConnection;
-import com.quattage.mechano.api.landmark.GridConnection.ConnectionKey;
 import com.quattage.mechano.api.switchboard.GridResponse;
-import com.quattage.mechano.api.switchboard.LinkRequestPacket;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
 import com.quattage.mechano.foundation.tracking.GridUUID;
+import com.quattage.mechano.foundation.tracking.GridUUID.EntityUUID;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
@@ -42,7 +33,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class SpoolItem<T extends Transmitter<?>> extends Item implements Transmitable<T>, LeftClickCapturable {
+public abstract class SpoolItem extends Item implements LeftClickCapturable {
 
     private int startingDamage = -1;
 

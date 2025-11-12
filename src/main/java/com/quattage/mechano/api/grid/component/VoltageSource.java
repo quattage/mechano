@@ -33,9 +33,9 @@ public abstract class VoltageSource extends FunctionalComponent implements Stamp
 	}
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
-        terminals[0].forEachJoint(cons);
-        terminals[1].forEachJoint(cons);
+    public void forEachNode(Consumer<Node> cons) {
+        terminals[0].forEachNode(cons);
+        terminals[1].forEachNode(cons);
     }
 
     public abstract double getStateOfCharge();

@@ -32,9 +32,9 @@ public class Capacitor extends FunctionalComponent implements Stamper {
     }
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
-        terminals[0].forEachJoint(cons);
-        terminals[1].forEachJoint(cons);
+    public void forEachNode(Consumer<Node> cons) {
+        terminals[0].forEachNode(cons);
+        terminals[1].forEachNode(cons);
     }
 
     @Override

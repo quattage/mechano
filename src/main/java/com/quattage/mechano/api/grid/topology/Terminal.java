@@ -85,7 +85,7 @@ public class Terminal implements CircuitComponent {
     }
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
+    public void forEachNode(Consumer<Node> cons) {
         if(connected != null) cons.accept(connected);
     }
 

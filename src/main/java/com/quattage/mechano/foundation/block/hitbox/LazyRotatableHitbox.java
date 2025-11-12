@@ -64,26 +64,21 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
             return rootShape;
         if(tokens.length == 1) {
             Object arg = tokens[0];
-            switch (arg) {
-                case null -> {
-                    return rootShape;
-                }
-                case BlockState state -> {
-                    return getAndCache(DirectionTransformer.getAbsoluteRotation(state));
-                }
-                case VectorRotationRepresentable vrr -> {
-                    return getAndCache(vrr.getRotation());
-                }
-                case Vec3i vec -> {
-                    return getAndCache(vec);
-                }
-                default -> {
-                }
+            switch(arg) {
+                case null -> { return rootShape; }
+                case BlockState state -> { return getAndCache(DirectionTransformer.getAbsoluteRotation(state)); }
+                case VectorRotationRepresentable vrr -> { return getAndCache(vrr.getRotation()); }
+                case Vec3i vec -> { return getAndCache(vec); }
+                default -> {}
             }
             Mechano.LOGGER.error("Couldn't get orientation shape for token '" + arg + "' (" + arg.getClass().getTypeName() + 
                 ") - This token is not a valid substitute for an orientation (Expected BlockState, Vec3i, VectorRotationRepresentable) The default shape has been provided as a fallback!");
             return get();
         }
+        return reportTokenizationWarning(tokens);
+    }
+
+    private VoxelShape reportTokenizationWarning(Object... tokens) {
         String report = "";
         for(int x = 1; x < tokens.length; x++ )
             report += tokens[x] + ", ";

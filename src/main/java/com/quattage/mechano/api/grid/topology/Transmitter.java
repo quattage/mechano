@@ -16,14 +16,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelReader;
 
 /**
- * Represents a wire with a known resistance value that connects two
- * singular {@link Terminal}
+ * A wire that connects two
+ * {@link WireJack wire jacks}
  */
 public class Transmitter implements CircuitComponent {
     
-    private GridUUID idA, idB;
-    private WireJack sideA, sideB;
-    private CircuitComponent functional;
+    private GridUUID startID, endID;
+    private WireJack startJack, endJack;
+    private @Nullable CircuitComponent element; // null if this transmitter is a perfect conductor
     // client catenary data
 
     public Transmitter(LevelReader world, WireJack sideA, WireJack sideB, float resistance) {
@@ -32,8 +32,8 @@ public class Transmitter implements CircuitComponent {
 
     @Override
     public Collection<Terminal> getTerminals() {
-        Collection<Terminal> tA = (sideA == null || !sideA.isSignificant()) ? Collections.emptyList() : sideA.getParentComponent().getTerminals();
-        Collection<Terminal> tB = (sideB == null || !sideB.isSignificant()) ? Collections.emptyList() : sideB.getParentComponent().getTerminals();
+        Collection<Terminal> tA = (startJack == null || !startJack.isSignificant()) ? Collections.emptyList() : startJack.getParentComponent().getTerminals();
+        Collection<Terminal> tB = (endJack == null || !endJack.isSignificant()) ? Collections.emptyList() : endJack.getParentComponent().getTerminals();
         // i avoid using addAll() here because we cannot guarantee that the collections above are returned as
         // shallow-copies by API users (in fact, its inadvisable to do so) - instead, the collections 
         // are concatenated using primitive arrays
@@ -46,16 +46,25 @@ public class Transmitter implements CircuitComponent {
     }
 
     @Override
-    public void forEachJoint(Consumer<Node> cons) {
-        
+    public void forEachNode(Consumer<Node> cons) {
+        cons.accept(startJack);
+        cons.accept(endJack);
     }
 
     public GridUUID getStartID() {
-        return idA;
+        return startID;
+    }
+
+    public WireJack getStart() {
+        return startJack;
     }
 
     public GridUUID getEndID() {
-        return idB;
+        return endID;
+    }
+
+    public WireJack getEnd() {
+        return endJack;
     }
 
     @Override
@@ -65,7 +74,7 @@ public class Transmitter implements CircuitComponent {
 
     @Override
     public String describeState() {
-        return idA + ", " + sideA + " -> " + idB + ", " + sideB;
+        return startID + ", " + startJack + " -> " + endID + ", " + endJack;
     }
 
     @Override
@@ -76,23 +85,30 @@ public class Transmitter implements CircuitComponent {
 
     @Override
     public boolean isSignificant() {
-        return idA != null && idB != null;
+        return startID != null && endID != null;
     }
 
     @Override
     public boolean isGrounded() {
-        return (sideA != null && sideA.isGrounded()) || (sideB != null && sideB.isGrounded());
+        return (startJack != null && startJack.isGrounded()) || (endJack != null && endJack.isGrounded()) || (element != null && element.isGrounded());
+    }
+
+    public boolean isPerfectConductor() {
+        return element == null;
+    }
+
+    public @Nullable CircuitComponent getFunctionalElement() {
+        return element;
     }
 
     @Override
     public void saturate() {
-        
+        if(element != null) element.saturate();
     }
 
     @Override
     public void reset() {
-        this.sideA = null;
-        this.sideB = null;
+        if(element != null) element.reset();
     }
 
     @Override
@@ -110,6 +126,6 @@ public class Transmitter implements CircuitComponent {
 
     @Override
     public @Nullable CircuitComponent getParentComponent() {
-        return sideA == null ? null : sideA.getParentComponent();
+        return startJack == null ? null : startJack.getParentComponent();
     }
 }

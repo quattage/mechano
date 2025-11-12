@@ -1,7 +1,7 @@
 package com.quattage.mechano.content.connector;
 
 import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.topology.Node.Joint;
+import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 
 import net.minecraft.core.BlockPos;
@@ -16,7 +16,7 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
 
     @Override
     public void constructCircuit(CircuitFactory circuit) {
-        Joint passive = circuit.newJoint();
+        Node passive = circuit.newJoint();
         circuit.wireJack("Wire Attachment")
             .attachedTo(passive)
             .x(0).y(16).z(0)

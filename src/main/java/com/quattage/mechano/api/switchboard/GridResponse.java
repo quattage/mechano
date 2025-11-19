@@ -5,6 +5,7 @@ import java.util.Locale;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.numeric.EsoMath;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.theme.Color;
@@ -110,21 +111,53 @@ public enum GridResponse implements StringRepresentable {
         /**
          * Shows the vanilla-style black outline around the targeted AnchorPoint
          */
-        SHOW_PASSIVE(null),
+        SHOW_PASSIVE(),
         /**
          * Shows a green AABB drawn by Create's outliner
          */
-        SHOW_SUCCESS(new Color(0, 255, 0)),
+        SHOW_SUCCESS(
+            new Color(116, 227, 142),
+            new Color(116, 227, 197),
+            new Color(116, 201, 227)
+        ),
         /**
          * Shows a red AABB drawn by Create's outliner
          */
-        SHOW_FAILURE(new Color(255, 0, 0)),
-        HIDE(null);
+        SHOW_FAILURE(
+            new Color(227, 100, 178),
+            new Color(227, 100, 115),
+            new Color(227, 149, 100)
+        ),
+        HIDE();
 
-        private final Color color;
-        HighlightMode(Color color) { this.color = color; }
+        private final @Nullable Color[] colors;
+
+        HighlightMode() { 
+            this.colors = null;
+        }
+
+        HighlightMode(Color... colors) { 
+            this.colors = colors;
+        }
+        
         public boolean isVisible() { return this != HIDE; }
-        public boolean isHighlighted() { return this.color != null; }
-        public @Nullable Color getColor() { return color; }
+        
+        public boolean isHighlighted() {
+            return colors != null && colors.length > 0 && colors[0] != null;
+        }
+        
+        public Color getColor(Object obj) { 
+            if(this.colors == null) 
+                return HighlightMode.SHOW_SUCCESS.getColor();
+            long hash = EsoMath.hash64(obj);
+            int idx = (int) ((hash >>> 32) % colors.length);
+            if (idx < 0) idx += colors.length; 
+            return colors[idx];
+        }
+
+        public @Nullable Color getColor() {
+            if(this.colors == null) HighlightMode.SHOW_SUCCESS.getColor();
+            return colors[0];
+        }
     }
 }

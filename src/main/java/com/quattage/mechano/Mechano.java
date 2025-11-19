@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.infrastructure.datagen.MechanoDatagen;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
@@ -12,6 +13,7 @@ import net.createmod.catnip.lang.LangBuilder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModLoadingContext;
@@ -39,6 +41,8 @@ public class Mechano {
         MechanoTags.register(modBus);
         MechanoGroups.register(modBus);
         MechanoData.register(modBus);
+        modBus.addListener(EventPriority.HIGHEST, MechanoDatagen::collectHighPriority);
+        modBus.addListener(EventPriority.LOWEST, MechanoDatagen::collectLowPriority);
     }
 
     public static ResourceLocation asResource(String path) {
@@ -71,15 +75,6 @@ public class Mechano {
             path += "/" + item;
         }
         return ResourceLocation.fromNamespaceAndPath(ctx.getId().getNamespace(), path);
-    }
-
-    public static void printStack() {
-        String out = "STACKTRACE: \n";
-        for(StackTraceElement s :  Thread.currentThread().getStackTrace()) {
-            out += "\t\tat " + s.getClassName() + "." + s.getMethodName() 
-                + "(" + s.getFileName() + ":" + s.getLineNumber() + ")\n";
-        }
-        Mechano.LOGGER.info(out + "--");
     }
 
     public static LangBuilder lang() {

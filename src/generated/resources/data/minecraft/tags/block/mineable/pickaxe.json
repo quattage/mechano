@@ -1,6 +1,5 @@
 {
   "values": [
-    "mechano:test_axis",
     "mechano:connector_single"
   ]
 }

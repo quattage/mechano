@@ -19,8 +19,8 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
         Node passive = circuit.newJoint();
         circuit.wireJack("Wire Attachment")
             .attachedTo(passive)
-            .x(0).y(16).z(0)
-            .size(4).make();
+            .x(0).y(17).z(0)
+            .size(3.5f).make();
         circuit.blockJack("Bottom Face")
             .attachedTo(passive)
             .face(Relative.BOTTOM)

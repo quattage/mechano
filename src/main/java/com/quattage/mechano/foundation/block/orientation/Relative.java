@@ -1,42 +1,28 @@
 package com.quattage.mechano.foundation.block.orientation;
 
-import org.joml.Quaternionf;
+import java.util.Locale;
 
-import net.createmod.catnip.theme.Color;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.Vec3i;
+import net.minecraft.util.StringRepresentable;
 
 /***
  * Represents a direction in the local space. Modifiable by global directions
  * to achieve rotations.
  */
-public enum Relative {
-    FRONT(0, 0, 0, Axis.Z, Direction.NORTH, 176, 48, 255),
-    BACK(0, 180, 0, Axis.Z, Direction.SOUTH, 161, 117, 118),
-    LEFT(0, 90, 0, Axis.X, Direction.WEST, 255, 48, 104),
-    RIGHT(0, 270, 0, Axis.X, Direction.EAST, 204, 117, 140),
-    TOP(270, 0, 0, Axis.Y, Direction.UP, 48, 255, 161),
-    BOTTOM(90, 0, 0, Axis.Y, Direction.DOWN, 114, 176, 159);
+public enum Relative implements StringRepresentable {
+    FRONT(0, 0, 0, Direction.NORTH),
+    BACK(0, 180, 0, Direction.SOUTH),
+    LEFT(0, 90, 0, Direction.WEST),
+    RIGHT(0, 270, 0, Direction.EAST),
+    TOP(270, 0, 0, Direction.UP),
+    BOTTOM(90, 0, 0, Direction.DOWN);
 
-
-    private final Quaternionf relMatrix;
-    private final Axis followingAxis;
     private final Direction defaultDir;
-    private final Color debugColor;
 
-    Relative(int x, int y, int z, Axis followingAxis, Direction defaultDir, int r, int g, int b) {
-        this.relMatrix = new Quaternionf().rotateXYZ(x, y, z);
-        this.followingAxis = followingAxis;
+    Relative(int x, int y, int z, Direction defaultDir) {
         this.defaultDir = defaultDir;
-        this.debugColor = new Color(r, g, b);
-    }
-
-    Relative(int x, int y, int z, Axis followingAxis, Direction defaultDir) {
-        this.relMatrix = new Quaternionf().rotateXYZ(x, y, z);
-        this.followingAxis = followingAxis;
-        this.defaultDir = defaultDir;
-        this.debugColor = null;
     }
 
     public static Relative of(Direction dir) {
@@ -50,44 +36,50 @@ public enum Relative {
         };
     }
 
-    /***
-     * Gets the Color of this Relative.
-     * This is only used as a way to visually 
-     * distinguish RelativeDirections for debugging.
-     * @return
+    /**
+     * Applies this Relative given the provided {@link CombinedOrientation orientation}
+     * @param orientation Orientation to apply
+     * @return The global {@link Direction} relative to the provided orientation
      */
-    public Color getColor() {
-        if(debugColor == null) return new Color(255, 255, 255);
-        return debugColor;
+    public Direction apply(CombinedOrientation orientation) {
+        Vec3i up = orientation.getLocalUp().getNormal();
+        Vec3i fn = orientation.getLocalForward().getNormal();
+        Vec3i tan = Relative.cross(up, fn);
+        Vec3i ln = this.defaultDir.getNormal();
+        return Direction.getNearest(
+            ln.getX() * tan.getX() + ln.getY() * up.getX() + ln.getZ() * fn.getX(), 
+            ln.getX() * tan.getY() + ln.getY() * up.getY() + ln.getZ() * fn.getY(), 
+            ln.getX() * tan.getZ() + ln.getY() * up.getZ() + ln.getZ() * fn.getZ()
+        );
+    }
+
+    private static Vec3i cross(Vec3i a, Vec3i b) {
+        return new Vec3i(
+            a.getY() * b.getZ() - a.getZ() * b.getY(),
+            a.getZ() * b.getX() - a.getX() * b.getZ(),
+            a.getX() * b.getY() - a.getY() * b.getX()
+        );
     }
 
     public Direction getDefaultDir() {
         return defaultDir;
     }
 
-    public Quaternionf getRelMatrix() {
-        return relMatrix;
-    }
-
     public Axis getAxis() {
-        return followingAxis;
+        return defaultDir.getAxis();
     }
 
     public Relative copy() {
         return Relative.values()[this.ordinal()];
     }
 
-    public boolean equals(Relative other) {
-        if(other == null) return false;
-        return this.ordinal() == other.ordinal();
-    }
-
-    public void writeTo(CompoundTag in) {
-        in.putInt(name(), ordinal());
+    @Override
+    public String getSerializedName() {
+        return name().toLowerCase(Locale.ROOT);
     }
 
     @Override
     public String toString() {
-        return name();
+        return getSerializedName();
     }
 }

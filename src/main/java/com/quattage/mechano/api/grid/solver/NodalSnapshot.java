@@ -101,8 +101,7 @@ public class NodalSnapshot {
         /**
          * "Stamping" refers to the process of an individual CircuitComponent
          * declaring its own presence in the NodalSnapshot. This method
-         * is used to initialize each {@link Circuit#beginSolverStep
-         * solver step} of the {@link Circuit}
+         * is used to initialize each solver step of the {@link Circuit}
          */
         void stamp(Circuit circuit, NodalSnapshot snapshot);
         /**

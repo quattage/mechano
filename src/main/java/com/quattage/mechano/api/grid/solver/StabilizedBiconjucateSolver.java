@@ -9,7 +9,7 @@ import org.ejml.sparse.csc.CommonOps_DSCC;
 import com.quattage.mechano.api.grid.topology.Circuit;
 
 /**
- * A solver based on the biconjugate gradient stabilized method.
+ * A SPICE-like solver based on the biconjugate gradient stabilized method.
  * (https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method)
  * https://mathworld.wolfram.com/BiconjugateGradientStabilizedMethod.html
  * https://www.cfd-online.com/Wiki/Biconjugate_gradient_stabilized_method

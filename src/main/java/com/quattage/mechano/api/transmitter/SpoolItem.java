@@ -6,17 +6,15 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.SidedGridDispatcher;
-import com.quattage.mechano.api.catenary.CatenaryAttributable;
-import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.JackSelector;
+import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
+import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
 import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.GridUUID.EntityUUID;
 
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
@@ -29,11 +27,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class SpoolItem extends Item implements LeftClickCapturable {
+public abstract class SpoolItem extends Item implements CircuitComponentProvider, LeftClickCapturable {
 
     private int startingDamage = -1;
 
@@ -66,10 +63,15 @@ public abstract class SpoolItem extends Item implements LeftClickCapturable {
         }
     }
 
+    @Override
+    public GridResponse evaluateTarget(ClientLevel world, AncillaryJack target) {
+        return GridResponse.TASK_SELECT_SUCCESS;
+    }
+
     @OnlyIn(Dist.CLIENT)
     public static boolean hasAwaiting(Player player) {
         for(ItemStack stack : player.getInventory().items) {
-            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(UUIDDiscriminator.ATTACHMENT))
+            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(DataSourceIdentifier.ATTACHMENT))
                 return true;
         }
         return false;
@@ -77,86 +79,30 @@ public abstract class SpoolItem extends Item implements LeftClickCapturable {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
-        if(!level.isClientSide) return InteractionResultHolder.pass(Transmitable.getHolding(player).stack());
-        if(usedHand != InteractionHand.MAIN_HAND || !AnchorSelector.INSTANCE.hasSelection()) 
-            return InteractionResultHolder.fail(AnchorSelector.INSTANCE.getHeldStack());
-        ItemStack stack = AnchorSelector.INSTANCE.getHeldStack();
-        if(!stack.has(UUIDDiscriminator.ATTACHMENT)) 
-            return handleFirstRightClick(player, stack, AnchorSelector.INSTANCE.getSelected());
-        return handleSecondRightClick(player, stack, AnchorSelector.INSTANCE.getSelected());
+        if(!level.isClientSide) return InteractionResultHolder.pass(JackSelector.getInstance().getHeldCircuitProvider(player));
+        if(usedHand != InteractionHand.MAIN_HAND || !JackSelector.getInstance().hasSelection()) 
+            return InteractionResultHolder.fail(JackSelector.getInstance().getHeldCircuitProvider(player));
+        ItemStack stack = JackSelector.getInstance().getHeldCircuitProvider(player);
+        if(!stack.has(DataSourceIdentifier.ATTACHMENT))
+            return handleFirstRightClick(player, stack, JackSelector.getInstance().target());
+        return handleSecondRightClick(player, stack, JackSelector.getInstance().target());
     }
 
     /**
-     * Called when the player initially selects an anchor, which creates a temporary link and catenary
-     * between the selected anchor and the player.
+     * Called when the player initially selects an {@link AncillaryJack}, which creates a temporary link and catenary
+     * between the selected {@link AncillaryJack} and the player.
      */
     @OnlyIn(Dist.CLIENT)
-    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AnchorPoint targetAnchor) {
+    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AncillaryJack initialTarget) {
         if(SpoolItem.hasAwaiting(player)) return InteractionResultHolder.fail(stack);
-        if(targetAnchor == null || !AnchorSelector.INSTANCE.isSelectedGood()) {
-            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
-            return InteractionResultHolder.fail(stack);
-        }
-        AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
-        if(selfAnchor == null) {
-            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
-            return InteractionResultHolder.fail(stack);
-        }
-        GridResponse result = SidedGridDispatcher.client(player).requestLinkCreation(selfAnchor, targetAnchor, getTransmitterType(), true);
-        startingDamage = stack.getDamageValue();
-        if(!result.indicatesCompletion()) {
-            cancelAwaitingConnection(targetAnchor.getAddress(), null, stack);
-            Mechano.LOGGER.warn("Link request returned failure state '" + result + "' (Requested by '" + player.getName() + "', from " + targetAnchor + " -> " + selfAnchor + ")");
-            return InteractionResultHolder.fail(stack);
-        }
-        stack.set(UUIDDiscriminator.ATTACHMENT, targetAnchor.getAddress());
         return InteractionResultHolder.success(stack);
     }
 
     /**
-     * Called when the player selects a second anchor, which finalizes the creation of a valid link and catenary
+     * Called when the player selects a second {@link AncillaryJack}, which finalizes the creation of a valid link and catenary
      */
     @OnlyIn(Dist.CLIENT)
-    private InteractionResultHolder<ItemStack> handleSecondRightClick(Player player, ItemStack stack, @Nullable AnchorPoint endAnchor) {
-
-        if(endAnchor == null) {
-            cancelAwaitingConnection(null, null, stack);
-            return InteractionResultHolder.fail(stack);
-        }
-
-        GridResponse initialResponse = AnchorSelector.INSTANCE.getSelectedResponse();
-        if(!initialResponse.indicatesCompletion()) {
-            if(initialResponse.shouldFailHard()) {
-                onLeftClick(player, stack, InteractionHand.MAIN_HAND);
-                return InteractionResultHolder.fail(stack);
-            }
-            return InteractionResultHolder.pass(stack);
-        }
-        
-        GridUUID startAddress = stack.get(UUIDDiscriminator.ATTACHMENT);
-        AnchorPoint startAnchor = startAddress.getAnchor((ClientLevel)player.level());
-        if(startAnchor == null) {
-            cancelAwaitingConnection(null, endAnchor.getAddress(), stack);
-            return InteractionResultHolder.fail(stack);
-        }
-
-        if(startAnchor.getAddress().equals(endAnchor.getAddress()))
-            return InteractionResultHolder.pass(stack);
-
-        ClientGrid grid = SidedGridDispatcher.client(player);
-        GridResponse result = grid.requestLinkCreation(startAnchor, endAnchor, getTransmitterType(), true);
-        if(!result.indicatesCompletion()) {
-            if(result.shouldFailHard()) {
-                onLeftClick(player, stack, InteractionHand.MAIN_HAND);
-                return InteractionResultHolder.fail(stack);
-            }
-            return InteractionResultHolder.pass(stack);
-        }
-        Griddable playerPoints = GriddableEntityAttachment.of(player, true);
-        result = grid.requestLinkDestruction(startAnchor, playerPoints.getAnchors().get(0), true);
-        applyDurability(player, stack, GridConnection.getEuclideanDistance(player.level(), startAddress, endAnchor.getAddress()));
-        stack.remove(UUIDDiscriminator.ATTACHMENT);
-        startingDamage = -1;
+    private InteractionResultHolder<ItemStack> handleSecondRightClick(Player player, ItemStack stack, @Nullable AncillaryJack subsequentTarget) {
         return InteractionResultHolder.success(stack);
     }
 
@@ -164,53 +110,38 @@ public abstract class SpoolItem extends Item implements LeftClickCapturable {
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
 
         if(!world.isClientSide) return;
-        GridUUID startAddress = stack.get(UUIDDiscriminator.ATTACHMENT);
+        GridUUID startAddress = stack.get(DataSourceIdentifier.ATTACHMENT);
         if(startAddress == null) return;
 
-        EntityUUID playerAddress = new EntityUUID(entity.getUUID(), 0);
-        AnchorPoint startAnchor = startAddress.getAnchor((ClientLevel)world);
-        if(startAnchor == null || (startAnchor.getCurrentConnections() > startAnchor.getMaxConnections())) {
-            Mechano.LOGGER.warn("Connection to " + startAnchor + " was cancelled prematurely.");
-            cancelAwaitingConnection(startAnchor == null ? null : startAnchor.getAddress(), playerAddress, stack);
-            return;
-        }
-
-        LinkDataStorage.Client storage = LinkDataStorage.getAsClient(entity, false);
-        if(storage == null) return;
-        GridCatenary cat = storage.get(world, new ConnectionKey(playerAddress, startAddress));
-        if(cat == null) return;
-        applyDurability(entity, stack, cat.calculateSpan());
-        cat.adjustSpan(world, (stack.getMaxDamage() - stack.getDamageValue()) / 2f);
     }
 
     private void cancelAwaitingConnection(@Nullable GridUUID startAddress, @Nullable GridUUID endAddress, ItemStack stack) {
-        stack.remove(UUIDDiscriminator.ATTACHMENT);
+        stack.remove(DataSourceIdentifier.ATTACHMENT);
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
         if(startAddress == null || endAddress == null) return;
-        CatnipServices.NETWORK.sendToServer(new LinkRequestPacket(startAddress, endAddress, MechanoTransmissionTypes.PERFECT_CONDUCTOR, GridResponse.TASK_DESTROY_LINK));
     }
 
 
     @Override
     public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
-        if(!stack.has(UUIDDiscriminator.ATTACHMENT)) return false;
-        GridUUID addr = stack.get(UUIDDiscriminator.ATTACHMENT);
+        if(!stack.has(DataSourceIdentifier.ATTACHMENT)) return false;
+        GridUUID addr = stack.get(DataSourceIdentifier.ATTACHMENT);
         if(addr == null) return false;
 
-        AnchorPoint previous = addr.getAnchor((ClientLevel)player.level());
-        if(previous == null) {
-            AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
-            SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
-            return true;
-        }
+        // WireJack previous = addr.getAnchor((ClientLevel)player.level());
+        // if(previous == null) {
+        //     AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
+        //     SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
+        //     return true;
+        // }
 
-        Vec3 disp = previous.getPos(player.level()).subtract(player.getPosition(1)).normalize();
-        float faceDot = (float)player.getViewVector(1).dot(disp);
-        if(faceDot < CatenaryAttributable.DETACH_THRESHOLD) return true;
-        AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
-        SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
-        cancelAwaitingConnection(addr, null, stack);
+        // Vec3 disp = previous.getPos(player.level()).subtract(player.getPosition(1)).normalize();
+        // float faceDot = (float)player.getViewVector(1).dot(disp);
+        // if(faceDot < 0.2) return true;
+        // AnchorPoint selfAnchor = AnchorPoint.getLocal(player);
+        // SidedGridDispatcher.client(player).requestLinkDestruction(selfAnchor, previous, true);
+        // cancelAwaitingConnection(addr, null, stack);
         if(hand != null) {
             player.swing(hand);
             player.swingTime = 1;
@@ -221,7 +152,7 @@ public abstract class SpoolItem extends Item implements LeftClickCapturable {
 
     @Override
     public boolean isNotReplaceableByPickAction(ItemStack stack, Player player, int inventorySlot) {
-        return stack.has(UUIDDiscriminator.ATTACHMENT);
+        return stack.has(DataSourceIdentifier.ATTACHMENT);
     }
 
 

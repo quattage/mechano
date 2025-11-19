@@ -63,7 +63,6 @@ public interface CircuitComponent extends StringRepresentable {
      * components and joints that are insignificant. Insignificant
      * components being trimmed out of fresh {@link Griddable griddables}
      * indicates misuse of the {@link CircuitFactory} during initialization.
-     * @return
      */
     boolean isSignificant();
 

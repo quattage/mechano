@@ -24,6 +24,7 @@ import com.simibubi.create.infrastructure.config.AllConfigs;
 import com.simibubi.create.infrastructure.config.CClient;
 
 import net.createmod.catnip.gui.element.BoxElement;
+import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -36,6 +37,7 @@ import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -54,7 +56,34 @@ public class JackSelector {
     private ArrayList<Component> tooltip = new ArrayList<>();
 
     private boolean lookedThisFrame = false;
-    private int hoverTicks = 0;
+    private boolean shouldShowAllNearby = false;
+    private float hoverTicks = 0;
+
+    public void tick(LocalPlayer lp, DeltaTracker deltas) {
+        if(lp == null || deltas == null || nearbyJoints.isEmpty()) {
+            reset();
+            return;
+        }
+
+        VectorOperations.Ray lookingRay = VectorOperations.getLookingRay(
+            lp, deltas.getGameTimeDeltaPartialTick(false), (float)lp.blockInteractionRange());
+        HoldingSummary hands = getHolding(lp);
+        if(lookingRay == null || hands == null) {
+            reset();
+            return;
+        }
+        updateClosest((ClientLevel)lp.level(), lookingRay, hands.get(), deltas);
+        if(!hands.isHoldingReleventItem()) {
+            shouldShowAllNearby = false;
+            nearbyJoints.clear();
+            return;
+        }
+        shouldShowAllNearby = true;
+        CircuitComponentProvider prov = hands.get();
+        accumulateTooltip(lp, prov);
+        accumulateTooltip(lp, selected.get());
+        nearbyJoints.clear();
+    }
 
     /**
      * Appends a {@link AncillaryJack} to this tracker's queue. Queued trackers
@@ -75,30 +104,13 @@ public class JackSelector {
         TargetAncillary potentialTarget = new TargetAncillary(joint, distance);
         nearbyJoints.add(potentialTarget);
     }
-    
-    public void tick(LocalPlayer lp, DeltaTracker deltas) {
-        if(lp == null || deltas == null || nearbyJoints.isEmpty()) {
-            resetSelector();
-            return;
-        }
-        VectorOperations.Ray lookingRay = VectorOperations.getLookingRay(
-            lp, deltas.getGameTimeDeltaPartialTick(false), (float)lp.blockInteractionRange());
-        HoldingSummary hands = getHolding(lp);
-        if(lookingRay == null || hands == null) {
-            resetSelector();
-            return;
-        }
-        updateClosest((ClientLevel)lp.level(), lookingRay, hands.get(), deltas);
-        if(!hands.isHoldingReleventItem()) {
-            nearbyJoints.clear();
-            return;
-        }
-        CircuitComponentProvider prov = hands.get();
-        accumulateTooltip(lp, prov);
-        accumulateTooltip(lp, selected.get());
-        nearbyJoints.clear();
-    }
 
+    /**
+     * Adds the pertinent information regarding the player's current target and held spool
+     * to the tooltip for this frame
+     * @param lp Local player
+     * @param obj Object to pull tooltip info from (usually just the held spool)
+     */
     public void accumulateTooltip(@Nullable LocalPlayer lp, @Nullable Object obj) {
         if(lp == null || obj == null) return;
         if(obj instanceof IHaveGoggleInformation tt && GogglesItem.isWearingGoggles(lp))
@@ -107,7 +119,7 @@ public class JackSelector {
             tt.addToTooltip(tooltip, lp.isShiftKeyDown());
     }
 
-    public void updateClosest(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
+    private void updateClosest(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
         lookedThisFrame = false;
         while(!nearbyJoints.isEmpty()) {
             final TargetAncillary sel = nearbyJoints.poll();
@@ -121,46 +133,55 @@ public class JackSelector {
         }
         if(!lookedThisFrame) {
             if(selected.exists() && hoverTicks > 0) {
-                hoverTicks -= deltas.getGameTimeDeltaTicks() / 2;
+                hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
                 selected.get().drawToOutliner(selected.target.getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
-            } else resetSelector();
+            } else reset();
         }
     }
 
-    public void drawTrackedAnchors(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
+    /**
+     * Draws every {@link AncillaryJack} in the queue to either Create's {@link Outliner}
+     * or to the provided <code>buffer</code> depending on the context.
+     * @param camera The current rendering camera
+     * @param matrixStack the {@link PoseStack} accessible from the current rendering context.
+     * @param buffer the {@link VertexConsumer} that will receive vertices.
+     * @param deltas delta time tracker for the local instance
+     * @see #drawSelectedToOutliner
+     * @see #drawSelectedToStack
+     */
+    public void draw(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
         if(selected.exists() && lookedThisFrame) {
             if(selected.isVisible()) {
                 if(selected.getResponse().getVisibility().isHighlighted()) {
-                    if(hoverTicks < 1) hoverTicks += deltas.getGameTimeDeltaTicks() / 2;
+                    if(hoverTicks < 1) hoverTicks += deltas.getGameTimeDeltaTicks() * 0.5;
                     hoverTicks = Math.min(1, hoverTicks);
-                    drawSelected(deltas, true);
+                    selected.drawToOutliner(hoverTicks, deltas);
                 } else if(hoverTicks > 0) {
-                    hoverTicks -= deltas.getGameTimeDeltaTicks() / 2;
+                    hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
                     hoverTicks = Math.max(0, hoverTicks);
-                    drawSelected(deltas, true);
+                    selected.drawToOutliner(hoverTicks, deltas);
                 } else {
-                    drawSelected(deltas, false);
+                    selected.drawToBuffer(camera, matrixStack, buffer, deltas);
                     hoverTicks = 0;
                 }
             } else if(selected.getResponse().getVisibility().isHighlighted() && hoverTicks > 0) {
-                hoverTicks -= deltas.getGameTimeDeltaTicks() / 2;
+                hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
                 hoverTicks = Math.max(0, hoverTicks);
-                drawSelected(deltas, true);
+                selected.drawToBuffer(camera, matrixStack, buffer, deltas);
             }
         }
+        if(shouldShowAllNearby)
+            drawAllNearby(camera, matrixStack, buffer, deltas);
+    }
+
+    private void drawAllNearby(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
         for(TargetAncillary joint : nearbyJoints) {
             if(joint == null || joint.equals(selected)) continue;
-            joint.get().drawToStack(camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
+            joint.drawToBuffer(camera, matrixStack, buffer, deltas);
         }
     }
 
-    public void drawSelected(DeltaTracker deltas, boolean outliner) {
-        if(outliner)
-            selected.get().drawToOutliner(selected.get().getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
-        else selected.get().drawToOutliner(selected.get().getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
-    }
-
-    private HoldingSummary getHolding(LocalPlayer player) {
+    private HoldingSummary getHolding(Player player) {
         if(player == null) throw new NullPointerException("Couldn't instantiate a HoldingSummary - Player is null!");
         ItemStack stack = player.getMainHandItem();
         if(stack.getItem() instanceof CircuitComponentProvider transmitterItem)
@@ -171,11 +192,17 @@ public class JackSelector {
         return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, null);
     }
 
-    private void resetSelector() {
+    private void reset() {
         lookedThisFrame = false;
+        shouldShowAllNearby = false;
         hoverTicks = 0;
         selected.reset();
         nearbyJoints.clear();
+    }
+
+    public ItemStack getHeldCircuitProvider(Player player) {
+        HoldingSummary hands = getHolding(player);
+        return hands.stack == null ? ItemStack.EMPTY : hands.stack;
     }
 
 
@@ -243,7 +270,11 @@ public class JackSelector {
     }
 
     public boolean hasSelection() {
-        return selected.exists() && selected.isVisible();
+        return selected != null && selected.exists() && selected.isVisible();
+    }
+
+    public @Nullable AncillaryJack target() {
+        return hasSelection() ? selected.get() : null;
     }
 
     protected static class TargetAncillary implements Comparable<TargetAncillary> {
@@ -287,7 +318,8 @@ public class JackSelector {
         }
 
         public Color getColor() {
-            return response.getVisibility().getColor();
+            if(target == null || target.getSource() == null) return response.getVisibility().getColor();
+            return response.getVisibility().getColor(target.getSource().getBlockPos());
         }
 
         public @Nullable AncillaryJack get() {
@@ -302,9 +334,41 @@ public class JackSelector {
         public int compareTo(TargetAncillary that) {
             return this.distanceToPlayer > that.distanceToPlayer ? 1 : (this.distanceToPlayer < that.distanceToPlayer ? -1 : 0);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(obj == this) return true;
+            if(!(obj instanceof TargetAncillary that)) return false;
+            return this.target == that.target;
+        }
+
+        @Override
+        public String toString() {
+            if(target == null) return "Target(null)";
+            return "Target(" + target + ", " + response + ")";
+        }
+
+
+    /**
+     * Draws this{@link AncillaryJack} to Create's {@link Outliner}
+     * @see #drawSelectedToBuffer
+     */
+    public void drawToOutliner(float hoverTicks, DeltaTracker deltas) {
+        target.drawToOutliner(target.getSource().getSourcePos(), getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
     }
 
-    protected static record HoldingSummary(LocalPlayer player, InteractionHand hand, ItemStack stack, CircuitComponentProvider obj) {
+    /**
+     * Draws this {@link AncillaryJack} to an arbitrary vertex buffer.
+     * The outline drawn by this method will resemble Minecraft's
+     * vanilla voxel selection box.
+     * @see #drawSelectedToOutliner
+     */
+    public void drawToBuffer(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
+        target.drawToBuffer(target.getSource().getSourcePos(), camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
+    }
+    }
+
+    protected static record HoldingSummary(Player player, InteractionHand hand, ItemStack stack, CircuitComponentProvider obj) {
         public CircuitComponentProvider get() { return obj; }
         public boolean isHoldingReleventItem() { return player != null && hand != null && obj != null && stack != null; }
         @Override public final String toString() {

@@ -19,6 +19,8 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implements PartialSafeNBT {
 
+    private boolean initialized = false;
+
     public SimpleBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
@@ -40,6 +42,18 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
      * @param newState The state that exists now
      */
     public abstract void onRefresh(LevelReader world, BlockPos pos, @Nullable BlockState oldState, BlockState newState);
+
+
+    /**
+     * Called right after this BE is added to the world and 
+     * before it ticks for the first time
+     */
+    public abstract void initialize();
+
+    /**
+     * Called continuously every game tick on both sides
+     */
+    public abstract void tick();
 
     /**
      * Save up-to-date information and variables pertaining to 
@@ -86,14 +100,17 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
         loadFrom(tag, registries);
     }
 
-    public abstract void tick();
-
     private static class SimpleBlockEntityTicker<T extends BlockEntity> implements BlockEntityTicker<T> {
         @Override
         public void tick(Level level, BlockPos pos, BlockState state, T blockEntity) {
-            if(!blockEntity.hasLevel())
-                blockEntity.setLevel(level);
-            ((SimpleBlockEntity)blockEntity).tick();
+            if(!(blockEntity instanceof SimpleBlockEntity sbe)) 
+                throw new IllegalArgumentException("shut up");
+            if(!sbe.hasLevel()) sbe.setLevel(level);
+            if(!sbe.initialized) {
+                sbe.initialize();
+                sbe.initialized = true;
+            }
+            sbe.tick();
         }
     }
 
@@ -104,8 +121,7 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
     public interface BERefreshable<B extends SimpleBlockEntity> extends IBE<B> {
 
         @Override
-        default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_,
-                BlockEntityType<S> p_153214_) {
+        default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_, BlockEntityType<S> p_153214_) {
             return new SimpleBlockEntityTicker<>();
         }
 

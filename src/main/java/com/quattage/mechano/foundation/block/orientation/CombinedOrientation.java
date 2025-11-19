@@ -27,7 +27,7 @@ public enum CombinedOrientation implements StringRepresentable {
     DOWN_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 180), Direction.DOWN, Direction.SOUTH),
     DOWN_EAST(new Vec3i(180, 270, 0), new Vec3i(0, 90, 180), Direction.DOWN, Direction.EAST),
 
-    UP_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 0), Direction.UP, Direction.NORTH),             // 4
+    UP_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 0), Direction.UP, Direction.NORTH),                      // 4
     UP_WEST(new Vec3i(0, 270, 0), new Vec3i(0, 90, 0), Direction.UP, Direction.WEST),
     UP_SOUTH(new Vec3i(0, 180, 0), new Vec3i(0, 180, 0), Direction.UP, Direction.SOUTH),
     UP_EAST(new Vec3i(0, 90, 0), new Vec3i(0, 270, 0), Direction.UP, Direction.EAST),
@@ -37,12 +37,12 @@ public enum CombinedOrientation implements StringRepresentable {
     NORTH_DOWN(new Vec3i(90, 270, 0), new Vec3i(270, 0, 0), Direction.NORTH, Direction.DOWN),
     NORTH_WEST(new Vec3i(0, 270, 90), new Vec3i(270, 0, 270), Direction.NORTH, Direction.WEST),
 
-    EAST_UP(new Vec3i(270, 0, 0), new Vec3i(0, 90, 270), Direction.EAST, Direction.UP),                // 12
+    EAST_UP(new Vec3i(270, 0, 0), new Vec3i(0, 90, 270), Direction.EAST, Direction.UP),                 // 12
     EAST_SOUTH(new Vec3i(180, 0, 0), new Vec3i(0, 180, 270), Direction.EAST, Direction.SOUTH),
     EAST_DOWN(new Vec3i(90, 0, 90), new Vec3i(0, 270, 270), Direction.EAST, Direction.DOWN),
     EAST_NORTH(new Vec3i(0, 0, 0), new Vec3i(0, 0, 270), Direction.EAST, Direction.NORTH),
 
-    SOUTH_UP(new Vec3i(270, 90, 0), new Vec3i(90, 0, 0), Direction.SOUTH, Direction.UP),             // 16
+    SOUTH_UP(new Vec3i(270, 90, 0), new Vec3i(90, 0, 0), Direction.SOUTH, Direction.UP),                // 16
     SOUTH_WEST(new Vec3i(180, 90, 0), new Vec3i(90, 0, 90), Direction.SOUTH, Direction.WEST),
     SOUTH_DOWN(new Vec3i(90, 90, 0), new Vec3i(90, 0, 180), Direction.SOUTH, Direction.DOWN),
     SOUTH_EAST(new Vec3i(0, 90, 0), new Vec3i(90, 0, 270), Direction.SOUTH, Direction.EAST),

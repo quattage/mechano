@@ -217,6 +217,17 @@ public class VectorOperations {
      * changes in color, requiring smaller changes to the input vector
      * @return A new Color derived from the input vector
      */
+    public static Color toColor(Vector3d vec) {
+        return VectorOperations.toColor(new Vec3(vec.x, vec.y, vec.z), 8);
+    }
+
+    /***
+     * Converts an arbitrary Vec3 (non-normalized) into a percentage based color.
+     * @param vec Vector 
+     * @param variation (Optional, default is 8) Lower numbers result in more noticable 
+     * changes in color, requiring smaller changes to the input vector
+     * @return A new Color derived from the input vector
+     */
     public static Color toColor(Vec3 vec, int variation) {
         if(variation < 2) variation = 2;
         Vec3i norm = new Vec3i(

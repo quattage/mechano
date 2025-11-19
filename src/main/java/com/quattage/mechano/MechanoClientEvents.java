@@ -1,14 +1,17 @@
 package com.quattage.mechano;
 
 import com.quattage.mechano.api.JackSelector;
-import com.quattage.mechano.api.catenary.CatenaryModel;
+import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.foundation.LeftClickCapturable;
+import com.quattage.mechano.foundation.item.MechanoItemProperties;
+import com.quattage.mechano.foundation.item.MechanoItemProperties.SpoolFullnessProperty;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -23,6 +26,7 @@ import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 @EventBusSubscriber(Dist.CLIENT)
@@ -81,14 +85,12 @@ public class MechanoClientEvents {
     @SubscribeEvent
     public static void onRenderStageComplete(RenderLevelStageEvent evt) {
         if(evt.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
-        JackSelector.getInstance().drawTrackedAnchors(
-            evt.getCamera(), evt.getPoseStack(), 
-            ((RenderBuffersAccessor)evt.getLevelRenderer())
-                .mechano$getRenderBuffers()
-                .bufferSource()
-                .getBuffer(RenderType.lines()),
-            evt.getPartialTick()
-        );
+        JackSelector.getInstance()
+            .draw(evt.getCamera(), evt.getPoseStack(), 
+                ((RenderBuffersAccessor)evt.getLevelRenderer())
+                .mechano$getRenderBuffers().bufferSource().getBuffer(RenderType.lines()),
+                evt.getPartialTick()
+            );
     }
 
     /**
@@ -104,12 +106,12 @@ public class MechanoClientEvents {
      * Suppresses the inclusion of "Durability: xx/xx" tooltips 
      * on spools that request to do so.
      */
-    // @SubscribeEvent
-    // public static void onTooltipGather(RenderTooltipEvent.GatherComponents evt) {
-    //     if(!(evt.getItemStack().getItem() instanceof SpoolItem schpool)) return;
-    //     if(!schpool.hidesDefaultTooltip()) return;
-    //     evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
-    // }
+    @SubscribeEvent
+    public static void onTooltipGather(RenderTooltipEvent.GatherComponents evt) {
+        if(!(evt.getItemStack().getItem() instanceof SpoolItem schpool)) return;
+        if(!schpool.hidesDefaultTooltip()) return;
+        evt.getTooltipElements().removeIf(line -> line.left().get().getString().startsWith("Durability"));
+    }
 
     @SubscribeEvent
     public static void onLeftClick(InputEvent.MouseButton.Pre evt) {
@@ -150,6 +152,6 @@ public class MechanoClientEvents {
 
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {
         // evt.registerReloadListener(MechanoClientEvents.CATENARY_RESOURCES);
-        // ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
+        ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
     }
 }

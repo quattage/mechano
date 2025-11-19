@@ -42,7 +42,7 @@ public abstract class AncillaryJack implements Node {
 
     private final String componentID;
     private @Nullable Griddable source;
-    private @Nullable Node parent;
+    protected @Nullable Node parent;
     private boolean isVisible = true;
 
     public AncillaryJack(String componentID, boolean isVisible) {
@@ -81,22 +81,23 @@ public abstract class AncillaryJack implements Node {
     public abstract float getSize();
 
     /**
-     * Returns an AABB describing this AncillaryJack's approximate
-     * hitbox.
+     * Returns an AABB describing this AncillaryJack's hitbox.
      * @param basis The real-world position of the parent griddable
+     * @param rotation (Optional) a quaternion BlockState or Entity rotation
      * @param size (Optional) A custom size factor for scaling the AABB. Defaults to this jack's actual size.
      * @return A new AABB instance
      */
-    public AABB makeAABB(Vector3d basis) { return makeAABB(basis, getSize()); }
+    public final AABB makeAABB(Vector3d basis) { return makeAABB(basis, getSize()); }
 
     /**
-     * Returns an AABB describing this AncillaryJack's approximate
-     * hitbox.
+     * Returns an AABB describing this AncillaryJack's hitbox.
      * @param basis The real-world position of the parent griddable
+     * @param rotation (Optional) a quaternion BlockState or Entity rotation
      * @param size (Optional) A custom size factor for scaling the AABB. Defaults to this jack's actual size.
      * @return A new AABB instance
      */
     public abstract AABB makeAABB(Vector3d basis, float size);
+
 
     public Vector3f getRotatedOffset(Quaternionf rotation) {
         Vector3f centered = new Vector3f(getXO() + 0.5f, getYO() + 0.5f, getZO() + 0.5f);
@@ -113,14 +114,14 @@ public abstract class AncillaryJack implements Node {
     }
 
     
-    public void forAllEdges(double basisX, double basisY, double basisZ, Shapes.DoubleLineConsumer action) {
+    public void forAllEdges(Shapes.DoubleLineConsumer action) {
         float size = getSize();
-        double nx = ((basisX + getXO()) - size);
-        double ny = ((basisY + getYO()) - size);
-        double nz = ((basisZ + getZO()) - size);
-        double px = ((basisX + getXO()) + size);
-        double py = ((basisY + getYO()) + size);
-        double pz = ((basisZ + getZO()) + size);
+        double nx = getXO() - size;
+        double ny = getYO() - size;
+        double nz = getZO() - size;
+        double px = getXO() + size;
+        double py = getYO() + size;
+        double pz = getZO() + size;
         // bottom square
         action.consume(nx, ny, nz, nx, ny, pz);
         action.consume(nx, ny, pz, px, ny, pz);
@@ -138,13 +139,15 @@ public abstract class AncillaryJack implements Node {
         action.consume(px, ny, nz, px, py, nz);
     }
 
+    abstract void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack);
+
     @OnlyIn(Dist.CLIENT)
-    public boolean drawToStack(Vec3 basis, PoseStack matrix, VertexConsumer buffer, float pTicks) {
+    public boolean drawToBuffer(Vector3d basis, Vec3 cameraPos, PoseStack matrix, VertexConsumer buffer, float pTicks) {
         if(!isVisible || !VectorOperations.isInWorld(basis)) return false;
         matrix.pushPose();
-        matrix.translate(basis.x - basis.x, basis.y - basis.y, basis.z - basis.z);
+        translateStack(basis, cameraPos, matrix);
         PoseStack.Pose transform = matrix.last();
-        forAllEdges(basis.x, basis.y, basis.z, (x1, y1, z1, x2, y2, z2) -> {
+        forAllEdges((x1, y1, z1, x2, y2, z2) -> {
             // yoinked from vanilla
             float xD = (float)(x2 - x1), yD = (float)(y2 - y1), zD = (float)(z2 - z1);
             float len = Mth.sqrt(xD * xD + yD * yD + zD * zD);
@@ -164,11 +167,11 @@ public abstract class AncillaryJack implements Node {
     public boolean drawToOutliner(Vector3d basis, Color color, float sizeTicks, float pTicks) {
         if(!isVisible || !VectorOperations.isInWorld(basis)) return false;
         AABB visual = makeAABB(basis, getSize() * sizeTicks);
-        Outliner.getInstance().showAABB(basis, visual)
+        Outliner.getInstance().showAABB(this.hashCode(), visual)
             .disableCull()
             .disableLineNormals()
             .colored(color)
-            .lineWidth(0.020f * sizeTicks);
+            .lineWidth(0.03125f * sizeTicks);
         return true;
     }
 
@@ -200,8 +203,8 @@ public abstract class AncillaryJack implements Node {
     @Override public String getComponentID() { return componentID; }
 
     @Override public String describeState() { 
-        if(parent == null) return "@NULL";
-        return parent.getIndex() + ", " + parent.hashCode(); 
+        if(parent == null) return "@(null)";
+        return "@(" + parent.getIndex() + ", " + parent.hashCode() + ")"; 
     }
 
     @Override

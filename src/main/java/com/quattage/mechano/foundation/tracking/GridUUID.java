@@ -14,6 +14,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 
+/**
+ * A unique identifier which points to a {@link CircuitComponent} object.
+ * Serialized using the {@link DataSourceIdentifier}
+ */
 public abstract class GridUUID implements ScopeSpecifier {
 
     public static void assertValidType(GridUUID identifier, CircuitComponent.Type type) {
@@ -26,9 +30,7 @@ public abstract class GridUUID implements ScopeSpecifier {
     protected CircuitComponent.Type targetType;
     protected int data;
 
-    public GridUUID() {
-        
-    }
+    public GridUUID() {}
 
     public GridUUID(CompoundTag tag) {
         this.targetType = CircuitComponent.Type.values()[tag.getByte("cpt")];

@@ -9,7 +9,7 @@ import org.joml.Vector3d;
 
 import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.LazyJointHolder;
+import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
@@ -37,7 +37,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable {
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
-    private final LazyJointHolder joints = new LazyJointHolder();
+    private final GriddableTerminus joints = new GriddableTerminus();
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -73,12 +73,17 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-        getExposedAncillaries().updateOrientation(newState);
+        getTerminus().updateOrientation(newState);
     }
 
     @Override
     public void tick() {
-        
+
+    }
+
+    @Override
+    public void initialize() {
+        getTerminus().updateOrientation(getBlockState());
     }
 
     @Override
@@ -87,10 +92,10 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override 
-    public LazyJointHolder getExposedAncillaries() { 
-        return joints.getOrCollectAncillaries(circuit); 
+    public GriddableTerminus getTerminus() { 
+        return joints.initializeFrom(getCircuit()); 
     }
-    
+
     @Override 
     public Vector3d getSourcePos() { 
         Vec3i pos = getBlockPos(); 
@@ -165,12 +170,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override 
-    public String describeState() { 
-        return "GriddableBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     
-    }
-    
-    @Override 
     public String toString() { 
-        return describeState(); 
+        return "GriddableBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     
     }
 }

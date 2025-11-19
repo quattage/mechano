@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.catenary.CatenaryModel;
 import com.quattage.mechano.api.switchboard.GridResponse;
 import com.quattage.mechano.foundation.numeric.Duo;
 import com.quattage.mechano.foundation.tracking.DataSourceIdentifier.ScopeSpecifier;

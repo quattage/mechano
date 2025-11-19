@@ -41,7 +41,7 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
      * @param be
      */
     public void tickAnchors(LocalPlayer player, T be, double reach) {
-        be.getExposedAncillaries().forEach(joint -> {
+        be.getTerminus().forEach(joint -> {
             JackSelector.getInstance().trackForThisFrame(player, be, joint);
         });
     }

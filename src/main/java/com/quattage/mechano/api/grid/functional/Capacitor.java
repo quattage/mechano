@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.component;
+package com.quattage.mechano.api.grid.functional;
 
 import java.util.Arrays;
 import java.util.Collection;

@@ -216,9 +216,8 @@ public class CircuitFactory {
         }
 
         private short toShort(float x) {
-            float t = (x - (-16f)) / 48f;
-            int s = Math.round((t * 65535f) - 32768f);
-            return (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, s));
+            float mapped = -32767 + (x + 16f) * (65535f / 48f);
+            return (short)Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, mapped));
         }
 
         private long packLong() {
@@ -287,7 +286,7 @@ public class CircuitFactory {
          * again by external logic.
          */
         public BlockJackBuilder visibleByDefault() {
-            this.isVisible = false;
+            this.isVisible = true;
             return this;    
         }
 

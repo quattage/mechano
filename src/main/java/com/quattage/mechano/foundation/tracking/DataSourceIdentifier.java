@@ -13,6 +13,7 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.foundation.tracking.GridUUID.EntityUUID;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 
@@ -22,8 +23,19 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
+/**
+ * A central class for managing the serialization and representation of various data sources.
+ * Simultaneously represents a discriminator for {@link GridUUID} serialization, as well
+ * as a loosely defined set of {@link Griddable} source types. Griddables can be attached to
+ * {@link Entity entities}, {@link BlockEntity block entities}, or even the {@link LevelReader level}
+ * (theoretically), and these all need ways to distinguish between one another, since these objects
+ * are stored differently by the Level and have different needs.
+ */
 public enum DataSourceIdentifier implements StringRepresentable {
     
     VOXEL(VoxelUUID.class),
@@ -33,6 +45,15 @@ public enum DataSourceIdentifier implements StringRepresentable {
 
     private static final String PREFIX = "type";
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
+        MechanoData.COMPONENT_REGISTRY.registerComponentType(
+            "grid_identifier",
+            b -> b.persistent(DataSourceIdentifier.CODEC).networkSynchronized(DataSourceIdentifier.STREAM_CODEC)
+    );
+
+    // make sure the above attachment registry is hit before the registry is finalized
+    public static void register(IEventBus modBus) {}
+
     public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID> STREAM_CODEC = new StreamCodec<>() {
         @Override
         public void encode(RegistryFriendlyByteBuf buffer, GridUUID value) {
@@ -41,7 +62,7 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
         @Override
         public GridUUID decode(RegistryFriendlyByteBuf buffer) {
-            return DataSourceIdentifier.values()[buffer.readInt()].instantiate(buffer);
+            return DataSourceIdentifier.values()[buffer.readInt()].craeteUUID(buffer);
         }
     };
 
@@ -66,24 +87,18 @@ public enum DataSourceIdentifier implements StringRepresentable {
             DataSourceIdentifier[] types = DataSourceIdentifier.values();
             if(ordinal < 0 || ordinal >= types.length)
                 return DataResult.error(() -> "Ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            DataSourceIdentifier type = types[ordinal];
+            DataSourceIdentifier datasource = types[ordinal];
             try {
-                GridUUID newInstance = type.instantiate(dyn);
+                GridUUID newInstance = datasource.createUUID(dyn);
                 return DataResult.success(Pair.of(newInstance, input));
             } catch (Exception e) {
-                String message = "Unknown error occured while decoding UUID type '" + type + "'";
+                String message = "Unknown error occured while decoding UUID type '" + datasource + "'";
                 Mechano.LOGGER.error(message);
                 e.printStackTrace();
                 return DataResult.error(() -> message);
             }
         }
     };
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
-        MechanoData.COMPONENT_REGISTRY.registerComponentType(
-            "grid_identifier",
-            b -> b.persistent(DataSourceIdentifier.CODEC).networkSynchronized(DataSourceIdentifier.STREAM_CODEC)
-    );
 
     public static CompoundTag write(GridUUID addr, CompoundTag tag) {
         tag.putInt(DataSourceIdentifier.PREFIX, addr.getSourceScope().ordinal());
@@ -107,9 +122,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
         DataSourceIdentifier[] types = DataSourceIdentifier.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + tag +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].instantiate(tag);
+            return types[0].createUUID(tag);
         }
-        return types[ordinal].instantiate(tag);
+        return types[ordinal].createUUID(tag);
     }
 
     public static GridUUID read(ByteBuf buffer) {
@@ -117,9 +132,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
         DataSourceIdentifier[] types = DataSourceIdentifier.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + buffer +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].instantiate(buffer);
+            return types[0].craeteUUID(buffer);
         }
-        return types[ordinal].instantiate(buffer);
+        return types[ordinal].craeteUUID(buffer);
     }
 
     public static GridUUID read(Dynamic<?> dyn) {
@@ -127,12 +142,17 @@ public enum DataSourceIdentifier implements StringRepresentable {
         DataSourceIdentifier[] types = DataSourceIdentifier.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + dyn +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].instantiate(dyn);
+            return types[0].createUUID(dyn);
         }
-        return types[ordinal].instantiate(dyn);
+        return types[ordinal].createUUID(dyn);
     }
 
-
+    /**
+     * This class uses reflection, and so stores
+     * references to the various constructors in each
+     * {@link GridUUID} class. This method clears those
+     * weakly-referenced constructors from the discriminator.
+     */
     public static void clearReferences() {
         for(int x = 0; x < DataSourceIdentifier.values().length; x++)
             DataSourceIdentifier.values()[x].clear();
@@ -153,10 +173,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
         tagCtor.clear();
     }
 
-    private GridUUID instantiate(CompoundTag tag) {
+    private GridUUID createUUID(CompoundTag tag) {
         try {
-            if(tagCtor.refersTo(null))
-                tagCtor = new WeakReference<>(clazz.getDeclaredConstructor(CompoundTag.class));
+            if(tagCtor.refersTo(null)) tagCtor = new WeakReference<>(clazz.getDeclaredConstructor(CompoundTag.class));
             return tagCtor.get().newInstance(tag);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
@@ -167,10 +186,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
     }
 
-    private GridUUID instantiate(ByteBuf buffer) {
+    private GridUUID craeteUUID(ByteBuf buffer) {
         try {
-            if(byteBufCtor.refersTo(null))
-                byteBufCtor = new WeakReference<>(clazz.getDeclaredConstructor(ByteBuf.class));
+            if(byteBufCtor.refersTo(null)) byteBufCtor = new WeakReference<>(clazz.getDeclaredConstructor(ByteBuf.class));
             return byteBufCtor.get().newInstance(buffer);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
@@ -181,10 +199,9 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
     }
 
-    private GridUUID instantiate(Dynamic<?> dyn) {
+    private GridUUID createUUID(Dynamic<?> dyn) {
         try {
-            if(dynamicCtor.refersTo(null))
-                dynamicCtor = new WeakReference<>(clazz.getDeclaredConstructor(Dynamic.class));
+            if(dynamicCtor.refersTo(null)) dynamicCtor = new WeakReference<>(clazz.getDeclaredConstructor(Dynamic.class));
             return dynamicCtor.get().newInstance(dyn);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();

@@ -1,5 +1,9 @@
+
+
 package com.quattage.mechano;
 
+
+import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
 
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
@@ -32,6 +36,7 @@ public class MechanoData {
     //     );
 
     public static void register(IEventBus modBus) {
+        DataSourceIdentifier.register(modBus);
         MechanoData.ATTACHMENT_REGISTRY.register(modBus);
         MechanoData.COMPONENT_REGISTRY.register(modBus);
     }

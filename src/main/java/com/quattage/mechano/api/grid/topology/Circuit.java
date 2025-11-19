@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.Resistor;
+import com.quattage.mechano.api.grid.functional.Resistor;
 import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.Node.Joint;
@@ -258,7 +258,7 @@ public class Circuit implements CircuitComponent {
 
     @Override
     public boolean isSignificant() {
-        return nodes != null && !nodes.isEmpty() && components != null && !components.isEmpty();
+        return nodes != null && !nodes.isEmpty();
     }
 
     @Override // circuits cannot own other circuits

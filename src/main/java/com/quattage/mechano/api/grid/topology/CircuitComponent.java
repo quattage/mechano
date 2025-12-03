@@ -1,6 +1,8 @@
 package com.quattage.mechano.api.grid.topology;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -11,8 +13,12 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.GridHierarchy;
+import com.quattage.mechano.api.grid.GridHierarchy.ComponentHierarchyInvalidException;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.solver.NodalSnapshot;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
@@ -20,9 +26,24 @@ import net.minecraft.util.StringRepresentable;
 
 public interface CircuitComponent extends StringRepresentable {
 
-    static void checkID(String componentID) {
+    /**
+     * Throws errors if the provided string is null or blank.
+     */
+    static void assertValidID(String componentID) {
         if(componentID == null || componentID.isBlank())
             throw new IllegalArgumentException("Couldn't instantiate CircuitComponent from null or empty string!");
+    }
+
+    /**
+     * Throws exceptions if component <code>child</code> cannot be parented to <code>parent</code>
+     */
+    static void assertValidOwnership(CircuitComponent child, CircuitComponent parent) {
+        if(child == null) throw new NullPointerException("child component is null!");
+        if(parent == null) throw new NullPointerException("parent component is null!");
+        if(child == parent) throw new ComponentHierarchyInvalidException(child);
+        if(child.getType() == null) throw new NullPointerException("child component returned a null type!");
+        if(parent.getType() == null) throw new NullPointerException("parent component returned a null type!");
+        if(!child.getType().canBeOwnedBy(parent.getType())) throw new ComponentHierarchyInvalidException(child, parent);
     }
 
     /**
@@ -61,7 +82,7 @@ public interface CircuitComponent extends StringRepresentable {
      * hasn't been properly initialized or isn't attached to anything. 
      * The {@link Circuit} automatically {@link Circuit#trim trims} 
      * components and joints that are insignificant. Insignificant
-     * components being trimmed out of fresh {@link Griddable griddables}
+     * components being trimmed out of fresh {@link Griddable<?>griddables}
      * indicates misuse of the {@link CircuitFactory} during initialization.
      */
     boolean isSignificant();
@@ -93,11 +114,48 @@ public interface CircuitComponent extends StringRepresentable {
      */
     int size();
 
-    CircuitComponent.Type getType();
+    /**
+     * Binds the given {@link GridUUID} to this particular component,
+     * so that its sub-address information points towards this component.
+     * Implementations use {@link GridUUID#withBinding} at some point in their
+     * logic.
+     * @param id GridUUID to modify
+     * @return The modified GridUUID
+     */
+    GridUUID bindUUID(GridUUID id);
+
+    GridHierarchy getType();
 
     default void updateOwnership(CircuitComponent parent, int index) { updateOwnership(null, parent, index); }
-    void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index);
+    void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index);
 
+    /**
+     * If this CircuitComponent represents the functional element of a {@link ComponentLink},
+     * that link will be returned here.
+     * @return The {@link ComponentLink} that owns this CircuitComponent, or <code>null</code> if this
+     * CircuitComponent doesn't belong to a link.
+     * @see #isLink
+     */
+    default ComponentLink<CircuitComponent> getLink() {
+        return getParentComponent() instanceof ComponentLink cl ? cl : null;
+    }
+
+    /**
+     * Gets the parent of this CircuitComponent, traversing
+     * the parent/child hierarchy upwards until it finds the superparent
+     * @return The superparent, or the CircuitComponent with no parent, 
+     */
+    default @Nullable CircuitComponent traverseUpwards() {
+        CircuitComponent superparent = getParentComponent();
+        if(superparent == null) return null;
+        for(int x = 0; x < 255; x++) {
+            CircuitComponent candidate = superparent.getParentComponent();
+            if(candidate == null) return superparent;
+            superparent = candidate;
+        }
+        Mechano.LOGGER.warn("Component hierarchy traversal for " + this + " failed to identify a superparent.");
+        return null;
+    }
 
     /**
      * Used to enforce a parent/child relationship for components and the 
@@ -138,22 +196,14 @@ public interface CircuitComponent extends StringRepresentable {
         return collected.isEmpty() ? null : collected;
     }
 
-    default boolean assertCanBeOwnedBy(CircuitComponent other) {
-        if(this == other) throw new IllegalArgumentException("Cannot add component " + this + " - This component cannot be parented to itself!");
-        if(this instanceof Circuit) throw new IllegalArgumentException("Cannot add component '" + this + "' to '" + other + " - These components are incompatible!");
-        return true;
-    }
-
-
-
-
     public abstract class FunctionalComponent implements CircuitComponent {
 
         private final String componentID;
         private CircuitComponent parent;
+        private int nodalIndex;
 
         public FunctionalComponent(String componentID) {
-            CircuitComponent.checkID(componentID);
+            CircuitComponent.assertValidID(componentID);
             this.componentID = componentID;
         }
 
@@ -179,8 +229,10 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         @Override
-        public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+        public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+            CircuitComponent.assertValidOwnership(this, parent);
             this.parent = parent;
+            this.nodalIndex = index;
         }
 
         @Override
@@ -188,11 +240,106 @@ public interface CircuitComponent extends StringRepresentable {
             return parent;
         }
 
-        
         @Override
-        public CircuitComponent.Type getType() {
-            return CircuitComponent.Type.FUNCTIONAL_COMPONENT;
+        public GridHierarchy getType() {
+            return GridHierarchy.FUNCTIONAL_COMPONENT;
         }
+
+        @Override
+        public GridUUID bindUUID(GridUUID id) {
+            return id.withBinding(getType(), nodalIndex);
+        }
+    }
+
+    /**
+     * Indicates that implementing subclasses stamp conductance
+     * and source terms to the NodalSnapshot.
+     */
+    public abstract class StampingComponent extends FunctionalComponent {
+
+        protected Terminal[] terminals;
+
+        public StampingComponent(String componentID) {
+            super(componentID);
+            assertHasTerminals();
+            this.terminals = defineTerminals();
+            assertHasTerminals();
+        }
+
+        public StampingComponent(String componentID, Terminal[] terminals) {
+            super(componentID);
+            if(terminals == null || terminals.length <= 0) {
+                throw new IllegalArgumentException("Couldn't instantiate StampingComponent '" 
+                    + componentID + "' with a null or empty terminals array!");
+            }
+            this.terminals = terminals;
+            assertHasTerminals();
+        }
+
+        public StampingComponent(String componentID, Collection<Terminal> terminals) {
+            super(componentID);
+            if(terminals == null || terminals.isEmpty()) {
+                throw new IllegalArgumentException("Couldn't instantiate StampingComponent '" 
+                    + componentID + "' with a null or empty terminals collection!");
+            }
+            this.terminals = terminals.toArray(new Terminal[terminals.size()]);
+            assertHasTerminals();
+        }
+
+        protected abstract Terminal[] defineTerminals();
+
+        private void assertHasTerminals() {
+            if(this.terminals == null) {
+                throw new NullPointerException("Error processing StampingComponent '" 
+                    + getComponentID() + " - This component's terminal array is null!");
+            }
+            for(int x = 0; x < terminals.length; x++) {
+                if(terminals[x] == null) {
+                    throw new NullPointerException("Error processing StampingComponent '" 
+                        + getComponentID() + "' - Terminal at index " + x + " is null!");
+                }
+            }
+        }
+
+        @Override
+        public void forEachNode(Consumer<Node> cons) {
+            for(int x = 0; x < terminals.length; x++)
+                terminals[x].forEachNode(cons);
+        }
+
+        @Override
+        public Collection<Terminal> getTerminals() {
+            if(terminals.length == 1) return Collections.singleton(terminals[0]);
+            return Arrays.asList(terminals);
+        }
+
+        @Override
+        public boolean isGrounded() {
+            for(int x = 0; x < terminals.length; x++)
+                if(terminals[x].isGrounded()) return true;
+            return false;
+        }
+
+        @Override
+        public int size() {
+            return terminals.length;
+        }
+
+        /**
+         * CircuitComponent subclasses whose function is to induce an
+         * external charge on the circuit are considered to be 
+         * anonymous voltage sources. Batteries should return
+         * true here.
+         * @return <code>true</code> if this stamper object represents a source of voltage
+         */
+        public abstract boolean isVoltageSource();
+
+        /**
+         * "Stamping" refers to the process of an individual CircuitComponent
+         * declaring its own presence in the NodalSnapshot. This method
+         * is used to initialize each solver step of the {@link Circuit}
+         */
+        public abstract void stamp(Circuit circuit, NodalSnapshot snapshot);
 
         /**
          * A helper method specific to some functional components to quickly
@@ -284,26 +431,5 @@ public interface CircuitComponent extends StringRepresentable {
          * @return The collector terminal, or null if one doesn't exist here. Only applies to transistors.
          */
         @Nullable public Terminal collector() { return null; }
-
-    }
-
-
-    public enum Type implements StringRepresentable {
-        COMPOSING_CIRCUIT,
-        EMITTER_NODE,
-        ANCILLARY_NODE,
-        TERMINAL,
-        FUNCTIONAL_COMPONENT,
-        TRANSMITTER;
-
-        @Override
-        public String getSerializedName() {
-            return name().toLowerCase(Locale.ROOT);
-        }
-
-        @Override
-        public String toString() {
-            return getSerializedName();
-        }
     }
 }

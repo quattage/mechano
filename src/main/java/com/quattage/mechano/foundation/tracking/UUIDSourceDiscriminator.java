@@ -4,6 +4,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
@@ -36,7 +37,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
  * (theoretically), and these all need ways to distinguish between one another, since these objects
  * are stored differently by the Level and have different needs.
  */
-public enum DataSourceIdentifier implements StringRepresentable {
+public enum UUIDSourceDiscriminator implements StringRepresentable {
     
     VOXEL(VoxelUUID.class),
     ENTITY(EntityUUID.class),
@@ -44,15 +45,6 @@ public enum DataSourceIdentifier implements StringRepresentable {
     LEVEL(null);
 
     private static final String PREFIX = "type";
-
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
-        MechanoData.COMPONENT_REGISTRY.registerComponentType(
-            "grid_identifier",
-            b -> b.persistent(DataSourceIdentifier.CODEC).networkSynchronized(DataSourceIdentifier.STREAM_CODEC)
-    );
-
-    // make sure the above attachment registry is hit before the registry is finalized
-    public static void register(IEventBus modBus) {}
 
     public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID> STREAM_CODEC = new StreamCodec<>() {
         @Override
@@ -62,16 +54,16 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
         @Override
         public GridUUID decode(RegistryFriendlyByteBuf buffer) {
-            return DataSourceIdentifier.values()[buffer.readInt()].craeteUUID(buffer);
+            return UUIDSourceDiscriminator.values()[buffer.readInt()].createUUID(buffer);
         }
     };
 
     public static final Codec<GridUUID> CODEC = new Codec<>() {
         @Override
         public <T> DataResult<T> encode(GridUUID input, DynamicOps<T> ops, T prefix) {
-            DataSourceIdentifier  type = input.getSourceScope();
+            UUIDSourceDiscriminator  type = input.getSourceScope();
             RecordBuilder<T> builder = ops.mapBuilder();
-            builder.add(DataSourceIdentifier.PREFIX, type.ordinal(), Codec.INT);
+            builder.add(UUIDSourceDiscriminator.PREFIX, type.ordinal(), Codec.INT);
             try { input.write(builder); } catch (Exception e) {
                 String message = "Unknown error occured while encoding UUID type '" + type + "'";
                 Mechano.LOGGER.error(message);
@@ -83,11 +75,11 @@ public enum DataSourceIdentifier implements StringRepresentable {
         @Override
         public <T> DataResult<Pair<GridUUID, T>> decode(DynamicOps<T> ops, T input) {
             Dynamic<T> dyn = new Dynamic<>(ops, input);
-            int ordinal = dyn.get(DataSourceIdentifier.PREFIX).asInt(-1);
-            DataSourceIdentifier[] types = DataSourceIdentifier.values();
+            int ordinal = dyn.get(UUIDSourceDiscriminator.PREFIX).asInt(-1);
+            UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
             if(ordinal < 0 || ordinal >= types.length)
                 return DataResult.error(() -> "Ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            DataSourceIdentifier datasource = types[ordinal];
+            UUIDSourceDiscriminator datasource = types[ordinal];
             try {
                 GridUUID newInstance = datasource.createUUID(dyn);
                 return DataResult.success(Pair.of(newInstance, input));
@@ -100,8 +92,24 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
     };
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> ATTACHMENT = 
+        MechanoData.COMPONENT_REGISTRY.registerComponentType(
+            "grid_identifier",
+            b -> b.persistent(UUIDSourceDiscriminator.CODEC).networkSynchronized(UUIDSourceDiscriminator.STREAM_CODEC)
+    );
+
+    // make sure the above attachment registry is hit before the registry is finalized
+    public static void register(IEventBus modBus) {}
+
+    public static void forEachUUIDType(Consumer<UUIDSourceDiscriminator> cons) {
+        for(int x = 0; x < UUIDSourceDiscriminator.values().length; x++) {
+            UUIDSourceDiscriminator type = UUIDSourceDiscriminator.values()[x];
+            cons.accept(type);
+        }
+    }
+
     public static CompoundTag write(GridUUID addr, CompoundTag tag) {
-        tag.putInt(DataSourceIdentifier.PREFIX, addr.getSourceScope().ordinal());
+        tag.putInt(UUIDSourceDiscriminator.PREFIX, addr.getSourceScope().ordinal());
         addr.write(tag);
         return tag;
     }
@@ -113,13 +121,13 @@ public enum DataSourceIdentifier implements StringRepresentable {
     }
 
     public static void write(GridUUID addr, RecordBuilder<?> builder) {
-        builder.add(DataSourceIdentifier.PREFIX, addr.getSourceScope().ordinal(), Codec.INT);
+        builder.add(UUIDSourceDiscriminator.PREFIX, addr.getSourceScope().ordinal(), Codec.INT);
         addr.write(builder);
     }
 
     public static GridUUID read(CompoundTag tag) {
-        int ordinal = tag.getInt(DataSourceIdentifier.PREFIX);
-        DataSourceIdentifier[] types = DataSourceIdentifier.values();
+        int ordinal = tag.getInt(UUIDSourceDiscriminator.PREFIX);
+        UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + tag +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
             return types[0].createUUID(tag);
@@ -129,17 +137,17 @@ public enum DataSourceIdentifier implements StringRepresentable {
 
     public static GridUUID read(ByteBuf buffer) {
         int ordinal = buffer.readInt();
-        DataSourceIdentifier[] types = DataSourceIdentifier.values();
+        UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + buffer +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].craeteUUID(buffer);
+            return types[0].createUUID(buffer);
         }
-        return types[ordinal].craeteUUID(buffer);
+        return types[ordinal].createUUID(buffer);
     }
 
     public static GridUUID read(Dynamic<?> dyn) {
-        int ordinal = dyn.get(DataSourceIdentifier.PREFIX).asInt(-1);
-        DataSourceIdentifier[] types = DataSourceIdentifier.values();
+        int ordinal = dyn.get(UUIDSourceDiscriminator.PREFIX).asInt(-1);
+        UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
             Mechano.LOGGER.error("Discriminator couldn't determine type from " + dyn +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
             return types[0].createUUID(dyn);
@@ -154,8 +162,8 @@ public enum DataSourceIdentifier implements StringRepresentable {
      * weakly-referenced constructors from the discriminator.
      */
     public static void clearReferences() {
-        for(int x = 0; x < DataSourceIdentifier.values().length; x++)
-            DataSourceIdentifier.values()[x].clear();
+        for(int x = 0; x < UUIDSourceDiscriminator.values().length; x++)
+            UUIDSourceDiscriminator.values()[x].clear();
     }
 
     private final Class<? extends GridUUID> clazz; 
@@ -163,8 +171,12 @@ public enum DataSourceIdentifier implements StringRepresentable {
     private WeakReference<Constructor<? extends GridUUID>> byteBufCtor = new WeakReference<>(null);
     private WeakReference<Constructor<? extends GridUUID>> dynamicCtor = new WeakReference<>(null);;
 
-    <R extends GridUUID> DataSourceIdentifier(Class<R> clazz) {
+    <R extends GridUUID> UUIDSourceDiscriminator(Class<R> clazz) {
         this.clazz = clazz;
+    }
+
+    public Class<? extends GridUUID> getUUIDClass() {
+        return clazz;
     }
 
     protected void clear() {
@@ -186,7 +198,7 @@ public enum DataSourceIdentifier implements StringRepresentable {
         }
     }
 
-    private GridUUID craeteUUID(ByteBuf buffer) {
+    private GridUUID createUUID(ByteBuf buffer) {
         try {
             if(byteBufCtor.refersTo(null)) byteBufCtor = new WeakReference<>(clazz.getDeclaredConstructor(ByteBuf.class));
             return byteBufCtor.get().newInstance(buffer);
@@ -235,6 +247,6 @@ public enum DataSourceIdentifier implements StringRepresentable {
 
 
     public static interface ScopeSpecifier {
-        DataSourceIdentifier getSourceScope();
+        UUIDSourceDiscriminator getSourceScope();
     }
 }

@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
+import com.quattage.mechano.foundation.numeric.EsoMath;
 
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -18,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
  * WireJacks are pushed to the selector so that their hitboxes can be highlighted when
  * players look at them.
  */
-public class WireJack extends AncillaryJack implements OrientationUpdatable {
+public class WireJack extends AncillaryNode implements OrientationUpdatable {
 
     private final long data;
     private final Vector3f offset;
@@ -30,17 +31,14 @@ public class WireJack extends AncillaryJack implements OrientationUpdatable {
     }
 
     private Vector3f makeOffsetVector() {
-        return new Vector3f(toOffset(unpack(48)) / 32f, toOffset(unpack(32)) / 32f, toOffset(unpack(16)) / 32f);
+        return new Vector3f(toOffset(EsoMath.long2shortA(data)) / 32f, toOffset(EsoMath.long2shortB(data)) / 32f, toOffset(EsoMath.long2shortC(data)) / 32f);
     }
 
     @Override public float getXO() { return offset.x; }
     @Override public float getYO() { return offset.y; }
     @Override public float getZO() { return offset.z; }
-    @Override public float getSize() { return toOffset(unpack(0)) / 32f; }
+    @Override public float getSize() { return toOffset(EsoMath.long2shortD(data)) / 32f; }
     
-    private short unpack(int shift) { 
-        return (short)(data >> shift); 
-    }
     private float toOffset(short x) { 
         return ((((int)x) - Short.MIN_VALUE) * (48f / (Short.MAX_VALUE - Short.MIN_VALUE))) - 16f;
     }

@@ -10,7 +10,7 @@ import com.quattage.mechano.api.grid.topology.Circuit;
 
 /**
  * A SPICE-like solver based on the biconjugate gradient stabilized method.
- * (https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method)
+ * https://en.wikipedia.org/wiki/Biconjugate_gradient_stabilized_method
  * https://mathworld.wolfram.com/BiconjugateGradientStabilizedMethod.html
  * https://www.cfd-online.com/Wiki/Biconjugate_gradient_stabilized_method
  * https://arxiv.org/html/2404.13216v1
@@ -19,6 +19,8 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
 
     private DMatrixRMaj r, r_hat, p, v, s, t, h, temp;
     private double rho, rho_old, alpha, beta, omega, d, normS, normR;
+
+    public StabilizedBiconjucateSolver() {}
 
     @Override
     public ConvergenceStatus run(NodalSnapshot snapshot) {

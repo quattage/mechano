@@ -12,9 +12,10 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.api.grid.topology.CircuitProvider;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
-import com.quattage.mechano.api.switchboard.GridResponse;
+import com.quattage.mechano.api.switchboard.action.GridActions;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
@@ -72,7 +73,7 @@ public class JackSelector {
             reset();
             return;
         }
-        updateClosest((ClientLevel)lp.level(), lookingRay, hands.get(), deltas);
+        updateSelection((ClientLevel)lp.level(), lookingRay, hands.get(), deltas);
         if(!hands.isHoldingReleventItem()) {
             shouldShowAllNearby = false;
             nearbyJoints.clear();
@@ -85,14 +86,35 @@ public class JackSelector {
         nearbyJoints.clear();
     }
 
+
+    private void updateSelection(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
+        lookedThisFrame = false;
+        while(!nearbyJoints.isEmpty()) {
+            final TargetAncillary sel = nearbyJoints.poll();
+            if(sel == null || !sel.isVisible()) continue;
+            if(!sel.get().isIntersecting(sel.target.getSource().getSourcePos(), ray)) continue;
+            lookedThisFrame = true;
+            if(prov == null) sel.updateResponse(GridActions.NONE);
+            else sel.updateResponse(prov.evaluateTarget(world, sel.get()));
+            this.selected.setTo(sel);
+            break;
+        }
+        if(!lookedThisFrame) {
+            if(selected.exists() && hoverTicks > 0) {
+                hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
+                selected.get().drawToOutliner(selected.target.getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
+            } else reset();
+        }
+    }
+
     /**
-     * Appends a {@link AncillaryJack} to this tracker's queue. Queued trackers
+     * Appends a {@link AncillaryNode} to this tracker's queue. Queued trackers
      * will be evaluated based on how close they are to the player's looking raycast.
      * @param tracker The current LocalPlayer (can be null)
      * @param source The griddable that owns <code>joint</code>
      * @param joint the joint to be added
      */
-    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable source, AncillaryJack joint) {
+    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?>source, AncillaryNode joint) {
         if(tracker == null) {
             tracker = Minecraft.getInstance().player;
             if(tracker == null)
@@ -119,28 +141,8 @@ public class JackSelector {
             tt.addToTooltip(tooltip, lp.isShiftKeyDown());
     }
 
-    private void updateClosest(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
-        lookedThisFrame = false;
-        while(!nearbyJoints.isEmpty()) {
-            final TargetAncillary sel = nearbyJoints.poll();
-            if(sel == null || !sel.isVisible()) continue;
-            if(!sel.get().isIntersecting(sel.target.getSource().getSourcePos(), ray)) continue;
-            lookedThisFrame = true;
-            if(prov == null) sel.updateResponse(GridResponse.NONE);
-            else sel.updateResponse(prov.evaluateTarget(world, sel.get()));
-            this.selected.setTo(sel);
-            break;
-        }
-        if(!lookedThisFrame) {
-            if(selected.exists() && hoverTicks > 0) {
-                hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
-                selected.get().drawToOutliner(selected.target.getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
-            } else reset();
-        }
-    }
-
     /**
-     * Draws every {@link AncillaryJack} in the queue to either Create's {@link Outliner}
+     * Draws every {@link AncillaryNode} in the queue to either Create's {@link Outliner}
      * or to the provided <code>buffer</code> depending on the context.
      * @param camera The current rendering camera
      * @param matrixStack the {@link PoseStack} accessible from the current rendering context.
@@ -152,7 +154,7 @@ public class JackSelector {
     public void draw(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
         if(selected.exists() && lookedThisFrame) {
             if(selected.isVisible()) {
-                if(selected.getResponse().getVisibility().isHighlighted()) {
+                if(selected.getResponse().getActionType().isHighlighted()) {
                     if(hoverTicks < 1) hoverTicks += deltas.getGameTimeDeltaTicks() * 0.5;
                     hoverTicks = Math.min(1, hoverTicks);
                     selected.drawToOutliner(hoverTicks, deltas);
@@ -164,7 +166,7 @@ public class JackSelector {
                     selected.drawToBuffer(camera, matrixStack, buffer, deltas);
                     hoverTicks = 0;
                 }
-            } else if(selected.getResponse().getVisibility().isHighlighted() && hoverTicks > 0) {
+            } else if(selected.getResponse().getActionType().isHighlighted() && hoverTicks > 0) {
                 hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
                 hoverTicks = Math.max(0, hoverTicks);
                 selected.drawToBuffer(camera, matrixStack, buffer, deltas);
@@ -200,11 +202,17 @@ public class JackSelector {
         nearbyJoints.clear();
     }
 
+    /**
+     * Gets the currently held ItemStack as long as the item being held
+     * is an instance of {@link CircuitProvider}. This method works
+     * for both hands, but will prioritize the main hand.
+     * @param player Player who is holding items, can be a LocalPlayer or ServerPlayer
+     * @return an ItemStack, or <code>ItemStack.EMPTY</code> if the player isn't holding a {@link CircuitProvider} - will never return <code>null</code>
+     */
     public ItemStack getHeldCircuitProvider(Player player) {
         HoldingSummary hands = getHolding(player);
         return hands.stack == null ? ItemStack.EMPTY : hands.stack;
     }
-
 
     public void renderOverlay(Minecraft mc, GuiGraphics graphics, DeltaTracker deltas) {
         if(!shouldRenderOverlay(mc) || !selected.exists()) return;
@@ -273,19 +281,19 @@ public class JackSelector {
         return selected != null && selected.exists() && selected.isVisible();
     }
 
-    public @Nullable AncillaryJack target() {
+    public @Nullable AncillaryNode target() {
         return hasSelection() ? selected.get() : null;
     }
 
     protected static class TargetAncillary implements Comparable<TargetAncillary> {
 
-        private AncillaryJack target = null;
-        private GridResponse response = GridResponse.FAIL_GENERIC;
+        private AncillaryNode target = null;
+        private GridActions response = GridActions.RESPONSE_FAIL_GENERIC;
         private float distanceToPlayer = 0;
 
         protected TargetAncillary() {}
 
-        protected TargetAncillary(AncillaryJack target, float distanceToPlayer) {
+        protected TargetAncillary(AncillaryNode target, float distanceToPlayer) {
             this.target = target;
             this.distanceToPlayer = distanceToPlayer;
         }
@@ -296,13 +304,13 @@ public class JackSelector {
             this.distanceToPlayer = other.distanceToPlayer;
         }
 
-        protected void updateResponse(GridResponse response) {
+        protected void updateResponse(GridActions response) {
             this.response = response;
         }
 
         private void reset() {
             this.target = null;
-            this.response = GridResponse.FAIL_GENERIC;
+            this.response = GridActions.RESPONSE_FAIL_GENERIC;
         }
 
         public boolean is(WireJack jack) {
@@ -314,19 +322,19 @@ public class JackSelector {
         }
 
         public boolean isVisible() {
-            return target != null && target.isVisible() && response.getVisibility().isVisible();
+            return target != null && target.isVisible() && response.getActionType().isVisible();
         }
 
         public Color getColor() {
-            if(target == null || target.getSource() == null) return response.getVisibility().getColor();
-            return response.getVisibility().getColor(target.getSource().getBlockPos());
+            if(target == null || target.getSource() == null) return response.getActionType().getColor();
+            return response.getActionType().getColor(target.getSource().getBlockPos());
         }
 
-        public @Nullable AncillaryJack get() {
+        public @Nullable AncillaryNode get() {
             return target;
         }
 
-        public @Nullable GridResponse getResponse() {
+        public @Nullable GridActions getResponse() {
             return response;
         }
 
@@ -350,7 +358,7 @@ public class JackSelector {
 
 
     /**
-     * Draws this{@link AncillaryJack} to Create's {@link Outliner}
+     * Draws this{@link AncillaryNode} to Create's {@link Outliner}
      * @see #drawSelectedToBuffer
      */
     public void drawToOutliner(float hoverTicks, DeltaTracker deltas) {
@@ -358,7 +366,7 @@ public class JackSelector {
     }
 
     /**
-     * Draws this {@link AncillaryJack} to an arbitrary vertex buffer.
+     * Draws this {@link AncillaryNode} to an arbitrary vertex buffer.
      * The outline drawn by this method will resemble Minecraft's
      * vanilla voxel selection box.
      * @see #drawSelectedToOutliner

@@ -5,15 +5,17 @@ import java.util.Set;
 
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
 import com.quattage.mechano.api.grid.topology.Node;
 import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.Node.Joint;
 import com.quattage.mechano.api.grid.topology.Terminal;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.ancillary.BlockJack;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;
+import com.quattage.mechano.foundation.numeric.EsoMath;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -21,7 +23,7 @@ import net.minecraft.core.Direction;
 
 public class CircuitFactory {
 
-    private ObjectArrayList<CircuitComponent> components = new ObjectArrayList<>();
+    private ObjectArrayList<FunctionalComponent> components = new ObjectArrayList<>();
     private Set<Terminal> terminals = new ObjectOpenHashSet<>();
     private GroundedJoint ground = new GroundedJoint(null);
     private Set<Node> preload = new ObjectOpenHashSet<>();
@@ -43,9 +45,9 @@ public class CircuitFactory {
     public CircuitFactory solder(Terminal a, Terminal b) {
         assertNotConsumed();
         if(!terminals.contains(a))
-            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain the terminal " + a);
+            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain " + a);
         if(!terminals.contains(b))
-            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain the terminal " + b);
+            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain " + b);
         
         return this;
     }
@@ -54,12 +56,12 @@ public class CircuitFactory {
      * Supply a new CircuitComponent to this builder. This component may be soldered later in the builder chain.
      * <pre>Resistor r1 = builder.supply(new Resistor())</pre>
      * The resistor may be soldered later. Components that receive no soldering will be omitted from the final circuit when {@link #make() constructed}
-     * @param component The {@link CircuitComponent} instance that will be added. The instance should created uniquely for this method call.
+     * @param component The {@link FunctionalComponent} instance that will be added. The instance should created uniquely for this method call.
      * @return The component that was added, so that a reference can be temporarily stored for later.
      * @throws NullPointerException if the provided <code>component</code> is null
      * @throws IllegalArgumentException if the provided <code>component</code> has already been added in a previous call
      */
-    public <T extends CircuitComponent> T supply(T component) {
+    public <T extends FunctionalComponent> T supply(T component) {
         assertNotConsumed();
         if(component == null) throw new NullPointerException("Failed while adding new component to factory - The supplied component was null!");
         if(terminals.contains(component.getTerminals().toArray()[0]))
@@ -86,7 +88,7 @@ public class CircuitFactory {
         return this;
     }
 
-    public CircuitFactory ground(AncillaryJack j) {
+    public CircuitFactory ground(AncillaryNode j) {
         assertNotConsumed();
         this.ground.attach(null, j);
         return this;
@@ -109,7 +111,7 @@ public class CircuitFactory {
      * Places the CircuitFactory in a state where it cannot be reused.
      * @return A new CircuitComponent instance conforming to the attributes in this builder
      */
-    public CircuitComponent make(Griddable source) {
+    public CircuitComponent make(Griddable<?>source) {
         assertNotConsumed();
         if(components.size() <= 0 && preload.size() <= 0 && !ground.isSignificant()) 
             throw new IllegalStateException("Attempted to create a CircuitComponent from a factory with no components or nodes!");
@@ -209,7 +211,7 @@ public class CircuitFactory {
         }
 
         public WireJack make() {
-            WireJack newJack = new WireJack(id, isVisible, packLong());
+            WireJack newJack = new WireJack(id, isVisible, EsoMath.quadShort2Long(x, y, z, s));
             if(attachmentTarget == null) attachmentTarget = prev.ground;
             attachmentTarget.attach(null, newJack);
             return newJack;
@@ -218,14 +220,6 @@ public class CircuitFactory {
         private short toShort(float x) {
             float mapped = -32767 + (x + 16f) * (65535f / 48f);
             return (short)Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, mapped));
-        }
-
-        private long packLong() {
-            return 
-                ((long)(this.x & 0xFFFF) << 48) |
-                ((long)(this.y & 0xFFFF) << 32) |
-                ((long)(this.z & 0xFFFF) << 16) |
-                ((long)(this.s & 0xFFFF));
         }
     }
 

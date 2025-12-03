@@ -5,9 +5,10 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.switchboard.GridResponse;
+import com.quattage.mechano.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.api.switchboard.action.GridActions;
 import com.quattage.mechano.foundation.numeric.Duo;
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier.ScopeSpecifier;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator.ScopeSpecifier;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
 import net.minecraft.client.Minecraft;
@@ -124,7 +125,7 @@ public interface TrackedObject extends ScopeSpecifier {
      * an object that is rendered continuously. <p>
      * Entities and BlockEntities are examples of objects that
      * are remeshed each frame, and so are logically distinct from
-     * a Griddable that is attached to a LevelChunk. This method is 
+     * a Griddable<?>that is attached to a LevelChunk. This method is 
      * used to determine whether or not attached Catenaries need to 
      * be simulated on the client.
      * @return <code>true</code> if this TrackedObject can move without 
@@ -132,7 +133,7 @@ public interface TrackedObject extends ScopeSpecifier {
     boolean isDynamic();
 
     /**
-     * Broadcasts a {@link GridResponse} pertaining to this tracked
+     * Broadcasts a {@link GridActions} pertaining to this tracked
      * object, which may send packets, update chunks, and modify world
      * data, depending on the implementing subclass. Will log errors
      * if <code>response</code> is not supported by this subclass.
@@ -143,11 +144,11 @@ public interface TrackedObject extends ScopeSpecifier {
      * what kind of packet gets sent as a result of this call.
      */
     default void broadast(ServerLevel world) { 
-        broadcast(world, GridResponse.values()[0]); 
+        broadcast(world, GridActions.values()[0]); 
     }
 
     /**
-     * Broadcasts a {@link GridResponse} pertaining to this tracked
+     * Broadcasts a {@link GridActions} pertaining to this tracked
      * object, which may send packets, update chunks, and modify world
      * data, depending on the implementing subclass. Will log errors
      * if <code>response</code> is not supported by this subclass.
@@ -157,7 +158,7 @@ public interface TrackedObject extends ScopeSpecifier {
      * @param response GridResponse to broadcast, which will change
      * what kind of packet gets sent as a result of this call.
      */
-    default void broadcast(ServerLevel world, GridResponse response) { 
+    default void broadcast(ServerLevel world, GridActions response) { 
         throw new UnsupportedOperationException("'" + this.getClass().getSimpleName() + "' can't broadcast!"); 
     }
 

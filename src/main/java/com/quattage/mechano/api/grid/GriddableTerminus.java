@@ -5,84 +5,81 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.GridHierarchy.SourceIdentifier;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.Node;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 /**
- * An acceleration structure which stores references to {@link AncillaryJack jacks}
+ * An acceleration structure which stores references to {@link AncillaryNode ancillaries}
  * belonging to a parent {@link CircuitComponent}. This class can be thought of
- * as the summary of a {@link Griddable griddable}'s access to the outside world.
+ * as the summary of a {@link Griddable<?>griddable}'s access to the outside world.
  * 
  * <p>
  * Useful for frequent operations that require access to node information, 
  * such as jack rendering.
  */
-public class GriddableTerminus implements OrientationUpdatable {
+public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier {
 
-    private @Nullable AncillaryJack[] exposedJoints;
+    private @Nullable AncillaryNode[] exposedJoints;
 
     public GriddableTerminus() {}
 
-    public GriddableTerminus(Griddable source) {
+    public GriddableTerminus(Griddable<?>source) {
         initializeFrom(source);
     }
 
-    public GriddableTerminus(AncillaryJack[] exposedJoints) {
+    public GriddableTerminus(AncillaryNode[] exposedJoints) {
         if((exposedJoints != null && exposedJoints.length > 0))
             this.exposedJoints = exposedJoints;
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public GriddableTerminus initializeFrom(Griddable source) {
+    public GriddableTerminus initializeFrom(Griddable<?>source) {
         Objects.requireNonNull(source);
         CircuitComponent component = source.getCircuit();
-        if(component == null) throw new NullPointerException("Griddable " + source + " couldn't provide a valid CircuitComponent!");
+        if(component == null) throw new NullPointerException("Griddable<?>" + source + " couldn't provide a valid CircuitComponent!");
         return initializeFrom(component);
     }
 
-    @OnlyIn(Dist.CLIENT)
     public GriddableTerminus initializeFrom(CircuitComponent component) {
         Objects.requireNonNull(component);
         if((exposedJoints != null && exposedJoints.length > 0) || component == null || !component.isSignificant()) 
             return this;
         if(component instanceof Circuit) {
-            Set<AncillaryJack> found = new ObjectOpenHashSet<>(component.size());
+            Set<AncillaryNode> found = new ObjectOpenHashSet<>(component.size());
             component.forEachNode(joint -> {
                 if(joint == null) throw new NullPointerException("Encountered a null pointer while updating ancillaries for lazy holder");
                 found.addAll(joint.getAllAncillaries());
             });
-            exposedJoints = found.isEmpty() ? null : found.toArray(new AncillaryJack[found.size()]);
+            exposedJoints = found.isEmpty() ? null : found.toArray(new AncillaryNode[found.size()]);
             return this;
         }
         if(component instanceof Node n) {
-            Collection<AncillaryJack> jacks = n.getAllAncillaries(); 
-            exposedJoints = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryJack[jacks.size()]);
+            Collection<AncillaryNode> jacks = n.getAllAncillaries(); 
+            exposedJoints = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryNode[jacks.size()]);
             return this;
         }
         Mechano.LOGGER.warn("Skipped attempt update ancillaries from an irrelevent source '" + component.getClass().getSimpleName() + "'");
         return this;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public void invalidate() {
         exposedJoints = null;
     }
 
     /**
-     * Draws every {@link AncillaryJack}'s hitbox
+     * Draws every {@link AncillaryNode}'s hitbox
      * to Create's outliner for debugging purposes.
      */
     public void showAll(Vector3d basis) {
@@ -90,7 +87,7 @@ public class GriddableTerminus implements OrientationUpdatable {
     }
 
     /**
-     * Updates the orientation of every {@link AncillaryJack}
+     * Updates the orientation of every {@link AncillaryNode}
      * which has a {@link CombinedOrientation directional orientation}
      * @see OrientationUpdatable    
      */
@@ -103,18 +100,28 @@ public class GriddableTerminus implements OrientationUpdatable {
     }
 
     /**
-     * Iterates over all {@link AncillaryJack jacks}
+     * Iterates over all {@link AncillaryNode jacks}
      * in this holder. The input consumer won't be executed
      * at all unless this holder has been {@link #initializeFrom initialized}
-     * onto a {@link CircuitComponent} with at least one {@link AncillaryJack jack}
+     * onto a {@link CircuitComponent} with at least one {@link AncillaryNode jack}
      * @param cons Consumer to execute for each jack
      */
-    @OnlyIn(Dist.CLIENT)
-    public void forEach(Consumer<AncillaryJack> cons) {
-        if(exposedJoints == null || exposedJoints.length <= 0) return;
+    public void forEach(Consumer<AncillaryNode> cons) {
+        if(isEmpty()) return;
         for(int x = 0; x < exposedJoints.length; x++) {
-            AncillaryJack j = exposedJoints[x];
+            AncillaryNode j = exposedJoints[x];
             if(j != null) cons.accept(j);
         }
+    }
+
+    public boolean isEmpty() {
+        return exposedJoints == null || exposedJoints.length <= 0;
+    }
+
+    @Override
+    public @NotNull Griddable<?>getSource() {
+        if(isEmpty())
+            throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
+        return exposedJoints[0].getSource();
     }
 }

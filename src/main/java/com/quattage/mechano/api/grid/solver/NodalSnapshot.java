@@ -92,25 +92,4 @@ public class NodalSnapshot {
     public ConvergenceStatus getStatus() {
         return status.get();
     }
-
-    /**
-     * Indicates that implementing subclasses stamp conductance
-     * and source terms to the NodalSnapshot.
-     */
-    public interface Stamper {
-        /**
-         * "Stamping" refers to the process of an individual CircuitComponent
-         * declaring its own presence in the NodalSnapshot. This method
-         * is used to initialize each solver step of the {@link Circuit}
-         */
-        void stamp(Circuit circuit, NodalSnapshot snapshot);
-        /**
-         * CircuitComponent subclasses whose function is to induce an
-         * external charge on the circuit are considered to be 
-         * anonymous voltage sources. Batteries should return
-         * true here.
-         * @return <code>true</code> if this stamper object represents a source of voltage
-         */
-        default boolean isVoltageSource() { return false; }
-    }
 }

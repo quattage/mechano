@@ -2,6 +2,9 @@ package com.quattage.mechano.foundation.numeric;
 
 import net.minecraft.core.Vec3i;
 
+/**
+ * my beautiful util class
+ */
 public class EsoMath {
 
     public static long hash64(Object obj) {
@@ -10,12 +13,12 @@ public class EsoMath {
     }
     
     public static long hash64(int... members) {
-        // start with random seed
+        // start with random seed and acculumate
         long h = 712857823;
         for(int x = 0; x < members.length; x++)
             h = h * 31 + members[x];
-        h ^= (h >>> 33);
         // shift pseudorandomly to achieve overflow distribution
+        h ^= (h >>> 33);
         h *= 0xff51afd7ed558ccdL;
         h ^= (h >>> 33);
         h *= 0xc4ceb9fe1a85ec53L;
@@ -25,9 +28,70 @@ public class EsoMath {
 
     private static final float easeconst = (2f * (float)Math.PI) / 3f;
     public static float easeInElastic(float x) {
-        return x == 0f ? 0f : x == 1f ? 1f : (float)Math.pow(2f, -10f * x * Math.sin((x * 10f - 0.75f) * EsoMath.easeconst)) + 1f;
+        return x <= 0f ? 0f : x >= 1f ? 1f : (float)Math.pow(2f, -10f * x * Math.sin((x * 10f - 0.75f) * EsoMath.easeconst)) + 1f;
     }
     public static float easeOutElastic(float x) {
-        return x == 0f ? 0f : x == 1f ? 1f : (float)-Math.pow(2f, 10f * x - 10) * (float)Math.sin((x * 10f - 10.75f) * EsoMath.easeconst);
+        return x <= 0f ? 0f : x >= 1f ? 1f : (float)-Math.pow(2f, 10f * x - 10) * (float)Math.sin((x * 10f - 10.75f) * EsoMath.easeconst);
+    }
+
+    public static double innerProduct(double[] a, double[] b) {
+        double sum = 0;
+        for(int x = 0; x < a.length; x++) sum += a[x] * b[x];
+        return sum;
+    }
+
+    public static long quadShort2Long(short a, short b, short c, short d) {
+        return
+            ((long)(a & 0xFFFF) << 48) |
+            ((long)(b & 0xFFFF) << 32) |
+            ((long)(c & 0xFFFF) << 16) |
+            ((long)(d & 0xFFFF));
+    }
+
+    public static short long2shortA(long l) {
+        return (short)(l >> 48);
+    }
+
+    public static short long2shortB(long l) {
+        return (short)(l >> 32);
+    }
+
+    public static short long2shortC(long l) {
+        return (short)(l >> 16);
+    }
+
+    public static short long2shortD(long l) {
+        return (short)(l >> 0);
+    }
+
+    public static short[] long2QuadShort(long l) {
+        return new short[] {
+            EsoMath.long2shortA(l),
+            EsoMath.long2shortB(l),
+            EsoMath.long2shortC(l),
+            EsoMath.long2shortD(l)
+        };
+    }
+
+    public static int dualShort2Int(short a, short b) {
+        return
+            ((int)(a & 0xFFFF) << 16) |
+            ((int)(b & 0xFFFF));
+    }
+
+    public static short int2shortA(int i) {
+        return (short)(i >> 16);
+    }
+
+    public static short int2shortB(int i) {
+        return (short)(i >> 0);
+    }
+
+    public static short[] int2DualShort(int i) {
+        return new short[] {
+            EsoMath.int2shortA(i),
+            EsoMath.int2shortB(i)
+        };
     }
 }
+

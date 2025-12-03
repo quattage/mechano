@@ -17,8 +17,12 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 public interface MapLikeItemHoldable {
 
+    /**
+     * @param stack
+     * @return <code>true</code> if this item should be rendered like a map in the player's hands
+     */
     @OnlyIn(Dist.CLIENT)
-    boolean shouldRenderSpecial(ItemStack item);
+    boolean shouldRenderSpecial(ItemStack stack);
     
     /**
      * Overrides the vanilla {@link ItemInHandRenderer} behaviour as invoked by the

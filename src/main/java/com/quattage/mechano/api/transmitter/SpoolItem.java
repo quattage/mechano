@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.api.transmitter;
 
 import java.util.List;
@@ -6,17 +7,20 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
+import com.quattage.mechano.api.ClientGrid;
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.JackSelector;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
-import com.quattage.mechano.api.switchboard.GridResponse;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.foundation.LeftClickCapturable;
+import com.quattage.mechano.foundation.MapLikeItemHoldable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
 import com.quattage.mechano.foundation.tracking.GridUUID;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -30,7 +34,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class SpoolItem extends Item implements CircuitComponentProvider, LeftClickCapturable {
+public abstract class SpoolItem extends Item implements CircuitComponentProvider, LeftClickCapturable, MapLikeItemHoldable {
 
     private int startingDamage = -1;
 
@@ -63,15 +67,16 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         }
     }
 
-    @Override
-    public GridResponse evaluateTarget(ClientLevel world, AncillaryJack target) {
-        return GridResponse.TASK_SELECT_SUCCESS;
-    }
-
-    @OnlyIn(Dist.CLIENT)
+    /**
+     * Checks whether or not the player currently has a SpoolItem with a binding in their inventory.
+     * Due to the iterative nature of this method, this shouldn't be called often
+     * @param player ServerPlayer or AbstractClientPlayer instance - this method is unsided
+     * @returns <code>true</code> if the given <code>player</code>'s inventory contains a <code>SpoolItem</code> with
+     * a {@link GridUUID} attachment
+     */
     public static boolean hasAwaiting(Player player) {
         for(ItemStack stack : player.getInventory().items) {
-            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(DataSourceIdentifier.ATTACHMENT))
+            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(UUIDSourceDiscriminator.ATTACHMENT))
                 return true;
         }
         return false;
@@ -83,40 +88,54 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         if(usedHand != InteractionHand.MAIN_HAND || !JackSelector.getInstance().hasSelection()) 
             return InteractionResultHolder.fail(JackSelector.getInstance().getHeldCircuitProvider(player));
         ItemStack stack = JackSelector.getInstance().getHeldCircuitProvider(player);
-        if(!stack.has(DataSourceIdentifier.ATTACHMENT))
-            return handleFirstRightClick(player, stack, JackSelector.getInstance().target());
-        return handleSecondRightClick(player, stack, JackSelector.getInstance().target());
+        ClientGrid grid = Grid.client(player);
+        if(!stack.has(UUIDSourceDiscriminator.ATTACHMENT))
+            return handleFirstRightClick(grid, player, stack, JackSelector.getInstance().target());
+        return handleSecondRightClick(grid, player, stack, JackSelector.getInstance().target());
     }
 
     /**
-     * Called when the player initially selects an {@link AncillaryJack}, which creates a temporary link and catenary
-     * between the selected {@link AncillaryJack} and the player.
+     * Called when the player initially selects an {@link AncillaryNode}, which creates a temporary link and catenary
+     * between the selected {@link AncillaryNode} and the player.
      */
     @OnlyIn(Dist.CLIENT)
-    private InteractionResultHolder<ItemStack> handleFirstRightClick(Player player, ItemStack stack, @Nullable AncillaryJack initialTarget) {
-        if(SpoolItem.hasAwaiting(player)) return InteractionResultHolder.fail(stack);
+    private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode initialTarget) {
+
+        if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
+            return InteractionResultHolder.fail(stack);
+        Griddable<?>source = initialTarget.getSource();
+        if(source == null) {
+            throw new NullPointerException("Failed while handling interaction with " 
+                + initialTarget + " - This ancillary couldn't provide a non-null Griddable<?>source!");
+        }
+
+        GridUUID sourceID = grid.getAddressFor(source, initialTarget);
+        CircuitComponent component = grid.findComponent(sourceID);
+        if(component == null || (component != initialTarget))
+            return InteractionResultHolder.fail(stack);
+        stack.set(UUIDSourceDiscriminator.ATTACHMENT, sourceID);
         return InteractionResultHolder.success(stack);
     }
 
     /**
-     * Called when the player selects a second {@link AncillaryJack}, which finalizes the creation of a valid link and catenary
+     * Called when the player selects a second {@link AncillaryNode}, which finalizes the creation of a valid link and catenary
      */
     @OnlyIn(Dist.CLIENT)
-    private InteractionResultHolder<ItemStack> handleSecondRightClick(Player player, ItemStack stack, @Nullable AncillaryJack subsequentTarget) {
+    private InteractionResultHolder<ItemStack> handleSecondRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode subsequentTarget) {
         return InteractionResultHolder.success(stack);
+        
     }
 
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
-
         if(!world.isClientSide) return;
-        GridUUID startAddress = stack.get(DataSourceIdentifier.ATTACHMENT);
+        GridUUID startAddress = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
         if(startAddress == null) return;
-
+        
     }
 
     private void cancelAwaitingConnection(@Nullable GridUUID startAddress, @Nullable GridUUID endAddress, ItemStack stack) {
-        stack.remove(DataSourceIdentifier.ATTACHMENT);
+        stack.remove(UUIDSourceDiscriminator.ATTACHMENT);
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
         if(startAddress == null || endAddress == null) return;
@@ -125,9 +144,10 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
 
     @Override
     public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
-        if(!stack.has(DataSourceIdentifier.ATTACHMENT)) return false;
-        GridUUID addr = stack.get(DataSourceIdentifier.ATTACHMENT);
+        if(!stack.has(UUIDSourceDiscriminator.ATTACHMENT)) return false;
+        GridUUID addr = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
         if(addr == null) return false;
+        stack.remove(UUIDSourceDiscriminator.ATTACHMENT);
 
         // WireJack previous = addr.getAnchor((ClientLevel)player.level());
         // if(previous == null) {
@@ -152,7 +172,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
 
     @Override
     public boolean isNotReplaceableByPickAction(ItemStack stack, Player player, int inventorySlot) {
-        return stack.has(DataSourceIdentifier.ATTACHMENT);
+        return stack.has(UUIDSourceDiscriminator.ATTACHMENT);
     }
 
 
@@ -190,5 +210,11 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         float max = (float)stack.getMaxDamage() / 2f;
         float current = max - ((float)stack.getDamageValue() / 2f);
         Mechano.lang().text(String.format("%.1f", current) + "/" + String.format("%.1f", max) + "m").style(ChatFormatting.GRAY).forGoggles(tooltipComponents);
+    }
+
+    @Override
+    @OnlyIn(Dist.CLIENT)
+    public boolean shouldRenderSpecial(ItemStack stack) {
+        return stack.has(UUIDSourceDiscriminator.ATTACHMENT);
     }
 }

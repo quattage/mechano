@@ -5,8 +5,8 @@ import org.slf4j.Logger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.logging.LogUtils;
+import com.quattage.mechano.foundation.MechanoRegistrate;
 import com.quattage.mechano.infrastructure.datagen.MechanoDatagen;
-import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.DataGenContext;
 
 import net.createmod.catnip.lang.LangBuilder;
@@ -23,10 +23,11 @@ import net.neoforged.fml.common.Mod;
 public class Mechano {
 
     public static final String ID = "mechano";
-    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(Mechano.ID)
+    public static final MechanoRegistrate REGISTRATE = 
+        (MechanoRegistrate)MechanoRegistrate.make(Mechano.ID)
         .defaultCreativeTab((ResourceKey<CreativeModeTab>) null);
-    public static final Logger LOGGER = LogUtils.getLogger();
 
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
     public Mechano(IEventBus modBus, ModContainer container) {
@@ -34,6 +35,7 @@ public class Mechano {
         Mechano.REGISTRATE.registerEventListeners(modBus);
         MechanoBlocks.register(modBus);
         MechanoBlockEntities.register(modBus);
+        MechanoTransmitters.register(modBus);
         MechanoEntities.register(modBus);
         MechanoItems.register(modBus);
         MechanoPackets.register(modBus);

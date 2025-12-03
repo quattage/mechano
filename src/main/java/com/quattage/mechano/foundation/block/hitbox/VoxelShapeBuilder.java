@@ -27,12 +27,18 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /***
  * A fluent builder to aid in creating AABB boxes using Create's VoxelShape stuff.
  * Heavily influenced by Create Crafts & Additions' CAShapes. 
+ * This class provides a series of methods that, when chained, resemble JSON model contents.
+ * All measurements are in pixels, not meters.
  */ 
 public class VoxelShapeBuilder {
 
-	private @Nullable VoxelShape shape;
+	public static final VoxelShape CUBE = VoxelShapeBuilder.newBox(0, 0, 0, 16, 16, 16);
 
-	public static final VoxelShape CUBE = newBox(0, 0, 0, 16, 16, 16);
+	private @Nullable VoxelShape cumulative;
+
+	public static VoxelShapeBuilder start(double x1, double y1, double z1, double x2, double y2, double z2) {
+		return new VoxelShapeBuilder(VoxelShapeBuilder.newBox(x1, y1, z1, x2, y2, z2));
+	}
 
 	public static VoxelShape newBox(double x1, double y1, double z1, double x2, double y2, double z2) {
 		return Block.box(x1, y1, z1, x2, y2, z2);
@@ -46,39 +52,31 @@ public class VoxelShapeBuilder {
 	}
 
 	public VoxelShapeBuilder() {
-		this.shape = null;
+		this.cumulative = null;
 	}
 
 	public VoxelShapeBuilder(VoxelShape shape) {
-		this.shape = shape;
-	}
-
-
-	public static VoxelShapeBuilder start(double x1, double y1, double z1, double x2, double y2, double z2) {
-		return new VoxelShapeBuilder(newBox(x1, y1, z1, x2, y2, z2));
+		this.cumulative = shape;
 	}
 
 	public VoxelShapeBuilder addBox(double x1, double y1, double z1, double x2, double y2, double z2) {
-		if(shape == null) {
-			this.shape = newBox(x1, y1, z1, x2, y2, z2);
-		} else 
-			this.shape = Shapes.join(this.shape, newBox(x1, y1, z1, x2, y2, z2), BooleanOp.OR);
+		if(cumulative == null) this.cumulative = VoxelShapeBuilder.newBox(x1, y1, z1, x2, y2, z2);
+		else this.cumulative = Shapes.join(this.cumulative, VoxelShapeBuilder.newBox(x1, y1, z1, x2, y2, z2), BooleanOp.OR);
 		return this;
 	}
 
 	public VoxelShapeBuilder subtractBox(double x1, double y1, double z1, double x2, double y2, double z2) {
-		this.shape = Shapes.join(shape, newBox(x1, y1, z1, x2, y2, z2), BooleanOp.ONLY_FIRST);
+		if(cumulative == null) this.cumulative = VoxelShapeBuilder.newBox(x1, y1, z1, x2, y2, z2);
+		else this.cumulative = Shapes.join(cumulative, VoxelShapeBuilder.newBox(x1, y1, z1, x2, y2, z2), BooleanOp.ONLY_FIRST);
 		return this;
 	}
 
 	// copied from create (protected in voxelshaper)
-	public static VoxelShape getRotatedCopy(VoxelShape shape, Vec3i rotation, boolean mulRot) {
-
+	public static VoxelShape getRotatedCopy(VoxelShape shape, Vec3i rotation) {
 		if(shape.isEmpty() || rotation.equals(Vec3i.ZERO))
 			return shape;
 
 		MutableObject<VoxelShape> result = new MutableObject<>(Shapes.empty());
-
 		shape.forAllBoxes((x1, y1, z1, x2, y2, z2) -> {
 			Vec3 v1 = new Vec3(x1, y1, z1).scale(16)
 				.subtract(DirectionTransformer.MIDDLE);
@@ -95,7 +93,7 @@ public class VoxelShapeBuilder {
 			v2 = VecHelper.rotate(v2, (float) rotation.getZ(), Axis.Z)
 				.add(DirectionTransformer.MIDDLE);
 
-			VoxelShape rotated = newBox(v1, v2);
+			VoxelShape rotated = VoxelShapeBuilder.newBox(v1, v2);
 			result.setValue(Shapes.join(result.getValue(), rotated, BooleanOp.OR));
 		});
 
@@ -103,16 +101,16 @@ public class VoxelShapeBuilder {
 	}
 
 	public VoxelShapeBuilder optimize() {
-		shape = shape.optimize();
+		cumulative = cumulative.optimize();
 		return this;
 	}
 
 	public boolean hasFeatures() {
-		return shape != null && !shape.isEmpty();
+		return cumulative != null && !cumulative.isEmpty();
 	}
 
 	public VoxelShape make() {
-		return shape;
+		return cumulative;
 	}
 
 	public static class ShapeAccumulator {
@@ -161,6 +159,11 @@ public class VoxelShapeBuilder {
 		}
 	}
 
+	/**
+	 * A primitive AABB representation designed to store temporary coordinates
+	 * before a VoxelShape is constructed. This class is used by the {@link HitboxProvider}
+	 * to read from JSON.
+	 */
 	public static class TemporaryShape {
 
 		private @Nullable double[] shape = new double[6];
@@ -183,12 +186,12 @@ public class VoxelShapeBuilder {
 		}
 
 		@SuppressWarnings("unchecked")
-		public void collect(Map.Entry<String, Map<String, Object>> s) throws MalformedJsonException {
+		public void collect(Map.Entry<String, Map<String, Object>> s) throws MalformedJsonException, IllegalStateException {
 			assertNotDisposed();
-			if(s.getKey().equals("from") && this.stage == Stage.EMPTY) {
+			if("from".equals(s.getKey()) && this.stage == Stage.EMPTY) {
 				read(0, (ArrayList<Object>)(s.getValue()));
 				this.stage = Stage.HALF;
-			} else if(s.getKey().equals("to") && this.stage == Stage.HALF) {
+			} else if("to".equals(s.getKey()) && this.stage == Stage.HALF) {
 				read(3, (ArrayList<Object>)(s.getValue()));
 				this.stage = Stage.COMPLETE;
 			} else if(this.stage == Stage.COMPLETE) throw new IllegalStateException(
@@ -303,7 +306,7 @@ public class VoxelShapeBuilder {
 			return "(" + shape[0] + ", " + shape[1] + ", " + shape[2] + ", " + shape[3] + ", " + shape[4] + ", " + shape[5] + ")";
 		}
 
-		private static enum Stage {
+		private enum Stage {
 			EMPTY,
 			HALF,
 			COMPLETE;

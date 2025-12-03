@@ -36,12 +36,6 @@ public class VectorOperations {
         return mc != null && mc.level != null && mc.level.getWorldBorder().isWithinBounds(pos.x, pos.z);
     }
 
-    public static double innerProduct(double[] a, double[] b) {
-        double sum = 0;
-        for(int x = 0; x < a.length; x++) sum += a[x] * b[x];
-        return sum;
-    }
-
     public static boolean isGreater(Vec3 a, Vec3 b) {
         return a.x > b.x && a.y > b.y && a.z > b.z();
     }

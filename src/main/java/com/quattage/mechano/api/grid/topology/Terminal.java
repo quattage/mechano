@@ -7,37 +7,38 @@ import java.util.function.Consumer;
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.resources.ResourceLocation;
 
 public class Terminal implements CircuitComponent {
     
-    private CircuitComponent owner;
+    private final FunctionalComponent instantiator;
     private @Nullable Node connected;
     private String id;
 
-    public static Terminal[] pair(CircuitComponent instantiator) {
+    public static Terminal[] pair(FunctionalComponent instantiator) {
         return new Terminal[] { new Terminal(instantiator, "pinA"), new Terminal(instantiator, "pinB") };
     }
 
-    public static Terminal[] polarPair(CircuitComponent instantiator) {
+    public static Terminal[] polarPair(FunctionalComponent instantiator) {
         return new Terminal[] { new Terminal(instantiator, "positive"), new Terminal(instantiator, "negative") };
     }
 
-    public static Terminal[] functionalPair(CircuitComponent instantiator) {
+    public static Terminal[] functionalPair(FunctionalComponent instantiator) {
         return new Terminal[] { new Terminal(instantiator, "anode"), new Terminal(instantiator, "cathode") };
     }
 
-    public Terminal(CircuitComponent owner, String id) {
-        Objects.requireNonNull(owner);
-        CircuitComponent.checkID(id);
-        this.owner = owner;
+    public Terminal(FunctionalComponent instantiator, String id) {
+        Objects.requireNonNull(instantiator);
+        CircuitComponent.assertValidID(id);
+        this.instantiator = instantiator;
     }
 
     public final void setConnectedTo(@Nullable Node trace) {
         this.connected = trace;
-        this.owner = trace == null ? null : trace.getParentComponent();
     }
 
     public @Nullable Node getJoint() {
@@ -56,7 +57,7 @@ public class Terminal implements CircuitComponent {
      */
     @Override
     public CircuitComponent getParentComponent() {
-        return owner;
+        return instantiator;
     }
 
     /**
@@ -65,14 +66,13 @@ public class Terminal implements CircuitComponent {
      * @see #getParentComponent()
      */
     public @Nullable Circuit getControllingCircuit() {
-        CircuitComponent parent = getParentComponent();
-        if(parent == null) return null;
-        CircuitComponent superparent = parent.getParentComponent();
+        CircuitComponent superparent = traverseUpwards();
         return superparent instanceof Circuit c ? c : null;
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+        CircuitComponent.assertValidOwnership(this, parent);
         CircuitComponent component = getParentComponent();
         if(component == null) return;
         component.updateOwnership(source, parent, index);
@@ -81,7 +81,7 @@ public class Terminal implements CircuitComponent {
     @Override
     public Collection<Terminal> getTerminals() {
         Mechano.LOGGER.warn(this + " attempted to query itself.");
-        return owner.getTerminals();
+        return instantiator.getTerminals();
     }
 
     @Override
@@ -91,11 +91,11 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public String describeState() {
-        return "from '" + owner.getComponentID() + "'";
+        return "from '" + instantiator.getComponentID() + "'";
     }
 
     public String describeSelf() {
-        return owner == null ? "No owner" : owner.getComponentID() + "'s " + getComponentID();
+        return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s " + getComponentID();
     }
 
     @Override public void saturate() {}
@@ -109,7 +109,7 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public boolean isSignificant() {
-        return connected != null && owner != null;
+        return connected != null && instantiator != null;
     }
 
     @Override
@@ -127,7 +127,14 @@ public class Terminal implements CircuitComponent {
     }
 
     @Override
-    public CircuitComponent.Type getType() {
-        return CircuitComponent.Type.TERMINAL;
+    public GridHierarchy getType() {
+        return GridHierarchy.TERMINAL;
+    }
+
+    @Override
+    public GridUUID bindUUID(GridUUID id) {
+        Mechano.LOGGER.warn("Attempted to bind " + id + " to a Terminal object (" 
+            + this + "), which is unsupported. The unmodified ID was returned directly.");
+        return id;
     }
 }

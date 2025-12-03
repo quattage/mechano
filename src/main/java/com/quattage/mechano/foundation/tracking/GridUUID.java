@@ -3,76 +3,125 @@ package com.quattage.mechano.foundation.tracking;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.GridHierarchy;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier.ScopeSpecifier;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator.ScopeSpecifier;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
  * A unique identifier which points to a {@link CircuitComponent} object.
- * Serialized using the {@link DataSourceIdentifier}
+ * Serialized using the {@link UUIDSourceDiscriminator}
  */
-public abstract class GridUUID implements ScopeSpecifier {
+public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridUUID> {
 
-    public static void assertValidType(GridUUID identifier, CircuitComponent.Type type) {
+    public static void assertValidType(GridUUID identifier, GridHierarchy type) {
         if(identifier == null) 
             throw new NullPointerException("UUID validity assertion failed (got null value)");
         if(identifier.getReferentType() != type)
             throw new IllegalArgumentException("UUID validity assertion failed (bad type, expected '" + type + "', got '" + identifier.getReferentType() + "')");
     }
 
-    protected CircuitComponent.Type targetType;
-    protected int data;
+    protected @Nullable GridHierarchy type;
+    protected short bindingA = -1;
+    protected short bindingB = -1;
 
     public GridUUID() {}
 
     public GridUUID(CompoundTag tag) {
-        this.targetType = CircuitComponent.Type.values()[tag.getByte("cpt")];
-        this.data  = tag.getInt("exd");
+        if(tag.contains("cpt")) {
+            byte idx = tag.getByte("cpt");
+            if(idx >= 0) this.type = GridHierarchy.values()[idx];
+        }
+        this.bindingA  = tag.getShort("ba");
+        this.bindingB = tag.getShort("bb");
     }
 
     public GridUUID(ByteBuf buffer) {
-        this.targetType = CircuitComponent.Type.values()[buffer.readByte()];
-        this.data  = buffer.readInt();
+        byte idx = buffer.readByte();
+        if(idx >= 0) this.type = GridHierarchy.values()[idx];
+        this.bindingA = buffer.readShort();
+        this.bindingB = buffer.readShort();
     }
 
     public GridUUID(Dynamic<?> dyn) {
-        this.targetType = CircuitComponent.Type.values()[dyn.get("cpt").asInt(0)];
-        this.data  = dyn.get("exd").asInt(0);
+        byte idx = dyn.get("cpt").asByte((byte)-1);
+        if(idx >= 0) this.type = GridHierarchy.values()[idx];
+        this.bindingA = dyn.get("ba").asShort((short)-1);
+        this.bindingB = dyn.get("bb").asShort((short)-1);
     }
 
-    public GridUUID withData(int data) {
-        this.data = data;
+    public GridUUID withBinding(GridHierarchy type, int binding) {
+        this.type = type;
+        this.bindingA = clampedUnsigned(binding);
+        this.bindingB = clampedUnsigned(-1);
         return this;
     }
 
-    public final CircuitComponent.Type getReferentType() {
-        return targetType;
+    public GridUUID withBinding(GridHierarchy type, int bindingA, int bindingB) {
+        this.type = type;
+        this.bindingA = clampedUnsigned(bindingA);
+        this.bindingB = clampedUnsigned(bindingB);
+        return this;
     }
 
-    public final int getAdditionalData() {
-        return data;
+    private short clampedUnsigned(int binding) {
+        return (short)(Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, (short)Math.abs(binding))) - Short.MAX_VALUE);
+    }
+
+    public GridHierarchy getType() {
+        return type;
+    }
+
+    @Nullable public abstract Griddable<?>getTargetSource(Grid grid);
+
+    public final GridHierarchy getReferentType() {
+        return type;
+    }
+
+    public final int getBindingA() {
+        return bindingA + Short.MAX_VALUE;
+    }
+
+    public final int getBindingB() {
+        return bindingB + Short.MAX_VALUE;
     }
 
     public void write(CompoundTag tag) {
-        tag.putByte("cpt", (byte)targetType.ordinal());
-        tag.putInt("exd", data);
+        tag.putByte("cpt", type == null ? (byte)-1 : (byte)type.ordinal());
+        tag.putShort("ba", bindingA);
+        tag.putShort("bb", bindingB);
     }
 
     public void write(ByteBuf buffer) {
-        buffer.writeByte((byte)targetType.ordinal());
-        buffer.writeInt(data);
+        buffer.writeByte(type == null ? (byte)-1 : (byte)type.ordinal());
+        buffer.writeShort(bindingA);
+        buffer.writeShort(bindingB);
     }
 
     public void write(RecordBuilder<?> builder) {
-        builder.add("cpt", (byte)targetType.ordinal(), Codec.BYTE);
-        builder.add("exd", data, Codec.INT);
+        builder.add("cpt", type == null ? (byte)-1 : (byte)type.ordinal(), Codec.BYTE);
+        builder.add("ba", bindingA, Codec.SHORT);
+        builder.add("bb", bindingB, Codec.SHORT);
+    }
+
+    public boolean hasBindings() {
+        return getBindingA() != -1 || getBindingB() != -1;
+
     }
 
     @Override
@@ -82,13 +131,27 @@ public abstract class GridUUID implements ScopeSpecifier {
 
     abstract String describeData();
 
+    @Override
+    public boolean equals(Object obj) {
+        if(this == obj) return true;
+        if(!(obj instanceof GridUUID that)) return false;
+        return this.bindingA == that.bindingA && this.bindingB == that.bindingB && this.type == that.type;
+    }
 
+    @Override
+    public GridUUID getUUID() {
+        return this;
+    }
 
 
 
     public static class VoxelUUID extends GridUUID {
 
         private BlockPos pos;
+
+        public VoxelUUID(int x, int y, int z) {
+            this(new BlockPos(x, y, z));
+        }
 
         public VoxelUUID(BlockPos pos) {
             Objects.requireNonNull(pos);
@@ -111,12 +174,19 @@ public abstract class GridUUID implements ScopeSpecifier {
         }
 
         @Override
-        public DataSourceIdentifier getSourceScope() {
-            return DataSourceIdentifier.VOXEL;
+        public @Nullable Griddable<?>getTargetSource(Grid grid) {
+            BlockEntity be = grid.getWorld().getBlockEntity(pos);
+            return be instanceof Griddable<?>gbe ? gbe : null;
+        }
+
+        @Override
+        public UUIDSourceDiscriminator getSourceScope() {
+            return UUIDSourceDiscriminator.VOXEL;
         }
 
         @Override
         public void write(CompoundTag tag) {
+            super.write(tag);
             tag.putInt("x", pos.getX());
             tag.putInt("y", pos.getY());
             tag.putInt("z", pos.getZ());
@@ -124,11 +194,13 @@ public abstract class GridUUID implements ScopeSpecifier {
 
         @Override
         public void write(ByteBuf buffer) {
+            super.write(buffer);
             buffer.writeInt(pos.getX()).writeInt(pos.getY()).writeInt(pos.getZ());
         }
 
         @Override
         public void write(RecordBuilder<?> builder) {
+            super.write(builder);
             builder.add("x", pos.getX(), Codec.INT).add("y", pos.getY(), Codec.INT).add("z", pos.getZ(), Codec.INT);
         }
 
@@ -136,17 +208,17 @@ public abstract class GridUUID implements ScopeSpecifier {
         public boolean equals(Object obj) {
             if(this == obj) return true;
             if(!(obj instanceof VoxelUUID that)) return false;
-            return this.pos.equals(that.pos) && this.data == that.data && this.targetType == that.targetType;
+            return this.pos.equals(that.pos) && this.bindingA == that.bindingA && this.bindingB == that.bindingB && this.type == that.type;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.pos, this.data, this.targetType);
+            return Objects.hash(this.pos, this.bindingA, this.bindingB, this.type);
         }
 
         @Override
         String describeData() {
-            return pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + data;
+            return pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ", " + getBindingA() + ", " + getBindingB();
         }
     }
 
@@ -160,8 +232,14 @@ public abstract class GridUUID implements ScopeSpecifier {
 
         public EntityUUID(Entity e) {
             Objects.requireNonNull(e);
-            if(e.getUUID() == null) 
+            this.uuid = e.getUUID();
+            if(this.uuid == null) 
                 throw new NullPointerException("Couldn't instantiate EntityUUID - The entity '" + e + "' didn't return a valid UUID!");
+        }
+
+        public EntityUUID(UUID uuid) {
+            Objects.requireNonNull(uuid);
+            this.uuid = uuid;
         }
 
         public EntityUUID(CompoundTag tag) {
@@ -180,8 +258,18 @@ public abstract class GridUUID implements ScopeSpecifier {
         }
 
         @Override
-        public DataSourceIdentifier getSourceScope() {
-            return DataSourceIdentifier.ENTITY;
+        public @Nullable Griddable<?>getTargetSource(Grid grid) {
+            LevelReader world = grid.getWorld();
+            Entity e = world.isClientSide() 
+            // accessible via the access transformer
+            ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
+            : ((ServerLevel)world).getEntity(uuid);
+            return e instanceof Griddable<?>ge ? ge : null;
+        }
+
+        @Override
+        public UUIDSourceDiscriminator getSourceScope() {
+            return UUIDSourceDiscriminator.ENTITY;
         }
 
         @Override
@@ -204,10 +292,22 @@ public abstract class GridUUID implements ScopeSpecifier {
             builder.add("um", uuid.getMostSignificantBits(), Codec.LONG);
             builder.add("ul", uuid.getLeastSignificantBits(), Codec.LONG);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(this == obj) return true;
+            if(!(obj instanceof EntityUUID that)) return false;
+            return this.uuid.equals(that.uuid) && this.bindingA == that.bindingA && this.bindingB == that.bindingB && this.type == that.type;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.uuid, this.bindingA, this.bindingB, this.type);
+        }
         
         @Override
         String describeData() {
-            return uuid + ", " + data;
+            return uuid + ", " + getBindingA() + ", " + getBindingB();
         }
     }
 }

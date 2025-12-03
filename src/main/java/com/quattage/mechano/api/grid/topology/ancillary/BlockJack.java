@@ -20,7 +20,7 @@ import net.minecraft.world.phys.shapes.Shapes.DoubleLineConsumer;
  * 
  * TODO sided capability faking for forge-energy parity
  */
-public class BlockJack extends AncillaryJack implements OrientationUpdatable {
+public class BlockJack extends AncillaryNode implements OrientationUpdatable {
 
     private static final float THICK = 2f / 16f;
     private RelativeDirection dir;

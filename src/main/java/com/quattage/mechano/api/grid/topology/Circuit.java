@@ -9,16 +9,20 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.functional.Resistor;
 import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.Node.Joint;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 
 /**
  * A graph which, in and of itself, is a CircuitComponent, but this graph
@@ -30,11 +34,11 @@ public class Circuit implements CircuitComponent {
     public static final double DELTA_AH = Circuit.DELTA / 3600d;
     public static final double EPSILON = 0.01d;
 
-    protected ObjectArrayList<CircuitComponent> components;
+    protected ObjectArrayList<FunctionalComponent> components;
     protected ObjectArrayList<Node> nodes;
 
-    public static Circuit ofSingleResistor(float ohms) {
-        Circuit out = new Circuit();
+    public static Circuit ofSingleResistor(Griddable<?>source, float ohms) {
+        Circuit out = new Circuit(source);
         Resistor res = new Resistor(ohms);
         out.addComponent(res);
         Node jA = new Joint(out);
@@ -46,13 +50,20 @@ public class Circuit implements CircuitComponent {
         return out;
     }
 
-    public Circuit() {
+    public Circuit(Griddable<?>source) {
         this.components = new ObjectArrayList<>();
         this.nodes = new ObjectArrayList<>(3);
         this.nodes.add(new GroundedJoint(this));
     }
 
-    public Circuit(Griddable source, @Nullable GroundedJoint ground, ObjectArrayList<CircuitComponent> components, Set<Node> preload) {
+    /**
+     * A constructor designed to be used by the {@link CircuitFactory}
+     * @param source The instantiator {@link Griddable}
+     * @param ground An initial ground object, if one is necessary
+     * @param components A list of all {@link FunctionalComponents} that make up the circuit
+     * @param preload A list of all {@link Node} objects that connect components together
+     */
+    public Circuit(Griddable<?>source, @Nullable GroundedJoint ground, ObjectArrayList<FunctionalComponent> components, Set<Node> preload) {
         this.components = components;
         this.nodes = new ObjectArrayList<>(preload.size() + 3);
         if(ground != null && ground.isSignificant()) {
@@ -63,17 +74,20 @@ public class Circuit implements CircuitComponent {
             c.updateOwnership(this, 0);
         for(Node n : preload) { 
             this.nodes.add(n);
-            n.updateOwnership(source, n, this.nodes.size() - 1);
+            n.updateOwnership(source, this, this.nodes.size() - 1);
         }
         trim(true);
     }
 
-    public CircuitComponent getComponent(int index) {
-        return !isSignificant() ? null : components.get(index);
+    public FunctionalComponent getComponent(int index) {
+        return !isSignificant() ? null : components.get(Mth.clamp(index, 0, components.size() - 1));
     }
 
-    public void addComponent(CircuitComponent component) {
-        component.assertCanBeOwnedBy(this);        
+    public Node getNode(int index) {
+        return !isSignificant() ? null : nodes.get(Mth.clamp(index, 0, nodes.size() - 1));
+    }
+
+    public void addComponent(FunctionalComponent component) {
         this.components.add(component);
         component.updateOwnership(this, 0);
     }
@@ -201,7 +215,7 @@ public class Circuit implements CircuitComponent {
             nodes.trim();
         }
         if(components != null && !components.isEmpty()) {
-            Iterator<CircuitComponent> ci = components.iterator();
+            Iterator<FunctionalComponent> ci = components.iterator();
             while(ci.hasNext()) {
                 CircuitComponent c = ci.next();
                 if(!c.isSignificant()) {
@@ -273,7 +287,7 @@ public class Circuit implements CircuitComponent {
             out += "\n\tJoint " + node.getIndex() + " (" + node.hashCode() + ") - " + node.describeState();
             if(node.hasAncillaries()) {
                 out += "\n\t\t- Ancillaries:";
-                for(AncillaryJack jack : node.getAllAncillaries())
+                for(AncillaryNode jack : node.getAllAncillaries())
                     out += "\n\t\t\t" + jack;
             } else out += "\n\t\t- No ancillaries";
             if(node.hasConnections()) {
@@ -322,13 +336,18 @@ public class Circuit implements CircuitComponent {
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable source, CircuitComponent parent, int index) {
+	public GridUUID bindUUID(GridUUID id) {
+		return id.withBinding(getType(), -1);
+	}
+
+    @Override
+    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
         Mechano.LOGGER.warn("Skipped invalid attempt to update ownership of top-level circuit");
         return;
     }
 
     @Override
-    public CircuitComponent.Type getType() {
-        return CircuitComponent.Type.COMPOSING_CIRCUIT;
+    public GridHierarchy getType() {
+        return GridHierarchy.COMPOSING_CIRCUIT;
     }
 }

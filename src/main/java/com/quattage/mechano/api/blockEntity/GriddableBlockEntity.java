@@ -1,32 +1,28 @@
 package com.quattage.mechano.api.blockEntity;
 
-import java.util.function.Consumer;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -34,10 +30,11 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
-public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable {
+public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable<VoxelUUID>{
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
     private final GriddableTerminus joints = new GriddableTerminus();
+    private VoxelUUID addr;
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -62,8 +59,9 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     public abstract void constructCircuit(CircuitFactory circuit);
 
     @Override
-    public GridUUID getAddress() {
-        return new VoxelUUID(getBlockPos());
+    public VoxelUUID getUUID() {
+        if(this.addr == null) this.addr = new VoxelUUID(getBlockPos());
+        return this.addr;
     }
 
     @Override
@@ -73,17 +71,18 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-        getTerminus().updateOrientation(newState);
+        provideTerminus().updateOrientation(newState);
     }
 
     @Override
     public void tick() {
-
+        if(getLevel().isClientSide()) return;
+        Grid.server(getLevel());
     }
 
     @Override
     public void initialize() {
-        getTerminus().updateOrientation(getBlockState());
+        provideTerminus().updateOrientation(getBlockState());
     }
 
     @Override
@@ -92,7 +91,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override 
-    public GriddableTerminus getTerminus() { 
+    public GriddableTerminus provideTerminus() { 
         return joints.initializeFrom(getCircuit()); 
     }
 
@@ -100,6 +99,11 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     public Vector3d getSourcePos() { 
         Vec3i pos = getBlockPos(); 
         return new Vector3d(pos.getX(), pos.getY(), pos.getZ()); 
+    }
+
+    @Override
+    public @Nullable Level getWorld() {
+        return isRemoved() ? null : level;
     }
 
     @Override 
@@ -150,18 +154,8 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
-    public DataSourceIdentifier getSourceScope() {
-        return DataSourceIdentifier.VOXEL;
-    }
-
-    @Override
-    public void forEachNeighbor(Consumer<Griddable> cons) {
-        BlockEntity adjBE = null;
-        for(Direction dir : Direction.values()) {
-            adjBE = level.getBlockEntity(getBlockPos().relative(dir));
-            if(adjBE instanceof GriddableBlockEntity gbe)
-                cons.accept(gbe);
-        }
+    public UUIDSourceDiscriminator getSourceScope() {
+        return UUIDSourceDiscriminator.VOXEL;
     }
 
     @Override

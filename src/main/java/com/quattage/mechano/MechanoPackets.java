@@ -4,6 +4,9 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
+import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
+import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
+
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -14,17 +17,8 @@ import net.neoforged.bus.api.IEventBus;
 
 public enum MechanoPackets implements BasePacketPayload.PacketTypeProvider, StringRepresentable {
     
-    // LINK_C2S(LinkRequestPacket.class, LinkRequestPacket.STREAM_CODEC),
-    // ANCHOR_C2S(AnchorRequestPacket.class, AnchorRequestPacket.STREAM_CODEC),
-    // LINK_S2C(LinkResponsePacket.class, LinkResponsePacket.STREAM_CODEC),
-    // LINK_SWAP_S2C(LinkSwapPacket.class, LinkSwapPacket.STREAM_CODEC),
-    // LINK_PEEK_S2C(LinkPeekRequestPacket.class, LinkPeekRequestPacket.STREAM_CODEC),
-    // MANIFEST_S2C(ManifestRequestPacket.class, ManifestRequestPacket.STREAM_CODEC),
-    // MANIFEST_C2S(ManifestResponsePacket.class, ManifestResponsePacket.STREAM_CODEC),
-    // MANIFEST_RESULT_S2C(ManifestResultPacket.class, ManifestResultPacket.STREAM_CODEC),
-    // ANCHOR_SYNC_S2C(AnchorSyncPacket.class, AnchorSyncPacket.STREAM_CODEC),
-    // ANCHOR_DESTROY_C2S(AnchorSurrogateDestroyPacket.class, AnchorSurrogateDestroyPacket.STREAM_CODEC),
-    // GRIDDABLE_UPDATE_S2C(GriddableUpdatePacket.class, GriddableUpdatePacket.STREAM_CODEC)
+    GRID_ACTION_S2C(GridActionS2CPacket.class, GridActionS2CPacket.STREAM_CODEC),
+    GRID_ACTION_C2S(GridActionC2SPacket.class, GridActionC2SPacket.STREAM_CODEC),
     ;
 
     @Override

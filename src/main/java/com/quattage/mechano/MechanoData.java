@@ -3,7 +3,10 @@
 package com.quattage.mechano;
 
 
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
+import java.util.function.Supplier;
+
+import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
@@ -20,13 +23,13 @@ public class MechanoData {
     public static final DeferredRegister.DataComponents COMPONENT_REGISTRY = DeferredRegister.createDataComponents(
         Registries.DATA_COMPONENT_TYPE, Mechano.ID);
 
-    // public static final Supplier<AttachmentType<SidedGridDispatcher>> GRID_ATTACHMENT 
-    //     = MechanoData.ATTACHMENT_REGISTRY.register(
-    //         Mechano.ID + "_world_data", () -> AttachmentType
-    //             .builder(SidedGridDispatcher::createNew)
-    //             .serialize(SidedGridDispatcher.SERIALIZER)
-    //             .build()
-    //     );
+    public static final Supplier<AttachmentType<Grid>> POWER_GRID
+        = MechanoData.ATTACHMENT_REGISTRY.register(
+            Mechano.ID + "_world_data", () -> AttachmentType
+                .builder(Grid::createNew)
+                .build()
+                // TODO CODEC SERIALIZE
+    );
 
     // public static final Supplier<AttachmentType<LinkDataStorage<GridConnection>>> LINK_ATTACHMENT
     //     = MechanoData.ATTACHMENT_REGISTRY.register(
@@ -36,7 +39,7 @@ public class MechanoData {
     //     );
 
     public static void register(IEventBus modBus) {
-        DataSourceIdentifier.register(modBus);
+        UUIDSourceDiscriminator.register(modBus);
         MechanoData.ATTACHMENT_REGISTRY.register(modBus);
         MechanoData.COMPONENT_REGISTRY.register(modBus);
     }

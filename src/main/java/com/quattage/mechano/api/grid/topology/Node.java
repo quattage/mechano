@@ -10,8 +10,10 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.resources.ResourceLocation;
@@ -21,27 +23,33 @@ public interface Node extends CircuitComponent {
     double getVoltage();
     void setVoltage(double volts);
     default boolean hasConnections() { return size() > 0; }
-    Collection<AncillaryJack> getAllAncillaries();
+    List<AncillaryNode> getAllAncillaries();
+    int indexOf(AncillaryNode jack);
     boolean hasAncillaries();
     int getIndex();
     boolean attach(Terminal pin);
     boolean detach(Terminal pin);
-    boolean attach(@Nullable Griddable source, AncillaryJack jack);
-    boolean detach(@Nullable Griddable source, AncillaryJack jack);
+    boolean attach(@Nullable Griddable<?>source, AncillaryNode jack);
+    boolean detach(@Nullable Griddable<?>source, AncillaryNode jack);
     boolean involves(Terminal pin);
     @Override default boolean isSignificant() { return hasConnections() || hasAncillaries(); }
     void dispose();
+
+    @Override
+    default GridUUID bindUUID(GridUUID id) {
+        return id.withBinding(getType(), getIndex());
+    }
     
     @Override
-    default CircuitComponent.Type getType() {
-        return CircuitComponent.Type.EMITTER_NODE;
+    default GridHierarchy getType() {
+        return GridHierarchy.EMITTER_NODE;
     }
 
     public static class Joint implements Node {
 
         private CircuitComponent parent;
         protected ObjectArrayList<Terminal> attachedPins;
-        protected @Nullable List<AncillaryJack> ancillaries = null;
+        protected @Nullable List<AncillaryNode> ancillaries = null;
         private double voltagePotential = 0;
         private int index;
 
@@ -81,21 +89,27 @@ public interface Node extends CircuitComponent {
         public boolean hasAncillaries() {
             return ancillaries != null && ancillaries.size() > 0;
         }
+        
+        @Override
+        public int indexOf(AncillaryNode jack) {
+            if(!hasAncillaries()) return -1;
+            return ancillaries.indexOf(jack);
+        }
 
 		@Override
-		public boolean attach(Griddable source, AncillaryJack jack) {
+		public boolean attach(Griddable<?>source, AncillaryNode jack) {
 			if(ancillaries == null)
                 ancillaries = new ArrayList<>();
             ancillaries.add(jack);
-            jack.attachTo(source, this);
+            jack.updateOwnership(source, this, jack.getIndex());;
             return true;
 		}
 
 		@Override
-		public boolean detach(Griddable source, AncillaryJack jack) {
+		public boolean detach(Griddable<?>source, AncillaryNode jack) {
 			boolean removed = ancillaries.remove(jack);
             if(ancillaries.isEmpty()) ancillaries = null;
-            if(removed) jack.attachTo(null, null);
+            if(removed) jack.updateOwnership(null, null, -1);
             return removed;
 		}
 
@@ -114,7 +128,7 @@ public interface Node extends CircuitComponent {
         @Override public int size() { return attachedPins.size(); }
 
         @Override
-        public Collection<AncillaryJack> getAllAncillaries() {
+        public List<AncillaryNode> getAllAncillaries() {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
         }
@@ -138,12 +152,13 @@ public interface Node extends CircuitComponent {
         }
 
         @Override
-        public void updateOwnership(Griddable source, CircuitComponent parent, int index) {
+        public void updateOwnership(Griddable<?>source, CircuitComponent parent, int index) {
+            CircuitComponent.assertValidOwnership(this, parent);
             this.parent = parent;
             this.index = index;
             if(source == null || !hasAncillaries()) return;
-            for(AncillaryJack jack : ancillaries)
-                jack.attachTo(source, this);
+            for(AncillaryNode jack : ancillaries)
+                jack.updateOwnership(source, this, jack.getIndex());
         }
 
         @Override
@@ -163,7 +178,7 @@ public interface Node extends CircuitComponent {
 
         private CircuitComponent parent;
         protected ObjectArrayList<Terminal> attachedPins;
-        protected @Nullable List<AncillaryJack> ancillaries = null;
+        protected @Nullable List<AncillaryNode> ancillaries = null;
 
         public GroundedJoint(CircuitComponent parent) {
             this.parent = parent;
@@ -196,19 +211,25 @@ public interface Node extends CircuitComponent {
         }
 
         @Override
-		public boolean attach(Griddable source, AncillaryJack jack) {
+        public int indexOf(AncillaryNode jack) {
+            if(!hasAncillaries()) return -1;
+            return ancillaries.indexOf(jack);
+        }
+
+        @Override
+		public boolean attach(Griddable<?>source, AncillaryNode jack) {
 			if(ancillaries == null)
                 ancillaries = new ArrayList<>();
             ancillaries.add(jack);
-            jack.attachTo(source, this);
+            jack.updateOwnership(source, this, jack.getIndex());
             return true;
 		}
 
 		@Override
-		public boolean detach(Griddable source, AncillaryJack jack) {
+		public boolean detach(Griddable<?>source, AncillaryNode jack) {
 			boolean removed = ancillaries.remove(jack);
             if(ancillaries.isEmpty()) ancillaries = null;
-            if(removed) jack.attachTo(null, null);
+            if(removed) jack.updateOwnership(null, null, -1);
             return removed;
 		}
 
@@ -228,7 +249,7 @@ public interface Node extends CircuitComponent {
         @Override public int size() { return attachedPins.size(); }
         
         @Override
-        public Collection<AncillaryJack> getAllAncillaries() {
+        public List<AncillaryNode> getAllAncillaries() {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
         }
@@ -237,11 +258,12 @@ public interface Node extends CircuitComponent {
             return attachedPins; 
         }
 
-        @Override public void updateOwnership(Griddable source, CircuitComponent parent, int index) { 
+        @Override public void updateOwnership(Griddable<?>source, CircuitComponent parent, int index) { 
+            CircuitComponent.assertValidOwnership(this, parent);
             this.parent = parent; 
             if(source == null || !hasAncillaries()) return;
-            for(AncillaryJack jack : ancillaries)
-                jack.attachTo(source, this);
+            for(AncillaryNode jack : ancillaries)
+                jack.updateOwnership(source, this, jack.getIndex());
         }
 
         @Override

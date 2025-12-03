@@ -102,7 +102,7 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
             shape = orientations.get(rotation);
             if(shape != null) return shape;
         } else orientations = new Object2ObjectOpenHashMap<>();
-        shape = VoxelShapeBuilder.getRotatedCopy(get(), rotation, true);
+        shape = VoxelShapeBuilder.getRotatedCopy(get(), rotation);
         orientations.put(rotation, shape);
         return shape;
     }
@@ -117,7 +117,7 @@ public final class LazyRotatableHitbox implements HitboxRepresentable {
     public VoxelShape get(Vec3i rotation) {
         if(rotation.equals(Vec3i.ZERO))
             return get();
-        return VoxelShapeBuilder.getRotatedCopy(get(), rotation, false);
+        return VoxelShapeBuilder.getRotatedCopy(get(), rotation);
     }
 
     @Override

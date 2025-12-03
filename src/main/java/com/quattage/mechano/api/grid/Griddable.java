@@ -9,12 +9,14 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.quattage.mechano.api.SidedGridDispatcher;
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryJack;
-import com.quattage.mechano.foundation.tracking.DataSourceIdentifier;
+import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.foundation.WorldlyObject;
+import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
+import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.gui.GuiGraphics;
@@ -33,31 +35,49 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * Indicates that an implementing subclass represents some object, be that an Entity or BlockEntity,
- * provides a Circuit and participates in the {@link SidedGridDispatcher power grid}. <p>
+ * provides a Circuit and participates in the {@link Grid power grid}. <p>
  * Implementations are expected to provide:
  * <ul>
  *  <li> a {@link CircuitProvider#getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
- *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link DataSourceIdentifier data sources} for more info</li>
- *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable can attach to others to form part of a larger whole in the {@link SidedGridDispatcher power grid}
+ *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link UUIDSourceDiscriminator data sources} for more info</li>
+ *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
  * <code>@OnlyIn</code> annotation.
  */
-public interface Griddable extends CircuitProvider, TrackedObject {
+public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedObject, WorldlyObject, GridIdentifiable<T> {
 
     Vector3d getSourcePos();
     Quaternionf getSourceRotation();
     BlockPos getBlockPos(); 
 
-    GriddableTerminus getTerminus();
-    GridUUID getAddress();
+    /**
+     * Overridden by subclasses to provide a {@link GriddableTerminus} instance. 
+     * This instance is not guaranteed to contain up-to-date information about
+     * this Griddable<?>and this method contains no checks to verify its validity.
+     * @return A (new or pre-existing) {@link GriddableTerminus}
+     * @see #getTerminus() For callers: Use getTerminus() this method instead
+     */
+    GriddableTerminus provideTerminus();
 
     @Override default boolean isDynamic() { return true; };
-    default void forEachNeighbor(Consumer<Griddable> cons) {}
+    default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
 
-    default void initializeTerminus() {
-        getTerminus().initializeFrom(getCircuit());
+    /**
+     * Allows grid-sided access to this Griddable's {@link GriddableTerminus terminus},
+     * which contains a bakeable acceleration structure for getting all
+     * {@link AncillaryNode ancillaries} involving this Griddable's 
+     * {@link #getCircuit circuit}. This method contains validity checks and will
+     * initialize the terminus if needed. The initialized terminus can be 
+     * {@link GriddableTerminus#invalidate invalidated later} if the baked data is
+     * out of date.
+     * @return The instance returned by {@link #provideTerminus() the provider}
+     * @see #provideTerminus()
+     */
+    default GriddableTerminus getTerminus() {
+        provideTerminus().initializeFrom(getCircuit());
+        return provideTerminus();
     }
 
     @Override
@@ -73,7 +93,7 @@ public interface Griddable extends CircuitProvider, TrackedObject {
 
     @OnlyIn(Dist.CLIENT)
     default void showAllAncillaries() {
-        getTerminus().showAll(getSourcePos());
+        provideTerminus().showAll(getSourcePos());
     }
     
     @Override
@@ -103,7 +123,7 @@ public interface Griddable extends CircuitProvider, TrackedObject {
 
     default void drawGUILabel(List<Component> tooltip, float posX, float posY, GuiGraphics graphics) {}
 
-    default Vector3d getPositionOf(AncillaryJack joint) {
+    default Vector3d getPositionOf(AncillaryNode joint) {
         Objects.requireNonNull(joint);
         Vector3f local = joint.getRotatedOffset(getSourceRotation());
         return getSourcePos().add(local);

@@ -21,19 +21,20 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
+
     version = project.neo_version
-
     accessTransformers = project.files('src/main/resources/META-INF/accesstransformer.cfg')
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.minecraft_version
-    }
+    validateAccessTransformers = true
 
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
+    }
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.minecraft_version
     }
 
     runs {
@@ -103,9 +104,11 @@ dependencies {
     runtimeOnly("me.lucko:spark-common:${spark_version}")
 
     implementation("org.ejml:ejml-core:${ejml_version}")
+    additionalRuntimeClasspath("org.ejml:ejml-core:${ejml_version}")
     implementation("org.ejml:ejml-simple:${ejml_version}")
+    additionalRuntimeClasspath("org.ejml:ejml-simple:${ejml_version}")
     implementation("org.ejml:ejml-dsparse:${ejml_version}")
-
+    additionalRuntimeClasspath("org.ejml:ejml-dsparse:${ejml_version}")
 }
 
 

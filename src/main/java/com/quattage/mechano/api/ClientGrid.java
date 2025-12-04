@@ -1,23 +1,16 @@
 package com.quattage.mechano.api;
 
-import org.jetbrains.annotations.Nullable;
-
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 
-import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.Level;
 
 public final class ClientGrid extends Grid {
 
-
     protected ClientGrid(Level world) {
         super(world);
     }
-
-    @Override protected @Nullable ListTag writeAll() { return null; }
-    @Override protected String getDistPrefix() { return "CLIENT"; }
 
     @Override
     protected void onLoad() {
@@ -48,4 +41,10 @@ public final class ClientGrid extends Grid {
     public int getComponentCount() {
         return 0;
     }
+
+    @Override 
+    protected String getDistPrefix() { 
+        return "Client"; 
+    }
+
 }

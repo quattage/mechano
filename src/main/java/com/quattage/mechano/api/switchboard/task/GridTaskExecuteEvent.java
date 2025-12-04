@@ -3,9 +3,9 @@ package com.quattage.mechano.api.switchboard.task;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridActionTask;
 import com.quattage.mechano.api.switchboard.action.GridActionType;
-import com.quattage.mechano.api.switchboard.action.GridActions;
 
 import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.ICancellableEvent;
@@ -17,15 +17,15 @@ import net.neoforged.bus.api.ICancellableEvent;
 public abstract class GridTaskExecuteEvent<T extends Grid> extends Event implements ICancellableEvent {
 
     private final Grid grid;
-    private final GridActions action;
+    private final GridAction action;
 
-    public GridTaskExecuteEvent(Grid grid, GridActions action) {
+    public GridTaskExecuteEvent(Grid grid, GridAction action) {
         this.grid = grid;
         this.action = action;
     }
 
     @SuppressWarnings("unchecked") protected T getGrid() { return (T)grid; }
-    protected GridActions getAction() { return action; }
+    protected GridAction getAction() { return action; }
     protected GridActionType getActionType() { return action.getActionType(); }
 
     @Override
@@ -39,7 +39,7 @@ public abstract class GridTaskExecuteEvent<T extends Grid> extends Event impleme
      * started executing, and can be used to modify or cancel the task.
      */
     public static class Client extends GridTaskExecuteEvent<ClientGrid> {
-        public Client(ClientGrid grid, GridActions action) {
+        public Client(ClientGrid grid, GridAction action) {
             super(grid, action);
         }
     }
@@ -49,7 +49,7 @@ public abstract class GridTaskExecuteEvent<T extends Grid> extends Event impleme
      * started executing, and can be used to modify or cancel the task.
      */
     public static class Server extends GridTaskExecuteEvent<ServerGrid> {
-        public Server(ServerGrid grid, GridActions action) {
+        public Server(ServerGrid grid, GridAction action) {
             super(grid, action);
         }
     }

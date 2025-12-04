@@ -1,8 +1,8 @@
 package com.quattage.mechano.api.grid.topology;
 
-import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
-import com.quattage.mechano.api.switchboard.action.GridActions;
+import com.quattage.mechano.api.switchboard.JackSelector;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -11,7 +11,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 
 public interface CircuitComponentProvider {
     /**
-     * Evalutaes the provided {@link Node} and returns a {@link GridActions response}
+     * Evalutaes the provided {@link Node} and returns a {@link GridAction response}
      * indicating whether or not the targeted joint should be highlighted by the {@link JackSelector selector}
      * <p>
      * <h3>Remember to tag implementations with</h3> 
@@ -21,8 +21,8 @@ public interface CircuitComponentProvider {
      * @return A {@link GridAction action} 
      */
     @OnlyIn(Dist.CLIENT)
-    default GridActions evaluateTarget(ClientLevel world, AncillaryNode target) {
-        return GridActions.RESPONSE_SUCCESS;
+    default GridAction evaluateTarget(ClientLevel world, AncillaryNode target) {
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     /**

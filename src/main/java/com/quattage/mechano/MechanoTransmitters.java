@@ -18,8 +18,6 @@ public class MechanoTransmitters {
                 p.extruder(Catenaries.renderPipeline().SQUARE_EXTRUDER);
                 p.thickness(Catenaries.RenderPipeline.Thickness.TRIPLE);
             }).register();
-    
-
 
     public static void register(IEventBus modBus) {
         

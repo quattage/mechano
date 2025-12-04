@@ -9,11 +9,12 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.switchboard.JackSelector;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.MapLikeItemHoldable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
@@ -103,10 +104,10 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
 
         if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
             return InteractionResultHolder.fail(stack);
-        Griddable<?>source = initialTarget.getSource();
+        Griddable<?> source = initialTarget.getSource();
         if(source == null) {
             throw new NullPointerException("Failed while handling interaction with " 
-                + initialTarget + " - This ancillary couldn't provide a non-null Griddable<?>source!");
+                + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
 
         GridUUID sourceID = grid.getAddressFor(source, initialTarget);
@@ -122,8 +123,27 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
      */
     @OnlyIn(Dist.CLIENT)
     private InteractionResultHolder<ItemStack> handleSecondRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode subsequentTarget) {
-        return InteractionResultHolder.success(stack);
-        
+        if(subsequentTarget == null) 
+            return InteractionResultHolder.fail(stack);
+        GridUUID initialTargetID = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
+        AncillaryNode initialTarget = (AncillaryNode)grid.findComponent(initialTargetID);
+        Griddable<?> initialSource = initialTarget.getSource();
+        if(initialSource == null) {
+            throw new NullPointerException("Failed while handling interaction with " 
+                + initialTarget + " - The initial ancillary couldn't provide a non-null source!");
+        }
+        Griddable<?> subsequentSource = initialTarget.getSource();
+        if(subsequentSource == null) {
+            throw new NullPointerException("Failed while handling interaction with " 
+                + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
+        }
+        if(!grid.isLoaded(initialSource) || !grid.isLoaded(subsequentSource)) 
+            return InteractionResultHolder.fail(stack);
+        GridAction initiate = grid.initiateTask(GridAction.TASK_LINK_JOINTS)
+            .from(initialSource, subsequentSource)
+            .args(initialTargetID)
+            .requestRun();
+        return initiate.getResultHolder(stack);
     }
 
     @Override

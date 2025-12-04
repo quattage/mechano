@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
-import com.quattage.mechano.api.switchboard.action.GridActions;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.numeric.Duo;
 import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator.ScopeSpecifier;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
@@ -133,7 +133,7 @@ public interface TrackedObject extends ScopeSpecifier {
     boolean isDynamic();
 
     /**
-     * Broadcasts a {@link GridActions} pertaining to this tracked
+     * Broadcasts a {@link GridAction} pertaining to this tracked
      * object, which may send packets, update chunks, and modify world
      * data, depending on the implementing subclass. Will log errors
      * if <code>response</code> is not supported by this subclass.
@@ -144,11 +144,11 @@ public interface TrackedObject extends ScopeSpecifier {
      * what kind of packet gets sent as a result of this call.
      */
     default void broadast(ServerLevel world) { 
-        broadcast(world, GridActions.values()[0]); 
+        broadcast(world, GridAction.values()[0]); 
     }
 
     /**
-     * Broadcasts a {@link GridActions} pertaining to this tracked
+     * Broadcasts a {@link GridAction} pertaining to this tracked
      * object, which may send packets, update chunks, and modify world
      * data, depending on the implementing subclass. Will log errors
      * if <code>response</code> is not supported by this subclass.
@@ -158,7 +158,7 @@ public interface TrackedObject extends ScopeSpecifier {
      * @param response GridResponse to broadcast, which will change
      * what kind of packet gets sent as a result of this call.
      */
-    default void broadcast(ServerLevel world, GridActions response) { 
+    default void broadcast(ServerLevel world, GridAction response) { 
         throw new UnsupportedOperationException("'" + this.getClass().getSimpleName() + "' can't broadcast!"); 
     }
 

@@ -1,7 +1,7 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.MechanoItemProperties;

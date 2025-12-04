@@ -1,12 +1,14 @@
 package com.quattage.mechano.api.switchboard.action;
 
+import java.util.Objects;
+
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.switchboard.action.GridActions.GridActionTaskArgumentParseException;
+import com.quattage.mechano.api.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;
 import net.neoforged.api.distmarker.Dist;
@@ -15,7 +17,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 /**
  * Represents a single, discrete operation that modifies/reacts to the 
  * {@link Grid Grid} in some way. Subclasses are registered
- * and stored in the {@link GridActions} enum statically, so these classes
+ * and stored in the {@link GridAction} enum statically, so these classes
  * can't have meaningful constructors.
  */
 public interface GridActionTask {
@@ -32,7 +34,7 @@ public interface GridActionTask {
     void encode(Object[] args, ByteBuf buffer);
     @Nullable Object[] decode(ByteBuf buffer);
 
-    static void validateArguments(GridActions action, GridActionTask task, @Nullable Object... args) {
+    static void validateArguments(GridAction action, GridActionTask task, @Nullable Object... args) {
         Class<?>[] template = task.getArgumentTemplate();
         if(template == null) template = new Class[0];
         if(args == null) args = new Object[0];
@@ -50,7 +52,7 @@ public interface GridActionTask {
     }
 
     @ApiStatus.NonExtendable
-    default GridActions executeAsServer(ServerGrid grid, Object... args) { return executeAsServer(0, grid, args); }
+    default GridAction executeAsServer(ServerGrid grid, Object... args) { return executeAsServer(0, grid, args); }
 
     /**
      * The logic contained within this method is run once per task and shouldn't access or store/modify
@@ -59,13 +61,13 @@ public interface GridActionTask {
      * be <code>> 0</code> in cases where this task is scheduled in a buffer that failed a previous run.
      * @param grid The {@link ServerGrid} within the current world context. Contains access to the world and Grid API data so that they can be modified.
      * @param args Any number of wrapped arguments, conforming to this task's serialized format {@link #getArgumentTemplate() template}.
-     * @return {@link GridActions A GridAction} to prompt a response as a result of this task's execution.
+     * @return {@link GridAction A GridAction} to prompt a response as a result of this task's execution.
      */
-    GridActions executeAsServer(int attempt, ServerGrid grid, Object... args);
+    GridAction executeAsServer(int attempt, ServerGrid grid, Object... args);
 
     @OnlyIn(Dist.CLIENT)
     @ApiStatus.NonExtendable
-    default GridActions executeAsClient(ClientGrid grid, Object... args) { return executeAsClient(0, grid, args); }
+    default GridAction executeAsClient(ClientGrid grid, Object... args) { return executeAsClient(0, grid, args); }
 
     /**
      * The logic contained within this method is run once per task and shouldn't access or store/modify
@@ -75,8 +77,35 @@ public interface GridActionTask {
      * be <code>> 0</code> in cases where this task is scheduled in a buffer that failed a previous run.
      * @param grid The {@link ClientGrid} within the current world context. Contains access to the world and Grid API data so that they can be modified.
      * @param args Any number of wrapped arguments, conforming to this task's serialized format {@link #getArgumentTemplate() template}.
-     * @return A {@link GridActions GridAction} to prompt a response as a result of this task's execution.
+     * @return A {@link GridAction GridAction} to prompt a response as a result of this task's execution.
      */
     @OnlyIn(Dist.CLIENT)
-    GridActions executeAsClient(int attempt, ClientGrid grid, Object... args);
+    GridAction executeAsClient(int attempt, ClientGrid grid, Object... args);
+
+    /**
+     * Log a message associated with this task's execution. Implementations 
+     * or API users may call this method to print debug messages.
+     * @param grid Grid to log for
+     * @param attempt The attempt # of this execution (Optional, defaults to <code>-1</code>)
+     * @param args The arguments that were used
+     */
+    default void logExecution(Grid grid, Object... args) {
+        logExecution(grid, -1, args);
+    }
+
+    /**
+     * Log a message associated with this task's execution. Implementations 
+     * or API users may call this method to print debug messages.
+     * @param grid Grid to log for
+     * @param attempt The attempt # of this execution (Optional, defaults to <code>-1</code>)
+     * @param args The arguments that were used
+     */
+    default void logExecution(Grid grid, int attempt, Object... args) {
+        Objects.requireNonNull(grid);
+        String summary = "";
+        for(Object obj : args) summary += obj.toString() + ", ";
+        summary = summary.substring(0, summary.length() - 3);
+        grid.info("executing task " + this.getClass().getSimpleName() + (attempt > 0 ? ", attempt " 
+            + attempt + ": " : ": ") + "(" + (summary.isEmpty() ? "no arguments" : summary) + ")");
+    }
 }

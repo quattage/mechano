@@ -2,8 +2,8 @@
 package com.quattage.mechano.api.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.JackSelector;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.switchboard.JackSelector;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;

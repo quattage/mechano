@@ -77,14 +77,14 @@ public enum GridActionType implements StringRepresentable {
     }
 
     public static class GridActionEncodeException extends RuntimeException {
-        public GridActionEncodeException(Exception prev, GridActions response) {
+        public GridActionEncodeException(Exception prev, GridAction response) {
             super("Encountered an exception while encoding '" + response + "' (see above for more details)");
             prev.printStackTrace();
         }
     }
 
     public static class GridActionDecodeException extends RuntimeException {
-        public GridActionDecodeException(Exception prev, GridActions response) {
+        public GridActionDecodeException(Exception prev, GridAction response) {
             super("Encountered an exception while decoding '" + response + "' (see above for more details)");
             prev.printStackTrace();
         }

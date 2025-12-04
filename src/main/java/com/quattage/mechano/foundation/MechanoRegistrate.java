@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation;
 
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterBuilder;
 import com.quattage.mechano.api.transmitter.TransmitterType;
@@ -13,8 +14,8 @@ import net.minecraft.resources.ResourceLocation;
 
 public class MechanoRegistrate extends CreateRegistrate {
 
-    public final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> 
-        TRANSMITTER_KEY = ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(getModid(), "transmitter_type"));
+    public static final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> 
+        TRANSMITTER_KEY = ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(Mechano.ID, "transmitter_type"));
 
     public static MechanoRegistrate make(String modid) {
         return new MechanoRegistrate(modid);
@@ -25,7 +26,7 @@ public class MechanoRegistrate extends CreateRegistrate {
     }
 
     public <T extends CircuitComponent, P> TransmitterBuilder<T, P> transmitter(String name) {
-        return entry(name, callback -> TransmitterBuilder.create(self(), name, callback, TRANSMITTER_KEY));
+        return entry(name, callback -> TransmitterBuilder.create(self(), name, callback, MechanoRegistrate.TRANSMITTER_KEY));
     }
 }
 

@@ -1,4 +1,4 @@
-package com.quattage.mechano.api;
+package com.quattage.mechano.api.switchboard;
 
 import java.util.ArrayList;
 import java.util.PriorityQueue;
@@ -15,7 +15,7 @@ import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
-import com.quattage.mechano.api.switchboard.action.GridActions;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
@@ -43,6 +43,11 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+/**
+ * A queue of all {@link AncillaryNode selectable nodes}
+ * near the client player. This class allows the client
+ * to target and interact with nodes as if they were voxels.
+ */
 @OnlyIn(Dist.CLIENT)
 public class JackSelector {
 
@@ -65,7 +70,6 @@ public class JackSelector {
             reset();
             return;
         }
-
         VectorOperations.Ray lookingRay = VectorOperations.getLookingRay(
             lp, deltas.getGameTimeDeltaPartialTick(false), (float)lp.blockInteractionRange());
         HoldingSummary hands = getHolding(lp);
@@ -94,7 +98,7 @@ public class JackSelector {
             if(sel == null || !sel.isVisible()) continue;
             if(!sel.get().isIntersecting(sel.target.getSource().getSourcePos(), ray)) continue;
             lookedThisFrame = true;
-            if(prov == null) sel.updateResponse(GridActions.NONE);
+            if(prov == null) sel.updateResponse(GridAction.NONE);
             else sel.updateResponse(prov.evaluateTarget(world, sel.get()));
             this.selected.setTo(sel);
             break;
@@ -288,7 +292,7 @@ public class JackSelector {
     protected static class TargetAncillary implements Comparable<TargetAncillary> {
 
         private AncillaryNode target = null;
-        private GridActions response = GridActions.RESPONSE_FAIL_GENERIC;
+        private GridAction response = GridAction.RESPONSE_FAIL_GENERIC;
         private float distanceToPlayer = 0;
 
         protected TargetAncillary() {}
@@ -304,13 +308,13 @@ public class JackSelector {
             this.distanceToPlayer = other.distanceToPlayer;
         }
 
-        protected void updateResponse(GridActions response) {
+        protected void updateResponse(GridAction response) {
             this.response = response;
         }
 
         private void reset() {
             this.target = null;
-            this.response = GridActions.RESPONSE_FAIL_GENERIC;
+            this.response = GridAction.RESPONSE_FAIL_GENERIC;
         }
 
         public boolean is(WireJack jack) {
@@ -334,7 +338,7 @@ public class JackSelector {
             return target;
         }
 
-        public @Nullable GridActions getResponse() {
+        public @Nullable GridAction getResponse() {
             return response;
         }
 

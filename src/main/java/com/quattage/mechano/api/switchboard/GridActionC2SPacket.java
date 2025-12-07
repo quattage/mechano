@@ -2,6 +2,7 @@ package com.quattage.mechano.api.switchboard;
 
 import java.util.Objects;
 
+import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridActionTask;
@@ -28,11 +29,11 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
                 throw new IndexOutOfBoundsException("Failed while decoding response task - response index " + idx 
                     + " is out of bounds for a response registry of " + GridAction.values().length + " members!");
             }
-            GridAction response = GridAction.values()[buffer.readByte()];
+            GridAction response = GridAction.values()[idx];
             GridActionTask task = response.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while decoding response task '" + response + "' - This response type didn't produce a task!");
             Object[] decodedArgs = null;
-            try { decodedArgs = task.decode(buffer); }
+            try { decodedArgs = task.dynamicDecode(buffer); }
             catch(RuntimeException e) { throw new GridActionDecodeException(e, response); }
             if(decodedArgs == null) decodedArgs = new Object[0];
             return new GridActionC2SPacket(response, decodedArgs);
@@ -43,7 +44,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
             buffer.writeByte(value.response.ordinal()); 
             GridActionTask task = value.response.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while encoding response task '" + value.response + "' - This response type didn't produce a task!");
-            try { task.encode(value.args, buffer); }
+            try { task.dynamicEncode(value.args, buffer); }
             catch(RuntimeException e) { throw new GridActionEncodeException(e, value.response); }
         }
     };
@@ -56,7 +57,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
 
     @Override
     public PacketTypeProvider getTypeProvider() {
-        return null;
+        return MechanoPackets.GRID_ACTION_C2S;
     }
 
     @Override

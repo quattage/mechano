@@ -9,6 +9,8 @@ import net.neoforged.bus.api.IEventBus;
 
 public class MechanoTransmitters {
 
+    
+
     public static final TransmitterEntry<CircuitComponent> HOOKUP = 
         Mechano.REGISTRATE.transmitter("hookup")
             .component((start, end) -> {

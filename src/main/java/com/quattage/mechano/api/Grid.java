@@ -19,16 +19,12 @@ import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
-import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.MechanoRegistrate;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -177,7 +173,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
         public boolean addLink(ComponentLink<?> link) {
             Objects.requireNonNull(link);
             if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while adding link - The provided link doesn't have a start and/or end ID configured!");
-            link.findJacksSafe(this);
             List<ComponentLink<?>> linksAt = links.get(link.getStart());
             if(linksAt == null || linksAt.isEmpty()) {
                 linksAt = new ArrayList<ComponentLink<?>>();
@@ -281,7 +276,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
         public @Nullable CircuitComponent findComponent(GridUUID address) {
             Objects.requireNonNull(address);
-            Griddable<?>source = address.getTargetSource(this);
+            Griddable<?> source = address.getTargetSource(this);
             if(source == null) {
                 warn("Couldn't acquire component from " + address + " No source at this address could be found!");
                 return null;
@@ -305,16 +300,14 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return address.getType().findTarget(this, circuit, address);
         }
 
+        public <T extends CircuitComponent> @Nullable T findComponent(GridUUID address, Class<T> type) {
+            CircuitComponent out = findComponent(address);
+            return type.isInstance(out) ? type.cast(out) : null;
+        }
+
         public boolean isLoaded(GridIdentifiable<?> obj) {
             Griddable<?> source = obj.getUUIDSafe().getTargetSource(this);
             return source != null && source.getCircuit() != null;
-        }
-
-        public TransmitterType<?> getTransmitterAt(ResourceLocation loc) {
-            Registry<TransmitterType<?>> registry = world.registryAccess().registryOrThrow(MechanoRegistrate.TRANSMITTER_KEY);
-            TransmitterType<?> trns = registry.get(loc); 
-            if(trns == null) throw new IllegalArgumentException("Couldn't find TransmitterType entry at " + loc);
-            return trns;
         }
 
         @Override

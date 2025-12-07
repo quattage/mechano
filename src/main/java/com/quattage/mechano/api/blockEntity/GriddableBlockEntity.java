@@ -154,6 +154,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
+
     public UUIDSourceDiscriminator getSourceScope() {
         return UUIDSourceDiscriminator.VOXEL;
     }

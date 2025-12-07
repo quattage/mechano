@@ -1,8 +1,14 @@
 package com.quattage.mechano.api.switchboard.action;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
@@ -11,16 +17,18 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
 import com.quattage.mechano.api.switchboard.task.GridTaskExecuteEvent;
 import com.quattage.mechano.api.switchboard.task.LinkJointsTask;
 import com.quattage.mechano.api.switchboard.task.RequestActionTask;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -123,12 +131,15 @@ public enum GridAction implements StringRepresentable {
 
     public static class ActionRunner implements Supplier<GridAction> {
 
-        private final Grid grid;
+        private Grid grid;
         private GridAction action;
         private Object[] args = new Object[0];
-        private TrackedObject[] senders = new TrackedObject[0];
+        private TrackedObject[] trackers = new TrackedObject[0];
+
+        public ActionRunner() {}
 
         public ActionRunner(Grid grid, GridAction action) {
+            Objects.requireNonNull(grid);
             if(action == null) 
                 throw new NullPointerException("Error creating TaskRunner from " + grid + " - The provided task is null!");
             if(!action.isTask()) 
@@ -137,29 +148,70 @@ public enum GridAction implements StringRepresentable {
             this.action = action;
         }
 
+        public ActionRunner in(Grid grid) {
+            Objects.requireNonNull(grid);
+            this.grid = grid;
+            return this;
+        }
+
+        public ActionRunner action(GridAction action) {
+            if(action == null) 
+                throw new NullPointerException("Error configuring TaskRunner from " + grid + " - The provided task is null!");
+            if(!action.isTask()) 
+                throw new IllegalArgumentException("Error configuring TaskRunner from " + grid + " - The provided action is not a task type!");
+            this.action = action;
+            return this;
+        }
+
         /**
          * Define any number {@link TrackedObject} instances responsible for sending packets. This is used by
          * the action runner to target relevent clients. If you skip this method call, the runner
          * will send packets to all clients when executing. If objects are supplied here,
          * the runner will only send packets to clients that are tracking them.
-         * @param senders varargs array of {@link TrackedObject TrackedObjects}
+         * @param trackers varargs array of {@link TrackedObject TrackedObjects}
          * @return This ActionRunner for chaining
          */
-        public ActionRunner from(TrackedObject... senders) {
-            Objects.requireNonNull(senders);
-            this.senders = senders;
+        public ActionRunner from(TrackedObject... trackers) {
+            Objects.requireNonNull(trackers);
+            this.trackers = trackers;
+            return this;
+        }
+
+        /**
+         * Define any number {@link TrackedObject} instances responsible for sending packets. This is used by
+         * the action runner to target relevent clients. If you skip this method call, the runner
+         * will send packets to all clients when executing. If objects are supplied here,
+         * the runner will only send packets to clients that are tracking them.
+         * @param trackers collection of {@link TrackedObject TrackedObjects}
+         * @return This ActionRunner for chaining
+         */
+        public ActionRunner from(Collection<TrackedObject> trackers) {
+            Objects.requireNonNull(trackers);
+            this.trackers = trackers.toArray(new TrackedObject[trackers.size()]);
             return this;
         }
 
         /**
          * Supply arguments that match the {@link GridActionTask#getArgumentTemplate argument template}
          * of the supplied {@link GridAction action} task.
-         * @param args varargs array
+         * @param args varargs array of objects
          * @return This ActionRunner for chaining
          */
-        public ActionRunner args(Object... args) {
+        public ActionRunner withArguments(Object... args) {
             Objects.requireNonNull(args);
             this.args = args;
+            return this;
+        }
+
+        /**
+         * Supply arguments that match the {@link GridActionTask#getArgumentTemplate argument template}
+         * of the supplied {@link GridAction action} task.
+         * @param args collection of objects
+         * @return This ActionRunner for chaining
+         */
+        public ActionRunner withArguments(Collection<Object> args) {
+            Objects.requireNonNull(args);
+            this.args = args.toArray(new Object[args.size()]);
             return this;
         }
 
@@ -173,25 +225,36 @@ public enum GridAction implements StringRepresentable {
         }
 
         /**
-         * Hands off the initial execution of this task to the server. This method
-         * is callable by clients to manually schedule some server-dependent logic.
+         * Defers the initial execution of this task to the server. This method
+         * is callable <strong>only</strong> by clients and is used to manually 
+         * schedule {@link GridAction actions} that need access to server-sided
+         * data. 
          * <p> This method wraps this TaskRunner's {@link #action internal task}
-         * into a {@link GridAction#TASK_REQUEST requester}. This task will be
-         * sent to the server immediately and executed by Minecraft's server-sided
-         * packet handler. A packet may or may not be sent back to the client as a 
-         * response, depending on the task's particular implementation.
+         * into a {@link GridAction#TASK_REQUEST requester}. This requester is 
+         * sent to the server immediately as a result of this call and executed 
+         * by Minecraft's server-sided packet handler. A packet may or may not 
+         * be sent back to the client as a response, depending on the task's 
+         * particular implementation.
          * @return This ActionRunner for chaining.
          */
         @OnlyIn(Dist.CLIENT)
         public GridAction requestRun() {
             Object[] internalArgs = args;
+            List<GridUUID> trackerIDs = new ArrayList<GridUUID>(trackers.length);
+            for(int x = 0; x < trackers.length; x++) {
+                TrackedObject obj = trackers[x];
+                if(!(obj instanceof Griddable<?> gobj))
+                    continue;
+                trackerIDs.add(gobj.getUUID());
+            }
             this.args = new Object[] {
-                this.action,
-                this.senders,
-                internalArgs
+                this.action, 
+                trackerIDs,
+                Arrays.asList(internalArgs)
             };
             this.action = GridAction.TASK_REQUEST;
-            return get();
+            CatnipServices.NETWORK.sendToServer(new GridActionC2SPacket(GridAction.TASK_REQUEST, args));
+            return this.action;
         }
 
         @Override
@@ -214,21 +277,36 @@ public enum GridAction implements StringRepresentable {
                 GridAction response = task.executeAsServer(server, args);
                 if(!response.isTask() || response.getActionType().indicatesFailure())
                     return response;
-                if(senders == null || senders.length <= 0)
-                    CatnipServices.NETWORK.sendToAllClients(new GridActionS2CPacket(response, args));
-                else {
-                    for(TrackedObject obj : senders) 
-                        obj.sendToClientsTracking((ServerLevel)grid.getWorld(), new GridActionS2CPacket(response, args));
-                }
+                sendToTrackers(response, server);
                 return response;
             }
             return GridAction.RESPONSE_FAIL_GENERIC;
         }
+
+        private void sendToTrackers(GridAction response, ServerGrid grid) {
+            if(trackers == null || trackers.length <= 0) {
+                CatnipServices.NETWORK.sendToAllClients(new GridActionS2CPacket(response, args));
+                return;
+            }
+            Set<ServerPlayer> collectedTrackers = new HashSet<>();
+            for(ServerPlayer sp : grid.getServer().getPlayerList().getPlayers()) {
+                for(int x = 0; x < trackers.length; x++) {
+                    TrackedObject obj = trackers[x];
+                    if(obj.isBeingTrackedBy(sp)) {
+                        collectedTrackers.add(sp);
+                        break;
+                    }
+                }
+            }
+            CatnipServices.NETWORK.sendToClients(collectedTrackers, new GridActionS2CPacket(response, args));
+        }
     }
+
+    
 
     public static class GridActionTaskArgumentParseException extends RuntimeException {
         public GridActionTaskArgumentParseException(GridAction action, GridActionTask task, String message) {
-            super("Error while parsing arguments for task '" + task.getClass().getSimpleName() + "' from action '" + action + "' - " + message);
+            super("Error while parsing arguments for '" + task.getClass().getSimpleName() + "' from action '" + action + "' - " + message);
         }
     }
 }

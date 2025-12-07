@@ -129,8 +129,8 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
         int ordinal = tag.getInt(UUIDSourceDiscriminator.PREFIX);
         UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
-            Mechano.LOGGER.error("Discriminator couldn't determine type from " + tag +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].createUUID(tag);
+            throw new IllegalStateException("Discriminator couldn't determine type from " + tag 
+                +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
         }
         return types[ordinal].createUUID(tag);
     }
@@ -139,8 +139,8 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
         int ordinal = buffer.readInt();
         UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
-            Mechano.LOGGER.error("Discriminator couldn't determine type from " + buffer +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].createUUID(buffer);
+            throw new IllegalStateException("Discriminator couldn't determine type from " + buffer 
+                + " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
         }
         return types[ordinal].createUUID(buffer);
     }
@@ -149,8 +149,8 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
         int ordinal = dyn.get(UUIDSourceDiscriminator.PREFIX).asInt(-1);
         UUIDSourceDiscriminator[] types = UUIDSourceDiscriminator.values();
         if(ordinal < 0 || ordinal >= types.length) {
-            Mechano.LOGGER.error("Discriminator couldn't determine type from " + dyn +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            return types[0].createUUID(dyn);
+            throw new IllegalStateException("Discriminator couldn't determine type from " + dyn 
+                +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
         }
         return types[ordinal].createUUID(dyn);
     }

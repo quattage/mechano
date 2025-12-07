@@ -27,8 +27,8 @@ public interface GridIdentifiable<T extends GridUUID> {
     @ApiStatus.NonExtendable
     default T getUUIDSafe() {
         T uuid = getUUID();
-        if(uuid.hasBindings() || uuid == null) 
-            throw new NullPointerException("GridIdentifiable '" + this.getClass().getSimpleName() + " failed to provide a vlaid UUID!");
+        if(uuid == null) 
+            throw new NullPointerException("GridIdentifiable '" + this.getClass().getSimpleName() + " failed to provide a vlaid UUID! (got " + uuid + ")");
         return uuid;
     }
 }

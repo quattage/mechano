@@ -17,12 +17,12 @@ public class DummyTask implements GridActionTask {
     }
 
     @Override
-    public void encode(Object[] args, ByteBuf buffer) {
+    public void dynamicEncode(Object[] args, ByteBuf buffer) {
         
     }
 
     @Override
-    public @Nullable Object[] decode(ByteBuf buffer) {
+    public @Nullable Object[] dynamicDecode(ByteBuf buffer) {
         return new Class<?>[0];
     }
 

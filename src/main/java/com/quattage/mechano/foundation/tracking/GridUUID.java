@@ -37,8 +37,8 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
     }
 
     protected @Nullable GridHierarchy type;
-    protected short bindingA = -1;
-    protected short bindingB = -1;
+    protected short bindingA = Short.MIN_VALUE;
+    protected short bindingB = Short.MIN_VALUE;
 
     public GridUUID() {}
 
@@ -61,14 +61,14 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
     public GridUUID(Dynamic<?> dyn) {
         byte idx = dyn.get("cpt").asByte((byte)-1);
         if(idx >= 0) this.type = GridHierarchy.values()[idx];
-        this.bindingA = dyn.get("ba").asShort((short)-1);
-        this.bindingB = dyn.get("bb").asShort((short)-1);
+        this.bindingA = dyn.get("ba").asShort(Short.MIN_VALUE);
+        this.bindingB = dyn.get("bb").asShort(Short.MIN_VALUE);
     }
 
     public GridUUID withBinding(GridHierarchy type, int binding) {
         this.type = type;
         this.bindingA = clampedUnsigned(binding);
-        this.bindingB = clampedUnsigned(-1);
+        this.bindingB = Short.MIN_VALUE;
         return this;
     }
 
@@ -87,7 +87,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         return type;
     }
 
-    @Nullable public abstract Griddable<?>getTargetSource(Grid grid);
+    @Nullable public abstract Griddable<?> getTargetSource(Grid grid);
 
     public final GridHierarchy getReferentType() {
         return type;
@@ -121,7 +121,6 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
 
     public boolean hasBindings() {
         return getBindingA() != -1 || getBindingB() != -1;
-
     }
 
     @Override
@@ -174,9 +173,9 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public @Nullable Griddable<?>getTargetSource(Grid grid) {
+        public @Nullable Griddable<?> getTargetSource(Grid grid) {
             BlockEntity be = grid.getWorld().getBlockEntity(pos);
-            return be instanceof Griddable<?>gbe ? gbe : null;
+            return be instanceof Griddable<?> gbe ? gbe : null;
         }
 
         @Override
@@ -258,13 +257,13 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public @Nullable Griddable<?>getTargetSource(Grid grid) {
+        public @Nullable Griddable<?> getTargetSource(Grid grid) {
             LevelReader world = grid.getWorld();
             Entity e = world.isClientSide() 
-            // accessible via the access transformer
-            ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
-            : ((ServerLevel)world).getEntity(uuid);
-            return e instanceof Griddable<?>ge ? ge : null;
+                // accessible via the access transformer
+                ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 
+                : ((ServerLevel)world).getEntity(uuid);
+            return e instanceof Griddable<?> ge ? ge : null;
         }
 
         @Override

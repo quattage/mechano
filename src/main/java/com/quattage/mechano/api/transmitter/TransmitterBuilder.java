@@ -53,7 +53,7 @@ public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractB
 
     @Override
     protected @NonnullType TransmitterType<T> createEntry() {
-        return new TransmitterType<T>(getRegistryKey().location(), factory, renderProperties);
+        return new TransmitterType<T>(getName(), factory, renderProperties);
     }
 
     @Override

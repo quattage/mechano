@@ -43,6 +43,8 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         super(properties);
     }
 
+    public abstract TransmitterType<?> getTransmitter();
+
     /**
      * Removes all data from every spool in player's inventory. 
      */
@@ -132,18 +134,20 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - The initial ancillary couldn't provide a non-null source!");
         }
-        Griddable<?> subsequentSource = initialTarget.getSource();
+        Griddable<?> subsequentSource = subsequentTarget.getSource();
         if(subsequentSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
         }
         if(!grid.isLoaded(initialSource) || !grid.isLoaded(subsequentSource)) 
             return InteractionResultHolder.fail(stack);
-        GridAction initiate = grid.initiateTask(GridAction.TASK_LINK_JOINTS)
+        GridUUID subsequentTargetID = grid.getAddressFor(subsequentSource, subsequentTarget);
+        GridAction request = grid
+            .initiateTask(GridAction.TASK_LINK_JOINTS)
             .from(initialSource, subsequentSource)
-            .args(initialTargetID)
+            .withArguments(initialTargetID, subsequentTargetID, getTransmitter())
             .requestRun();
-        return initiate.getResultHolder(stack);
+        return request.getResultHolder(stack);
     }
 
     @Override

@@ -31,8 +31,8 @@ public interface GridActionTask {
      */
     @Nullable Class<?>[] getArgumentTemplate();
 
-    void encode(Object[] args, ByteBuf buffer);
-    @Nullable Object[] decode(ByteBuf buffer);
+    void dynamicEncode(Object[] args, ByteBuf buffer);
+    @Nullable Object[] dynamicDecode(ByteBuf buffer);
 
     static void validateArguments(GridAction action, GridActionTask task, @Nullable Object... args) {
         Class<?>[] template = task.getArgumentTemplate();
@@ -40,14 +40,14 @@ public interface GridActionTask {
         if(args == null) args = new Object[0];
         if(template.length != args.length) {
             throw new GridActionTaskArgumentParseException(action, task, "Incorrect number of arguments supplied! (got " 
-                + args.length + ", expected" + template.length);
+                + args.length + ", expected " + template.length + ")");
         }
         for(int x = 0; x < template.length; x++) {
             Class<?> expected = template[x];
             Object arg = args[x];
-            if(arg == null || expected.getClass().isInstance(arg)) continue;
+            if(arg == null || expected.isInstance(arg)) continue;
             throw new GridActionTaskArgumentParseException(action, task, "Bad argument type at position " + x + " - expected '" 
-                + expected.getSimpleName() + "', got '" + arg == null ? "null'!" : (arg.getClass().getSimpleName() + "'"));
+                + expected.getSimpleName() + "', got '" + (arg == null ? ("null'!") : (arg.getClass().getSimpleName() + "'")));
         }
     }
 
@@ -102,10 +102,14 @@ public interface GridActionTask {
      */
     default void logExecution(Grid grid, int attempt, Object... args) {
         Objects.requireNonNull(grid);
+        String summary = collectArgsAsString(args);
+        grid.info("executing '" + this.getClass().getSimpleName() + "'" + (attempt > 0 ? ", attempt " 
+            + attempt + ": " : ": ") + (summary.isEmpty() ? "no arguments" : "\nArguments: \n" + summary) + "\n\n");
+    }
+
+    default String collectArgsAsString(Object... args) {
         String summary = "";
-        for(Object obj : args) summary += obj.toString() + ", ";
-        summary = summary.substring(0, summary.length() - 3);
-        grid.info("executing task " + this.getClass().getSimpleName() + (attempt > 0 ? ", attempt " 
-            + attempt + ": " : ": ") + "(" + (summary.isEmpty() ? "no arguments" : summary) + ")");
+        for(Object obj : args) summary += "\n\n * " + obj.getClass().getSimpleName() + " :: " + obj.toString() + ", ";
+        return summary.substring(0, summary.length() - 3);
     }
 }

@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.api.transmitter;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;

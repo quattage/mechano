@@ -9,12 +9,11 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
-import com.quattage.mechano.api.transmitter.TransmitterEntry;
+import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.resources.ResourceLocation;
@@ -25,79 +24,97 @@ import net.minecraft.resources.ResourceLocation;
  */
 public class ComponentLink<T extends CircuitComponent> implements CircuitComponent {
 
-    private final TransmitterEntry<T> type;
-    private CircuitComponent component;
+    private final TransmitterType<T> trns;
     private @Nullable GridUUID startID, endID;
-    private @Nullable AncillaryNode startNode, endNode;
+    private AncillaryNode startNode, endNode;
+    private CircuitComponent component;
 
-    public ComponentLink(TransmitterEntry<T> type) {
-        Objects.requireNonNull(type);
-        this.type = type;
+    public ComponentLink(TransmitterType<T> trns) {
+        Objects.requireNonNull(trns);
+        this.trns = trns;
     }
-    
-    public ComponentLink<T> assignStart(GridUUID startID) {
+
+    public ComponentLink<T> assignStart(AncillaryNode startNode) {
         Objects.requireNonNull(startID);
         if(startID.getReferentType() != GridHierarchy.ANCILLARY_NODE) {
             throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + startID 
                 + " - The provided UUID doesn't conform to the proper referent type! (ComponentLinks may only refer to Ancillaries, got '" + startID.getReferentType() + "'!)");
         }
-        this.startID = startID;
+        Objects.requireNonNull(startNode);
+        this.startNode = startNode;
+        this.startID = startNode.bindUUID(startNode.getSource().getUUID());
         return this;
     }
 
-    public ComponentLink<T> assignEnd(GridUUID endID) {
+    public ComponentLink<T> assignStart(GridUUID startID, AncillaryNode startNode) {
+        Objects.requireNonNull(startID);
+        if(startID.getReferentType() != GridHierarchy.ANCILLARY_NODE) {
+            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + startID 
+                + " - The provided UUID doesn't conform to the proper referent type! (ComponentLinks may only refer to Ancillaries, got '" + startID.getReferentType() + "'!)");
+        }
+        Objects.requireNonNull(startNode);
+        this.startID = startID;
+        this.startNode = startNode;
+        return this;
+    }
+
+    public ComponentLink<T> assignEnd(AncillaryNode endNode) {
         Objects.requireNonNull(endID);
         if(endID.getReferentType() != GridHierarchy.ANCILLARY_NODE) {
             throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + endID 
                 + " - The provided UUID doesn't conform to the proper referent type! (ComponentLinks may only refer to Ancillaries, got '" + endID.getReferentType() + "'!)");
         }
+        Objects.requireNonNull(endNode);
+        if(!endNode.isSignificant()) {
+            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + endID 
+                + " - The provided AncillaryNode is insignificant!");
+        }        
+        this.endNode = endNode;
+        this.endID = endNode.bindUUID(endNode.getSource().getUUID());
+        return this;
+    }
+
+    public ComponentLink<T> assignEnd(GridUUID endID, AncillaryNode endNode) {
+        Objects.requireNonNull(endID);
+        if(endID.getReferentType() != GridHierarchy.ANCILLARY_NODE) {
+            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + endID 
+                + " - The provided UUID doesn't conform to the proper referent type! (ComponentLinks may only refer to Ancillaries, got '" + endID.getReferentType() + "'!)");
+        }
+        Objects.requireNonNull(endNode);
+        if(!endNode.isSignificant()) {
+            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + endID 
+                + " - The provided AncillaryNode is insignificant!");
+        }
         this.endID = endID;
+        this.endNode = endNode;
         return this;
     }
 
-    public ComponentLink<T> findJacks(Grid grid) {
-        assertAssigned();
-        CircuitComponent startC = grid.findComponent(startID);
-        CircuitComponent endC = grid.findComponent(endID);
-        if(!(startC instanceof AncillaryNode startA)) {
-            throw new IllegalArgumentException("Failed to find WireJack for " + this 
-                + " - The starting address located a non-ancillary type " + startC.getClass().getSimpleName());
-        }
-        if(!(endC instanceof AncillaryNode endA)) {
-            throw new IllegalArgumentException("Failed to find WireJack for " + this 
-                + " - The ending address located a non-ancillary type " + endC.getClass().getSimpleName());
-        }
-        this.startNode = startA; 
-        this.endNode = endA;
+    public ComponentLink<T> checkValidity() {
+        assertHasIDs();
+        assertHasAncillaries();
+        assertHasSignificance();
+        assertHasSources();
+        assertIDsMatch();
+        assertNonConflict();
         return this;
-    }
-
-    public boolean findJacksSafe(Grid grid) {
-        return findJacksSafe(grid, true);
-    }
-
-    public boolean findJacksSafe(Grid grid, boolean log) {
-        try{ findJacks(grid); } catch(RuntimeException e) {
-            if(log) {
-                grid.warn("Couldn't find jacks for " + this + " - See error for more details:");
-                e.printStackTrace();
-            }
-            return false;
-        }
-        return true;
     }
 
     public CircuitComponent getOrCreateInternalComponent() {
         if(component != null) return component;
-        assertAssigned();
-        assertHasJacks();
         if(!(startNode instanceof WireJack startJack))
             throw new IllegalStateException("Failed to create component for " + this + " - The starting node's type is unsupported!");
         if(!(endNode instanceof WireJack endJack))
             throw new IllegalStateException("Failed to create component for " + this + " - The starting node's type is unsupported!");
-        component = type.get().create(startJack, endJack);
+        component = trns.instantiate(startJack, endJack);
         component.updateOwnership(this, -1);
         return component;
+    }
+
+    public ComponentLink<T> flippedCopy() {
+        return new ComponentLink<T>(trns)
+            .assignStart(endID, endNode)
+            .assignEnd(startID, startNode);
     }
 
     @Override
@@ -123,25 +140,21 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
 
     @Override
     public boolean isSignificant() {
-        assertHasJacks();
         return (startNode != null && startNode.isSignificant()) || (endNode != null && endNode.isSignificant());
     }
 
     @Override
     public boolean isGrounded() {
-        assertHasJacks();
         return (startNode != null && startNode.isGrounded()) || (endNode != null && endNode.isGrounded());
     }
 
     @Override
     public void saturate() {
-        assertHasJacks();
         getOrCreateInternalComponent().reset();
     }
 
     @Override
     public void reset() {
-        assertHasJacks();
         getOrCreateInternalComponent().reset();
     }
 
@@ -152,7 +165,6 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
 
     @Override
     public GridUUID bindUUID(GridUUID id) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
     }
 
@@ -173,7 +185,7 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
 
     @Override
     public String getComponentID() {
-        return "link_" + type.getRegisteredName();
+        return "link_" + trns.getName();
     }
 
     @Override
@@ -202,21 +214,6 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return endNode;
     }
 
-    private void assertAssigned() {
-        if(type == null) {
-            throw new NullPointerException("An operation failed on ComponentLink " + this
-                + " - The TransmitterType was not assigned! (This instance probably leaked or was never initialized properly!");
-        }
-        if(startID == null) {
-            throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - The starting ID is not assigned! (This instance probably leaked or was never initialized properly!");
-        }
-        if(endID == null) {
-            throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - The ending ID is not assigned! (This instance probably leaked or was never initialized properly!");
-        }
-    }
-
     public boolean hasUUIDs() {
         return startID != null && endID != null;
     }
@@ -226,21 +223,93 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(this.startNode, this.endNode);
+    }
+
+    @Override
     public boolean equals(Object obj) {
-        assertAssigned();
-        assertHasJacks();
         if(!(obj instanceof ComponentLink<?> that)) return false;
         return this.startNode == that.startNode && this.endNode == that.endNode;
     }
 
-    private void assertHasJacks() {
+
+    private void assertHasTransmitter() {
+        if(trns == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - This ComponentLink has no transmitter!");
+        }
+        if(trns.getFactory() == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - The supplied transmitter " + trns + " returned a null CircuitComponent factory!");
+        }
+    }
+
+    private void assertHasIDs() {
+        if(startID == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - The starting jack's UUID is null! (It was never assigned using assignStart())");
+        }
+        if(endID == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - The ending jack's UUID is null! (It was never assigned using assignEnd())");
+        }
+    }
+
+    private void assertHasAncillaries() {
         if(startNode == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - The starting jack hasn't been initialized! (At least one call to findJacks() must be made!");
+                + " - The starting jack is null! (It was never assigned using assignStart())");
         }
         if(endNode == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - The ending jack hasn't been initialized! (At least one call to findJacks() must be made!");
+                + " - The ending jack is null! (It was never assigned using assignEnd())");
+        }
+    }
+
+    private void assertHasSignificance() {
+        if(!startNode.isSignificant()) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The starting jack is insignificant (This instance potentially leaked)");
+        }
+        if(!endNode.isSignificant()) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The ending jack is insignificant (This instance potentially leaked)");
+        }
+    }
+
+    private void assertHasSources() {
+        if(startNode.getSource() == null) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The starting jack has no source! (This instance potentially leaked)");
+        }
+        if(endNode.getSource() == null) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The ending jack has no source! (This instance potentially leaked)");
+        }
+    }
+
+    private void assertIDsMatch() {
+        GridUUID startIDRetrieved = startNode.bindUUID(startNode.getSource().getUUID());
+        if(!startIDRetrieved.equals(startID)) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The starting jack returned a UUID that doesn't match!");
+        }
+        GridUUID endIDRetrieved = endNode.bindUUID(endNode.getSource().getUUID());
+        if(!endIDRetrieved.equals(endID)) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The ending jack returned a UUID that doesn't match!");
+        }
+    }
+
+    private void assertNonConflict() {
+        if(startID.equals(endID)) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The starting and ending UUIDs are identical!");
+        }
+        if(startNode == endNode) {
+            throw new IllegalStateException("An operation failed on ComponentLink " + this 
+                + " - The starting and ending AncillaryNode instances are identical!");
         }
     }
 }

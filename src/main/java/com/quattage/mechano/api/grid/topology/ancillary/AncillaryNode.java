@@ -48,7 +48,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     public static byte MAX_SHARED_OCCUPANCY = (byte)8;
 
     private final String componentID;
-    private @Nullable Griddable<?>source;
+    private @Nullable Griddable<?> source;
     protected @Nullable Node parent;
     private boolean isVisible = true;
 
@@ -66,7 +66,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
      */
     
     @Override
-    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
         CircuitComponent.assertValidOwnership(this, parent);
         this.source = source; 
         if(parent instanceof Node n) this.parent = n;
@@ -186,7 +186,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
      * If this method is not called, ancillaries will not work correctly.
      * @param source
      */
-    public void loadOnto(Griddable<?>source) {
+    public void loadOnto(Griddable<?> source) {
         this.source = source;
     }
 

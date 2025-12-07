@@ -11,7 +11,10 @@ import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public final class ServerGrid extends Grid {
 
@@ -70,6 +73,12 @@ public final class ServerGrid extends Grid {
         solver.reset();
     }
 
+    public MinecraftServer getServer() {
+        MinecraftServer server = ((ServerLevel)getWorld()).getServer();
+        if(server == null)
+            server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
+        return server;
+    }
 
     @Override
     protected void tick() {

@@ -10,9 +10,9 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.registries.RegistryBuilder;
 
-
-public class MechanoRegistrate extends CreateRegistrate {
+public final class MechanoRegistrate extends CreateRegistrate {
 
     public static final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> 
         TRANSMITTER_KEY = ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(Mechano.ID, "transmitter_type"));
@@ -23,6 +23,11 @@ public class MechanoRegistrate extends CreateRegistrate {
 
     protected MechanoRegistrate(String modid) {
         super(modid);
+        makeRegistry("transmitter_type", this::supplyTransmitterRegistry);
+    }
+
+    private RegistryBuilder<TransmitterType<?>> supplyTransmitterRegistry(ResourceKey<Registry<TransmitterType<?>>> key) {
+        return new RegistryBuilder<TransmitterType<?>>(key).maxId(256).sync(true);
     }
 
     public <T extends CircuitComponent, P> TransmitterBuilder<T, P> transmitter(String name) {

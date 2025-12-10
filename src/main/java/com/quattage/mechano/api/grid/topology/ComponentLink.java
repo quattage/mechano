@@ -29,9 +29,22 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
     private AncillaryNode startNode, endNode;
     private CircuitComponent component;
 
-    public ComponentLink(TransmitterType<T> trns) {
+    public ComponentLink(TransmitterType<T> trns, AncillaryNode startNode, AncillaryNode endNode) {
         Objects.requireNonNull(trns);
+        assignStart(startNode);
+        assignEnd(endNode);
         this.trns = trns;
+    }
+
+    public ComponentLink(TransmitterType<T> trns, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode) {
+        Objects.requireNonNull(trns);
+        assignStart(startID, startNode);
+        assignEnd(endID, endNode);
+        this.trns = trns;
+    }
+
+    public ComponentLink<T> flippedCopy() {
+        return new ComponentLink<T>(trns, endID, endNode, startID, startNode);
     }
 
     public ComponentLink<T> assignStart(AncillaryNode startNode) {
@@ -111,11 +124,7 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return component;
     }
 
-    public ComponentLink<T> flippedCopy() {
-        return new ComponentLink<T>(trns)
-            .assignStart(endID, endNode)
-            .assignEnd(startID, startNode);
-    }
+    
 
     @Override
     public Collection<Terminal> getTerminals() {
@@ -190,7 +199,12 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
 
     @Override
     public String describeState() {
-        return "'" + getComponentID() + "', " + startID + " -> " + endID + ", init? " + (component != null);
+        return "'" + getComponentID() + "' [ " + startID + " -> " + endID + ", init? " + (component != null) + "]";
+    }
+
+    @Override
+    public String toString() {
+        return describeState();
     }
 
     @Override

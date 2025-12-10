@@ -1,8 +1,9 @@
 
 package com.quattage.mechano.api.switchboard.task;
 
+import org.jetbrains.annotations.Nullable;
+
 import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
@@ -26,7 +27,8 @@ public class LinkJointsTask implements GridActionTask {
         return new Class<?>[] {
             GridUUID.class,
             GridUUID.class,
-            TransmitterType.class
+            TransmitterType.class,
+            GridAction.class
         };
     }
 
@@ -36,6 +38,7 @@ public class LinkJointsTask implements GridActionTask {
         UUIDSourceDiscriminator.write((GridUUID)args[1], buffer);
         Registry<TransmitterType<?>> registry = (Registry<TransmitterType<?>>)BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY);
         buffer.writeInt(registry.getId((TransmitterType<?>)args[2]));
+        buffer.writeInt(((GridAction)args[3]).ordinal());
         return;
     }
 
@@ -44,38 +47,47 @@ public class LinkJointsTask implements GridActionTask {
         return new Object[] {
             UUIDSourceDiscriminator.read(buffer),
             UUIDSourceDiscriminator.read(buffer),
-            BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY).byId(buffer.readInt())
+            BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY).byId(buffer.readInt()),
+            GridAction.values()[buffer.readInt()]
         };
     }
 
     @Override
+    public Object[] validateArguments(@Nullable Object... args) {
+        // the response argument is allowed to be inferred with a default value here
+        if(args.length == 3) {
+            Object[] argsModified = new Object[args.length + 1];
+            System.arraycopy(args, 0, argsModified, 0, args.length);
+            argsModified[args.length] = GridAction.RESPONSE_SUCCESS;
+            return GridActionTask.super.validateArguments(argsModified);
+        }
+        return GridActionTask.super.validateArguments(args);
+    }
+
+    @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        return run(grid, args);
+        GridUUID startID = (GridUUID)args[0];
+        GridUUID endID = (GridUUID)args[1];
+        TransmitterType<?> trns = (TransmitterType<?>)args[2];
+        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
+        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
+        ComponentLink<?> linkA = new ComponentLink<>(trns, startID, startNode, endID, endNode).checkValidity();
+        ComponentLink<?> linkB = linkA.flippedCopy().checkValidity();
+
+        GridAction runResult = grid.addLink(linkA);
+        GridAction runResultInverted = grid.addLink(linkB);
+        if(runResult.getActionType().indicatesFailure() || runResultInverted.getActionType().indicatesFailure()) {
+            grid.removeLink(linkA);
+            grid.removeLink(linkB);
+        }
+        args[3] = runResult;
+        GridAction.TASK_LINK_JOINTS.broadcastBelligerent(grid, args);
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        return run(grid, args);
-    }
-
-    private GridAction run(Grid grid, Object... args) {
-        TransmitterType<?> trns = (TransmitterType<?>)args[2];
-        GridUUID startID = (GridUUID)args[0];
-        GridUUID endID = (GridUUID)args[1];
-        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
-        
-        ComponentLink<?> linkA = new ComponentLink<>(trns)
-            .assignStart(startID, startNode)
-            .assignEnd(endID, endNode)
-            .checkValidity();
-        ComponentLink<?> linkB = 
-            linkA.flippedCopy()
-            .checkValidity();
-
-        grid.warn(trns + ", " + startID + " -> " + endID);
-
         return GridAction.RESPONSE_SUCCESS;
     }
 }

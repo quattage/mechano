@@ -87,7 +87,10 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         return type;
     }
 
-    @Nullable public abstract Griddable<?> getTargetSource(Grid grid);
+    @Nullable public Griddable<?> getTargetSource(Grid grid) {
+        return getTargetSource(grid.getWorld());
+    }
+    @Nullable public abstract Griddable<?> getTargetSource(LevelReader world);
 
     public final GridHierarchy getReferentType() {
         return type;
@@ -173,8 +176,8 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public @Nullable Griddable<?> getTargetSource(Grid grid) {
-            BlockEntity be = grid.getWorld().getBlockEntity(pos);
+        public @Nullable Griddable<?> getTargetSource(LevelReader world) {
+            BlockEntity be = world.getBlockEntity(pos);
             return be instanceof Griddable<?> gbe ? gbe : null;
         }
 
@@ -257,8 +260,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public @Nullable Griddable<?> getTargetSource(Grid grid) {
-            LevelReader world = grid.getWorld();
+        public @Nullable Griddable<?> getTargetSource(LevelReader world) {
             Entity e = world.isClientSide() 
                 // accessible via the access transformer
                 ? ((ClientLevel)world).entityStorage.getEntityGetter().get(uuid) 

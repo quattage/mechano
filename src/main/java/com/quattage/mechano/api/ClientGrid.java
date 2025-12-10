@@ -41,10 +41,4 @@ public final class ClientGrid extends Grid {
     public int getComponentCount() {
         return 0;
     }
-
-    @Override 
-    protected String getDistPrefix() { 
-        return "Client"; 
-    }
-
 }

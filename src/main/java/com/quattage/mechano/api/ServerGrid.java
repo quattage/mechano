@@ -61,7 +61,6 @@ public final class ServerGrid extends Grid {
         return graph.size();
     }
 
-
     @Override
     protected void onLoad() {
         
@@ -83,9 +82,5 @@ public final class ServerGrid extends Grid {
     @Override
     protected void tick() {
         
-    }
-
-    @Override protected String getDistPrefix() { 
-        return "Server"; 
     }
 }

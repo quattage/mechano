@@ -142,11 +142,11 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         if(!grid.isLoaded(initialSource) || !grid.isLoaded(subsequentSource)) 
             return InteractionResultHolder.fail(stack);
         GridUUID subsequentTargetID = grid.getAddressFor(subsequentSource, subsequentTarget);
-        GridAction request = grid
-            .initiateTask(GridAction.TASK_LINK_JOINTS)
+        GridAction request = grid.initiateTask(GridAction.TASK_LINK_JOINTS)
             .from(initialSource, subsequentSource)
             .withArguments(initialTargetID, subsequentTargetID, getTransmitter())
             .requestRun();
+        if(GridAction.VERBOSE_LOGS) grid.debug("Initiated link interaction from " + player);
         return request.getResultHolder(stack);
     }
 

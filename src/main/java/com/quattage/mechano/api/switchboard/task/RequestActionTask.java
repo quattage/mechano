@@ -2,23 +2,22 @@ package com.quattage.mechano.api.switchboard.task;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.api.switchboard.action.GridActionTask;
+import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -29,8 +28,6 @@ import net.neoforged.api.distmarker.OnlyIn;
  * initial call.
  */
 public class RequestActionTask implements GridActionTask {
-
-    private @Nullable ActionRunner runner;
 
     @Override
     public @Nullable Class<?>[] getArgumentTemplate() {
@@ -48,8 +45,8 @@ public class RequestActionTask implements GridActionTask {
         List<GridUUID> senders = (List<GridUUID>)args[1];
         buffer.writeInt(senders.size());
         for(GridUUID addr : senders) UUIDSourceDiscriminator.write(addr, buffer);
-        List<Object> actionArgs = (List<Object>)args[2];
-        action.getTask().dynamicEncode(actionArgs.toArray(), buffer);
+        Object[] taskArgs = ((List<Object>)args[2]).toArray();
+        action.getTask().dynamicEncode(taskArgs, buffer);
     }
 
     @Override
@@ -66,39 +63,26 @@ public class RequestActionTask implements GridActionTask {
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        return run(grid, args);
+        GridAction action = (GridAction)args[0];
+        Set<ServerPlayer> trackers = GridIdentifiable.collectTrackers((ServerLevel)grid.getWorld(), (List<GridIdentifiable<?>>)args[1]);
+        if(trackers.isEmpty()) {
+            // immediately warn and fail (even if it isn't necessary) since this edge case could cause issues later
+            grid.warn("Skipped sending wrapped request for " + action + " - The supplied collection of senders couldn't be re-addressed.");
+            return GridAction.RESPONSE_FAIL_CANCELLED;
+        }
+        Object[] taskArgs = ((List<Object>)args[2]).toArray();
+        GridActionTask task = action.getTask();
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handling request " + task + " with arguments: " + task.collectArgsAsString(taskArgs));
+        return task.executeAsServer(grid, taskArgs).broadcast(grid, trackers, taskArgs);
     }
 
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        return run(grid, args);
-    }
-
-    // all the side-specific logic is already wrapped by the action being conveyed by this task
-    private GridAction run(Grid grid, Object... args) {
-        List<GridUUID> senderIDs = (List<GridUUID>)args[1];
         GridAction action = (GridAction)args[0];
-        Set<Griddable<?>> senders = new HashSet<>();
-        for(GridUUID id : senderIDs) {
-            Griddable<?> source = id.getTargetSource(grid);
-            if(source == null) continue;
-            senders.add(source);
-        }
-        if(senders.isEmpty()) {
-            grid.warn("Skipped sending wrapped request for " + action + " - The supplied collection of senders couldn't be re-addressed.");
-            return GridAction.RESPONSE_FAIL_CANCELLED;
-        }
-        getRunner().in(grid).action(action)
-            .from(senders.toArray(new Griddable<?>[senders.size()]))
-            .withArguments((List<Object>)args[2])
-            .executeImmediately();
-        return GridAction.RESPONSE_SUCCESS;
+        Object[] taskArgs = ((List<Object>)args[2]).toArray();
+        GridActionTask task = action.getTask();
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handling request " + task + " with arguments: " + task.collectArgsAsString(taskArgs));
+        return task.executeAsClient(grid, taskArgs).broadcast(grid, taskArgs);
     }
-
-    private ActionRunner getRunner() {
-        if(runner == null) runner = new ActionRunner();
-        return runner;
-    }
-    
 }

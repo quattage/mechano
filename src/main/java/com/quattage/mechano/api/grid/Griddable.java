@@ -61,6 +61,11 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
      */
     GriddableTerminus provideTerminus();
 
+    @Override
+    default Griddable<?> getTargetSource(LevelReader world) {
+        return this;
+    }
+
     @Override default boolean isDynamic() { return true; };
     default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
 

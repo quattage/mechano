@@ -2,6 +2,7 @@
 
     import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -141,11 +142,15 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
         }
 
         public void info(String msg) {
-            Grid.LOGGER.info("(" + getDistPrefix() + ", " + getDimensionName() + ") " + msg);
+            Grid.LOGGER.info("(" + getDimensionName() + ") " + msg);
         }
 
         public void warn(String msg) {
-            Grid.LOGGER.warn("(" + getDistPrefix() + ", " + getDimensionName() + ") " + msg);
+            Grid.LOGGER.warn("(" + getDimensionName() + ") " + msg);
+        }
+
+        public void debug(String msg) {
+            Grid.LOGGER.debug("(" + getDimensionName() + ") " + msg);
         }
 
         @Override
@@ -153,7 +158,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return world.dimension().location().toString();
         }
 
-        protected abstract String getDistPrefix();
         protected abstract void onLoad();
         protected abstract void onUnload();
         protected abstract void tick();
@@ -170,7 +174,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return preSize > getLinkCount();
         }
 
-        public boolean addLink(ComponentLink<?> link) {
+        public GridAction addLink(ComponentLink<?> link) {
             Objects.requireNonNull(link);
             if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while adding link - The provided link doesn't have a start and/or end ID configured!");
             List<ComponentLink<?>> linksAt = links.get(link.getStart());
@@ -178,42 +182,42 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
                 linksAt = new ArrayList<ComponentLink<?>>();
                 linksAt.add(link);
                 links.put(link.getStart(), linksAt);
-                return true;
+                return GridAction.RESPONSE_SUCCESS;
             }
-            if(linksAt.contains(link)) return false;
+            if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
             if(linksAt.size() >= AncillaryNode.MAX_SHARED_OCCUPANCY) {
                 warn("Skipped adding " + link + " because this UUID has already reached the maximum number of shared components.");
-                return false;
+                return GridAction.RESPONSE_FAIL_ELEMENT_FULL;
             }
             linksAt.add(link);
-            return true;
+            return GridAction.RESPONSE_SUCCESS;
         }
 
-        public boolean removeLink(ComponentLink<?> link) {
+        public GridAction removeLink(ComponentLink<?> link) {
             Objects.requireNonNull(link);
             if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while removing link - The provided link doesn't have a start and/or end ID configured!");
             List<ComponentLink<?>> linksAt = links.get(link.getStart());
-            if(linksAt == null || linksAt.isEmpty()) return false;
+            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_REFERRENT_MISSING;
             boolean removed = linksAt.remove(link);
-            if(!removed) return false;
+            if(!removed) return GridAction.RESPONSE_FAIL_CANCELLED;
             if(linksAt.isEmpty()) {
                 links.remove(link.getStart());
                 links.trim();
             }
-            return true;
+            return GridAction.RESPONSE_SUCCESS;
         }
 
-        public boolean removeLinksBelongingTo(AncillaryNode node) {
+        public GridAction removeLinksBelongingTo(AncillaryNode node) {
             Objects.requireNonNull(node);
             if(node.getSource() == null) {
                 Mechano.LOGGER.warn("Skipped removing links belonging to " + node + " - This node is not bound to a valid griddable.");
-                return false;
+                return GridAction.RESPONSE_FAIL_GENERIC;
             }
             GridUUID addr = getAddressFor(node.getSource(), node);
             List<ComponentLink<?>> linksAt = links.remove(addr);
-            if(linksAt == null) return false;
+            if(linksAt == null) return GridAction.RESPONSE_FAIL_REFERRENT_MISSING;
             links.trim();
-            return true;
+            return GridAction.RESPONSE_SUCCESS;
         }
 
         public List<ComponentLink<?>> getLinksBelongingTo(GridIdentifiable<?> obj) {
@@ -310,9 +314,23 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return source != null && source.getCircuit() != null;
         }
 
+        public String writeAllLinks() {
+            if(links.isEmpty()) return "Links[Empty]";
+            String out = "Links[\n";
+            for(Map.Entry<GridUUID, List<ComponentLink<?>>> entry : links.entrySet()) {
+                GridUUID id = entry.getKey();
+                out += "\t- " + id + ":\n";
+                for(ComponentLink<?> link : entry.getValue())
+                    out += "\t\t* " + link + "\n";
+                out = out.substring(0, out.length() - 1);
+                out += "\n";
+            }
+            return out + "]";
+        }
+
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "[" + getDistPrefix() + ", " + getDimensionName() + "]";
+            return getClass().getSimpleName() + "[" + getDimensionName() + "]";
         }
 
         public ActionRunner initiateTask(GridAction action) {

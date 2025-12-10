@@ -1,5 +1,9 @@
 package com.quattage.mechano.foundation.tracking;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,6 +45,36 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 public interface TrackedObject extends ScopeSpecifier {
 
     float DEFAULT_MASS = 65535f;
+
+    
+
+    static Set<ServerPlayer> collectTrackers(ServerLevel world, Collection<TrackedObject> objs) {
+        Set<ServerPlayer> senders = new HashSet<>();
+        for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
+            for(TrackedObject obj : objs) {
+                if(obj == null) continue;
+                if(obj.isBeingTrackedBy(sp)) {
+                    senders.add(sp);
+                    break;
+                }
+            }
+        }
+        return senders;
+    }
+
+    static Set<ServerPlayer> collectTrackers(ServerLevel world, TrackedObject[] objs) {
+        Set<ServerPlayer> senders = new HashSet<>();
+        for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
+            for(TrackedObject obj : objs) {
+                if(obj == null) continue;
+                if(obj.isBeingTrackedBy(sp)) {
+                    senders.add(sp);
+                    break;
+                }
+            }
+        }
+        return senders;
+    }
 
     /**
      * Sends the provided packet to all clients that can see or are loading this

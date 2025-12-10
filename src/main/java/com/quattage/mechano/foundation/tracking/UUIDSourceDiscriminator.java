@@ -186,6 +186,7 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
     }
 
     private GridUUID createUUID(CompoundTag tag) {
+        if(clazz == null) throw new NullPointerException("Cannot instantiate GridUUID '" + this + "' because this enum member hasn't been configured!");
         try {
             if(tagCtor.refersTo(null)) tagCtor = new WeakReference<>(clazz.getDeclaredConstructor(CompoundTag.class));
             return tagCtor.get().newInstance(tag);
@@ -199,6 +200,7 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
     }
 
     private GridUUID createUUID(ByteBuf buffer) {
+        if(clazz == null) throw new NullPointerException("Cannot instantiate GridUUID " + this + " because this enum member hasn't been configured!");
         try {
             if(byteBufCtor.refersTo(null)) byteBufCtor = new WeakReference<>(clazz.getDeclaredConstructor(ByteBuf.class));
             return byteBufCtor.get().newInstance(buffer);
@@ -212,6 +214,7 @@ public enum UUIDSourceDiscriminator implements StringRepresentable {
     }
 
     private GridUUID createUUID(Dynamic<?> dyn) {
+        if(clazz == null) throw new NullPointerException("Cannot instantiate GridUUID " + this + " because this enum member hasn't been configured!");
         try {
             if(dynamicCtor.refersTo(null)) dynamicCtor = new WeakReference<>(clazz.getDeclaredConstructor(Dynamic.class));
             return dynamicCtor.get().newInstance(dyn);

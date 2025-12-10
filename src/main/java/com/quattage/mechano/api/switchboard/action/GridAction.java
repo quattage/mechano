@@ -4,11 +4,9 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +18,6 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
-import com.quattage.mechano.api.switchboard.task.GridTaskExecuteEvent;
 import com.quattage.mechano.api.switchboard.task.LinkJointsTask;
 import com.quattage.mechano.api.switchboard.task.RequestActionTask;
 import com.quattage.mechano.foundation.tracking.GridUUID;
@@ -28,6 +25,7 @@ import com.quattage.mechano.foundation.tracking.TrackedObject;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionResult;
@@ -42,24 +40,21 @@ public enum GridAction implements StringRepresentable {
     TASK_LINK_JOINTS                      ( GridActionType.TASK_GENERIC, LinkJointsTask.class ),
     TASK_REQUEST                          ( GridActionType.TASK_GENERIC, RequestActionTask.class ),
 
-    TASK_PASSTHROUGH                      ( GridActionType.RESPONSE_SUCCESS, null),
-
     RESPONSE_SUCCESS                      ( GridActionType.RESPONSE_SUCCESS, null),
-    RESPONSE_DEFERED                      ( GridActionType.RESPONSE_SUCCESS, null),
     RESPONSE_FAIL_DUPLICATE_ELEMENT       ( GridActionType.RESPONSE_FAIL_SOFT, null),
+    RESPONSE_FAIL_ELEMENT_FULL            ( GridActionType.RESPONSE_FAIL_SOFT, null),
     RESPONSE_FAIL_TOO_CLOSE               ( GridActionType.RESPONSE_FAIL_SOFT, null),
     RESPONSE_FAIL_TOO_FAR                 ( GridActionType.RESPONSE_FAIL_SOFT, null),
     RESPONSE_FAIL_INCOMPATIBLE            ( GridActionType.RESPONSE_FAIL_SOFT, null),
     RESPONSE_FAIL_CANCELLED               ( GridActionType.RESPONSE_FAIL_HARD, null),
     RESPONSE_FAIL_DIM_MISMATCH            ( GridActionType.RESPONSE_FAIL_HARD, null),
     RESPONSE_FAIL_REFERRENT_MISSING       ( GridActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_REFERRENT_MISSING_START ( GridActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_REFERRENT_MISSING_END   ( GridActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_REFERRENT_MISSING_BOTH  ( GridActionType.RESPONSE_FAIL_HARD, null),
     RESPONSE_FAIL_GENERIC                 ( GridActionType.RESPONSE_FAIL_SOFT, null),
     RESPONSE_TASK_CANCELLED               ( GridActionType.RESPONSE_FAIL_HARD, null),
 
     NONE                                  ( GridActionType.NONE, null );
+
+    public static final boolean VERBOSE_LOGS = true;
 
     public static void logUnhandled(@Nullable GridAction action, @Nullable Object o) {
         Mechano.LOGGER.error(("Response type '" + action + "' is not ") 
@@ -89,12 +84,82 @@ public enum GridAction implements StringRepresentable {
         }
     }
 
-    public @Nullable GridActionTask getTask() {
-        return task;
+    /**
+     * Sends a packet to schedule this GridAction's associated {@link GridActionTask task},
+     * should one exist. The packet is always sent to the opposite side that this method was called from.
+     * @param grid The grid to use when getting the level, which is used to determine the side
+     * @param trackers A collection of ServerPlayer instances, used for targeting clients on the server. Can be <code>null</code> 
+     * to send packets to all clients. Ignore this if you're calling this method on the client.
+     * @param args The arguments conforming to the {@link GridActionTask#getArgumentTemplate() argument template} of this 
+     * GridAction's {@link GridActionTask task}
+     * @see #broadcastBelligerent(Grid, Collection, Object[])
+     */
+    public GridAction broadcast(Grid grid, @Nullable Collection<ServerPlayer> trackers, @Nullable Object[] args) {
+        if(args == null) args = new Object[0];
+        if(task == null) return this;
+        return broadcastBelligerent(grid, trackers, task.validateArguments(args));
+    }
+
+    /**
+     * Sends a packet to schedule this GridAction's associated {@link GridActionTask task},
+     * should one exist. The packet is always sent to the opposite side that this method was called from.
+     * @param grid The grid to use when getting the level, which is used to determine the side
+     * @param trackers A collection of ServerPlayer instances, used for targeting clients on the server. Can be <code>null</code> 
+     * to send packets to all clients. Ignore this if you're calling this method on the client.
+     * @param args The arguments conforming to the {@link GridActionTask#getArgumentTemplate() argument template} of this 
+     * GridAction's {@link GridActionTask task}
+     * @see #broadcastBelligerent(Grid, Object[])
+     */
+    public GridAction broadcast(Grid grid, @Nullable Object[] args) {
+        if(args == null) args = new Object[0];
+        if(task == null) return this;
+        args = task.validateArguments(args);
+        return broadcastBelligerent(grid, task.validateArguments(args));
+    }
+
+    /**
+     * Sends a packet to schedule this GridAction's associated {@link GridActionTask task},
+     * should one exist. The packet is always sent to the opposite side that this method was called from.
+     * This method contains no validity checks to ensure that the arguments are passed correctly
+     * or that the packet being sent is not redundant.
+     * @param grid The grid to use when getting the level, which is used to determine the side
+     * @param trackers A collection of ServerPlayer instances, used for targeting clients on the server. Can be <code>null</code> 
+     * to send packets to all clients. Ignore this if you're calling this method on the client.
+     * @param args The arguments conforming to the {@link GridActionTask#getArgumentTemplate() argument template} of this 
+     * GridAction's {@link GridActionTask task}
+     */
+    public GridAction broadcastBelligerent(Grid grid, Collection<ServerPlayer> trackers, @Nullable Object[] args) {
+        if(grid.getWorld().isClientSide) CatnipServices.NETWORK.sendToServer(new GridActionC2SPacket(this, args));
+        else {
+            if(trackers == null || trackers.isEmpty()) CatnipServices.NETWORK.sendToAllClients(new GridActionS2CPacket(this, args));
+            else CatnipServices.NETWORK.sendToClients(trackers, new GridActionS2CPacket(this, args));
+        }
+        return this;
+    }
+
+    /**
+     * Sends a packet to schedule this GridAction's associated {@link GridActionTask task},
+     * should one exist. The packet is always sent to the opposite side that this method was called from.
+     * This method contains no validity checks to ensure that the arguments are passed correctly
+     * or that the packet being sent is not redundant.
+     * @param grid The grid to use when getting the level, which is used to determine the side
+     * @param trackers A collection of ServerPlayer instances, used for targeting clients on the server. Can be <code>null</code> 
+     * to send packets to all clients. Ignore this if you're calling this method on the client.
+     * @param args The arguments conforming to the {@link GridActionTask#getArgumentTemplate() argument template} of this 
+     * GridAction's {@link GridActionTask task}
+     */
+    public GridAction broadcastBelligerent(Grid grid, @Nullable Object[] args) {
+        if(grid.getWorld().isClientSide) CatnipServices.NETWORK.sendToServer(new GridActionC2SPacket(this, args));
+        else CatnipServices.NETWORK.sendToAllClients(new GridActionS2CPacket(this, args));
+        return this;
+    }
+
+    public GridActionTask getTask() {
+        return this.task;
     }
 
     public GridActionType getActionType() {
-        return type;
+        return this.type;
     }
 
     public boolean isTask() {
@@ -248,12 +313,11 @@ public enum GridAction implements StringRepresentable {
                 trackerIDs.add(gobj.getUUID());
             }
             this.args = new Object[] {
-                this.action, 
-                trackerIDs,
-                Arrays.asList(internalArgs)
+                this.action, trackerIDs,
+                Arrays.asList(this.action.getTask().validateArguments(internalArgs))
             };
             this.action = GridAction.TASK_REQUEST;
-            CatnipServices.NETWORK.sendToServer(new GridActionC2SPacket(GridAction.TASK_REQUEST, args));
+            action.broadcastBelligerent((ClientGrid)grid, args);
             return this.action;
         }
 
@@ -261,52 +325,23 @@ public enum GridAction implements StringRepresentable {
         public GridAction get() {
             Objects.requireNonNull(grid);
             GridActionTask task = action.getTask();
-            GridActionTask.validateArguments(action, task, args);
             if(grid instanceof ClientGrid client) {
                 GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Client(client, action));
                 if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-                GridAction response = task.executeAsClient(client, args);
-                if(!response.isTask() || response.getActionType().indicatesFailure())
-                    return response;
-                CatnipServices.NETWORK.sendToServer(new GridActionC2SPacket(response, args));
-                return response;
+                return task.executeAsClient(client, args).broadcast(client, args);
             }
             if(grid instanceof ServerGrid server) {
                 GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
                 if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-                GridAction response = task.executeAsServer(server, args);
-                if(!response.isTask() || response.getActionType().indicatesFailure())
-                    return response;
-                sendToTrackers(response, server);
-                return response;
+                return task.executeAsServer(server, args).broadcast(server, TrackedObject.collectTrackers((ServerLevel)grid.getWorld(), trackers), args);
             }
             return GridAction.RESPONSE_FAIL_GENERIC;
         }
-
-        private void sendToTrackers(GridAction response, ServerGrid grid) {
-            if(trackers == null || trackers.length <= 0) {
-                CatnipServices.NETWORK.sendToAllClients(new GridActionS2CPacket(response, args));
-                return;
-            }
-            Set<ServerPlayer> collectedTrackers = new HashSet<>();
-            for(ServerPlayer sp : grid.getServer().getPlayerList().getPlayers()) {
-                for(int x = 0; x < trackers.length; x++) {
-                    TrackedObject obj = trackers[x];
-                    if(obj.isBeingTrackedBy(sp)) {
-                        collectedTrackers.add(sp);
-                        break;
-                    }
-                }
-            }
-            CatnipServices.NETWORK.sendToClients(collectedTrackers, new GridActionS2CPacket(response, args));
-        }
     }
 
-    
-
     public static class GridActionTaskArgumentParseException extends RuntimeException {
-        public GridActionTaskArgumentParseException(GridAction action, GridActionTask task, String message) {
-            super("Error while parsing arguments for '" + task.getClass().getSimpleName() + "' from action '" + action + "' - " + message);
+        public GridActionTaskArgumentParseException(GridActionTask task, String message) {
+            super("Error while parsing arguments for '" + task.getClass().getSimpleName() + " - " + message);
         }
     }
 }

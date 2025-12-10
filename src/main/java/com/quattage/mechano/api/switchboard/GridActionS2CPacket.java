@@ -3,6 +3,7 @@ package com.quattage.mechano.api.switchboard;
 import java.util.Objects;
 
 import com.quattage.mechano.MechanoPackets;
+import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridActionTask;
@@ -16,7 +17,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public record GridActionS2CPacket(GridAction response, Object[] args) implements ClientboundPacketPayload {
+public record GridActionS2CPacket(GridAction action, Object[] args) implements ClientboundPacketPayload {
 
     public static final StreamCodec<ByteBuf, GridActionS2CPacket> STREAM_CODEC = new StreamCodec<>() {
 
@@ -27,7 +28,7 @@ public record GridActionS2CPacket(GridAction response, Object[] args) implements
                 throw new IndexOutOfBoundsException("Failed while decoding response task - response index " + idx 
                     + " is out of bounds for a response registry of " + GridAction.values().length + " members!");
             }
-            GridAction response = GridAction.values()[buffer.readByte()];
+            GridAction response = GridAction.values()[idx];
             GridActionTask task = response.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while decoding response task '" + response + "' - This response type didn't produce a task!");
             Object[] decodedArgs = null;
@@ -39,17 +40,17 @@ public record GridActionS2CPacket(GridAction response, Object[] args) implements
 
         @Override 
         public void encode(ByteBuf buffer, GridActionS2CPacket value) { 
-            buffer.writeByte(value.response.ordinal()); 
-            GridActionTask task = value.response.getTask();
-            if(task == null) throw new IllegalArgumentException("Failed while encoding response task '" + value.response + "' - This response type didn't produce a task!");
+            buffer.writeByte(value.action.ordinal()); 
+            GridActionTask task = value.action.getTask();
+            if(task == null) throw new IllegalArgumentException("Failed while encoding response task '" + value.action + "' - This response type didn't produce a task!");
             try { task.dynamicEncode(value.args, buffer); }
-            catch(RuntimeException e) { throw new GridActionEncodeException(e, value.response); }
+            catch(RuntimeException e) { throw new GridActionEncodeException(e, value.action); }
         }
     };
 
-    public GridActionS2CPacket(GridAction response, Object[] args) {
-        Objects.requireNonNull(response);
-        this.response = response;
+    public GridActionS2CPacket(GridAction action, Object[] args) {
+        Objects.requireNonNull(action);
+        this.action = action;
         this.args = args == null ? new Object[0] : args;
     }
 
@@ -61,8 +62,10 @@ public record GridActionS2CPacket(GridAction response, Object[] args) implements
     @Override
     @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
-        GridActionTask task = response.getTask();
-        task.executeAsClient(Grid.client(player), args);
+        GridActionTask task = action.getTask();
+        ClientGrid grid = Grid.client(player);
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handling execution of " + action + " with arguments: " + task.collectArgsAsString(args));
+        task.executeAsClient(grid, args);
     }
 }
 

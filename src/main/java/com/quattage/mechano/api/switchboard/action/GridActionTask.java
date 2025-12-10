@@ -34,28 +34,40 @@ public interface GridActionTask {
     void dynamicEncode(Object[] args, ByteBuf buffer);
     @Nullable Object[] dynamicDecode(ByteBuf buffer);
 
-    static void validateArguments(GridAction action, GridActionTask task, @Nullable Object... args) {
-        Class<?>[] template = task.getArgumentTemplate();
+    /**
+     * Validates this GridActionTask against the series of arguments provided by its {@link #getArgumentTemplate template}.
+     * Individual tasks may override this method to provide fault correction capabilities or additional throws.
+     * @param args The array of arguments that this task will be run with
+     * @return The arguments array. Most of the time, this will be the exact same instance, but some implementations may
+     * modify this arguments array to replace references. ex. correcting <code>nulls</code>.
+     */
+    default Object[] validateArguments(@Nullable Object... args) {
+        Class<?>[] template = getArgumentTemplate();
         if(template == null) template = new Class[0];
         if(args == null) args = new Object[0];
         if(template.length != args.length) {
-            throw new GridActionTaskArgumentParseException(action, task, "Incorrect number of arguments supplied! (got " 
+            throw new GridActionTaskArgumentParseException(this, "Incorrect number of arguments supplied! (got " 
                 + args.length + ", expected " + template.length + ")");
         }
         for(int x = 0; x < template.length; x++) {
             Class<?> expected = template[x];
             Object arg = args[x];
-            if(arg == null || expected.isInstance(arg)) continue;
-            throw new GridActionTaskArgumentParseException(action, task, "Bad argument type at position " + x + " - expected '" 
+            if(expected.isInstance(arg)) continue;
+            if(expected == GridAction.class && arg == null) {
+                args[x] = GridAction.RESPONSE_SUCCESS;
+                continue;
+            }
+            throw new GridActionTaskArgumentParseException(this, "Bad argument type at position " + x + " - expected '" 
                 + expected.getSimpleName() + "', got '" + (arg == null ? ("null'!") : (arg.getClass().getSimpleName() + "'")));
         }
+        return args;
     }
 
     @ApiStatus.NonExtendable
     default GridAction executeAsServer(ServerGrid grid, Object... args) { return executeAsServer(0, grid, args); }
 
     /**
-     * The logic contained within this method is run once per task and shouldn't access or store/modify
+     * The logic contained within this method is run once per task and shouldn't access or store
      * any non-static variables within the scope of this class. <p>
      * @param attempt Attempt number. Can safely be ignored for most implementations. This number will
      * be <code>> 0</code> in cases where this task is scheduled in a buffer that failed a previous run.
@@ -70,7 +82,7 @@ public interface GridActionTask {
     default GridAction executeAsClient(ClientGrid grid, Object... args) { return executeAsClient(0, grid, args); }
 
     /**
-     * The logic contained within this method is run once per task and shouldn't access or store/modify
+     * The logic contained within this method is run once per task and shouldn't access or store
      * any non-static variables within the scope of this class. <p>
      * <h3>Remember to annotate client-specific implementations with the appropriate <code>@OnlyIn</code></h3>
      * @param attempt Attempt number. Can safely be ignored for most implementations. This number will
@@ -112,4 +124,6 @@ public interface GridActionTask {
         for(Object obj : args) summary += "\n\n * " + obj.getClass().getSimpleName() + " :: " + obj.toString() + ", ";
         return summary.substring(0, summary.length() - 3);
     }
+
+    
 }

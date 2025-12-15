@@ -17,7 +17,7 @@ import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.foundation.WorldlyObject;

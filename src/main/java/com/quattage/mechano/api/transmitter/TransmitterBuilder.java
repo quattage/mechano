@@ -1,7 +1,7 @@
 package com.quattage.mechano.api.transmitter;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
+import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.AbstractBuilder;
 import com.tterrag.registrate.builders.BuilderCallback;

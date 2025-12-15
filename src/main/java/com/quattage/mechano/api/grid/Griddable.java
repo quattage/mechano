@@ -11,12 +11,12 @@ import org.joml.Vector3f;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.gui.GuiGraphics;
@@ -39,7 +39,7 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * Implementations are expected to provide:
  * <ul>
  *  <li> a {@link CircuitProvider#getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
- *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link UUIDSourceDiscriminator data sources} for more info</li>
+ *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link UUIDSourceType data sources} for more info</li>
  *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic

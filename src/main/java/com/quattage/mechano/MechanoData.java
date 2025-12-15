@@ -6,13 +6,17 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
+import com.quattage.mechano.foundation.tracking.GridUUID;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
+
 
 // DataComponents, DataAttachments, and Capabilities
 public class MechanoData {
@@ -27,11 +31,16 @@ public class MechanoData {
             Mechano.ID + "_grid", () -> AttachmentType
                 .builder(Grid::createNew)
                 .build()
-                // TODO CODEC SERIALIZE
     );
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID>> UUID = 
+        MechanoData.COMPONENT_REGISTRY.registerComponentType(
+            "grid_identifier",
+            b -> b.persistent(UUIDSourceType.CODEC).networkSynchronized(UUIDSourceType.STREAM_CODEC)
+    );
+
+
     public static void register(IEventBus modBus) {
-        UUIDSourceDiscriminator.register(modBus);
         MechanoData.ATTACHMENT_REGISTRY.register(modBus);
         MechanoData.COMPONENT_REGISTRY.register(modBus);
     }

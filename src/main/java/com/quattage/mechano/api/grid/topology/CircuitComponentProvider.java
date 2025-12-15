@@ -1,6 +1,7 @@
 package com.quattage.mechano.api.grid.topology;
 
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 

@@ -14,9 +14,11 @@ import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.functional.Resistor;
 import com.quattage.mechano.api.grid.solver.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.Node.GroundedJoint;
-import com.quattage.mechano.api.grid.topology.Node.Joint;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Node.GroundedJoint;
+import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

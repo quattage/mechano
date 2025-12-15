@@ -13,7 +13,7 @@ import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
@@ -155,8 +155,8 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
 
-    public UUIDSourceDiscriminator getSourceScope() {
-        return UUIDSourceDiscriminator.VOXEL;
+    public UUIDSourceType getSourceScope() {
+        return UUIDSourceType.VOXEL;
     }
 
     @Override

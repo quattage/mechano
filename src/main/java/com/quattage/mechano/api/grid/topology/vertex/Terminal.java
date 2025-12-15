@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology;
+package com.quattage.mechano.api.grid.topology.vertex;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -9,6 +9,8 @@ import javax.annotation.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.topology.Circuit;
+import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.resources.ResourceLocation;

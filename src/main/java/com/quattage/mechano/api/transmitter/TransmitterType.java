@@ -5,7 +5,7 @@ import java.util.Objects;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
+import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.foundation.MechanoRegistrate;
 import com.tterrag.registrate.util.nullness.NonNullBiFunction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;

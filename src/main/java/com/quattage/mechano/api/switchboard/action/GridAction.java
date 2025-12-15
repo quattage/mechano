@@ -190,7 +190,7 @@ public enum GridAction implements StringRepresentable {
             (task == null ? "no task)" : task.getClass().getSimpleName() + ")");
     }
 
-    public ResourceLocation getKey() {
+    public ResourceLocation asResource() {
         return Mechano.asResource(this.getSerializedName());
     }
 

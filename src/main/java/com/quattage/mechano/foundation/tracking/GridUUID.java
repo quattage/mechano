@@ -12,7 +12,7 @@ import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator.ScopeSpecifier;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType.ScopeSpecifier;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
  * A unique identifier which points to a {@link CircuitComponent} object.
- * Serialized using the {@link UUIDSourceDiscriminator}
+ * Serialized using the {@link UUIDSourceType}
  */
 public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridUUID> {
 
@@ -90,6 +90,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
     @Nullable public Griddable<?> getTargetSource(Grid grid) {
         return getTargetSource(grid.getWorld());
     }
+    @Override
     @Nullable public abstract Griddable<?> getTargetSource(LevelReader world);
 
     public final GridHierarchy getReferentType() {
@@ -182,8 +183,8 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public UUIDSourceDiscriminator getSourceScope() {
-            return UUIDSourceDiscriminator.VOXEL;
+        public UUIDSourceType getSourceScope() {
+            return UUIDSourceType.VOXEL;
         }
 
         @Override
@@ -269,8 +270,8 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
-        public UUIDSourceDiscriminator getSourceScope() {
-            return UUIDSourceDiscriminator.ENTITY;
+        public UUIDSourceType getSourceScope() {
+            return UUIDSourceType.ENTITY;
         }
 
         @Override

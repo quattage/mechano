@@ -2,14 +2,12 @@ package com.quattage.mechano;
 
 import com.quattage.mechano.api.catenary.Catenaries;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.Node.Joint;
+import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
 import com.quattage.mechano.api.transmitter.TransmitterEntry;
 
 import net.neoforged.bus.api.IEventBus;
 
 public class MechanoTransmitters {
-
-    
 
     public static final TransmitterEntry<CircuitComponent> HOOKUP = 
         Mechano.REGISTRATE.transmitter("hookup")

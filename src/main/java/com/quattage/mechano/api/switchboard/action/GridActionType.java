@@ -35,6 +35,17 @@ public enum GridActionType implements StringRepresentable {
         return !indicatesSuccess();
     }
 
+    /**
+     * Indicates whether or not the action represented by this type
+     * ended prematurely or reached a state of completion. <p>
+     * Actions of type <code>RESPONSE_FAIL_SOFT</code> do not consume
+     * their actions, since 
+     * @return <code>true</code> if this action is consumed
+     */
+    public boolean isConsumed() {
+        return this != RESPONSE_FAIL_SOFT;
+    }
+
     public boolean isVisible() {
         return colors != null;
     }

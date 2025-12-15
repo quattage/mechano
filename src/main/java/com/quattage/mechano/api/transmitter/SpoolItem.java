@@ -7,19 +7,19 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
+import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.MapLikeItemHoldable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
 import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -79,7 +79,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
      */
     public static boolean hasAwaiting(Player player) {
         for(ItemStack stack : player.getInventory().items) {
-            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(UUIDSourceDiscriminator.ATTACHMENT))
+            if(stack != null && stack.getItem() instanceof SpoolItem && stack.has(MechanoData.UUID))
                 return true;
         }
         return false;
@@ -92,7 +92,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
             return InteractionResultHolder.fail(JackSelector.getInstance().getHeldCircuitProvider(player));
         ItemStack stack = JackSelector.getInstance().getHeldCircuitProvider(player);
         ClientGrid grid = Grid.client(player);
-        if(!stack.has(UUIDSourceDiscriminator.ATTACHMENT))
+        if(!stack.has(MechanoData.UUID))
             return handleFirstRightClick(grid, player, stack, JackSelector.getInstance().target());
         return handleSecondRightClick(grid, player, stack, JackSelector.getInstance().target());
     }
@@ -116,7 +116,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         CircuitComponent component = grid.findComponent(sourceID);
         if(component == null || (component != initialTarget))
             return InteractionResultHolder.fail(stack);
-        stack.set(UUIDSourceDiscriminator.ATTACHMENT, sourceID);
+        stack.set(MechanoData.UUID, sourceID);
         return InteractionResultHolder.success(stack);
     }
 
@@ -127,7 +127,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
     private InteractionResultHolder<ItemStack> handleSecondRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode subsequentTarget) {
         if(subsequentTarget == null) 
             return InteractionResultHolder.fail(stack);
-        GridUUID initialTargetID = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
+        GridUUID initialTargetID = stack.get(MechanoData.UUID);
         AncillaryNode initialTarget = (AncillaryNode)grid.findComponent(initialTargetID);
         Griddable<?> initialSource = initialTarget.getSource();
         if(initialSource == null) {
@@ -144,7 +144,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
         GridUUID subsequentTargetID = grid.getAddressFor(subsequentSource, subsequentTarget);
         GridAction request = grid.initiateTask(GridAction.TASK_LINK_JOINTS)
             .from(initialSource, subsequentSource)
-            .withArguments(initialTargetID, subsequentTargetID, getTransmitter())
+            .withArguments(initialTargetID, subsequentTargetID, getTransmitter(), player.getUUID())
             .requestRun();
         if(GridAction.VERBOSE_LOGS) grid.debug("Initiated link interaction from " + player);
         return request.getResultHolder(stack);
@@ -153,13 +153,13 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
         if(!world.isClientSide) return;
-        GridUUID startAddress = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
+        GridUUID startAddress = stack.get(MechanoData.UUID);
         if(startAddress == null) return;
         
     }
 
     private void cancelAwaitingConnection(@Nullable GridUUID startAddress, @Nullable GridUUID endAddress, ItemStack stack) {
-        stack.remove(UUIDSourceDiscriminator.ATTACHMENT);
+        stack.remove(MechanoData.UUID);
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
         if(startAddress == null || endAddress == null) return;
@@ -168,10 +168,10 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
 
     @Override
     public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
-        if(!stack.has(UUIDSourceDiscriminator.ATTACHMENT)) return false;
-        GridUUID addr = stack.get(UUIDSourceDiscriminator.ATTACHMENT);
+        if(!stack.has(MechanoData.UUID)) return false;
+        GridUUID addr = stack.get(MechanoData.UUID);
         if(addr == null) return false;
-        stack.remove(UUIDSourceDiscriminator.ATTACHMENT);
+        stack.remove(MechanoData.UUID);
 
         // WireJack previous = addr.getAnchor((ClientLevel)player.level());
         // if(previous == null) {
@@ -196,7 +196,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
 
     @Override
     public boolean isNotReplaceableByPickAction(ItemStack stack, Player player, int inventorySlot) {
-        return stack.has(UUIDSourceDiscriminator.ATTACHMENT);
+        return stack.has(MechanoData.UUID);
     }
 
 
@@ -239,6 +239,6 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
     @Override
     @OnlyIn(Dist.CLIENT)
     public boolean shouldRenderSpecial(ItemStack stack) {
-        return stack.has(UUIDSourceDiscriminator.ATTACHMENT);
+        return stack.has(MechanoData.UUID);
     }
 }

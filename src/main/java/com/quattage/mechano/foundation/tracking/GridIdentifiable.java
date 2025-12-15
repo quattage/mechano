@@ -16,7 +16,22 @@ import net.minecraft.world.level.LevelReader;
 public interface GridIdentifiable<T extends GridUUID> {
 
     // TODO make this use a stream instead because this could have really bad iteration performance in worst case scenarios
-    static Set<ServerPlayer> collectTrackers(ServerLevel world, Collection<GridIdentifiable<? extends GridUUID>> objs) {
+    static Set<ServerPlayer> collectTrackers(ServerLevel world, Collection<GridIdentifiable<?>> objs) {
+        Set<ServerPlayer> senders = new HashSet<>();
+        for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
+            for(GridIdentifiable<?> id : objs) {
+                Griddable<?> source = id.getTargetSource(world);
+                if(source == null) continue;
+                if(source.isBeingTrackedBy(sp)) {
+                    senders.add(sp);
+                    break;
+                }
+            }
+        }
+        return senders;
+    }
+
+    static Set<ServerPlayer> collectTrackers(ServerLevel world, GridIdentifiable<?>... objs) {
         Set<ServerPlayer> senders = new HashSet<>();
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
             for(GridIdentifiable<?> id : objs) {

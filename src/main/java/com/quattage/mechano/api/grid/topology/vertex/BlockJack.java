@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.ancillary;
+package com.quattage.mechano.api.grid.topology.vertex;
 
 import org.joml.Vector3d;
 

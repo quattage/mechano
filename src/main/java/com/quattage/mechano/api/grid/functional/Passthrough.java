@@ -8,8 +8,8 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
-import com.quattage.mechano.api.grid.topology.Node;
-import com.quattage.mechano.api.grid.topology.Terminal;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 /**
  * A component that does literally nothing

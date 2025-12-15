@@ -6,7 +6,7 @@ import com.quattage.mechano.api.grid.solver.NodalSnapshot;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
-import com.quattage.mechano.api.grid.topology.Terminal;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 public class Resistor extends StampingComponent {
 

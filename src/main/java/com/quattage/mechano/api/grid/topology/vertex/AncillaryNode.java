@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.ancillary;
+package com.quattage.mechano.api.grid.topology.vertex;
 
 import java.util.Collection;
 import java.util.List;
@@ -18,8 +18,6 @@ import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.GridHierarchy.SourceIdentifier;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.Node;
-import com.quattage.mechano.api.grid.topology.Terminal;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.quattage.mechano.foundation.tracking.GridUUID;

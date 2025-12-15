@@ -13,9 +13,9 @@ import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
-import com.quattage.mechano.api.grid.topology.Node;
-import com.quattage.mechano.api.grid.topology.Terminal;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.util.StringRepresentable;

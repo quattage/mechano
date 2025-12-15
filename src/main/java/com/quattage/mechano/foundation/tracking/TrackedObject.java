@@ -12,7 +12,7 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.numeric.Duo;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator.ScopeSpecifier;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType.ScopeSpecifier;
 import com.simibubi.create.foundation.mixin.accessor.LevelRendererAccessor;
 
 import net.minecraft.client.Minecraft;

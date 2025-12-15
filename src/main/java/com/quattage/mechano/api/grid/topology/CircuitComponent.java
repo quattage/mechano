@@ -17,6 +17,8 @@ import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.GridHierarchy.ComponentHierarchyInvalidException;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.solver.NodalSnapshot;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 

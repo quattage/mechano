@@ -11,6 +11,8 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -125,5 +127,10 @@ public interface GridActionTask {
         return summary.substring(0, summary.length() - 3);
     }
 
-    
+
+    @OnlyIn(Dist.CLIENT)
+    default LocalPlayer self() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc == null ? null : mc.player;
+    }
 }

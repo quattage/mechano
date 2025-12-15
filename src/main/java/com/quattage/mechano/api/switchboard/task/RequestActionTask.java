@@ -13,7 +13,7 @@ import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridActionTask;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.UUIDSourceDiscriminator;
+import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -44,7 +44,7 @@ public class RequestActionTask implements GridActionTask {
         buffer.writeInt(action.ordinal());
         List<GridUUID> senders = (List<GridUUID>)args[1];
         buffer.writeInt(senders.size());
-        for(GridUUID addr : senders) UUIDSourceDiscriminator.write(addr, buffer);
+        for(GridUUID addr : senders) UUIDSourceType.write(addr, buffer);
         Object[] taskArgs = ((List<Object>)args[2]).toArray();
         action.getTask().dynamicEncode(taskArgs, buffer);
     }
@@ -55,7 +55,7 @@ public class RequestActionTask implements GridActionTask {
         int sendersLength = buffer.readInt();
         List<GridUUID> senders = new ArrayList<>(sendersLength);
         for(int x = 0; x < sendersLength; x++)
-            senders.add(UUIDSourceDiscriminator.read(buffer));
+            senders.add(UUIDSourceType.read(buffer));
         List<Object> actionArgs = Arrays.asList(action.getTask().dynamicDecode(buffer));
         Object[] output = new Object[] { action, senders, actionArgs };     
         return output;

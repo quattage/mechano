@@ -11,8 +11,10 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.ancillary.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.ancillary.WireJack;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
@@ -327,4 +329,5 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         }
     }
 }
+    
 

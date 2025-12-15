@@ -1,7 +1,7 @@
 package com.quattage.mechano.api.grid.solver;
 
-import com.quattage.mechano.api.grid.topology.Node;
-import com.quattage.mechano.api.grid.topology.Terminal;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;

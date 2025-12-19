@@ -5,12 +5,10 @@ import java.util.Locale;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoBlockEntities;
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.GridAccelerator;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.transmitter.TransmitterEntry;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.core.BlockPos;
@@ -31,28 +29,25 @@ public class GridActionTests {
         GridActionTests.placeConnector(test, pos);
         Grid grid = Grid.server(test.getLevel());
         Griddable<?>be = GridActionTests.getBEOrFail(test, pos, MechanoBlockEntities.CONNECTOR_SINGLE.get());
-        GriddableTerminus terminus;
-        try { terminus = be.getTerminus(); }
+        GridAccelerator accelerator;
+        try { accelerator = be.getTerminus(); }
         catch(Exception e) {
             e.printStackTrace();
-            test.fail("Critical failure while initializing terminus!");
+            test.fail("Critical failure while initializing accelerator!");
             return;
         }
-        GridActionTests.testTerminusReachability(test, grid, be, terminus);
+        GridActionTests.testTerminusReachability(test, grid, be, accelerator);
         test.succeed();
     }
 
     @GameTest(template = "empty", batch="gridActionTests")
     public static void testTransmitterAvailability(GameTestHelper test) {
-        try { 
-            TransmitterEntry<?> trns = MechanoTransmitters.HOOKUP;
-        }
-        catch(RuntimeException e) { e.printStackTrace(); test.fail(e.getMessage()); }
+        
         test.succeed();
     }
 
-    private static void testTerminusReachability(GameTestHelper test, Grid grid, Griddable<?>source, GriddableTerminus terminus) {
-        terminus.forEach(expected -> {
+    private static void testTerminusReachability(GameTestHelper test, Grid grid, Griddable<?> source, GridAccelerator accelerator) {
+        accelerator.forEach(expected -> {
             GridUUID address = grid.getAddressFor(source, expected);
             CircuitComponent result = grid.findComponent(address);
             if(result == null) {

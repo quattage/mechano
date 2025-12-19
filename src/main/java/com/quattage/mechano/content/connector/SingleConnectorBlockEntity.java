@@ -16,7 +16,7 @@ public class SingleConnectorBlockEntity extends ConnectorBlockEntity {
 
     @Override
     public void constructCircuit(CircuitFactory circuit) {
-        Node passive = circuit.newJoint();
+        Node passive = circuit.newNode();
         circuit.wireJack("Wire Attachment")
             .attachedTo(passive)
             .x(0).y(17).z(0)

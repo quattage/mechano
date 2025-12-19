@@ -103,7 +103,6 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
      */
     @OnlyIn(Dist.CLIENT)
     private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode initialTarget) {
-
         if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
             return InteractionResultHolder.fail(stack);
         Griddable<?> source = initialTarget.getSource();
@@ -111,7 +110,6 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
-
         GridUUID sourceID = grid.getAddressFor(source, initialTarget);
         CircuitComponent component = grid.findComponent(sourceID);
         if(component == null || (component != initialTarget))

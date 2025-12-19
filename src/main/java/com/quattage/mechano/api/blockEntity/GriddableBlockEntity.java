@@ -7,8 +7,8 @@ import org.joml.Vector3d;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.GridAccelerator;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
@@ -33,7 +33,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable<VoxelUUID>{
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
-    private final GriddableTerminus joints = new GriddableTerminus();
+    private final GridAccelerator joints = new GridAccelerator();
     private VoxelUUID addr;
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -91,7 +91,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override 
-    public GriddableTerminus provideTerminus() { 
+    public GridAccelerator provideTerminus() { 
         return joints.initializeFrom(getCircuit()); 
     }
 

@@ -5,10 +5,10 @@ import java.util.Objects;
 import com.quattage.mechano.MechanoPackets;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.switchboard.action.ActionTask;
+import com.quattage.mechano.api.switchboard.action.ActionType.GridActionDecodeException;
+import com.quattage.mechano.api.switchboard.action.ActionType.GridActionEncodeException;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridActionTask;
-import com.quattage.mechano.api.switchboard.action.GridActionType.GridActionDecodeException;
-import com.quattage.mechano.api.switchboard.action.GridActionType.GridActionEncodeException;
 
 import io.netty.buffer.ByteBuf;
 import net.createmod.catnip.net.base.ServerboundPacketPayload;
@@ -31,7 +31,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
                     + " is out of bounds for a response registry of " + GridAction.values().length + " members!");
             }
             GridAction response = GridAction.values()[idx];
-            GridActionTask task = response.getTask();
+            ActionTask task = response.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while decoding response task '" + response + "' - This response type didn't produce a task!");
             Object[] decodedArgs = null;
             try { decodedArgs = task.dynamicDecode(buffer); }
@@ -43,7 +43,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
         @Override 
         public void encode(ByteBuf buffer, GridActionC2SPacket value) { 
             buffer.writeByte(value.action.ordinal()); 
-            GridActionTask task = value.action.getTask();
+            ActionTask task = value.action.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while encoding response task '" + value.action + "' - This response type didn't produce a task!");
             try { task.dynamicEncode(value.args, buffer); }
             catch(RuntimeException e) { throw new GridActionEncodeException(e, value.action); }
@@ -64,9 +64,9 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
     @Override
     @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
-        GridActionTask task = action.getTask();
+        ActionTask task = action.getTask();
         ServerGrid grid = Grid.server(player);
-        if(GridAction.VERBOSE_LOGS) grid.debug("Handling execution of " + action + " with arguments: " + task.collectArgsAsString(args));
-        task.executeAsServer(grid, args);
+        GridAction result = task.executeAsServer(grid, args);
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + " in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(args) + "\n\n** Result: \n(" + result.asResource() + ")");
     }
 }

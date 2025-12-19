@@ -2,8 +2,7 @@ package com.quattage.mechano.api.grid.functional;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.grid.solver.NodalSnapshot;
-import com.quattage.mechano.api.grid.topology.Circuit;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
@@ -33,15 +32,15 @@ public class Resistor extends StampingComponent {
     }
 
     @Override
-    public void stamp(Circuit circuit, NodalSnapshot snapshot) {
+    public void stamp(ServerGrid grid) {
         double g = 1d / (double)ohms;
-        int aI = terminals[0].getJoint().getIndex();
-        int bI = terminals[0].getJoint().getIndex();
-        if(aI >= 0) snapshot.stampMatrix(aI, aI, g);
-        if(bI >- 0) snapshot.stampMatrix(bI, bI, g);
+        int aI = terminals[0].getNode().getIndex();
+        int bI = terminals[0].getNode().getIndex();
+        if(aI >= 0) grid.stampMatrix(aI, aI, g);
+        if(bI >- 0) grid.stampMatrix(bI, bI, g);
         if(aI >= 0 && bI >= 0) {
-            snapshot.stampMatrix(aI, bI, -g);
-            snapshot.stampMatrix(bI, aI, -g);
+            grid.stampMatrix(aI, bI, -g);
+            grid.stampMatrix(bI, aI, -g);
         }
     }
 

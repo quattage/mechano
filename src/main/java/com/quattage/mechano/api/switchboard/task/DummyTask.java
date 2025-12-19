@@ -4,12 +4,12 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridActionTask;
 
 import io.netty.buffer.ByteBuf;
 
-public class DummyTask implements GridActionTask {
+public class DummyTask implements ActionTask {
 
     @Override
     public @Nullable Class<?>[] getArgumentTemplate() {

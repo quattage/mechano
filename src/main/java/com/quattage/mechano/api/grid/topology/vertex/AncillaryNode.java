@@ -1,6 +1,5 @@
 package com.quattage.mechano.api.grid.topology.vertex;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -43,7 +42,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  */
 public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyObject {
 
-    public static byte MAX_SHARED_OCCUPANCY = (byte)8;
+    public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
 
     private final String componentID;
     private @Nullable Griddable<?> source;
@@ -56,13 +55,48 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
         this.isVisible = isVisible;
     }
 
+    @Override
+    public boolean attach(Terminal pin) {
+        assertAttached();
+        return parent.attach(pin);
+    }
+
+    @Override
+    public boolean attach(Griddable<?> source, AncillaryNode jack) {
+        assertAttached();
+        return parent.attach(source, jack);
+    }
+
+    @Override
+    public boolean detach(Terminal pin) {
+        assertAttached();
+        return parent.detach(pin);
+    }
+
+    @Override
+    public boolean detach(Griddable<?> source, AncillaryNode jack) {
+        assertAttached();
+        return parent.detach(source, jack);
+    }
+
+    @Override
+    public List<AncillaryNode> getAncillaries() {
+        assertAttached();
+        return parent.getAncillaries();
+    }
+
+    @Override
+    public List<Terminal> getTerminals() {
+        assertAttached();
+        return parent.getTerminals();
+    }
+
     /**
      * Called during the initial population of the parent
      * circuit.
-     * @param source The Griddable<?>that own this ancillary
+     * @param source The Griddable that owns this ancillary
      * @param attached (Optional) The {@link Node} that this ancillary is attached to
      */
-    
     @Override
     public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
         CircuitComponent.assertValidOwnership(this, parent);
@@ -109,7 +143,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
         return isVisible; 
     }
 
-    
     public void forAllEdges(Shapes.DoubleLineConsumer action) {
         float size = getSize();
         double nx = getXO() - size, ny = getYO() - size, nz = getZO() - size;
@@ -200,26 +233,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
             + jack + ") - This method shouldn't be called on AncillaryJack instances!");
     }
 
-    @Override public String getComponentID() { return componentID; }
-
-    @Override public String describeState() { 
-        if(parent == null) return "@(null)";
-        return "@(" + parent.getIndex() + ", " + parent.hashCode() + ")"; 
-    }
-
-    @Override
-    public String toString() {
-        return getComponentID() + "[" + describeState() + "]";
-    }
-
-    // the rest of the implementation of this class defers itself to the parent joint
-
-    @Override
-    public Collection<Terminal> getTerminals() {
-        assertAttached();
-        return parent.getTerminals();
-    }
-
     @Override
     public void forEachNode(Consumer<Node> cons) {
         assertAttached();
@@ -238,8 +251,15 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
+    public void setIndex(int index) {
+        assertAttached();
+        parent.setIndex(index);
+    }
+
+    @Override
     public void saturate() {
         assertAttached();
+        parent.saturate();
     }
 
     @Override
@@ -271,42 +291,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public List<AncillaryNode> getAllAncillaries() {
-        assertAttached();
-        return parent.getAllAncillaries();
-    }
-
-    @Override
-    public boolean attach(Terminal pin) {
-        assertAttached();
-        return parent.attach(pin);
-    }
-
-    @Override
-    public boolean detach(Terminal pin) {
-        assertAttached();
-        return parent.detach(pin);
-    }
-
-    @Override
-    public boolean attach(Griddable<?>source, AncillaryNode jack) {
-        assertAttached();
-        return parent.attach(source, jack);
-    }
-
-    @Override
-    public boolean detach(Griddable<?>source, AncillaryNode jack) {
-        assertAttached();
-        return parent.detach(source, jack);
-    }
-
-    @Override
-    public boolean involves(Terminal pin) {
-        if(parent == null) return false;
-        return parent.involves(pin);
-    }
-
-    @Override
     public void dispose() {
         this.parent = null;
         this.source = null;
@@ -328,16 +312,14 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
         return parent.size();
     }
 
-    @Override public boolean hasAncillaries() { return true; }
+    @Override 
+    public boolean hasAncillaries() { 
+        return true; 
+    }
 
     @Override
     public @Nullable Level getWorld() {
         return source == null ? null : source.getWorld();
-    }
-
-    private void assertAttached() { 
-        if(parent == null) 
-            throw new IllegalArgumentException("Error performing operation on AncillaryJack - This jack has no parent node!");
     }
 
     @Override
@@ -348,5 +330,25 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     @Override
     public boolean isSignificant() {
         return parent != null && parent.isSignificant();
+    }
+
+    private void assertAttached() { 
+        if(parent == null) 
+            throw new IllegalArgumentException("Error performing operation on AncillaryJack - This jack has no parent node!");
+    }
+
+    @Override 
+    public String getComponentID() { 
+        return componentID; 
+    }
+
+    @Override public String describeState() { 
+        if(parent == null) return "@(null)";
+        return "@(" + parent.getIndex() + ", " + parent.hashCode() + ")"; 
+    }
+
+    @Override
+    public String toString() {
+        return getComponentID() + "[" + describeState() + "]";
     }
 }

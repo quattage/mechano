@@ -6,6 +6,7 @@ import org.ejml.dense.row.NormOps_DDRM;
 import org.ejml.dense.row.mult.VectorVectorMult_DDRM;
 import org.ejml.sparse.csc.CommonOps_DSCC;
 
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.Circuit;
 
 /**
@@ -23,19 +24,19 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
     public StabilizedBiconjucateSolver() {}
 
     @Override
-    public ConvergenceStatus run(NodalSnapshot snapshot) {
+    public ConvergenceStatus run(ServerGrid grid) {
 
-        r = snapshot.createWorkingVector();
+        r = grid.createWorkingVector();
         r_hat = new DMatrixRMaj();
-        p = snapshot.createWorkingVector();
-        v = snapshot.createWorkingVector();
-        s = snapshot.createWorkingVector();
-        t = snapshot.createWorkingVector();
-        h = snapshot.createWorkingVector();
-        temp = snapshot.createWorkingVector();
+        p = grid.createWorkingVector();
+        v = grid.createWorkingVector();
+        s = grid.createWorkingVector();
+        t = grid.createWorkingVector();
+        h = grid.createWorkingVector();
+        temp = grid.createWorkingVector();
 
-        CommonOps_DSCC.mult(snapshot.termA(), snapshot.termX(), temp);
-        CommonOps_DDRM.subtract(snapshot.termB(), temp, r);
+        CommonOps_DSCC.mult(grid.matrixTermA(), grid.matrixTermX(), temp);
+        CommonOps_DDRM.subtract(grid.matrixTermB(), temp, r);
         r_hat.setTo(r);
         rho = VectorVectorMult_DDRM.innerProd(r_hat, r);
         rho_old = 1; alpha = 1; omega = 1;
@@ -43,24 +44,24 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
 
         for(int i = 0; i < NodalSolver.STEP_LIMIT; i++) {
 
-            CommonOps_DSCC.mult(snapshot.termA(), p, v);
+            CommonOps_DSCC.mult(grid.matrixTermA(), p, v);
             d = VectorVectorMult_DDRM.innerProd(r_hat, v);
             if(Math.abs(d) < (NodalSolver.EPSILON * 0.1d)) 
                 return ConvergenceStatus.UNFINISHED_PROBLEMATIC_DATA;
 
             alpha = rho / d;
-            CommonOps_DDRM.add(alpha, p, 1d, snapshot.termX(), h);
+            CommonOps_DDRM.add(alpha, p, 1d, grid.matrixTermX(), h);
             CommonOps_DDRM.add(-alpha, v, 1d, r, s);
             normS = NormOps_DDRM.normF(s);
             if(normS < NodalSolver.EPSILON) {
-                snapshot.termX().setTo(h);
+                grid.matrixTermX().setTo(h);
                 return ConvergenceStatus.FINISHED_SOLVED_EARLY;
             }
 
-            CommonOps_DSCC.mult(snapshot.termA(), s, t);
+            CommonOps_DSCC.mult(grid.matrixTermA(), s, t);
             omega = VectorVectorMult_DDRM.innerProd(t, s) / VectorVectorMult_DDRM.innerProd(t, t);
 
-            CommonOps_DDRM.add(omega, s, 1d, h, snapshot.termX());
+            CommonOps_DDRM.add(omega, s, 1d, h, grid.matrixTermX());
             CommonOps_DDRM.add(-omega, t, 1d, s, r);
             normR = NormOps_DDRM.normF(r);
             if(normR < NodalSolver.EPSILON)
@@ -81,11 +82,6 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
     @Override
     public void apply(Circuit circuit) {
         
-    }
-
-    @Override
-    public int estimateMemoryFootprint(NodalSnapshot snapshot) {
-        return NodalSolver.estimateMemoryFootprint(8, 8, 0, snapshot.termA().getNumRows());
     }
 
     @Override

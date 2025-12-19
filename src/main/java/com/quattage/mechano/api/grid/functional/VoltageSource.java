@@ -1,8 +1,7 @@
 package com.quattage.mechano.api.grid.functional;
 
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.VoltageDecay;
-import com.quattage.mechano.api.grid.solver.NodalSnapshot;
-import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
 
 public abstract class VoltageSource extends StampingComponent {
@@ -22,19 +21,22 @@ public abstract class VoltageSource extends StampingComponent {
         return true;
     }
 
+    @Override 
+    public abstract int getContributionFactor();
+
     @Override
-    public void stamp(Circuit circuit, NodalSnapshot snapshot) {
-        int pI = terminals[0].getJoint().getIndex();
-        int nI = terminals[1].getJoint().getIndex();
-        cIndex = snapshot.allocateSource();
+    public void stamp(ServerGrid grid) {
+        int pI = terminals[0].getNode().getIndex();
+        int nI = terminals[1].getNode().getIndex();
+        cIndex = grid.allocateSource();
         if(pI >= 0) {
-            snapshot.stampMatrix(pI, cIndex, 1);
-            snapshot.stampMatrix(cIndex, pI, 1);
+            grid.stampMatrix(pI, cIndex, 1);
+            grid.stampMatrix(cIndex, pI, 1);
         }
         if(nI >= 0) {
-            snapshot.stampMatrix(nI, cIndex, -1);
-            snapshot.stampMatrix(cIndex, nI, -1);
+            grid.stampMatrix(nI, cIndex, -1);
+            grid.stampMatrix(cIndex, nI, -1);
         }
-        snapshot.stampRHS(cIndex, volts.apply(getStateOfCharge()));
+        grid.stampRHS(cIndex, volts.apply(getStateOfCharge()));
     }
 }

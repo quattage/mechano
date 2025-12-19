@@ -5,8 +5,8 @@ import java.util.UUID;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridActionTask;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.GridUUID.EntityUUID;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
@@ -55,14 +55,14 @@ public class PersistenceTests {
     public static void verifyGridTasks(GameTestHelper test) {
         for(GridAction action : GridAction.values()) {
             if(!action.isTask()) continue;
-            GridActionTask task = action.getTask();
+            ActionTask task = action.getTask();
             if(PersistenceTests.verifyTaskValidity(test, action, task)) return;
             if(PersistenceTests.verifyTaskSerialize(test, action.getTask())) return;
         }
         test.succeed();
     }
 
-    private static boolean verifyTaskValidity(GameTestHelper test, GridAction action, GridActionTask task) {
+    private static boolean verifyTaskValidity(GameTestHelper test, GridAction action, ActionTask task) {
         Class<?>[] template;
         if(action.getTask() == null) {
             test.fail("Task for action '" + action + "' returned null, despite being a task type!");
@@ -93,7 +93,7 @@ public class PersistenceTests {
     }
 
 
-    private static boolean verifyTaskSerialize(GameTestHelper test, GridActionTask task) {
+    private static boolean verifyTaskSerialize(GameTestHelper test, ActionTask task) {
         // stub for now
         return false;
     }

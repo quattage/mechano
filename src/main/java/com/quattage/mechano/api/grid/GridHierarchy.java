@@ -54,7 +54,7 @@ public enum GridHierarchy implements StringRepresentable {
                 + " - Query located " + node + ", but this node contains no ancillaries.");
             return null;
         }
-        List<AncillaryNode> ancillaries = node.getAllAncillaries();
+        List<AncillaryNode> ancillaries = node.getAncillaries();
         int index = address.getBindingB();
         if(index < 0 || index >= ancillaries.size()) {
             grid.warn("Couldn't acquire component from " + address 

@@ -11,7 +11,7 @@ import net.createmod.catnip.theme.Color;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
 
-public enum GridActionType implements StringRepresentable {
+public enum ActionType implements StringRepresentable {
 
     RESPONSE_SUCCESS(false, new Color(116, 227, 142), new Color(116, 227, 197), new Color(116, 201, 227)),
     RESPONSE_FAIL_SOFT(true, new Color(0, 0, 0, 0.4f)),
@@ -22,24 +22,28 @@ public enum GridActionType implements StringRepresentable {
     private boolean isFailCase;
     private final @Nullable Color[] colors;
 
-    GridActionType(boolean isFailCase, Color... colors) {
+    ActionType(boolean isFailCase, Color... colors) {
         this.isFailCase = isFailCase;
         this.colors = colors;
     }
 
     public boolean indicatesSuccess() {
-        return !isFailCase;
+        return !indicatesFailure();
     }
 
     public boolean indicatesFailure() {
-        return !indicatesSuccess();
+        return isFailCase;
     }
 
     /**
      * Indicates whether or not the action represented by this type
      * ended prematurely or reached a state of completion. <p>
      * Actions of type <code>RESPONSE_FAIL_SOFT</code> do not consume
-     * their actions, since 
+     * their actions as a way to indicate that the failure of said 
+     * action is not fatal. For example, if the player attempts
+     * to create a link between two connectors, most responses
+     * will fail softly, since the player can make mistakes.
+     * 
      * @return <code>true</code> if this action is consumed
      */
     public boolean isConsumed() {
@@ -60,7 +64,7 @@ public enum GridActionType implements StringRepresentable {
 
     public Color getColor(Object obj) { 
         if(this.colors == null) 
-            return GridActionType.RESPONSE_FAIL_SOFT.getColor();
+            return ActionType.RESPONSE_FAIL_SOFT.getColor();
         long hash = EsoMath.hash64(obj);
         int idx = (int) ((hash >>> 32) % colors.length);
         if(idx < 0) idx += colors.length; 
@@ -69,7 +73,7 @@ public enum GridActionType implements StringRepresentable {
 
     public @Nullable Color getColor() {
         if(this.colors == null) 
-            return GridActionType.RESPONSE_FAIL_SOFT.getColor();
+            return ActionType.RESPONSE_FAIL_SOFT.getColor();
         return colors[0];
     }
 

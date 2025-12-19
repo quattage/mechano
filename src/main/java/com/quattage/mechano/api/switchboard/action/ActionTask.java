@@ -1,6 +1,7 @@
 package com.quattage.mechano.api.switchboard.action;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +23,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * and stored in the {@link GridAction} enum statically, so these classes
  * can't have meaningful constructors.
  */
-public interface GridActionTask {
+public interface ActionTask {
 
     /**
      * The series of arguments expected by this particular task. This method is used
@@ -41,7 +42,7 @@ public interface GridActionTask {
      * Individual tasks may override this method to provide fault correction capabilities or additional throws.
      * @param args The array of arguments that this task will be run with
      * @return The arguments array. Most of the time, this will be the exact same instance, but some implementations may
-     * modify this arguments array to replace references. ex. correcting <code>nulls</code>.
+     * modify this arguments array to replace references (e.g. correcting <code>nulls</code>).
      */
     default Object[] validateArguments(@Nullable Object... args) {
         Class<?>[] template = getArgumentTemplate();
@@ -55,10 +56,7 @@ public interface GridActionTask {
             Class<?> expected = template[x];
             Object arg = args[x];
             if(expected.isInstance(arg)) continue;
-            if(expected == GridAction.class && arg == null) {
-                args[x] = GridAction.RESPONSE_SUCCESS;
-                continue;
-            }
+            if(expected == UUID.class && arg == null) continue;
             throw new GridActionTaskArgumentParseException(this, "Bad argument type at position " + x + " - expected '" 
                 + expected.getSimpleName() + "', got '" + (arg == null ? ("null'!") : (arg.getClass().getSimpleName() + "'")));
         }
@@ -128,9 +126,14 @@ public interface GridActionTask {
     }
 
 
+    /**
+     * @return The LocalPlayer of this client
+     */
     @OnlyIn(Dist.CLIENT)
     default LocalPlayer self() {
         Minecraft mc = Minecraft.getInstance();
-        return mc == null ? null : mc.player;
+        if(mc == null) throw new NullPointerException("what");
+        if(mc.player == null) throw new NullPointerException("LocalPlayer is not reachable in the current context.");
+        return mc.player;
     }
 }

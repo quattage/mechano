@@ -118,7 +118,7 @@ public class JackSelector {
      * @param source The griddable that owns <code>joint</code>
      * @param joint the joint to be added
      */
-    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?>source, AncillaryNode joint) {
+    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?> source, AncillaryNode joint) {
         if(tracker == null) {
             tracker = Minecraft.getInstance().player;
             if(tracker == null)

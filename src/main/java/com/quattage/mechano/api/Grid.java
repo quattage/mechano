@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.Circuit;
@@ -162,18 +161,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
         protected abstract void onUnload();
         protected abstract void tick();
 
-        public abstract void addComponent(Griddable<?> source);
-        public abstract CircuitComponent popComponent(GridIdentifiable<?> obj);
-        public abstract int getComponentCount();
-
-        public boolean removeLinksBelongingTo(Griddable<?> source) {
-            Objects.requireNonNull(source);
-            if(source.getTerminus().isEmpty()) return false;
-            int preSize = getLinkCount();
-            source.getTerminus().forEach(node -> { removeLinksBelongingTo(node); });
-            return preSize > getLinkCount();
-        }
-
         public GridAction addLink(ComponentLink<?> link) {
             Objects.requireNonNull(link);
             if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while adding link - The provided link doesn't have a start and/or end ID configured!");
@@ -185,10 +172,8 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
                 return GridAction.RESPONSE_SUCCESS;
             }
             if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
-            if(linksAt.size() >= AncillaryNode.MAX_SHARED_OCCUPANCY) {
-                warn("Skipped adding " + link + " because this UUID has already reached the maximum number of shared components.");
+            if(linksAt.size() >= AncillaryNode.MAX_SHARED_OCCUPANCY)
                 return GridAction.RESPONSE_FAIL_ELEMENT_FULL;
-            }
             linksAt.add(link);
             return GridAction.RESPONSE_SUCCESS;
         }
@@ -197,9 +182,9 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             Objects.requireNonNull(link);
             if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while removing link - The provided link doesn't have a start and/or end ID configured!");
             List<ComponentLink<?>> linksAt = links.get(link.getStart());
-            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_REFERRENT_MISSING;
+            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_START_MISSING;
             boolean removed = linksAt.remove(link);
-            if(!removed) return GridAction.RESPONSE_FAIL_CANCELLED;
+            if(!removed) return GridAction.RESPONSE_FAIL_END_MISSING;
             if(linksAt.isEmpty()) {
                 links.remove(link.getStart());
                 links.trim();
@@ -207,22 +192,26 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        public GridAction removeLinksBelongingTo(AncillaryNode node) {
-            Objects.requireNonNull(node);
-            if(node.getSource() == null) {
-                Mechano.LOGGER.warn("Skipped removing links belonging to " + node + " - This node is not bound to a valid griddable.");
-                return GridAction.RESPONSE_FAIL_GENERIC;
+        public GridAction removeLink(GridUUID startID, GridUUID endID) {
+            Objects.requireNonNull(startID);
+            Objects.requireNonNull(endID);
+            List<ComponentLink<?>> linksAt = links.get(startID);
+            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_START_MISSING;
+            int toRemove = -1;
+            for(int x = 0; x < linksAt.size(); x++) {
+                ComponentLink<?> link = linksAt.get(x);
+                if(link.getEnd().equals(endID)) {
+                    toRemove = x;
+                    break;
+                }
             }
-            GridUUID addr = getAddressFor(node.getSource(), node);
-            List<ComponentLink<?>> linksAt = links.remove(addr);
-            if(linksAt == null) return GridAction.RESPONSE_FAIL_REFERRENT_MISSING;
-            links.trim();
+            if(toRemove < 0) return GridAction.RESPONSE_FAIL_END_MISSING;
+            linksAt.remove(toRemove);
+            if(linksAt.isEmpty()) {
+                links.remove(startID);
+                links.trim();
+            }
             return GridAction.RESPONSE_SUCCESS;
-        }
-
-        public List<ComponentLink<?>> getLinksBelongingTo(GridIdentifiable<?> obj) {
-            Objects.requireNonNull(obj);
-            return links.get(obj);
         }
 
         public int getLinkCount() {

@@ -11,8 +11,8 @@ import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridActionTask;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.MechanoRegistrate;
@@ -30,7 +30,7 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public class LinkJointsTask implements GridActionTask {
+public class JointLinkTask implements ActionTask {
 
     @Override
     public Class<?>[] getArgumentTemplate() {
@@ -49,8 +49,12 @@ public class LinkJointsTask implements GridActionTask {
         UUIDSourceType.write((GridUUID)args[1], buffer);
         Registry<TransmitterType<?>> registry = (Registry<TransmitterType<?>>)BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY);
         buffer.writeInt(registry.getId((TransmitterType<?>)args[2]));
-        buffer.writeLong(((UUID)args[3]).getMostSignificantBits());
-        buffer.writeLong(((UUID)args[3]).getLeastSignificantBits());
+        UUID uuid = (UUID)args[3];
+        if(uuid != null) {
+            buffer.writeBoolean(true);
+            buffer.writeLong(uuid.getMostSignificantBits());
+            buffer.writeLong(uuid.getLeastSignificantBits());
+        } else buffer.writeBoolean(false);
         buffer.writeInt(((GridAction)args[4]).ordinal());
         return;
     }
@@ -61,7 +65,7 @@ public class LinkJointsTask implements GridActionTask {
             UUIDSourceType.read(buffer),
             UUIDSourceType.read(buffer),
             BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY).byId(buffer.readInt()),
-            new UUID(buffer.readLong(), buffer.readLong()),
+            buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null,
             GridAction.values()[buffer.readInt()]
         };
     }
@@ -73,47 +77,60 @@ public class LinkJointsTask implements GridActionTask {
             Object[] argsModified = new Object[args.length + 1];
             System.arraycopy(args, 0, argsModified, 0, args.length);
             argsModified[args.length] = GridAction.RESPONSE_SUCCESS;
-            return GridActionTask.super.validateArguments(argsModified);
+            return ActionTask.super.validateArguments(argsModified);
         }
-        return GridActionTask.super.validateArguments(args);
+        return ActionTask.super.validateArguments(args);
     }
+
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         GridUUID startID = (GridUUID)args[0];
         GridUUID endID = (GridUUID)args[1];
-        args[4] = this.link(grid, startID, endID, (TransmitterType<?>)args[2]);
+        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
+        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
+        GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
+        if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
+        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType<?>)args[2]);
         Set<ServerPlayer> trackers = GridIdentifiable.collectTrackers((ServerLevel)grid.getWorld(), startID, endID);
-        Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
-        if(caller instanceof ServerPlayer sp) trackers.add(sp);
+        if(args[3] != null) {
+            Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
+            if(caller instanceof ServerPlayer sp) trackers.add(sp);
+        }
         GridAction.TASK_LINK_JOINTS.broadcastBelligerent(grid, trackers, args);
         return (GridAction)args[4];
     }
 
-    
-
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        GridAction serverResult = (GridAction)args[4];
-        LocalPlayer lp = self();
-        if(lp.getUUID().equals(args[3]))
-            handleAsSelf(lp, grid, serverResult);
+        GridUUID startID = (GridUUID)args[0];
+        GridUUID endID = (GridUUID)args[1];
+        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
+        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
+        GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
+        if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
+        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType<?>)args[2]);
+        UUID uuid = (UUID)args[3];
+        if(uuid != null) {
+            GridAction serverResult = (GridAction)args[4];
+            LocalPlayer lp = self();
+            if(lp.getUUID().equals(uuid))
+                clientSelfHandle(lp, grid, serverResult);
+        }
         return GridAction.RESPONSE_SUCCESS;
     }
 
-    private void handleAsSelf(LocalPlayer player, ClientGrid grid, GridAction serverResult) {
-        if(serverResult.getActionType().isConsumed()) 
-            SpoolItem.wipeData(player, true);
-    }
-
-    private GridAction link(Grid grid, GridUUID startID, GridUUID endID, TransmitterType<?> trns) {
-        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
+    /**
+     * The actual implementation goes here and is identical between client and server. Most of 
+     * the stuff further up in this class is for managing the task's serialization to a packet.
+     */
+    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType<?> trns) {
         ComponentLink<?> linkA = new ComponentLink<>(trns, startID, startNode, endID, endNode).checkValidity();
         ComponentLink<?> linkB = linkA.flippedCopy().checkValidity();
         GridAction runResult = grid.addLink(linkA);
         GridAction runResultInverted = grid.addLink(linkB);
+
         if(runResult.getActionType().indicatesFailure() || runResultInverted.getActionType().indicatesFailure()) {
             grid.removeLink(linkA);
             grid.removeLink(linkB);
@@ -121,6 +138,20 @@ public class LinkJointsTask implements GridActionTask {
             if(!runResult.getActionType().indicatesFailure())
                 runResult = runResultInverted;
         }
+        linkA.onAddedToGrid(grid);
         return runResult;
     }
+    
+    /**
+     * Unique logic executed only by the client that requested the execution of this task
+     * (assuming one exists - the sender's UUID is allowed to be null, so this method is
+     * never called if this task wasn't requested by a player)
+     */
+    @OnlyIn(Dist.CLIENT)
+    protected void clientSelfHandle(LocalPlayer player, ClientGrid grid, GridAction serverResult) {
+        if(serverResult.getActionType().isConsumed()) 
+            SpoolItem.wipeData(player, true);
+    }
+
+    
 }

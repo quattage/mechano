@@ -23,36 +23,34 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 /**
  * An acceleration structure which stores references to {@link AncillaryNode ancillaries}
- * belonging to a parent {@link CircuitComponent}. This class can be thought of
- * as the summary of a {@link Griddable<?>griddable}'s access to the outside world.
- * 
+ * belonging to a parent {@link CircuitComponent}. 
  * <p>
- * Useful for frequent operations that require access to node information, 
- * such as jack rendering.
+ * This class is especially useful in contexts (e.g. rendering) that need frequent access to 
+ * node and link information. 
  */
-public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier {
+public class GridAccelerator implements OrientationUpdatable, SourceIdentifier {
 
     private @Nullable AncillaryNode[] exposedJoints;
 
-    public GriddableTerminus() {}
+    public GridAccelerator() {}
 
-    public GriddableTerminus(Griddable<?>source) {
+    public GridAccelerator(Griddable<?> source) {
         initializeFrom(source);
     }
 
-    public GriddableTerminus(AncillaryNode[] exposedJoints) {
+    public GridAccelerator(AncillaryNode[] exposedJoints) {
         if((exposedJoints != null && exposedJoints.length > 0))
             this.exposedJoints = exposedJoints;
     }
 
-    public GriddableTerminus initializeFrom(Griddable<?>source) {
+    public GridAccelerator initializeFrom(Griddable<?> source) {
         Objects.requireNonNull(source);
         CircuitComponent component = source.getCircuit();
-        if(component == null) throw new NullPointerException("Griddable<?>" + source + " couldn't provide a valid CircuitComponent!");
+        if(component == null) throw new NullPointerException("Griddable " + source + " couldn't provide a valid CircuitComponent!");
         return initializeFrom(component);
     }
 
-    public GriddableTerminus initializeFrom(CircuitComponent component) {
+    public GridAccelerator initializeFrom(CircuitComponent component) {
         Objects.requireNonNull(component);
         if((exposedJoints != null && exposedJoints.length > 0) || component == null || !component.isSignificant()) 
             return this;
@@ -60,13 +58,13 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
             Set<AncillaryNode> found = new ObjectOpenHashSet<>(component.size());
             component.forEachNode(joint -> {
                 if(joint == null) throw new NullPointerException("Encountered a null pointer while updating ancillaries for lazy holder");
-                found.addAll(joint.getAllAncillaries());
+                found.addAll(joint.getAncillaries());
             });
             exposedJoints = found.isEmpty() ? null : found.toArray(new AncillaryNode[found.size()]);
             return this;
         }
         if(component instanceof Node n) {
-            Collection<AncillaryNode> jacks = n.getAllAncillaries(); 
+            Collection<AncillaryNode> jacks = n.getAncillaries(); 
             exposedJoints = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryNode[jacks.size()]);
             return this;
         }
@@ -119,9 +117,9 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
     }
 
     @Override
-    public @NotNull Griddable<?>getSource() {
+    public @NotNull Griddable<?> getSource() {
         if(isEmpty())
-            throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
+            throw new IllegalStateException("Failed while getting source griddable for a accelerator which hasn't been loaded!");
         return exposedJoints[0].getSource();
     }
 }

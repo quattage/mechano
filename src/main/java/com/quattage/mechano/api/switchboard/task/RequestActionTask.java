@@ -9,8 +9,8 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridActionTask;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.UUIDSourceType;
@@ -27,7 +27,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * execution of some other task on the opposite side of its 
  * initial call.
  */
-public class RequestActionTask implements GridActionTask {
+public class RequestActionTask implements ActionTask {
 
     @Override
     public @Nullable Class<?>[] getArgumentTemplate() {
@@ -71,9 +71,10 @@ public class RequestActionTask implements GridActionTask {
             return GridAction.RESPONSE_FAIL_CANCELLED;
         }
         Object[] taskArgs = ((List<Object>)args[2]).toArray();
-        GridActionTask task = action.getTask();
-        if(GridAction.VERBOSE_LOGS) grid.debug("Handling request " + task + " with arguments: " + task.collectArgsAsString(taskArgs));
-        return task.executeAsServer(grid, taskArgs).broadcast(grid, trackers, taskArgs);
+        ActionTask task = action.getTask();
+        GridAction result = task.executeAsServer(grid, taskArgs).broadcast(grid, trackers, taskArgs);
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + "(REQUEST) in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(taskArgs) + "\n\n** Result: \n(" + result.asResource() + ")");
+        return result;
     }
 
     @Override
@@ -81,8 +82,9 @@ public class RequestActionTask implements GridActionTask {
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
         GridAction action = (GridAction)args[0];
         Object[] taskArgs = ((List<Object>)args[2]).toArray();
-        GridActionTask task = action.getTask();
-        if(GridAction.VERBOSE_LOGS) grid.debug("Handling request " + task + " with arguments: " + task.collectArgsAsString(taskArgs));
-        return task.executeAsClient(grid, taskArgs).broadcast(grid, taskArgs);
+        ActionTask task = action.getTask();
+        GridAction result = task.executeAsClient(grid, taskArgs).broadcast(grid, taskArgs);
+        if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + "(REQUEST) in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(taskArgs) + "\n\n** Result: \n(" + result.asResource() + ")");
+        return result;
     }
 }

@@ -6,10 +6,8 @@ import java.util.Set;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
@@ -25,7 +23,6 @@ public class CircuitFactory {
 
     private ObjectArrayList<FunctionalComponent> components = new ObjectArrayList<>();
     private Set<Terminal> terminals = new ObjectOpenHashSet<>();
-    private GroundedJoint ground = new GroundedJoint(null);
     private Set<Node> preload = new ObjectOpenHashSet<>();
 
     public CircuitFactory() {}
@@ -80,21 +77,7 @@ public class CircuitFactory {
         return this;
     }
 
-    public CircuitFactory ground(Terminal a) {
-        assertNotConsumed();
-        if(!terminals.contains(a))
-            throw new IllegalArgumentException("Failed while grounding terminal in factory - This factory doesn't contain the terminal " + a);
-        this.ground.attach(a);
-        return this;
-    }
-
-    public CircuitFactory ground(AncillaryNode j) {
-        assertNotConsumed();
-        this.ground.attach(null, j);
-        return this;
-    }
-
-    public Node newJoint() {
+    public Node newNode() {
         assertNotConsumed();
         Node j = new Joint(null);
         supply(j);
@@ -111,15 +94,14 @@ public class CircuitFactory {
      * Places the CircuitFactory in a state where it cannot be reused.
      * @return A new CircuitComponent instance conforming to the attributes in this builder
      */
-    public CircuitComponent make(Griddable<?>source) {
+    public CircuitComponent make(Griddable<?> source) {
         assertNotConsumed();
-        if(components.size() <= 0 && preload.size() <= 0 && !ground.isSignificant()) 
+        if(components.size() <= 0 && preload.size() <= 0) 
             throw new IllegalStateException("Attempted to create a CircuitComponent from a factory with no components or nodes!");
-        Circuit c = new Circuit(source, ground, components, preload);
+        Circuit c = new Circuit(source, components, preload);
         components = null;
         terminals = null;
         preload = null;
-        ground = null;
         return c;
     }
 
@@ -212,7 +194,6 @@ public class CircuitFactory {
 
         public WireJack make() {
             WireJack newJack = new WireJack(id, isVisible, EsoMath.quadShort2Long(x, y, z, s));
-            if(attachmentTarget == null) attachmentTarget = prev.ground;
             attachmentTarget.attach(null, newJack);
             return newJack;
         }
@@ -286,7 +267,6 @@ public class CircuitFactory {
 
         public BlockJack make() {
             BlockJack newJack = new BlockJack(id, isVisible, new RelativeDirection(rel));
-            if(attachmentTarget == null) attachmentTarget = prev.ground;
             attachmentTarget.attach(null, newJack);
             return newJack;
         }

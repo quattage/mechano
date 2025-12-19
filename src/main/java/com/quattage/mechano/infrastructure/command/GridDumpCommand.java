@@ -2,8 +2,8 @@ package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -20,9 +20,10 @@ public class GridDumpCommand {
                         source.sendFailure(Component.literal("Couldn't dump from non-player source"));
                         return 1;
                     }
-                    Grid grid = Grid.server(sp);
-                    String output = grid.writeAllLinks();
-                    source.sendSuccess(() -> Component.literal("Dump result:\n" + output).withStyle(ChatFormatting.GRAY), false);
+                    Grid.server(sp).initiateTask(GridAction.TASK_GRID_DUMP)
+                        .from()
+                        .withArguments(sp.getUUID())
+                        .executeAs(sp);
                     return 1;
                 });
     }

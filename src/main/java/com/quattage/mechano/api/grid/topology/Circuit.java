@@ -13,10 +13,8 @@ import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.functional.Resistor;
-import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.GroundedJoint;
 import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.tracking.GridUUID;
@@ -39,7 +37,7 @@ public class Circuit implements CircuitComponent {
     protected ObjectArrayList<FunctionalComponent> components;
     protected ObjectArrayList<Node> nodes;
 
-    public static Circuit ofSingleResistor(Griddable<?>source, float ohms) {
+    public static Circuit ofSingleResistor(Griddable<?> source, float ohms) {
         Circuit out = new Circuit(source);
         Resistor res = new Resistor(ohms);
         out.addComponent(res);
@@ -52,10 +50,9 @@ public class Circuit implements CircuitComponent {
         return out;
     }
 
-    public Circuit(Griddable<?>source) {
+    public Circuit(Griddable<?> source) {
         this.components = new ObjectArrayList<>();
         this.nodes = new ObjectArrayList<>(3);
-        this.nodes.add(new GroundedJoint(this));
     }
 
     /**
@@ -65,13 +62,9 @@ public class Circuit implements CircuitComponent {
      * @param components A list of all {@link FunctionalComponents} that make up the circuit
      * @param preload A list of all {@link Node} objects that connect components together
      */
-    public Circuit(Griddable<?>source, @Nullable GroundedJoint ground, ObjectArrayList<FunctionalComponent> components, Set<Node> preload) {
+    public Circuit(Griddable<?> source, ObjectArrayList<FunctionalComponent> components, Set<Node> preload) {
         this.components = components;
         this.nodes = new ObjectArrayList<>(preload.size() + 3);
-        if(ground != null && ground.isSignificant()) {
-            ground.updateOwnership(this, -1);
-            this.nodes.add(ground);
-        }
         for(CircuitComponent c : components)
             c.updateOwnership(this, 0);
         for(Node n : preload) { 
@@ -112,9 +105,9 @@ public class Circuit implements CircuitComponent {
             throw new IllegalArgumentException("Failed while attempting to link terminals " 
                 + termA + ", " + termB + " - These terminals don't belong to this circuit!");
         }
-        Node nodeB = termA.getJoint(), nodeA = termB.getJoint();
+        Node nodeB = termA.getNode(), nodeA = termB.getNode();
         if(nodeB == null && nodeA == null) {
-            Joint newJoint = new Joint(this, nodes.size());
+            Joint newJoint = new Joint(this);
             nodes.add(newJoint);
             newJoint.attach(termA);
             newJoint.attach(termB);
@@ -128,21 +121,15 @@ public class Circuit implements CircuitComponent {
             nodeA.attach(termA);
             return nodeA;
         }
-        if(nodeB.involves(termB)) return nodeB;
-        if(nodeA.involves(termA)) return nodeA;
+        if(nodeB.has(termB)) return nodeB;
+        if(nodeA.has(termA)) return nodeA;
         // prioritize merging onto the grounded joint
         if(nodeA.isGrounded()) {
             removeJoint(nodeB);
-            return NodeUnionSet.collapse(nodeA, nodeB);
+            return Node.collapse(nodeA, nodeB);
         }
         removeJoint(nodeA);
-        return NodeUnionSet.collapse(nodeB, nodeA);
-    }
-
-    public Node attachTerminalToGround(Terminal termA) {
-        Node ground = getOrCreateCommonGround();
-        ground.attach(termA);
-        return ground;
+        return Node.collapse(nodeB, nodeA);
     }
 
     public void removeJoint(Node joint) {
@@ -177,12 +164,14 @@ public class Circuit implements CircuitComponent {
         this.nodes.add(joint);
     }
 
-    public Node getOrCreateCommonGround() {
-        Node fn = nodes.getFirst();
-        if(fn != null && fn.isGrounded()) return fn;
-        fn = new GroundedJoint(this);
-        addJoint(fn);
-        return fn;
+    @Override
+    public int getContributionFactor() {
+        int out = 0;
+        for(CircuitComponent c : components) {
+            if(c != null && c.isSignificant())
+                out += c.getContributionFactor();
+        }
+        return out;
     }
 
     /**
@@ -234,10 +223,10 @@ public class Circuit implements CircuitComponent {
         boolean modified = false;
         for(Terminal term : terminals) {
             if(term == null || !term.hasJoint()) continue;
-            final Node joint = term.getJoint();
+            final Node joint = term.getNode();
             if(!joint.detach(term)) continue;
             modified = true;
-            if(!joint.hasConnections() && !joint.isGrounded()) {
+            if(!joint.hasTerminals() && !joint.isGrounded()) {
                 removeJoint(joint);
                 joint.dispose();
             }
@@ -246,7 +235,7 @@ public class Circuit implements CircuitComponent {
     }
 
     public boolean arePinsConnected(Terminal a, Terminal b) {
-        return a.hasJoint() && b.hasJoint() && a.getJoint() == b.getJoint();
+        return a.hasJoint() && b.hasJoint() && a.getNode() == b.getNode();
     }
 
     @Override
@@ -289,10 +278,10 @@ public class Circuit implements CircuitComponent {
             out += "\n\tJoint " + node.getIndex() + " (" + node.hashCode() + ") - " + node.describeState();
             if(node.hasAncillaries()) {
                 out += "\n\t\t- Ancillaries:";
-                for(AncillaryNode jack : node.getAllAncillaries())
+                for(AncillaryNode jack : node.getAncillaries())
                     out += "\n\t\t\t" + jack;
             } else out += "\n\t\t- No ancillaries";
-            if(node.hasConnections()) {
+            if(node.hasTerminals()) {
                 out += "\n\t\t- Terminals:";
                 for(Terminal t : node.getTerminals())
                     out += "\n\t\t\t" + t.describeSelf();
@@ -343,7 +332,7 @@ public class Circuit implements CircuitComponent {
 	}
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
         Mechano.LOGGER.warn("Skipped invalid attempt to update ownership of top-level circuit");
         return;
     }

@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
@@ -27,7 +28,7 @@ import net.minecraft.resources.ResourceLocation;
 public class ComponentLink<T extends CircuitComponent> implements CircuitComponent {
 
     private final TransmitterType<T> trns;
-    private @Nullable GridUUID startID, endID;
+    private GridUUID startID, endID;
     private AncillaryNode startNode, endNode;
     private CircuitComponent component;
 
@@ -159,6 +160,14 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return (startNode != null && startNode.isGrounded()) || (endNode != null && endNode.isGrounded());
     }
 
+    public void onAddedToGrid(Grid grid) {
+
+    }
+
+    public void onRemovedFromGrid(Grid grid) {
+        
+    }
+
     @Override
     public void saturate() {
         getOrCreateInternalComponent().reset();
@@ -185,7 +194,7 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
         return;
     }
 
@@ -226,8 +235,16 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return startNode;
     }
 
+    public Node getStartNode() {
+        return (Node)getStartAncillary().getParentComponent();
+    }
+
     public AncillaryNode getEndAncillary() {
         return endNode;
+    }
+
+    public Node getEndNode() {
+        return (Node)getEndAncillary().getParentComponent();
     }
 
     public boolean hasUUIDs() {

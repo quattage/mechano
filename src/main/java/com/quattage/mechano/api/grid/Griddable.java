@@ -40,7 +40,7 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * <ul>
  *  <li> a {@link CircuitProvider#getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
  *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link UUIDSourceType data sources} for more info</li>
- *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
+ *  <li> a {@link GridAccelerator} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
@@ -53,13 +53,13 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
     BlockPos getBlockPos(); 
 
     /**
-     * Overridden by subclasses to provide a {@link GriddableTerminus} instance. 
+     * Overridden by subclasses to provide a {@link GridAccelerator} instance. 
      * This instance is not guaranteed to contain up-to-date information about
      * this Griddable<?>and this method contains no checks to verify its validity.
-     * @return A (new or pre-existing) {@link GriddableTerminus}
+     * @return A (new or pre-existing) {@link GridAccelerator}
      * @see #getTerminus() For callers: Use getTerminus() this method instead
      */
-    GriddableTerminus provideTerminus();
+    GridAccelerator provideTerminus();
 
     @Override
     default Griddable<?> getTargetSource(LevelReader world) {
@@ -70,17 +70,17 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
     default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
 
     /**
-     * Allows grid-sided access to this Griddable's {@link GriddableTerminus terminus},
+     * Allows grid-sided access to this Griddable's {@link GridAccelerator accelerator},
      * which contains a bakeable acceleration structure for getting all
      * {@link AncillaryNode ancillaries} involving this Griddable's 
      * {@link #getCircuit circuit}. This method contains validity checks and will
-     * initialize the terminus if needed. The initialized terminus can be 
-     * {@link GriddableTerminus#invalidate invalidated later} if the baked data is
+     * initialize the accelerator if needed. The initialized accelerator can be 
+     * {@link GridAccelerator#invalidate invalidated later} if the baked data is
      * out of date.
      * @return The instance returned by {@link #provideTerminus() the provider}
      * @see #provideTerminus()
      */
-    default GriddableTerminus getTerminus() {
+    default GridAccelerator getTerminus() {
         provideTerminus().initializeFrom(getCircuit());
         return provideTerminus();
     }

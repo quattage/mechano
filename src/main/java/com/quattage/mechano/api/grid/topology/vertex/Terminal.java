@@ -43,7 +43,7 @@ public class Terminal implements CircuitComponent {
         this.connected = trace;
     }
 
-    public @Nullable Node getJoint() {
+    public @Nullable Node getNode() {
         return connected;
     }
 
@@ -73,7 +73,7 @@ public class Terminal implements CircuitComponent {
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
         CircuitComponent.assertValidOwnership(this, parent);
         CircuitComponent component = getParentComponent();
         if(component == null) return;
@@ -100,9 +100,20 @@ public class Terminal implements CircuitComponent {
         return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s " + getComponentID();
     }
 
-    @Override public void saturate() {}
-    @Override public void reset() {}
-    @Override public String getComponentID() { return id; }
+    @Override 
+    public void saturate() {
+        instantiator.saturate();
+    }
+
+    @Override 
+    public void reset() {
+        instantiator.reset();
+    }
+
+    @Override 
+    public String getComponentID() { 
+        return id; 
+    }
 
     @Override
     public ResourceLocation asResource() {

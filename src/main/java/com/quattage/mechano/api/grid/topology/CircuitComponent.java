@@ -12,11 +12,11 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.GridHierarchy.ComponentHierarchyInvalidException;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.solver.NodalSnapshot;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
@@ -129,7 +129,7 @@ public interface CircuitComponent extends StringRepresentable {
     GridHierarchy getType();
 
     default void updateOwnership(CircuitComponent parent, int index) { updateOwnership(null, parent, index); }
-    void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index);
+    void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index);
 
     /**
      * If this CircuitComponent represents the functional element of a {@link ComponentLink},
@@ -198,6 +198,18 @@ public interface CircuitComponent extends StringRepresentable {
         return collected.isEmpty() ? null : collected;
     }
 
+    /**
+     * The contribution factor of this component indicates whether or not it "exerts"
+     * an external force on the matrix during MNA (multi-nodal analysis). The default
+     * implementation (and what most subclasses will use) simply returns <code>0</code>.
+     * <p> Objects that induce a current are considered contributors. and should return
+     * a number <code>> 0</code> cooresponding to the amount of nodes that they induce a
+     * current between.
+     */
+    default int getContributionFactor() { 
+        return 0; 
+    }
+
     public abstract class FunctionalComponent implements CircuitComponent {
 
         private final String componentID;
@@ -231,7 +243,7 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         @Override
-        public void updateOwnership(@Nullable Griddable<?>source, CircuitComponent parent, int index) {
+        public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
             CircuitComponent.assertValidOwnership(this, parent);
             this.parent = parent;
             this.nodalIndex = index;
@@ -339,9 +351,19 @@ public interface CircuitComponent extends StringRepresentable {
         /**
          * "Stamping" refers to the process of an individual CircuitComponent
          * declaring its own presence in the NodalSnapshot. This method
-         * is used to initialize each solver step of the {@link Circuit}
+         * stamps the topological impact of this component onto the
+         * snapshot for this solver step.
+         * @see #stampDynamic
          */
-        public abstract void stamp(Circuit circuit, NodalSnapshot snapshot);
+        public abstract void stamp(ServerGrid grid);
+
+        /**
+         * "Stamping" refers to the process of an individual CircuitComponent
+         * declaring its own presence in the NodalSnapshot. This method
+         * stamps the time-varied values of this component.
+         * @see #stamp
+         */
+        public abstract void stampDynamic(ServerGrid grid);
 
         /**
          * A helper method specific to some functional components to quickly

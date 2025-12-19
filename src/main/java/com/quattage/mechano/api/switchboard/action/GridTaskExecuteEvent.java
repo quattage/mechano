@@ -8,7 +8,7 @@ import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.ICancellableEvent;
 
 /**
- * This event is fired just before a {@link GridActionTask grid action task} is executed
+ * This event is fired just before a {@link ActionTask grid action task} is executed
  * on both sides. This event is cancellable. 
  */
 public abstract class GridTaskExecuteEvent<T extends Grid> extends Event implements ICancellableEvent {
@@ -23,7 +23,7 @@ public abstract class GridTaskExecuteEvent<T extends Grid> extends Event impleme
 
     @SuppressWarnings("unchecked") protected T getGrid() { return (T)grid; }
     protected GridAction getAction() { return action; }
-    protected GridActionType getActionType() { return action.getActionType(); }
+    protected ActionType getActionType() { return action.getActionType(); }
 
     @Override
     public void setCanceled(boolean canceled) {
@@ -31,7 +31,7 @@ public abstract class GridTaskExecuteEvent<T extends Grid> extends Event impleme
     }
 
     /**
-     * Fired every time a {@link GridActionTask grid action task} is executed 
+     * Fired every time a {@link ActionTask grid action task} is executed 
      * on the client. This event is called before the task has 
      * started executing, and can be used to modify or cancel the task.
      */
@@ -41,7 +41,7 @@ public abstract class GridTaskExecuteEvent<T extends Grid> extends Event impleme
         }
     }
     /**
-     * Fired every time a {@link GridActionTask grid action task} is executed 
+     * Fired every time a {@link ActionTask grid action task} is executed 
      * on the server. This event is called before the action has 
      * started executing, and can be used to modify or cancel the task.
      */

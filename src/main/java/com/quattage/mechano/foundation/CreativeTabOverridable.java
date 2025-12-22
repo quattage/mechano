@@ -18,7 +18,7 @@ public interface CreativeTabOverridable {
      * @return A DeferredHolder registry object containing the tab's registry, or null if
      * this block/item shouldn't appear in the creative menu at all.
      */
-    public default @Nullable DeferredHolder<CreativeModeTab, CreativeModeTab> getTab() {
+    default @Nullable DeferredHolder<CreativeModeTab, CreativeModeTab> getTab() {
         return null;
     }
 
@@ -29,7 +29,7 @@ public interface CreativeTabOverridable {
      * @param tab Registry object containing a creative mode tab
      * @return <code>true</code> if the provided item belongs to the tab
      */
-    public static boolean belongsTo(Item item, DeferredHolder<CreativeModeTab, CreativeModeTab> tab) {
+    static boolean belongsTo(Item item, DeferredHolder<CreativeModeTab, CreativeModeTab> tab) {
         if(!(item instanceof CreativeTabOverridable cto)) return true;
         if(cto.getTab() == null) return false;
         return cto.getTab().equals(tab);

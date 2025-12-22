@@ -14,10 +14,12 @@ import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 /**
  * A component that does literally nothing
  */
-public class Passthrough extends FunctionalComponent {
-    public Passthrough() { super("Empty"); }
+public class PerfectConductor extends FunctionalComponent {
+    
+    public PerfectConductor() { super("PerfectConductor"); }
     @Override public Collection<Terminal> getTerminals() { return Collections.emptyList(); }
     @Override public void forEachNode(Consumer<Node> cons) { return; }
     @Override public @Nullable CircuitComponent getParentComponent() { return null; }
     @Override public boolean isSignificant() { return false; }
+
 }

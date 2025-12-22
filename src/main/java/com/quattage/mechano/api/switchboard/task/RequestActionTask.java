@@ -39,6 +39,7 @@ public class RequestActionTask implements ActionTask {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         GridAction action = (GridAction)args[0];
         buffer.writeInt(action.ordinal());
@@ -62,6 +63,7 @@ public class RequestActionTask implements ActionTask {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         GridAction action = (GridAction)args[0];
         Set<ServerPlayer> trackers = GridIdentifiable.collectTrackers((ServerLevel)grid.getWorld(), (List<GridIdentifiable<?>>)args[1]);
@@ -79,6 +81,7 @@ public class RequestActionTask implements ActionTask {
 
     @Override
     @OnlyIn(Dist.CLIENT)
+    @SuppressWarnings("unchecked")
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
         GridAction action = (GridAction)args[0];
         Object[] taskArgs = ((List<Object>)args[2]).toArray();

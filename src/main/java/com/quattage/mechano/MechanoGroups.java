@@ -5,12 +5,12 @@ import com.quattage.mechano.foundation.CreativeTabOverridable;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.CreativeModeTab.DisplayItemsGenerator;
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters;
 import net.minecraft.world.item.CreativeModeTab.Output;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -21,7 +21,7 @@ public class MechanoGroups {
         create(Registries.CREATIVE_MODE_TAB, Mechano.ID);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> BASE = 
-        TAB_REGISTRY.register("base", () -> CreativeModeTab.builder()
+        MechanoGroups.TAB_REGISTRY.register("base", () -> CreativeModeTab.builder()
             .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
             .icon(() -> MechanoBlocks.CONNECTOR_SINGLE.asItem().getDefaultInstance())
             .title(Component.translatable("itemGroup." + Mechano.ID + ".base"))
@@ -30,7 +30,7 @@ public class MechanoGroups {
     );
 
     public static void register(IEventBus modBus) {
-        TAB_REGISTRY.register(modBus);
+        MechanoGroups.TAB_REGISTRY.register(modBus);
         Mechano.LOGGER.debug("registering groups");
     }
 

@@ -12,6 +12,14 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
+String gitHash = getGitHash();
+String getGitHash() {
+    try { 
+        ExecOutput output = providers.exec commandLine("git", "rev-parse", "HEAD")
+        return output.standardOutput.asText.get().trim()
+    } catch (Throwable e) { return "(n/a)" }
+}
+
 base {
     archivesName = "$mod_id-$minecraft_version"
     group = mod_group_id
@@ -78,6 +86,7 @@ sourceSets.main{
 
     blossom.javaSources {
         property("version", mod_version)
+        property("hash", gitHash)
     }
 }
 
@@ -109,6 +118,11 @@ dependencies {
     additionalRuntimeClasspath("org.ejml:ejml-simple:${ejml_version}")
     implementation("org.ejml:ejml-dsparse:${ejml_version}")
     additionalRuntimeClasspath("org.ejml:ejml-dsparse:${ejml_version}")
+    implementation("org.ejml:ejml-ddense:${ejml_version}")
+    additionalRuntimeClasspath("org.ejml:ejml-ddense:${ejml_version}")
+    
+    implementation("org.openjdk.jol:jol-core:${jol_version}")
+    additionalRuntimeClasspath("org.openjdk.jol:jol-core:${jol_version}")
 }
 
 

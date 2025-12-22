@@ -12,6 +12,7 @@ import org.joml.Vector3f;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
@@ -57,7 +58,7 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
      * This instance is not guaranteed to contain up-to-date information about
      * this Griddable<?>and this method contains no checks to verify its validity.
      * @return A (new or pre-existing) {@link GridAccelerator}
-     * @see #getTerminus() For callers: Use getTerminus() this method instead
+     * @see #getAccelerator() For callers: Use getTerminus() this method instead
      */
     GridAccelerator provideTerminus();
 
@@ -80,9 +81,20 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
      * @return The instance returned by {@link #provideTerminus() the provider}
      * @see #provideTerminus()
      */
-    default GridAccelerator getTerminus() {
+    default GridAccelerator getAccelerator() {
         provideTerminus().initializeFrom(getCircuit());
         return provideTerminus();
+    }
+
+    /**
+     * Gets the default {@link AncillaryNode} for instances
+     * where the {@link JackSelector} is not accessible (like
+     * in gametests)
+     * @return The first reachable ancillary in this griddable's {@link #getAccelerator() terminus}
+     */
+    default AncillaryNode getDefaultAncillary() {
+        GridAccelerator acc = getAccelerator();
+        return acc.getFirst();
     }
 
     @Override

@@ -137,7 +137,7 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
         }
-        if(!grid.isLoaded(initialSource) || !grid.isLoaded(subsequentSource)) 
+        if(!grid.isReachable(initialSource) || !grid.isReachable(subsequentSource)) 
             return InteractionResultHolder.fail(stack);
         GridUUID subsequentTargetID = grid.getAddressFor(subsequentSource, subsequentTarget);
         GridAction request = grid.initiateTask(GridAction.TASK_LINK_JOINTS)

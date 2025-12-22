@@ -1,11 +1,14 @@
 package com.quattage.mechano.api.grid.solver;
 
 import java.util.Locale;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Stopwatch;
-import com.quattage.mechano.Mechano;
+import org.apache.commons.lang3.time.DurationFormatUtils;
+
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.Circuit;
+import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
 import net.minecraft.util.StringRepresentable;
 
@@ -14,34 +17,22 @@ import net.minecraft.util.StringRepresentable;
  * voltage smatrix using a discrete implementation.
  */
 public interface NodalSolver {
-    
+
     double EPSILON = 0.001d;
     int STEP_LIMIT = 255;
-    Stopwatch profiler = Stopwatch.createUnstarted();
+
+    /** 
+     * @return A string describing the method used for this solver
+     */
+    String describeSelf();
 
     /**
-     * Runs this solver until completion, either
-     * when the iteration limit exceeds <code>STEP_LIMIT</code>
-     * or until the residual has been reduced to a value below
-     * <code>EPSILON</code>
-     * @param snapshot
-     * @return <code>FINISHED_SOLVED_EARLY</code> or <code>FINISH_SOLVED_LATE</code> if convergence was reached, see {@link ConvergenceStatus}
+     * Set up initial values for this solver by allocating matrices and arrays as needed.
+     * This method is only called when <code>grid</code> is modified or changes size in any way,
+     * but is not called every tick.
+     * @param grid
      */
-    default ConvergenceStatus solve(ServerGrid grid) {
-        grid.setStatus(ConvergenceStatus.UNFINISHED_COMPUTING);
-        ConvergenceStatus status = null;
-        if(NodalSolver.profiler != null) {
-            NodalSolver.profiler.start();
-            status = run(grid);
-            NodalSolver.profiler.reset();
-        } else {
-            status = run(grid);
-            if(!status.indicatesSuccess())
-                Mechano.LOGGER.warn("The active NodalSolver couldn't converge in " + NodalSolver.STEP_LIMIT + " iterations");
-        }
-        grid.setStatus(status);
-        return status;
-    }
+    void initialize(ServerGrid grid);
 
     /**
      * Runs this solver until completeion, either
@@ -52,7 +43,6 @@ public interface NodalSolver {
      * @return <code>SOLVED</code> if convergence was reached
      */
     ConvergenceStatus run(ServerGrid grid);
-    void apply(Circuit circuit);
 
     /**
      * Used when a world is unloaded to ensure that the footprint of this solver is minimized.
@@ -63,14 +53,41 @@ public interface NodalSolver {
         FINISHED_SOLVED_EARLY(true),
         FINISHED_SOLVED_LATE(true),
         FINISHED_LIMIT_REACHED(false),
-        UNFINISHED_PROBLEMATIC_DATA(false),
-        UNFINISHED_COMPUTING(false),
-        UNFINISHED_GENERIC_ERROR(false),
-        UNFINISHED_UNPOPULATED(false);
+        ABORTED_PROBLEMATIC_DATA(false),
+        ABORTED_GENERIC_ERROR(false),
+        SETTING_UP(false),
+        REFRESHING_TOPOLOGY(false),
+        COMPUTING(false),
+        IDLE(false),
+        NONE(false);
         private final boolean success;
         ConvergenceStatus(boolean success) { this.success = success; }
         public boolean indicatesSuccess() { return success; }
         @Override public String getSerializedName() { return name().toLowerCase(Locale.ROOT); }
         @Override public String toString() { return getSerializedName(); }
+    }
+
+    public class ConvergenceStatusHolder implements NonNullSupplier<ConvergenceStatus> {
+        
+        private AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.NONE);
+        private AtomicLong lastUpdateTime = new AtomicLong(System.currentTimeMillis());
+        
+        public ConvergenceStatusHolder set(ConvergenceStatus newStatus) {
+            Objects.requireNonNull(status);
+            if(status.get() == newStatus) return this;
+            this.status.set(newStatus);
+            lastUpdateTime.set(System.currentTimeMillis());
+            return this;
+        }
+
+        @Override
+        public ConvergenceStatus get() {
+            return status.get();
+        }
+
+        @Override
+        public String toString() {
+            return "'" + status.get() + "' (held for " + DurationFormatUtils.formatDuration(System.currentTimeMillis() - lastUpdateTime.get(), "ss.SSS") + "s)";
+        }
     }
 }

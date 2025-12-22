@@ -36,13 +36,13 @@ public enum SimpleOrientation implements StringRepresentable {
 
     private final Direction cardinal;
     private final Axis orient;
-    private static final Int2ObjectMap<SimpleOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), (boysmell) -> {
-        for(SimpleOrientation direction : values()) {
-            boysmell.put(lookupKey(direction.cardinal, direction.orient), direction);
+    private static final Int2ObjectMap<SimpleOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(SimpleOrientation.values().length), boysmell -> {
+        for(SimpleOrientation direction : SimpleOrientation.values()) {
+            boysmell.put(SimpleOrientation.lookupKey(direction.cardinal, direction.orient), direction);
         }
     });
 
-    private SimpleOrientation(Direction cardinal, Axis orient) {
+    SimpleOrientation(Direction cardinal, Axis orient) {
         this.cardinal = cardinal;
         this.orient = orient;
     }
@@ -71,8 +71,8 @@ public enum SimpleOrientation implements StringRepresentable {
         if(cardinal.getAxis() == orient)
             throw new IllegalStateException("A SimpleOrientation facing '" + cardinal.toString().toUpperCase() 
                 + "' is invalid for the axis '" + orient.toString().toUpperCase() + "'");
-        int i = lookupKey(cardinal, orient);
-        return COMBINED_LOOKUP.get(i);
+        int i = SimpleOrientation.lookupKey(cardinal, orient);
+        return SimpleOrientation.COMBINED_LOOKUP.get(i);
     }
 
     public Direction getCardinal() {

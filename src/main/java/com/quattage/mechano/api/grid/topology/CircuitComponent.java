@@ -17,6 +17,7 @@ import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.GridHierarchy.ComponentHierarchyInvalidException;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.solver.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
@@ -138,8 +139,8 @@ public interface CircuitComponent extends StringRepresentable {
      * CircuitComponent doesn't belong to a link.
      * @see #isLink
      */
-    default ComponentLink<CircuitComponent> getLink() {
-        return getParentComponent() instanceof ComponentLink cl ? cl : null;
+    default ComponentLink<?> getLink() {
+        return getParentComponent() instanceof ComponentLink<?> cl ? cl : null;
     }
 
     /**
@@ -196,18 +197,6 @@ public interface CircuitComponent extends StringRepresentable {
             collected.add(joint);
         });
         return collected.isEmpty() ? null : collected;
-    }
-
-    /**
-     * The contribution factor of this component indicates whether or not it "exerts"
-     * an external force on the matrix during MNA (multi-nodal analysis). The default
-     * implementation (and what most subclasses will use) simply returns <code>0</code>.
-     * <p> Objects that induce a current are considered contributors. and should return
-     * a number <code>> 0</code> cooresponding to the amount of nodes that they induce a
-     * current between.
-     */
-    default int getContributionFactor() { 
-        return 0; 
     }
 
     public abstract class FunctionalComponent implements CircuitComponent {
@@ -340,19 +329,18 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         /**
-         * CircuitComponent subclasses whose function is to induce an
-         * external charge on the circuit are considered to be 
-         * anonymous voltage sources. Batteries should return
-         * true here.
-         * @return <code>true</code> if this stamper object represents a source of voltage
+         * The number of additional doubles to allocate in
+         * the {@link MNAIndexer} when stamping dynamically.
+         * For simple stuff like resistors, this number is zero.
+         * @return 
          */
-        public abstract boolean isVoltageSource();
+        public abstract int getAllocations();
 
         /**
          * "Stamping" refers to the process of an individual CircuitComponent
          * declaring its own presence in the NodalSnapshot. This method
-         * stamps the topological impact of this component onto the
-         * snapshot for this solver step.
+         * stamps the topological impact of this component onto the current
+         * snapshot. This method is only run when the grid's topology changes.
          * @see #stampDynamic
          */
         public abstract void stamp(ServerGrid grid);
@@ -360,7 +348,8 @@ public interface CircuitComponent extends StringRepresentable {
         /**
          * "Stamping" refers to the process of an individual CircuitComponent
          * declaring its own presence in the NodalSnapshot. This method
-         * stamps the time-varied values of this component.
+         * stamps the time-varied values of this component for the current
+         * solver step. This method is run continuously as the grid resolves.
          * @see #stamp
          */
         public abstract void stampDynamic(ServerGrid grid);

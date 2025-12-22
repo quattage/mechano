@@ -79,6 +79,8 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         return this;
     }
 
+    public abstract GridUUID copy();
+
     private short clampedUnsigned(int binding) {
         return (short)(Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, (short)Math.abs(binding))) - Short.MAX_VALUE);
     }
@@ -177,6 +179,11 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         }
 
         @Override
+        public GridUUID copy() {
+            return new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ())).withBinding(getType(), bindingA, bindingB);
+        }
+
+        @Override
         public @Nullable Griddable<?> getTargetSource(LevelReader world) {
             BlockEntity be = world.getBlockEntity(pos);
             return be instanceof Griddable<?> gbe ? gbe : null;
@@ -258,6 +265,11 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         public EntityUUID(Dynamic<?> dyn) {
             super(dyn);
             this.uuid = new UUID(dyn.get("um").asLong(0), dyn.get("ul").asLong(0));
+        }
+
+        @Override
+        public GridUUID copy() {
+            return new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits())).withBinding(getType(), bindingA, bindingB);
         }
 
         @Override

@@ -510,7 +510,7 @@ public class CatenaryMeshBuffer implements WorldlyObject {
     public CatenaryMeshBuffer walkUVs(Stick stick, float arclength) {
         data[42] += arclength;
         data[43] = data[42] + stick.getLength() * 8f;
-        if (data[43] > Catenaries.renderPipeline().TEX_DIMS[1]) {
+        if(data[43] > Catenaries.renderPipeline().TEX_DIMS[1]) {
             data[42] = 0;
             data[43] = arclength;
         }

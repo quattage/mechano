@@ -26,12 +26,12 @@ public interface VoltageDecay {
         }
     }
 
-    public abstract double apply(double soc);
-    public abstract DataPoint[] getTable();
-    public abstract double nominal();
-    public abstract double minimal();
-    public abstract double cutoff();
-    public default double clamp(double in) {
+    double apply(double soc);
+    DataPoint[] getTable();
+    double nominal();
+    double minimal();
+    double cutoff();
+    default double clamp(double in) {
         return Math.clamp(in, nominal(), minimal());
     }
 
@@ -141,7 +141,7 @@ public interface VoltageDecay {
         }
 
         public LinearLUT(float[][] table) {
-            super(convert(table));
+            super(LinearLUT.convert(table));
         }
 
         public LinearLUT(DataPoint[] points) {

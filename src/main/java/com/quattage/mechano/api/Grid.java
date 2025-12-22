@@ -28,17 +28,22 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
     /**
      * This class represents the link between the Minecraft world and the grid.
      * The Client and Server grids are instantiated as Data Attachments that belong
      * to the level.
      */
-    // @EventBusSubscriber
+    @EventBusSubscriber
     public abstract sealed class Grid implements WorldlyObject permits ClientGrid, ServerGrid {
     // these words aren't in the bible
         
@@ -47,7 +52,6 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
         // weakly referenced singletons are stored to skip hash capability lookups
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
-
         protected final Object2ObjectOpenHashMap<GridUUID, List<ComponentLink<?>>> links = new Object2ObjectOpenHashMap<>();
 
         /**
@@ -66,6 +70,23 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             else throw new IllegalArgumentException("Mechano Grid Data can only be attached to levels, got " + holder + "!");
             freshInstance.info("Created new grid data");
             return freshInstance;
+        }
+
+        @SubscribeEvent
+        public static void loadGrid(LevelEvent.Load evt) {
+            LevelAccessor world = evt.getLevel();
+            Grid.getUnsided(world).onLoad();
+        }
+
+        @SubscribeEvent
+        public static void tickGrid(LevelTickEvent.Post evt) {
+            Level world = evt.getLevel();
+            Grid.getUnsided(world).tick();
+        }
+
+        public static void unloadGrid(LevelEvent.Unload evt) {
+            LevelAccessor world = evt.getLevel();
+            Grid.getUnsided(world).onUnload();
         }
 
         public static @NotNull Grid getUnsided(LevelReader world) {
@@ -152,6 +173,10 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             Grid.LOGGER.debug("(" + getDimensionName() + ") " + msg);
         }
 
+        public void error(String msg) {
+            Grid.LOGGER.error("(" + getDimensionName() + ") " + msg);
+        }
+
         @Override
         public String getDimensionName() {
             return world.dimension().location().toString();
@@ -159,13 +184,46 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
         protected abstract void onLoad();
         protected abstract void onUnload();
-        protected abstract void tick();
+        public abstract void tick();
 
         public GridAction addLink(ComponentLink<?> link) {
             Objects.requireNonNull(link);
-            if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while adding link - The provided link doesn't have a start and/or end ID configured!");
-            List<ComponentLink<?>> linksAt = links.get(link.getStart());
-            if(linksAt == null || linksAt.isEmpty()) {
+            link.validate();
+            ComponentLink<?> linkInverted = link.flippedCopy();
+            GridAction straight = addLinkSingle(link);
+            GridAction inverted = addLinkSingle(linkInverted);
+            if(straight.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
+                removeLink(link);
+                removeLink(linkInverted);
+                // always consume the failure case should one exist
+                if(!straight.getActionType().indicatesFailure())
+                    straight = inverted;
+            }
+            link.onAddedToGrid(this);
+            return straight;
+        }
+
+        public GridAction removeLink(ComponentLink<?> link) {
+            Objects.requireNonNull(link);
+            link.validate();
+            return removeLink(link.getStart(), link.getEnd());
+        }
+
+        public GridAction removeLink(GridUUID startID, GridUUID endID) {
+            Objects.requireNonNull(startID);
+            Objects.requireNonNull(endID);
+            GridAction straight = removeLinkSingle(startID, endID);
+            GridAction inverted = removeLinkSingle(endID, startID);
+            if(straight.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
+                if(!straight.getActionType().indicatesFailure())
+                    straight = inverted;
+            }
+            return straight;
+        }
+
+        private GridAction addLinkSingle(ComponentLink<?> link) {
+            List<ComponentLink<?>> linksAt = getLinksBelongingTo(link.getStart());
+            if(linksAt == null) {
                 linksAt = new ArrayList<ComponentLink<?>>();
                 linksAt.add(link);
                 links.put(link.getStart(), linksAt);
@@ -178,25 +236,9 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        public GridAction removeLink(ComponentLink<?> link) {
-            Objects.requireNonNull(link);
-            if(!link.hasUUIDs()) throw new IllegalArgumentException("Failed while removing link - The provided link doesn't have a start and/or end ID configured!");
-            List<ComponentLink<?>> linksAt = links.get(link.getStart());
-            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_START_MISSING;
-            boolean removed = linksAt.remove(link);
-            if(!removed) return GridAction.RESPONSE_FAIL_END_MISSING;
-            if(linksAt.isEmpty()) {
-                links.remove(link.getStart());
-                links.trim();
-            }
-            return GridAction.RESPONSE_SUCCESS;
-        }
-
-        public GridAction removeLink(GridUUID startID, GridUUID endID) {
-            Objects.requireNonNull(startID);
-            Objects.requireNonNull(endID);
-            List<ComponentLink<?>> linksAt = links.get(startID);
-            if(linksAt == null || linksAt.isEmpty()) return GridAction.RESPONSE_FAIL_START_MISSING;
+        private GridAction removeLinkSingle(GridUUID startID, GridUUID endID) {
+            List<ComponentLink<?>> linksAt = getLinksBelongingTo(startID);
+            if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
             int toRemove = -1;
             for(int x = 0; x < linksAt.size(); x++) {
                 ComponentLink<?> link = linksAt.get(x);
@@ -212,6 +254,16 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
                 links.trim();
             }
             return GridAction.RESPONSE_SUCCESS;
+        }
+
+        public List<ComponentLink<?>> getLinksBelongingTo(GridUUID uuid) {
+            List<ComponentLink<?>> linksAt = links.get(uuid);
+            if(linksAt == null) return null;
+            if(linksAt.isEmpty()) {
+                links.remove(uuid);
+                return null;
+            }
+            return linksAt;
         }
 
         public int getLinkCount() {
@@ -267,6 +319,11 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return boundID;
         }
 
+        public <T extends CircuitComponent> @Nullable T findComponent(GridUUID address, Class<T> type) {
+            CircuitComponent out = findComponent(address);
+            return type.isInstance(out) ? type.cast(out) : null;
+        }
+
         public @Nullable CircuitComponent findComponent(GridUUID address) {
             Objects.requireNonNull(address);
             Griddable<?> source = address.getTargetSource(this);
@@ -293,19 +350,26 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
             return address.getType().findTarget(this, circuit, address);
         }
 
-        public <T extends CircuitComponent> @Nullable T findComponent(GridUUID address, Class<T> type) {
-            CircuitComponent out = findComponent(address);
-            return type.isInstance(out) ? type.cast(out) : null;
-        }
-
-        public boolean isLoaded(GridIdentifiable<?> obj) {
+        /**
+         * Checks whether or not the provided object can be discovered by this
+         * Grid. Non-reachable objects are either not loaded by Minecraft or
+         * no longer exist for whatever reason. In most scenarios, you can 
+         * already guarantee the reachability of a {@link Griddable} as long 
+         * as you use tranditional instantiation methods (like placing a block 
+         * or spawning an entity) - In situations where that is not the case, 
+         * (e.g. tests) this method will tell you whether or not <code>obj</code>
+         * can be discovered in the world.
+         * @param obj {@link GridIdentifiable} to address
+         * @return <code>true</code> if <code>obj</code> is reachable.
+         */
+        public boolean isReachable(GridIdentifiable<?> obj) {
             Griddable<?> source = obj.getUUIDSafe().getTargetSource(this);
             return source != null && source.getCircuit() != null;
         }
 
-        public String writeAllLinks() {
-            if(links.isEmpty()) return "Links[Empty]";
-            String out = "Links[\n";
+        public String linksAsString() {
+            if(links.isEmpty()) return "\n\tEmpty";
+            String out = "";
             for(Map.Entry<GridUUID, List<ComponentLink<?>>> entry : links.entrySet()) {
                 GridUUID id = entry.getKey();
                 out += "\t- " + id + ":\n";
@@ -314,7 +378,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
                 out = out.substring(0, out.length() - 1);
                 out += "\n";
             }
-            return out + "]";
+            return out;
         }
 
         @Override

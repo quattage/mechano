@@ -1,7 +1,7 @@
 package com.quattage.mechano.api.transmitter;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.vertex.WireJack;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.AbstractBuilder;
 import com.tterrag.registrate.builders.BuilderCallback;
@@ -20,11 +20,12 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 
 public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractBuilder<TransmitterType<?>, TransmitterType<T>, P, TransmitterBuilder<T, P>> {
 
+    @SuppressWarnings("unchecked")
     public static <T extends CircuitComponent, P> TransmitterBuilder<T, P> create(AbstractRegistrate<?> owner, String name, BuilderCallback callback, ResourceKey<? extends Registry<TransmitterType<?>>> key) {
         return new TransmitterBuilder<T, P>(owner, (P)owner, name, callback, key);
     }
 
-    private NonNullBiFunction<WireJack, WireJack, T> factory;
+    private NonNullBiFunction<Node, Node, T> factory;
     private NonNullSupplier<CatenaryRenderProperties> renderProperties;
 
     public TransmitterBuilder(AbstractRegistrate<?> owner, P parent, String name, BuilderCallback callback,
@@ -32,7 +33,7 @@ public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractB
         super(owner, parent, name, callback, registryKey);
     }
 
-    public TransmitterBuilder<T, P> component(NonNullBiFunction<WireJack, WireJack, T> factory) {
+    public TransmitterBuilder<T, P> component(NonNullBiFunction<Node, Node, T> factory) {
         this.factory = factory;
         return this;
     }

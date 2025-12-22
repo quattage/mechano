@@ -41,7 +41,7 @@ public interface MapLikeItemHoldable {
         matrixStack.translate(0f, 0.2f + equipProgress * -1.2f + tilt * -0.3f, -0.72f);
         matrixStack.mulPose(Axis.XP.rotationDegrees(tilt * -90f));
 
-        if (!player.isInvisible()) {
+        if(!player.isInvisible()) {
             matrixStack.pushPose();
             matrixStack.mulPose(Axis.YP.rotationDegrees(90));
             MapLikeItemHoldable.renderSpoolHand(renderer, player, matrixStack, bufferSource, packedLight, HumanoidArm.RIGHT);
@@ -70,7 +70,7 @@ public interface MapLikeItemHoldable {
         poseStack.mulPose(Axis.XP.rotationDegrees(30.0F));
         poseStack.mulPose(Axis.ZP.rotationDegrees(f * -30.0F));
         poseStack.translate(f * 0.09F, -0.9F, 0.45F);
-        if (side == HumanoidArm.RIGHT) 
+        if(side == HumanoidArm.RIGHT) 
             playerrenderer.renderRightHand(poseStack, buffer, packedLight, player);
         else playerrenderer.renderLeftHand(poseStack, buffer, packedLight, player);
 

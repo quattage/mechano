@@ -21,19 +21,19 @@ public class SimpleOrientedBlock extends Block implements IWrenchable {
     public SimpleOrientedBlock(Properties pProperties) {
         super(pProperties);
         this.registerDefaultState(this.stateDefinition.any()
-            .setValue(ORIENTATION, SimpleOrientation.UP_X));
+            .setValue(SimpleOrientedBlock.ORIENTATION, SimpleOrientation.UP_X));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(ORIENTATION);
+        builder.add(SimpleOrientedBlock.ORIENTATION);
     }
 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
-		SimpleOrientation rotatedOrient = SimpleOrientation.cycle(state.getValue(ORIENTATION));
-        BlockState rotated = state.setValue(ORIENTATION, rotatedOrient);
+		SimpleOrientation rotatedOrient = SimpleOrientation.cycle(state.getValue(SimpleOrientedBlock.ORIENTATION));
+        BlockState rotated = state.setValue(SimpleOrientedBlock.ORIENTATION, rotatedOrient);
 
         if(!rotated.canSurvive(world, context.getClickedPos()))
 			return InteractionResult.PASS;
@@ -57,7 +57,7 @@ public class SimpleOrientedBlock extends Block implements IWrenchable {
         if(orientation.getAxis() == followingDir.getAxis()) followingDir = followingDir.getClockWise();
         if(context.getPlayer().isCrouching()) orientation = orientation.getOpposite();
 
-        return this.defaultBlockState().setValue(ORIENTATION, 
+        return this.defaultBlockState().setValue(SimpleOrientedBlock.ORIENTATION, 
             SimpleOrientation.combine(orientation, followingDir.getAxis()));
     }
 }

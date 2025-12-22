@@ -31,13 +31,13 @@ public enum VerticalOrientation implements StringRepresentable {
 
     private final Direction localFacing;
     private final boolean localVertical;
-    private static final Int2ObjectMap<VerticalOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(values().length), boysmell -> {
-        for(VerticalOrientation direction : values()) {
-            boysmell.put(lookupKey(direction.localFacing, direction.localVertical), direction);
+    private static final Int2ObjectMap<VerticalOrientation> COMBINED_LOOKUP = Util.make(new Int2ObjectOpenHashMap<>(VerticalOrientation.values().length), boysmell -> {
+        for(VerticalOrientation direction : VerticalOrientation.values()) {
+            boysmell.put(VerticalOrientation.lookupKey(direction.localFacing, direction.localVertical), direction);
         }
     });
 
-    private VerticalOrientation(Direction localFacing, boolean localVertical) {
+    VerticalOrientation(Direction localFacing, boolean localVertical) {
         this.localFacing = localFacing;
         this.localVertical = localVertical;
     }
@@ -52,8 +52,8 @@ public enum VerticalOrientation implements StringRepresentable {
         if(localFacing.getAxis() == Axis.Y)
             throw new IllegalStateException("VerticalOrientation localFacing can't be on the Y Axis!");
 
-        int i = lookupKey(localFacing, localVertical);
-        return COMBINED_LOOKUP.get(i);
+        int i = VerticalOrientation.lookupKey(localFacing, localVertical);
+        return VerticalOrientation.COMBINED_LOOKUP.get(i);
     }
 
     public static VerticalOrientation combine(Direction localFacing, Direction localVertical) {
@@ -66,8 +66,8 @@ public enum VerticalOrientation implements StringRepresentable {
         if(localVertical.getAxis() == Axis.Y)
             throw new IllegalStateException("VerticalOrientation localVertical must be on the Y Axis!");
 
-        int i = lookupKey(localFacing, yToBool(localVertical));
-        return COMBINED_LOOKUP.get(i);
+        int i = VerticalOrientation.lookupKey(localFacing, VerticalOrientation.yToBool(localVertical));
+        return VerticalOrientation.COMBINED_LOOKUP.get(i);
     }
 
     public static boolean yToBool(Direction dir) {

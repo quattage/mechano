@@ -18,7 +18,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 
-// DataComponents, DataAttachments, and Capabilities
+// DataComponents, DataAttachments, Capabilities, and miscelaneous unsided events
 public class MechanoData {
 
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENT_REGISTRY = DeferredRegister.create(

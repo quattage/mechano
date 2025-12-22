@@ -27,22 +27,29 @@ public class Resistor extends StampingComponent {
     }
 
     @Override
-    public boolean isVoltageSource() {
-        return false;
+    public int getAllocations() {
+        return 0;
     }
 
     @Override
     public void stamp(ServerGrid grid) {
         double g = 1d / (double)ohms;
-        int aI = terminals[0].getNode().getIndex();
-        int bI = terminals[0].getNode().getIndex();
-        if(aI >= 0) grid.stampMatrix(aI, aI, g);
-        if(bI >- 0) grid.stampMatrix(bI, bI, g);
+        int aI = pinA().getNode().getNodalIndex();
+        int bI = pinB().getNode().getNodalIndex();
+        if(aI >= 0) grid.stampA(aI, aI, g);
+        if(bI >= 0) grid.stampA(bI, bI, g);
         if(aI >= 0 && bI >= 0) {
-            grid.stampMatrix(aI, bI, -g);
-            grid.stampMatrix(bI, aI, -g);
+            grid.stampA(aI, bI, -g);
+            grid.stampA(bI, aI, -g);
         }
     }
+
+    @Override
+    public void stampDynamic(ServerGrid grid) {
+        
+    }
+
+    
 
     @Override
     public @Nullable Terminal pinA() {

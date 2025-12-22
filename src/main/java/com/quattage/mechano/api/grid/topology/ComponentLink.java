@@ -15,7 +15,6 @@ import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
-import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
@@ -106,7 +105,7 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return this;
     }
 
-    public ComponentLink<T> checkValidity() {
+    public ComponentLink<T> validate() {
         assertHasIDs();
         assertHasAncillaries();
         assertHasSignificance();
@@ -118,16 +117,14 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
 
     public CircuitComponent getOrCreateInternalComponent() {
         if(component != null) return component;
-        if(!(startNode instanceof WireJack startJack))
-            throw new IllegalStateException("Failed to create component for " + this + " - The starting node's type is unsupported!");
-        if(!(endNode instanceof WireJack endJack))
-            throw new IllegalStateException("Failed to create component for " + this + " - The starting node's type is unsupported!");
-        component = trns.instantiate(startJack, endJack);
+        component = trns.instantiate(getStartNode(), getEndNode());
         component.updateOwnership(this, -1);
         return component;
     }
 
-    
+    public void forgetInternalComponent() {
+        this.component = null;
+    }
 
     @Override
     public Collection<Terminal> getTerminals() {
@@ -266,18 +263,6 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         return this.startNode == that.startNode && this.endNode == that.endNode;
     }
 
-
-    private void assertHasTransmitter() {
-        if(trns == null) {
-            throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - This ComponentLink has no transmitter!");
-        }
-        if(trns.getFactory() == null) {
-            throw new NullPointerException("An operation failed on ComponentLink " + this 
-                + " - The supplied transmitter " + trns + " returned a null CircuitComponent factory!");
-        }
-    }
-
     private void assertHasIDs() {
         if(startID == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
@@ -326,12 +311,12 @@ public class ComponentLink<T extends CircuitComponent> implements CircuitCompone
         GridUUID startIDRetrieved = startNode.bindUUID(startNode.getSource().getUUID());
         if(!startIDRetrieved.equals(startID)) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The starting jack returned a UUID that doesn't match!");
+                + " - The starting jack returned a UUID that doesn't match! (got " + startIDRetrieved + ")");
         }
         GridUUID endIDRetrieved = endNode.bindUUID(endNode.getSource().getUUID());
         if(!endIDRetrieved.equals(endID)) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The ending jack returned a UUID that doesn't match!");
+                + " - The ending jack returned a UUID that doesn't match! (got " + endIDRetrieved + ")");
         }
     }
 

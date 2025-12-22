@@ -19,7 +19,7 @@ public final class ClientGrid extends Grid {
     }
 
     @Override
-    protected void tick() {
+    public void tick() {
         
     }
 }

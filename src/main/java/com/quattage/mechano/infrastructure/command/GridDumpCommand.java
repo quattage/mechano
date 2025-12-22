@@ -2,7 +2,7 @@ package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.api.ServerGrid;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,10 +20,10 @@ public class GridDumpCommand {
                         source.sendFailure(Component.literal("Couldn't dump from non-player source"));
                         return 1;
                     }
-                    Grid.server(sp).initiateTask(GridAction.TASK_GRID_DUMP)
-                        .from()
-                        .withArguments(sp.getUUID())
-                        .executeAs(sp);
+                    ServerGrid grid = Grid.server(sp);
+                    String manifest = grid.writeManifest(sp);
+                    grid.warn(manifest);
+                    sp.sendSystemMessage(Component.literal("Manifest written. Check console for details."));
                     return 1;
                 });
     }

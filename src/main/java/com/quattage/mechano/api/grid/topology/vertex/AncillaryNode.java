@@ -222,8 +222,26 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public @NotNull Griddable<?>getSource() {
+    public @NotNull Griddable<?> getSource() {
         return source;
+    }
+
+    @Override
+    public int getNodalIndex() {
+        assertAttached();
+        return parent.getNodalIndex();
+    }
+
+    @Override
+    public void setNodalIndex(int nodalIndex) {
+        assertAttached();
+        parent.setNodalIndex(nodalIndex);
+    }
+
+    @Override
+    public int getCircuitIndex() {
+        assertAttached();
+        return parent.getCircuitIndex();
     }
 
     @Override
@@ -251,12 +269,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public void setIndex(int index) {
-        assertAttached();
-        parent.setIndex(index);
-    }
-
-    @Override
     public void saturate() {
         assertAttached();
         parent.saturate();
@@ -270,7 +282,8 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     @Override
     public GridUUID bindUUID(GridUUID id) {
         assertAttached();
-        return id.withBinding(getType(), parent.getIndex(), parent.indexOf(this));
+        parent.bindUUID(id);
+        return id.withBinding(getType(), id.getBindingA(), parent.indexOf(this));
     }
 
     @Override
@@ -294,11 +307,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     public void dispose() {
         this.parent = null;
         this.source = null;
-    }
-
-    @Override
-    public int getIndex() {
-        return parent == null ? -1 : parent.getIndex();
     }
 
     @Override
@@ -344,7 +352,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
 
     @Override public String describeState() { 
         if(parent == null) return "@(null)";
-        return "@(" + parent.getIndex() + ", " + parent.hashCode() + ")"; 
+        return "@(" + parent.hashCode() + ")"; 
     }
 
     @Override

@@ -39,7 +39,7 @@ public class GridDumpTask implements ActionTask {
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         ServerPlayer sp = grid.getServer().getPlayerList().getPlayer((UUID)args[0]);
         if(sp == null) return GridAction.RESPONSE_FAIL_GENERIC;
-        MutableComponent message = Component.literal("-- Server-sided dump:\n" + grid.writeAllLinks() + "\n--").withStyle(ChatFormatting.GRAY);
+        MutableComponent message = Component.literal("-- Server-sided dump:\n" + grid.linksAsString() + "\n--").withStyle(ChatFormatting.GRAY);
         sp.sendSystemMessage(message);
         return GridAction.TASK_GRID_DUMP;
     }
@@ -47,7 +47,7 @@ public class GridDumpTask implements ActionTask {
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid.writeAllLinks() + "\n--").withStyle(ChatFormatting.GRAY);
+        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid.linksAsString() + "\n--").withStyle(ChatFormatting.GRAY);
         self().sendSystemMessage(message);
         return GridAction.RESPONSE_SUCCESS;
     }

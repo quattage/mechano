@@ -17,26 +17,27 @@ public abstract class VoltageSource extends StampingComponent {
     public abstract double getStateOfCharge();
 
     @Override
-    public boolean isVoltageSource() {
-        return true;
+    public int getAllocations() {
+        return 1;
     }
-
-    @Override 
-    public abstract int getContributionFactor();
 
     @Override
     public void stamp(ServerGrid grid) {
-        int pI = terminals[0].getNode().getIndex();
-        int nI = terminals[1].getNode().getIndex();
-        cIndex = grid.allocateSource();
+        int pI = terminals[0].getNode().getNodalIndex();
+        int nI = terminals[1].getNode().getNodalIndex();
+        cIndex = grid.indexer().get(this);
         if(pI >= 0) {
-            grid.stampMatrix(pI, cIndex, 1);
-            grid.stampMatrix(cIndex, pI, 1);
+            grid.stampA(pI, cIndex, 1);
+            grid.stampA(cIndex, pI, 1);
         }
         if(nI >= 0) {
-            grid.stampMatrix(nI, cIndex, -1);
-            grid.stampMatrix(cIndex, nI, -1);
+            grid.stampA(nI, cIndex, -1);
+            grid.stampA(cIndex, nI, -1);
         }
-        grid.stampRHS(cIndex, volts.apply(getStateOfCharge()));
+    }
+
+    @Override
+    public void stampDynamic(ServerGrid grid) {
+        grid.stampB(cIndex, volts.apply(getStateOfCharge()));
     }
 }

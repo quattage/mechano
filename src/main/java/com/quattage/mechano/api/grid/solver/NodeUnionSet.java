@@ -1,5 +1,10 @@
 package com.quattage.mechano.api.grid.solver;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.api.grid.topology.vertex.Node;
@@ -22,9 +27,10 @@ public class NodeUnionSet {
 
     public Node find(Node n) {
         Node p = relations.get(n);
-        if(p == null) return null;
-        if(!p.equals(n)) relations.put(n, find(p));
-        return p;
+        if(n == p) return n;
+        Node root = find(p);
+        relations.put(n, root);
+        return root;
     }
 
     public void union(Node a, Node b) {
@@ -62,10 +68,15 @@ public class NodeUnionSet {
     public void assignIndices() {
         int index = 0;
         for(Node node : roots)
-            node.setIndex(node.isGrounded() ? -1 : index++);
+            node.setNodalIndex(node.isGrounded() ? -1 : index++);
+        for(Node node : relations.keySet()) {
+            Node root = find(node);
+            node.setNodalIndex(root.getNodalIndex());
+        }
     }
 
     public boolean add(Node n) {
+        Objects.requireNonNull(n);
         if(relations.containsKey(n)) return false;
         relations.put(n, n);
         ranks.put(n, n.isGrounded() ? -1 : 0);
@@ -73,21 +84,54 @@ public class NodeUnionSet {
         return true;
     }
 
+
     public void remove(Node n) {
+        Objects.requireNonNull(n);
         relations.remove(n);
         ranks.removeInt(n);
-    }
-
-    public int rootCount() {
-        return roots.size();
     }
 
     public int uniqueCount() {
         return ranks.size();
     }
 
+    public int rootCount() {
+        return roots.size();
+    }
+
     public void forEachRoot(Consumer<Node> cons) {
         roots.forEach(cons);
+    }
+
+    public Set<Node> allRoots() {
+        return roots;
+    }
+
+    /**
+     * Get a list of every node that has been folded under
+     * the ownership of <code>root</code>.
+     * Do not use this except for rare circumstances where
+     * no other alternative is feasible, since this method
+     * requires iteration of the entire tree.
+     * @param root
+     * @return A list of nodes. Will never be null.
+     */
+    public List<Node> getAllChildren(Node root) {
+        if(!roots.contains(root)) return Collections.emptyList();
+        List<Node> result = new ArrayList<>();
+        for(Node node : relations.keySet()) {
+            if(node.equals(root)) continue;
+            if(find(node) == root) result.add(node);
+        }
+        return result;
+    }
+
+    public String getRootsAsString() {
+        String out = "";
+        for(Node node : roots) {
+            out += "\t" + node.getNodalIndex() + ": " + node + "\n";
+        }
+        return out.substring(0, out.length() - 2);
     }
 
     public void reset() {

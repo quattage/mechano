@@ -21,28 +21,31 @@ public class Capacitor extends StampingComponent {
     }
 
     @Override
+    public int getAllocations() {
+        return 0;
+    }
+
+    @Override
     public void stamp(ServerGrid grid) {
-        prevVoltage = terminals[0].getNode().getVoltage() - terminals[1].getNode().getVoltage();
-        double g = (double)capacitance / Circuit.DELTA;
-        int pI = terminals[0].getNode().getIndex();
-        int nI = terminals[1].getNode().getIndex();
-        double ieq = g * prevVoltage;
-        if(pI >= 0) {
-            grid.stampMatrix(pI, pI, g);
-            grid.stampRHS(pI, ieq);
-        }
-        if(nI >= 0) {
-            grid.stampMatrix(nI, nI, g);
-            grid.stampRHS(nI, ieq);
-        }
+        double g = capacitance / Circuit.DELTA;
+        int pI = terminals[0].getNode().getNodalIndex();
+        int nI = terminals[1].getNode().getNodalIndex();
+        if(pI >= 0) grid.stampA(pI, pI,  g);
+        if(nI >= 0) grid.stampA(nI, nI,  g);
         if(pI >= 0 && nI >= 0) {
-            grid.stampMatrix(pI, nI, -g);
-            grid.stampMatrix(nI, pI, -g);
+            grid.stampA(pI, nI, -g);
+            grid.stampA(nI, pI, -g);
         }
     }
 
     @Override
-    public boolean isVoltageSource() {
-        return false;
+    public void stampDynamic(ServerGrid grid) {
+        double vNow = terminals[0].getNode().getVoltage() - terminals[1].getNode().getVoltage();
+        double ieq = (capacitance / Circuit.DELTA) * prevVoltage;
+        int pI = terminals[0].getNode().getNodalIndex();
+        int nI = terminals[1].getNode().getNodalIndex();
+        if(pI >= 0) grid.stampB(pI,  ieq);
+        if(nI >= 0) grid.stampB(nI, -ieq);
+        prevVoltage = vNow;
     }
 }

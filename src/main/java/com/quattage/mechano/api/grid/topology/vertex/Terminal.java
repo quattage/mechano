@@ -93,11 +93,11 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public String describeState() {
-        return "from '" + instantiator.getComponentID() + "'";
+        return "attached to '" + instantiator.getComponentID() + "'";
     }
 
     public String describeSelf() {
-        return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s " + getComponentID();
+        return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s '" + getComponentID() + "'";
     }
 
     @Override 

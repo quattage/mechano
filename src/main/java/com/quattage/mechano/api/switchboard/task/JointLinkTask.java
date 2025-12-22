@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
@@ -15,15 +16,12 @@ import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.MechanoRegistrate;
 import com.quattage.mechano.foundation.tracking.GridIdentifiable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -47,8 +45,7 @@ public class JointLinkTask implements ActionTask {
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         UUIDSourceType.write((GridUUID)args[0], buffer);
         UUIDSourceType.write((GridUUID)args[1], buffer);
-        Registry<TransmitterType<?>> registry = (Registry<TransmitterType<?>>)BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY);
-        buffer.writeInt(registry.getId((TransmitterType<?>)args[2]));
+        buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType<?>)args[2]));
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
             buffer.writeBoolean(true);
@@ -64,7 +61,7 @@ public class JointLinkTask implements ActionTask {
         return new Object[] {
             UUIDSourceType.read(buffer),
             UUIDSourceType.read(buffer),
-            BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY).byId(buffer.readInt()),
+            Mechano.REGISTRATE.getTransmitterRegistry().byId(buffer.readInt()),
             buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null,
             GridAction.values()[buffer.readInt()]
         };
@@ -126,20 +123,7 @@ public class JointLinkTask implements ActionTask {
      * the stuff further up in this class is for managing the task's serialization to a packet.
      */
     protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType<?> trns) {
-        ComponentLink<?> linkA = new ComponentLink<>(trns, startID, startNode, endID, endNode).checkValidity();
-        ComponentLink<?> linkB = linkA.flippedCopy().checkValidity();
-        GridAction runResult = grid.addLink(linkA);
-        GridAction runResultInverted = grid.addLink(linkB);
-
-        if(runResult.getActionType().indicatesFailure() || runResultInverted.getActionType().indicatesFailure()) {
-            grid.removeLink(linkA);
-            grid.removeLink(linkB);
-            // always consume the failure case should one exist
-            if(!runResult.getActionType().indicatesFailure())
-                runResult = runResultInverted;
-        }
-        linkA.onAddedToGrid(grid);
-        return runResult;
+        return grid.addLink(new ComponentLink<>(trns, startID, startNode, endID, endNode));
     }
     
     /**
@@ -152,6 +136,4 @@ public class JointLinkTask implements ActionTask {
         if(serverResult.getActionType().isConsumed()) 
             SpoolItem.wipeData(player, true);
     }
-
-    
 }

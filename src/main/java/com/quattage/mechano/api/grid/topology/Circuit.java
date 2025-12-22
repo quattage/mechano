@@ -9,10 +9,12 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.functional.Resistor;
+import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
@@ -25,8 +27,23 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
- * A graph which, in and of itself, is a CircuitComponent, but this graph
- * 
+ * A localized graph which represents a collection of 
+ * {@link FunctionalComponent functional components} connected together by 
+ * nodes. This class can be instantiated by Griddables to define a single 
+ * electric circuit with a discrete function. For example, an electric 
+ * furnace may define a circuit containing a diode and a heating element.
+ * The heating element may have a callback attached to it which allows
+ * the BlockEntity to respond to electrical changes and smelt items.
+ * <h3>A node on graph access:</h3>
+ * The Circuit cannot provide direct access to the adjacency
+ * status of itself or its constituents. The data contained within
+ * this class is not assembled in any sort of legible graph
+ * system. (that's what the {@link ServerGrid} is for) When connections 
+ * are made, The {@link Node nodes} belonging to this circuit are flushed 
+ * into the {@link NodeUnionSet} belonging to the active {@link ServerGrid}. 
+ * This data is collected and captured as a snapshot by the grid, which is 
+ * processed and solved off-thread. <strong>You cannot modify the voltage, 
+ * current, or charge of any circuit elements from this class.</strong>
  */
 public class Circuit implements CircuitComponent {
     
@@ -143,7 +160,7 @@ public class Circuit implements CircuitComponent {
                 nodes.get(x).updateOwnership(this, x);
             return;
         } 
-        int i = joint.getIndex();
+        int i = joint.getCircuitIndex();
         nodes.remove(i); 
         // update the indices of all the shifted instnaces
         for(int x = i; x < nodes.size(); x++)
@@ -162,16 +179,6 @@ public class Circuit implements CircuitComponent {
         }
         joint.updateOwnership(this, nodes.size() - 1);
         this.nodes.add(joint);
-    }
-
-    @Override
-    public int getContributionFactor() {
-        int out = 0;
-        for(CircuitComponent c : components) {
-            if(c != null && c.isSignificant())
-                out += c.getContributionFactor();
-        }
-        return out;
     }
 
     /**
@@ -261,6 +268,13 @@ public class Circuit implements CircuitComponent {
         }
     }
 
+    public void forEachComponent(Consumer<CircuitComponent> cons) {
+        for(CircuitComponent comp : components) {
+            if(!comp.isSignificant()) continue;
+            cons.accept(comp);
+        }
+    }
+
     @Override
     public boolean isSignificant() {
         return nodes != null && !nodes.isEmpty();
@@ -275,7 +289,7 @@ public class Circuit implements CircuitComponent {
     public String describeState() {
         String out = "";
         for(Node node : nodes) {
-            out += "\n\tJoint " + node.getIndex() + " (" + node.hashCode() + ") - " + node.describeState();
+            out += "\n\tJoint " + node.getCircuitIndex() + " (" + node.hashCode() + ") - " + node.describeState();
             if(node.hasAncillaries()) {
                 out += "\n\t\t- Ancillaries:";
                 for(AncillaryNode jack : node.getAncillaries())

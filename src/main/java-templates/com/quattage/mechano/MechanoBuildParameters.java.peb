@@ -1,5 +1,11 @@
 package com.quattage.mechano;
 
+
 public class MechanoBuildParameters {
     public static String VERSION = "{{ version }}";
+    public static String HASH = "{{ hash }}";
+    public static String asString() {
+        return "v" + MechanoBuildParameters.VERSION + " @" + MechanoBuildParameters.HASH;
+    }
 }
+

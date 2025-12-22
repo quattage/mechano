@@ -22,12 +22,12 @@ public class VerticallyOrientedBlock extends Block implements IWrenchable{
     public VerticallyOrientedBlock(Properties pProperties) {
         super(pProperties);
         this.registerDefaultState(this.stateDefinition.any()
-            .setValue(ORIENTATION, VerticalOrientation.WEST_UP));
+            .setValue(VerticallyOrientedBlock.ORIENTATION, VerticalOrientation.WEST_UP));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(ORIENTATION);
+        builder.add(VerticallyOrientedBlock.ORIENTATION);
     }
 
     @Override
@@ -38,21 +38,21 @@ public class VerticallyOrientedBlock extends Block implements IWrenchable{
             localFacing = context.getHorizontalDirection();
         if(context.getPlayer().isCrouching()) localFacing = localFacing.getOpposite();
 
-        return this.defaultBlockState().setValue(ORIENTATION, VerticalOrientation.combine(localFacing, localVertical));
+        return this.defaultBlockState().setValue(VerticallyOrientedBlock.ORIENTATION, VerticalOrientation.combine(localFacing, localVertical));
     }
 
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
         Level world = context.getLevel();
 
-        BlockState rotated = state.setValue(ORIENTATION, VerticalOrientation.cycle(state.getValue(ORIENTATION)));
+        BlockState rotated = state.setValue(VerticallyOrientedBlock.ORIENTATION, VerticalOrientation.cycle(state.getValue(VerticallyOrientedBlock.ORIENTATION)));
 
-        if (!rotated.canSurvive(world, context.getClickedPos()))
+        if(!rotated.canSurvive(world, context.getClickedPos()))
 			return InteractionResult.PASS;
         
         KineticBlockEntity.switchToBlockState(world, context.getClickedPos(), updateAfterWrenched(rotated, context));
 
-        if (world.getBlockState(context.getClickedPos()) != state)
+        if(world.getBlockState(context.getClickedPos()) != state)
 			IWrenchable.playRotateSound(world, context.getClickedPos());
 
 		return InteractionResult.SUCCESS;

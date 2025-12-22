@@ -112,6 +112,17 @@ public class GridAccelerator implements OrientationUpdatable, SourceIdentifier {
         }
     }
 
+    /**
+     * @return The first reachable {@link AncillaryNode} in this
+     * accelerator's internal array. If this accelerator has not
+     * yet been {@link #initializeFrom() initialized}, this method
+     * will always return <code>null</code>
+     */
+    public @Nullable AncillaryNode getFirst() {
+        if(isEmpty()) return null;
+        return exposedJoints[0];
+    }
+
     public boolean isEmpty() {
         return exposedJoints == null || exposedJoints.length <= 0;
     }

@@ -7,7 +7,6 @@ import org.ejml.dense.row.mult.VectorVectorMult_DDRM;
 import org.ejml.sparse.csc.CommonOps_DSCC;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.Circuit;
 
 /**
  * A SPICE-like solver based on the biconjugate gradient stabilized method.
@@ -18,36 +17,44 @@ import com.quattage.mechano.api.grid.topology.Circuit;
  */
 public class StabilizedBiconjucateSolver implements NodalSolver {
 
-    private DMatrixRMaj r, r_hat, p, v, s, t, h, temp;
-    private double rho, rho_old, alpha, beta, omega, d, normS, normR;
+    private DMatrixRMaj r, rHat, p, v, s, t, h, temp;
+    private double rho, rhoOld, alpha, beta, omega, d, normS, normR;
 
     public StabilizedBiconjucateSolver() {}
 
     @Override
-    public ConvergenceStatus run(ServerGrid grid) {
+    public String describeSelf() {
+        return "BiCGSTAB (no preconditioning)";
+    }
 
+    @Override
+    public void initialize(ServerGrid grid) {
         r = grid.createWorkingVector();
-        r_hat = new DMatrixRMaj();
+        rHat = new DMatrixRMaj();
         p = grid.createWorkingVector();
         v = grid.createWorkingVector();
         s = grid.createWorkingVector();
         t = grid.createWorkingVector();
         h = grid.createWorkingVector();
         temp = grid.createWorkingVector();
+    }
+
+    @Override
+    public ConvergenceStatus run(ServerGrid grid) {
 
         CommonOps_DSCC.mult(grid.matrixTermA(), grid.matrixTermX(), temp);
         CommonOps_DDRM.subtract(grid.matrixTermB(), temp, r);
-        r_hat.setTo(r);
-        rho = VectorVectorMult_DDRM.innerProd(r_hat, r);
-        rho_old = 1; alpha = 1; omega = 1;
+        rHat.setTo(r);
+        rho = VectorVectorMult_DDRM.innerProd(rHat, r);
+        rhoOld = 1; alpha = 1; omega = 1;
         p.setTo(r);
 
         for(int i = 0; i < NodalSolver.STEP_LIMIT; i++) {
 
             CommonOps_DSCC.mult(grid.matrixTermA(), p, v);
-            d = VectorVectorMult_DDRM.innerProd(r_hat, v);
+            d = VectorVectorMult_DDRM.innerProd(rHat, v);
             if(Math.abs(d) < (NodalSolver.EPSILON * 0.1d)) 
-                return ConvergenceStatus.UNFINISHED_PROBLEMATIC_DATA;
+                return ConvergenceStatus.ABORTED_PROBLEMATIC_DATA;
 
             alpha = rho / d;
             CommonOps_DDRM.add(alpha, p, 1d, grid.matrixTermX(), h);
@@ -67,10 +74,10 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
             if(normR < NodalSolver.EPSILON)
                 return ConvergenceStatus.FINISHED_SOLVED_LATE;
 
-            rho_old = rho;
-            rho = VectorVectorMult_DDRM.innerProd(r_hat, r);
+            rhoOld = rho;
+            rho = VectorVectorMult_DDRM.innerProd(rHat, r);
 
-            beta = (rho / rho_old) * (alpha / omega);
+            beta = (rho / rhoOld) * (alpha / omega);
 
             CommonOps_DDRM.add(-omega, v, 1d, p, temp);
             CommonOps_DDRM.add(beta, temp, 1d, r, p);
@@ -80,13 +87,8 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
     }
 
     @Override
-    public void apply(Circuit circuit) {
-        
-    }
-
-    @Override
     public void reset() {
-        rho = 0; rho_old = 0; alpha = 0; beta = 0; omega = 0; d = 0; normS = 0; normR = 0; 
-        r= null; r_hat = null; p = null; v = null; s = null; t = null; h = null; temp = null;
+        rho = 0; rhoOld = 0; alpha = 0; beta = 0; omega = 0; d = 0; normS = 0; normR = 0; 
+        r= null; rHat = null; p = null; v = null; s = null; t = null; h = null; temp = null;
     }
 }

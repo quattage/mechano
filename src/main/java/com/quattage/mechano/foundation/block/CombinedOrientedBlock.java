@@ -24,12 +24,12 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
     public CombinedOrientedBlock(Properties pProperties) {
         super(pProperties);
         this.registerDefaultState(this.stateDefinition.any()
-            .setValue(ORIENTATION, CombinedOrientation.UP_WEST));
+            .setValue(CombinedOrientedBlock.ORIENTATION, CombinedOrientation.UP_WEST));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(ORIENTATION);
+        builder.add(CombinedOrientedBlock.ORIENTATION);
     }
 
     @Override
@@ -40,11 +40,11 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
         CombinedOrientation strictCD;
         BlockPos pos = context.getClickedPos();
 
-        if(intendedRotation == state.getValue(ORIENTATION).getLocalUp().getAxis())
-            strictCD = CombinedOrientation.cycleLocalForward(state.getValue(ORIENTATION));
-        else strictCD = CombinedOrientation.cycle(state.getValue(ORIENTATION));
+        if(intendedRotation == state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp().getAxis())
+            strictCD = CombinedOrientation.cycleLocalForward(state.getValue(CombinedOrientedBlock.ORIENTATION));
+        else strictCD = CombinedOrientation.cycle(state.getValue(CombinedOrientedBlock.ORIENTATION));
 
-        BlockState rotated = state.setValue(ORIENTATION, strictCD);
+        BlockState rotated = state.setValue(CombinedOrientedBlock.ORIENTATION, strictCD);
         if(!rotated.canSurvive(world, pos))
 			return InteractionResult.PASS;
         world.setBlock(pos, updateAfterWrenched(rotated, context), 3);
@@ -69,6 +69,6 @@ public class CombinedOrientedBlock extends Block implements IWrenchable {
         if(orientation.getAxis() == followingDir.getAxis()) followingDir = followingDir.getClockWise();
         if(context.getPlayer().isCrouching()) orientation = orientation.getOpposite();
 
-        return this.defaultBlockState().setValue(ORIENTATION, CombinedOrientation.combine(orientation, followingDir));
+        return this.defaultBlockState().setValue(CombinedOrientedBlock.ORIENTATION, CombinedOrientation.combine(orientation, followingDir));
     }
 }

@@ -1,21 +1,19 @@
 package com.quattage.mechano.foundation;
 
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterBuilder;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 
 public final class MechanoRegistrate extends CreateRegistrate {
 
-    public static final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> 
-        TRANSMITTER_KEY = ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(Mechano.ID, "transmitter_type"));
+    private final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> trnsKey;
 
     public static MechanoRegistrate make(String modid) {
         return new MechanoRegistrate(modid);
@@ -23,15 +21,20 @@ public final class MechanoRegistrate extends CreateRegistrate {
 
     protected MechanoRegistrate(String modid) {
         super(modid);
-        makeRegistry("transmitter_type", this::supplyTransmitterRegistry);
+        this.trnsKey = makeRegistry("transmitter_type", this::supplyTransmitterRegistry);
     }
 
-    private RegistryBuilder<TransmitterType<?>> supplyTransmitterRegistry(ResourceKey<Registry<TransmitterType<?>>> key) {
-        return new RegistryBuilder<TransmitterType<?>>(key).maxId(256).sync(true);
+    @SuppressWarnings("unchecked")
+    public Registry<TransmitterType<? extends CircuitComponent>> getTransmitterRegistry() {
+        return (Registry<TransmitterType<? extends CircuitComponent>>)BuiltInRegistries.REGISTRY.getOrThrow((ResourceKey)trnsKey);
+    }
+
+    private RegistryBuilder<TransmitterType<? extends CircuitComponent>> supplyTransmitterRegistry(ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> key) {
+        return new RegistryBuilder<TransmitterType<? extends CircuitComponent>>(key).maxId(256).sync(true);
     }
 
     public <T extends CircuitComponent, P> TransmitterBuilder<T, P> transmitter(String name) {
-        return entry(name, callback -> TransmitterBuilder.create(self(), name, callback, MechanoRegistrate.TRANSMITTER_KEY));
+        return entry(name, callback -> TransmitterBuilder.create(self(), name, callback, trnsKey));
     }
 }
 

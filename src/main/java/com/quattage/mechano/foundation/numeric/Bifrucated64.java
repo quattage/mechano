@@ -24,9 +24,9 @@ import net.minecraft.network.codec.StreamCodec;
 public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
 
     private static final int SPLITSHIFT = 28;
-    private static final long MAX_HIGH = (1L << 64L - (long)SPLITSHIFT) - 1L;
-    private static final int MAX_LOW = (1 << SPLITSHIFT) - 1;
-    public static final double EPSILON = (1d / (double)MAX_LOW) * 2d;
+    private static final long MAX_HIGH = (1L << 64L - (long)Bifrucated64.SPLITSHIFT) - 1L;
+    private static final int MAX_LOW = (1 << Bifrucated64.SPLITSHIFT) - 1;
+    public static final double EPSILON = (1d / (double)Bifrucated64.MAX_LOW) * 2d;
 
     public static final Bifrucated64 MAX = new Bifrucated64 (Long.MAX_VALUE, true);
     public static final Bifrucated64 ZERO = new Bifrucated64(0, true);
@@ -60,11 +60,11 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
     private boolean immutable;
 
     public static long pack(long high, int low) {
-        return (high << SPLITSHIFT) | low;
+        return (high << Bifrucated64.SPLITSHIFT) | low;
     }
 
     public static long unpackHigh(long packed) {
-        return (packed >>> SPLITSHIFT);
+        return (packed >>> Bifrucated64.SPLITSHIFT);
     }
 
     public static int unpackLow(long packed) {
@@ -79,25 +79,25 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
     public Bifrucated64(double value) { setValue(value); }
     public Bifrucated64 setValue(double value) {
         if(immutabilityCheck()) return mutableCopy().setValue(value);
-        long whole = Math.min(Math.abs((long)value), MAX_HIGH);
+        long whole = Math.min(Math.abs((long)value), Bifrucated64.MAX_HIGH);
         double frac = value - Math.abs((double)whole);
-        this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * MAX_LOW)));
+        this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * Bifrucated64.MAX_LOW)));
         return this;
     }
 
     public Bifrucated64(float value) { setValue(value); }
     public Bifrucated64 setValue(float value) {
         if(immutabilityCheck()) return mutableCopy().setValue(value);
-        long whole = Math.min(Math.abs((long)value), MAX_HIGH);
+        long whole = Math.min(Math.abs((long)value), Bifrucated64.MAX_HIGH);
         double frac = whole - Math.abs((double)whole);
-        this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * MAX_LOW)));
+        this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * Bifrucated64.MAX_LOW)));
         return this;
     }
 
     public Bifrucated64(int value) { setValue(value); }
     public Bifrucated64 setValue(int value) {
         if(immutabilityCheck()) return mutableCopy().setValue(value);
-        this.packed = Math.abs(((long)value << SPLITSHIFT));
+        this.packed = Math.abs(((long)value << Bifrucated64.SPLITSHIFT));
         return this;
     }
 
@@ -113,9 +113,9 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
         String wholeComponent = value.substring(0, decimalPlace);
         String decimalComponent = "0" + value.substring(decimalPlace);
         try {
-            long whole = Math.min(Math.abs(Long.parseLong(wholeComponent)), MAX_HIGH);
+            long whole = Math.min(Math.abs(Long.parseLong(wholeComponent)), Bifrucated64.MAX_HIGH);
             double frac = Double.parseDouble(decimalComponent);
-            this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * MAX_LOW)));
+            this.packed = Bifrucated64.pack(whole, (int)Math.round((frac * Bifrucated64.MAX_LOW)));
         } catch (NumberFormatException e) {
             Mechano.LOGGER.error("Couldn't parse BifrucatedLong from input string '" + value + "'", e);
         }
@@ -138,33 +138,33 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
     public Bifrucated64 add(double value) { return add(new Bifrucated64(value)); }
     public Bifrucated64 add(Bifrucated64 other) {
         if(immutabilityCheck()) return mutableCopy().add(other);
-        long low = unpackLow(this.packed) + unpackLow(other.packed);
+        long low = Bifrucated64.unpackLow(this.packed) + Bifrucated64.unpackLow(other.packed);
         int carry = 0;
-        if(low > MAX_LOW) {
-            low = low & MAX_LOW; 
+        if(low > Bifrucated64.MAX_LOW) {
+            low = low & Bifrucated64.MAX_LOW; 
             carry++;
         }
-        long highSum = Math.min(unpackHigh(this.packed) + unpackHigh(other.packed) + carry, MAX_HIGH);
-        this.packed = pack(highSum, (int)low);
+        long highSum = Math.min(Bifrucated64.unpackHigh(this.packed) + Bifrucated64.unpackHigh(other.packed) + carry, Bifrucated64.MAX_HIGH);
+        this.packed = Bifrucated64.pack(highSum, (int)low);
         return this;
     }
 
     public Bifrucated64 subtract(double value) { return subtract(new Bifrucated64(value)); }
     public Bifrucated64 subtract(Bifrucated64 other) {
         if(immutabilityCheck()) return mutableCopy().subtract(other);
-        long highA = unpackHigh(this.packed);
-        long highB = unpackHigh(other.packed);
+        long highA = Bifrucated64.unpackHigh(this.packed);
+        long highB = Bifrucated64.unpackHigh(other.packed);
         if(highA < highB) {
             this.packed = 0;
             return this;
         }
-        long low = unpackLow(this.packed) - unpackLow(other.packed);
+        long low = Bifrucated64.unpackLow(this.packed) - Bifrucated64.unpackLow(other.packed);
         int borrow = 0;
         if(low < 0) {
-            low += 1L << SPLITSHIFT;
+            low += 1L << Bifrucated64.SPLITSHIFT;
             borrow++;
         }
-        this.packed = pack(Math.clamp(highA - highB - borrow, 0, MAX_HIGH), (int)low);
+        this.packed = Bifrucated64.pack(Math.clamp(highA - highB - borrow, 0, Bifrucated64.MAX_HIGH), (int)low);
         return this;
     }
 
@@ -190,7 +190,7 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
     
     @Override
     public double doubleValue() {
-        return (double)longValue() + ((double)Bifrucated64.unpackLow(packed) / (double)MAX_LOW);
+        return (double)longValue() + ((double)Bifrucated64.unpackLow(packed) / (double)Bifrucated64.MAX_LOW);
     }
 
     public BigDecimal bigValue() {
@@ -204,10 +204,10 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
         return this;
     }
 
-    public boolean isMax() { return packed >= MAX_HIGH; }
+    public boolean isMax() { return packed >= Bifrucated64.MAX_HIGH; }
     public Bifrucated64 maxOut() {
         if(immutabilityCheck()) return mutableCopy().zeroOut();
-        packed = MAX_HIGH;
+        packed = Bifrucated64.MAX_HIGH;
         return this;
     }
 
@@ -225,7 +225,7 @@ public class Bifrucated64 extends Number implements Comparable<Bifrucated64> {
 
     @Override
     public String toString() {
-        String dec = "" + ((double)Bifrucated64.unpackLow(packed) / (double)MAX_LOW);
+        String dec = "" + ((double)Bifrucated64.unpackLow(packed) / (double)Bifrucated64.MAX_LOW);
         return longValue() + "." + dec.substring(2, dec.length() - 1);
     }
 

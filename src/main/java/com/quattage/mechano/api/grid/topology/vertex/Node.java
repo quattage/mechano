@@ -7,15 +7,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.GridHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 
 public interface Node extends CircuitComponent {
@@ -46,14 +49,34 @@ public interface Node extends CircuitComponent {
     boolean detach(Terminal pin);
     boolean detach(@Nullable Griddable<?> source, AncillaryNode jack);
 
+    int getCircuitIndex();
+
+    /**
+     * @return The index that this node belongs to in its associated
+     * {@link NodeUnionSet}. A return value <code><0</code> indicates
+     * that this node is grounded.
+     */
+    int getNodalIndex();
+
+    /**
+     * To be called only by API elements, particularly the {@link NodeUnionSet}
+     * when unioning this node for solving.
+     * @param nodalIndex The index in the {@link NodeUnionSet} that this node belongs
+     */
+    @ApiStatus.Internal
+    void setNodalIndex(int nodalIndex);
+
     List<AncillaryNode> getAncillaries();
     @Override List<Terminal> getTerminals();
     
     double getVoltage();
     void setVoltage(double volts);
-    int getIndex();
-    void setIndex(int index);
     void dispose();
+
+    @Override
+    default String getComponentID() {
+        return "Joint";
+    }
 
     @Override 
     default boolean isSignificant() { 
@@ -130,18 +153,57 @@ public interface Node extends CircuitComponent {
 
     @Override
     default String describeState() {
-        return getTerminals().size() + " terminals, " + getAncillaries().size() + " ancillaries, " + String.format("%.3f", getVoltage()) + " volts" + (isGrounded() ? "grounded)" : "");
+        return size() + " terminals, " + (getAncillaries() == null ? "0" : getAncillaries().size()) + " ancillaries, " + String.format("%.3f", getVoltage()) + " volts, " + (isGrounded() ? "grounded" : "ungrounded");
     }
-
 
     @Override
     default GridUUID bindUUID(GridUUID id) {
-        return id.withBinding(getType(), getIndex());
+        return id.withBinding(getType(), getCircuitIndex());
     }
     
     @Override
     default GridHierarchy getType() {
         return GridHierarchy.EMITTER_NODE;
+    }
+
+    default String toFullString(@Nullable NodeUnionSet unionizer) {
+        String out = "    ▸ " + getSerializedName() + " " + getNodalIndex() + ", " + (isGrounded() ? "Ground:" : String.format("%.3f", getVoltage()) + " volts:");
+        if(hasAncillaries()) {
+            Griddable<?> src = getSource();
+            BlockPos bp = src.getBlockPos();
+            out += "\n\t  Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
+            out += "\n\t  " + getAncillaries().size() + " Ancillaries: [";
+            for(AncillaryNode anc : getAncillaries())
+                out += anc.getComponentID() + ", ";
+            out = out.substring(0, out.length() - 2) + "]";
+        } else out += "\n\t  0 Ancillaries: [Empty]";
+        if(hasTerminals()) {
+            out += "\n\t  " + getTerminals().size() + " Terminals: [";
+            for(Terminal term : getTerminals())
+                out += "\n\t\t" + term.toString();
+            out += "]";
+        } else out += "\n\t  0 Terminals: [Empty]";
+        if(unionizer == null) return out;
+        List<Node> children = unionizer.getAllChildren(this);
+        if(children == null) return out = "\n\t  Non-root, no children.";
+        out += "\n\t  " + children.size() + " netlist child" + (children.size() == 1 ? ":" : "ren:");
+        for(Node node : children) {
+            Griddable<?> source = node.getSource();
+            BlockPos bp = source == null ? null : source.getBlockPos();
+            out += "\n\t\t  ↪ " + node.getSerializedName() + " " + node.getNodalIndex() + " (" + (source == null ? "no source" : source.getClass().getSimpleName() + " [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]") + ")";
+        }
+        return out;
+    }
+
+    default @Nullable Griddable<?> getSource() {
+        if(!hasAncillaries()) return null;
+        for(AncillaryNode node : getAncillaries()) {
+            if(node == null) continue;
+            Griddable<?> source = node.getSource();
+            if(source == null) continue;
+            return source;
+        }
+        return null;
     }
 
     public static class Joint implements Node {
@@ -150,11 +212,12 @@ public interface Node extends CircuitComponent {
         protected @Nullable ObjectArrayList<Terminal> terminals;
         protected @Nullable List<AncillaryNode> ancillaries = null;
         private double voltage = 0;
-        private int index;
+        private int circuitIndex, nodalIndex;
 
         public Joint(CircuitComponent parent) {
             this.parent = parent;
-            this.index = -1;
+            this.circuitIndex = -1;
+            this.nodalIndex = -1;
         }
 
         @Override
@@ -172,7 +235,7 @@ public interface Node extends CircuitComponent {
 			if(ancillaries == null)
                 ancillaries = new ArrayList<>();
             ancillaries.add(jack);
-            jack.updateOwnership(source, this, jack.getIndex());;
+            jack.updateOwnership(source, this, 0);
             return true;
 		}
 
@@ -194,8 +257,19 @@ public interface Node extends CircuitComponent {
             return removed;
 		}
 
-        @Override public String getComponentID() { 
-            return "Joint"; 
+        @Override
+        public int getCircuitIndex() {
+            return circuitIndex;
+        }
+
+        @Override
+        public int getNodalIndex() {
+            return nodalIndex;
+        }
+
+        @Override
+        public void setNodalIndex(int nodalIndex) {
+            this.nodalIndex = nodalIndex;
         }
 
         @Override
@@ -217,10 +291,10 @@ public interface Node extends CircuitComponent {
         public void updateOwnership(Griddable<?> source, CircuitComponent parent, int index) {
             CircuitComponent.assertValidOwnership(this, parent);
             this.parent = parent;
-            this.index = index;
+            this.circuitIndex = index;
             if(source == null || !hasAncillaries()) return;
             for(AncillaryNode jack : ancillaries)
-                jack.updateOwnership(source, this, jack.getIndex());
+                jack.updateOwnership(source, this, 0);
         }
 
         @Override public void setVoltage(double volts) { 
@@ -233,21 +307,9 @@ public interface Node extends CircuitComponent {
         }
 
         @Override
-        public int getIndex() {
-            if(index < 0 && !isGrounded()) throw new IllegalStateException("Joint returned invalid index " + index);
-            return index;
-        }
-
-        @Override
-        public void setIndex(int index) {
-            if(index < 0 && !isGrounded()) throw new IllegalArgumentException("Can't set index to non-negative for non-grounded node");
-            this.index = index;
-        }
-
-        @Override
         public void dispose() {
             this.parent = null;
-            this.index = -1;
+            this.circuitIndex = -1;
             this.voltage = 0;
             this.terminals = null;
         }
@@ -263,6 +325,11 @@ public interface Node extends CircuitComponent {
         protected @Nullable ObjectArrayList<Terminal> terminals;
 
         public GroundedJoint() {}
+
+        @Override
+        public GridUUID bindUUID(GridUUID id) {
+            return id.withBinding(getType(), -1);
+        }
 
         @Override
         public boolean attach(Terminal pin) {
@@ -294,8 +361,19 @@ public interface Node extends CircuitComponent {
 			return false;
 		}
 
-        @Override public String getComponentID() { 
-            return "Joint"; 
+        @Override
+        public int getCircuitIndex() {
+            return -1;
+        }
+        
+        @Override
+        public int getNodalIndex() {
+            return -1;
+        }
+
+        @Override
+        public void setNodalIndex(int nodalIndex) {
+            return;
         }
 
         @Override
@@ -324,16 +402,6 @@ public interface Node extends CircuitComponent {
         @Override
         public double getVoltage() {
             return 0;
-        }
-
-        @Override
-        public int getIndex() {
-            return -1;
-        }
-
-        @Override
-        public void setIndex(int index) {
-            return;
         }
 
         @Override

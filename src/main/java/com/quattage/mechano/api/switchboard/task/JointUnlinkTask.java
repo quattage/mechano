@@ -18,13 +18,6 @@ public class JointUnlinkTask extends JointLinkTask {
 
     @Override
     protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType<?> trns) {
-        GridAction runResult = grid.removeLink(startID, endID);
-        GridAction runResultInverted = grid.removeLink(endID, startID);
-        if(runResult.getActionType().indicatesFailure() || runResultInverted.getActionType().indicatesFailure()) {
-            // always consume the failure case should one exist
-            if(!runResult.getActionType().indicatesFailure())
-                runResult = runResultInverted;
-        }
-        return runResult;
+        return grid.removeLink(startID, endID);
     }
 }

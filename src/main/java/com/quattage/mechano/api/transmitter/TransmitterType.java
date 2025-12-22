@@ -4,13 +4,12 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.vertex.WireJack;
-import com.quattage.mechano.foundation.MechanoRegistrate;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.tterrag.registrate.util.nullness.NonNullBiFunction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
-import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -19,7 +18,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class TransmitterType<T extends CircuitComponent> {
     
     private final String name;
-    private final NonNullBiFunction<WireJack, WireJack, T> factory;
+    private final NonNullBiFunction<Node, Node, T> factory;
     private final NonNullSupplier<CatenaryRenderProperties> renderProperties;
 
     /**
@@ -30,13 +29,12 @@ public class TransmitterType<T extends CircuitComponent> {
      * @return The TransmitterType at <code>name</code>
      */
     public static TransmitterType<?> getByName(ResourceLocation name) {
-        Registry<TransmitterType<?>> registry = (Registry<TransmitterType<?>>)BuiltInRegistries.REGISTRY.getOrThrow(MechanoRegistrate.TRANSMITTER_KEY);
-        TransmitterType<?> trns = registry.get(name); 
+        TransmitterType<?> trns = Mechano.REGISTRATE.getTransmitterRegistry().get(name); 
         if(trns == null) throw new IllegalArgumentException("Couldn't find TransmitterType entry at " + name);
         return trns;
     }
 
-    public TransmitterType(@Nullable String name, NonNullBiFunction<WireJack, WireJack, T> factory, NonNullSupplier<CatenaryRenderProperties> renderProperties) {
+    public TransmitterType(@Nullable String name, NonNullBiFunction<Node, Node, T> factory, NonNullSupplier<CatenaryRenderProperties> renderProperties) {
         Objects.requireNonNull(factory);
         if(name == null || name.isBlank()) name = "unnamed";
         else name = name.toLowerCase();
@@ -45,7 +43,7 @@ public class TransmitterType<T extends CircuitComponent> {
         this.renderProperties = renderProperties;
     }
 
-    public T instantiate(WireJack start, WireJack end) {
+    public T instantiate(Node start, Node end) {
         if(start == null) throw new CircuitComponentInstantiationException(name, "start is null!");
         if(end == null) throw new CircuitComponentInstantiationException(name, "end is null!");
         if(!start.isSignificant()) throw new CircuitComponentInstantiationException(name, "start is insignificant!");
@@ -55,7 +53,7 @@ public class TransmitterType<T extends CircuitComponent> {
         return out;
     }
 
-    public NonNullBiFunction<WireJack, WireJack, T> getFactory() {
+    public NonNullBiFunction<Node, Node, T> getFactory() {
         return this.factory;
     }
 

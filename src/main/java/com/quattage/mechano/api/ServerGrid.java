@@ -1,92 +1,53 @@
 package com.quattage.mechano.api;
 
+import java.text.SimpleDateFormat;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.data.DMatrixSparseCSC;
-import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.MechanoBuildParameters;
+import com.quattage.mechano.api.grid.functional.PerfectConductor;
+import com.quattage.mechano.api.grid.functional.PerfectInsulator;
+import com.quattage.mechano.api.grid.solver.MNAIndexer;
 import com.quattage.mechano.api.grid.solver.NodalSolver;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatus;
+import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatusHolder;
 import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.solver.StabilizedBiconjucateSolver;
+import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.Node.GroundedJoint;
 import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.infrastructure.MemoryAnalyzer;
 
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public final class ServerGrid extends Grid {
 
-    private static final NodalSolver solver = new StabilizedBiconjucateSolver();
+    private GroundedJoint commonGround;    
     protected final NodeUnionSet unionizer = new NodeUnionSet();
-    protected final AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.UNFINISHED_UNPOPULATED);
-    protected final Object2IntOpenHashMap<CircuitComponent> sourceIndices = new Object2IntOpenHashMap<>();
+    private final MNAIndexer indexer = new MNAIndexer();
+    private NodalSolver solver = new StabilizedBiconjucateSolver();
+    protected final ConvergenceStatusHolder status = new ConvergenceStatusHolder();
 
     private DMatrixSparseCSC A;
     private DMatrixRMaj x, b;
-    private int sourceCount, size = 0;
-    private boolean dirty = false;
+    private boolean isMatrixDirty = false;
+    private boolean hasUnsavedChanges = false;
 
     protected ServerGrid(Level world) {
         super(world);
-    }
-
-    public void beginAssembly(ServerGrid grid) {
-        this.size = (unionizer.rootCount() - 1) + sourceCount;
-        this.A = new DMatrixSparseCSC(size, size, 10 * unionizer.rootCount());
-        this.x = new DMatrixRMaj(size);
-        this.b = new DMatrixRMaj(size);
-        this.A.sortIndices(null);
-    }
-
-    @Override
-    protected void tick() {
-        if(dirty) dirtyTick();
-    }
-
-    private void dirtyTick() {
-
-    }
-
-    @Override
-    public GridAction addLink(ComponentLink<?> link) {
-        GridAction output = super.addLink(link);
-        if(output.getActionType().indicatesSuccess()) {
-            mark(link.getStartNode().getParentComponent());
-            mark(link.getEndNode().getParentComponent());
-            dirty = true;
-        }
-        return output;
-    }
-
-    @Override
-    public GridAction removeLink(ComponentLink<?> link) {
-        GridAction output = super.removeLink(link);
-        this.unmark(link);
-        if(output.getActionType().indicatesSuccess()) {
-            unmark(link.getStartNode().getParentComponent());
-            unmark(link.getEndNode().getParentComponent());
-            dirty = true;
-        }
-        return output;
-    }
-
-    public void mark(CircuitComponent component) {
-        if(component == null || !component.isSignificant()) return;
-        component.forEachNode(node -> { unionizer.add(node); });
-        sourceCount += Math.max(0, component.getContributionFactor());
-    }
-
-    public void unmark(CircuitComponent component) {
-        if(component == null || !component.isSignificant()) return;
-        component.forEachNode(node -> { unionizer.remove(node); });
-        sourceCount -= Math.max(0, component.getContributionFactor());
     }
 
     @Override
@@ -96,11 +57,112 @@ public final class ServerGrid extends Grid {
 
     @Override
     protected void onUnload() {
-        ServerGrid.solver.reset();
+        solver.reset();
         clearAll();
         unionizer.reset();
-        status.set(ConvergenceStatus.UNFINISHED_UNPOPULATED);
-        sourceIndices.clear();
+        status.set(ConvergenceStatus.IDLE);
+        indexer.clear();
+    }
+
+    @Override
+    public void tick() {
+        if(!!indexer.hasStampers()) {
+            this.status.set(ConvergenceStatus.IDLE);
+            A = null; x = null; b = null;
+            indexer.clear();
+            return;
+        }
+        if(isMatrixDirty) dirtyTick();
+        if(!indexer.hasStampers()) return;
+        this.status.set(ConvergenceStatus.COMPUTING);
+        ConvergenceStatus newStatus = solver.run(this);
+        if(newStatus == null || newStatus == ConvergenceStatus.NONE) {
+            warn("Failed to retrieve status for tick, solver run returned no status!");
+            newStatus = ConvergenceStatus.NONE;
+        }
+        this.status.set(newStatus);
+    }
+
+    private void dirtyTick() {
+        int size = (unionizer.rootCount() - 1) + indexer.size();
+        status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
+        A = new DMatrixSparseCSC(size, size, 10 * unionizer.rootCount());
+        x = createWorkingVector();
+        b = createWorkingVector();
+        solver.initialize(this);
+        A.sortIndices(null);
+        unionizer.assignIndices();
+        isMatrixDirty = false;
+    }
+
+    @Override
+    public GridAction addLink(ComponentLink<?> link) {
+        GridAction output = super.addLink(link);
+        CircuitComponent component = link.getOrCreateInternalComponent();
+        if(component instanceof PerfectInsulator) {
+            link.forgetInternalComponent();
+            return GridAction.RESPONSE_SUCCESS;
+        }
+        if(output.getActionType().indicatesSuccess()) {
+            mark(link.getStartNode().getParentComponent());
+            mark(link.getEndNode().getParentComponent());
+            isMatrixDirty = true;
+            hasUnsavedChanges = true;
+        }
+        if(component instanceof PerfectConductor) {
+            link.forgetInternalComponent();
+            unionizer.union(link.getStartNode(), link.getEndNode());
+        }
+        return output;
+    }
+
+    @Override
+    public GridAction removeLink(ComponentLink<?> link) {
+        GridAction output = super.removeLink(link);
+        if(output.getActionType().indicatesSuccess()) {
+            unmark(link.getStartNode().getParentComponent());
+            unmark(link.getEndNode().getParentComponent());
+            isMatrixDirty = true;
+            hasUnsavedChanges = true;
+        }
+        return output;
+    }
+
+    private void mark(CircuitComponent component) {
+        if(component == null || !component.isSignificant()) return;
+        component.forEachNode(node -> { unionizer.add(node); });
+        if(component instanceof StampingComponent stamper) 
+            indexer.allocate(stamper);
+        else if(component instanceof Circuit circuit) {
+            circuit.forEachComponent(comp -> {
+                if(comp instanceof StampingComponent stamper)
+                    indexer.allocate(stamper);
+            });
+        }
+    }
+
+    private void unmark(CircuitComponent component) {
+        if(component == null) return;
+        component.forEachNode(node -> { 
+            unionizer.remove(node); 
+        });
+        if(component instanceof StampingComponent stamper) 
+            indexer.forget(stamper);
+        else if(component instanceof Circuit circuit) {
+            circuit.forEachComponent(comp -> {
+                if(comp instanceof StampingComponent stamper)
+                    indexer.forget(stamper);;
+            });
+        }
+    }
+
+    public MNAIndexer indexer() {
+        return indexer;
+    }
+
+    public GroundedJoint getCommonGround() {
+        if(commonGround == null) commonGround = new GroundedJoint();
+        return commonGround;
     }
 
     /**
@@ -165,7 +227,7 @@ public final class ServerGrid extends Grid {
      * @param col Y axis value
      * @param value voltage to stamp
      */
-    public void stampMatrix(int row, int col, double v) {
+    public void stampA(int row, int col, double v) {
         if(row < 0 || col < 0) return;
         A.unsafe_set(row, col, A.get(row, col) + v);
     }
@@ -177,7 +239,7 @@ public final class ServerGrid extends Grid {
      * @param index
      * @param value
      */
-    public void stampRHS(int index, double value) {
+    public void stampB(int index, double value) {
         if(index < 0) return;
         b.set(index, value);
     }
@@ -197,17 +259,39 @@ public final class ServerGrid extends Grid {
      * doesn't ingest matrix values that are outdated.
      * @return {@link ConvergenceStatus}
      */
-    public ConvergenceStatus getSolverStatus() {
+    public ConvergenceStatus getConvergenceStatus() {
         return status.get();
     }
 
     /**
-     * To be called only by the currently active nodal solver.
+     * Returns a formatted string containing a comprehensive summary
+     * of this grid's current state and internal data.
      */
-    @ApiStatus.Internal
-    public ServerGrid setStatus(ConvergenceStatus status) {
-        this.status.set(status);
-        return this;
+    public String writeManifest(@Nullable Entity requester) {
+        StopWatch timer = StopWatch.createStarted();
+        String out =  "\n▙▚▘▘\t\t\t\tMechano GridAPI manifest\t\t\t\t▝▝▞▟\n\n";
+            out += ""
+                + "API " + MechanoBuildParameters.asString() + "\n"
+                + "Requested at [" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()) + "]"
+                + " by '" + (requester == null ? "n/a" : requester.getName().getString()) + "' in " + getDimensionName() + "\n"
+                + "Solver method: " + solver.describeSelf() + "\n"
+                + "Lifecycle status: " + status + "\n"
+                + "Unsaved changes for this session? " + (hasUnsavedChanges ? "yes" : "no") + "\n"
+                + "Ground: " + (commonGround == null ? "n/a" : commonGround.hashCode()) + "\n"
+                + "Memory footprint analysis: " + MemoryAnalyzer.estimateFootprint(this) + "\n--\n"
+                + "Grid Contents:\n" + collectNodes() + "\n"
+                + "  ♨ github.com/quattage/mechano\n"
+                + "  ☎ discord.gg/85ufgRwy2g\n";
+        return out += "\n\n▛▞▖▖\t\t\t      Manifest generated in " + DurationFormatUtils.formatDuration(timer.getTime(), "ss.SSS") + "s      \t\t\t▗▗▚▜ \n";
+    }
+
+    private String collectNodes() {
+        String out = "";
+        if(unionizer.allRoots().isEmpty()) return "Empty";
+        for(Node node : unionizer.allRoots()) {
+            out += node.toFullString(unionizer) + "\n";
+        }
+        return out;
     }
 
     public MinecraftServer getServer() {

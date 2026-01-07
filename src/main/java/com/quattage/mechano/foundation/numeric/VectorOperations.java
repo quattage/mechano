@@ -9,6 +9,7 @@ import com.simibubi.create.AllSpecialTextures;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -236,6 +237,17 @@ public class VectorOperations {
         );
         return out;
     }
+
+    /***
+     * Gets the HitResult for the given player.
+     * @param player Player to use
+     * @param dist How far the ray should go before terminating
+     * @return HitResult describing the player's absolute look position.
+     */
+    public static VectorOperations.Ray getLookingRay(Player player) {
+        return VectorOperations.getLookingRay(player, DeltaTracker.ONE.getGameTimeDeltaPartialTick(false), (float)player.blockInteractionRange());
+    }
+
 
     /***
      * Gets the HitResult for the given player.

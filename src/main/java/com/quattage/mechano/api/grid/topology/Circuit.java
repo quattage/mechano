@@ -11,19 +11,17 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.GridHierarchy;
+import com.quattage.mechano.api.grid.GridReferent;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.functional.Resistor;
-import com.quattage.mechano.api.grid.solver.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
+import com.quattage.mechano.api.grid.topology.vertex.Node.JointNode;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
@@ -58,12 +56,12 @@ public class Circuit implements CircuitComponent {
         Circuit out = new Circuit(source);
         Resistor res = new Resistor(ohms);
         out.addComponent(res);
-        Node jA = new Joint(out);
-        Node jB = new Joint(out);
+        Node jA = new JointNode(out);
+        Node jB = new JointNode(out);
         out.addJoint(jA);
         out.addJoint(jB);
-        jA.attach(res.pinA());
-        jB.attach(res.pinB());
+        jA.localAttach(res.pinA());
+        jB.localAttach(res.pinB());
         return out;
     }
 
@@ -122,31 +120,18 @@ public class Circuit implements CircuitComponent {
             throw new IllegalArgumentException("Failed while attempting to link terminals " 
                 + termA + ", " + termB + " - These terminals don't belong to this circuit!");
         }
-        Node nodeB = termA.getNode(), nodeA = termB.getNode();
-        if(nodeB == null && nodeA == null) {
-            Joint newJoint = new Joint(this);
+        Node nodeA = termA.getNode(), nodeB = termB.getNode();
+        Node primary = Node.choosePrimary(nodeA, nodeB);
+        Node secondary = primary == nodeA ? nodeB : nodeA;
+        if(primary == null) {
+            JointNode newJoint = new JointNode(this);
             nodes.add(newJoint);
-            newJoint.attach(termA);
-            newJoint.attach(termB);
+            newJoint.localAttach(termA);
+            newJoint.localAttach(termB);
             return newJoint;
         }
-        if(nodeB != null && nodeA == null) {
-            nodeB.attach(termB);
-            return nodeB;
-        }
-        if(nodeB == null && nodeA != null) {
-            nodeA.attach(termA);
-            return nodeA;
-        }
-        if(nodeB.has(termB)) return nodeB;
-        if(nodeA.has(termA)) return nodeA;
-        // prioritize merging onto the grounded joint
-        if(nodeA.isGrounded()) {
-            removeJoint(nodeB);
-            return Node.collapse(nodeA, nodeB);
-        }
-        removeJoint(nodeA);
-        return Node.collapse(nodeB, nodeA);
+        removeJoint(secondary);
+        return Node.collapse(primary, secondary);
     }
 
     public void removeJoint(Node joint) {
@@ -201,24 +186,24 @@ public class Circuit implements CircuitComponent {
      */
     public void trim(boolean log) {
         if(nodes != null && !nodes.isEmpty()) {
-            Iterator<Node> ni = nodes.iterator();
-            while(ni.hasNext()) {
-                Node n = ni.next();
-                if(!n.isSignificant()) {
-                    if(log) Mechano.LOGGER.warn(n + " was trimmed from circuit");
-                    n.dispose();
-                    ni.remove();
+            Iterator<Node> nodeIter = nodes.iterator();
+            while(nodeIter.hasNext()) {
+                Node node = nodeIter.next();
+                if(!node.isSignificant()) {
+                    if(log) Mechano.LOGGER.warn(node + " was trimmed from circuit");
+                    node.dispose();
+                    nodeIter.remove();
                 }
             }
             nodes.trim();
         }
         if(components != null && !components.isEmpty()) {
-            Iterator<FunctionalComponent> ci = components.iterator();
-            while(ci.hasNext()) {
-                CircuitComponent c = ci.next();
-                if(!c.isSignificant()) {
-                    if(log) Mechano.LOGGER.warn(c + " was trimmed from circuit");
-                    ci.remove();
+            Iterator<FunctionalComponent> componentIter = components.iterator();
+            while(componentIter.hasNext()) {
+                CircuitComponent component = componentIter.next();
+                if(!component.isSignificant()) {
+                    if(log) Mechano.LOGGER.warn(component + " was trimmed from circuit");
+                    componentIter.remove();
                 }
             }
             components.trim();
@@ -231,7 +216,7 @@ public class Circuit implements CircuitComponent {
         for(Terminal term : terminals) {
             if(term == null || !term.hasJoint()) continue;
             final Node joint = term.getNode();
-            if(!joint.detach(term)) continue;
+            if(!joint.localDetach(term)) continue;
             modified = true;
             if(!joint.hasTerminals() && !joint.isGrounded()) {
                 removeJoint(joint);
@@ -286,27 +271,8 @@ public class Circuit implements CircuitComponent {
     }
 
     @Override
-    public String describeState() {
-        String out = "";
-        for(Node node : nodes) {
-            out += "\n\tJoint " + node.getCircuitIndex() + " (" + node.hashCode() + ") - " + node.describeState();
-            if(node.hasAncillaries()) {
-                out += "\n\t\t- Ancillaries:";
-                for(AncillaryNode jack : node.getAncillaries())
-                    out += "\n\t\t\t" + jack;
-            } else out += "\n\t\t- No ancillaries";
-            if(node.hasTerminals()) {
-                out += "\n\t\t- Terminals:";
-                for(Terminal t : node.getTerminals())
-                    out += "\n\t\t\t" + t.describeSelf();
-            } else out += "\n\t\t- No terminals";
-        }
-        return out + "\n";
-    }
-
-    @Override
     public String toString() {
-        return getComponentID() + "@" + hashCode() + " {" + describeState() + "}";
+        return getComponentID();
     }
 
     @Override
@@ -330,11 +296,6 @@ public class Circuit implements CircuitComponent {
     }
 
     @Override
-    public ResourceLocation asResource() {
-        return Mechano.asResource(getComponentID());
-    }
-
-    @Override
     public boolean isGrounded() {
         Node fn = this.nodes.getFirst();
         return fn != null && fn.isGrounded();
@@ -342,7 +303,7 @@ public class Circuit implements CircuitComponent {
 
     @Override
 	public GridUUID bindUUID(GridUUID id) {
-		return id.withBinding(getType(), -1);
+		return id.withBinding(getReferentType(), -1);
 	}
 
     @Override
@@ -352,7 +313,7 @@ public class Circuit implements CircuitComponent {
     }
 
     @Override
-    public GridHierarchy getType() {
-        return GridHierarchy.COMPOSING_CIRCUIT;
+    public GridReferent getReferentType() {
+        return GridReferent.COMPOSING_CIRCUIT;
     }
 }

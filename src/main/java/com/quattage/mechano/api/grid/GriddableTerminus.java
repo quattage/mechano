@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridHierarchy.SourceIdentifier;
+import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
@@ -23,34 +23,34 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 /**
  * An acceleration structure which stores references to {@link AncillaryNode ancillaries}
- * belonging to a parent {@link CircuitComponent}. 
+ * belonging to a parent {@link Griddable}. 
  * <p>
  * This class is especially useful in contexts (e.g. rendering) that need frequent access to 
  * node and link information. 
  */
-public class GridAccelerator implements OrientationUpdatable, SourceIdentifier {
+public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier {
 
     private @Nullable AncillaryNode[] exposedJoints;
 
-    public GridAccelerator() {}
+    public GriddableTerminus() {}
 
-    public GridAccelerator(Griddable<?> source) {
+    public GriddableTerminus(Griddable<?> source) {
         initializeFrom(source);
     }
 
-    public GridAccelerator(AncillaryNode[] exposedJoints) {
+    public GriddableTerminus(AncillaryNode[] exposedJoints) {
         if((exposedJoints != null && exposedJoints.length > 0))
             this.exposedJoints = exposedJoints;
     }
 
-    public GridAccelerator initializeFrom(Griddable<?> source) {
+    public GriddableTerminus initializeFrom(Griddable<?> source) {
         Objects.requireNonNull(source);
         CircuitComponent component = source.getCircuit();
         if(component == null) throw new NullPointerException("Griddable " + source + " couldn't provide a valid CircuitComponent!");
         return initializeFrom(component);
     }
 
-    public GridAccelerator initializeFrom(CircuitComponent component) {
+    public GriddableTerminus initializeFrom(CircuitComponent component) {
         Objects.requireNonNull(component);
         if((exposedJoints != null && exposedJoints.length > 0) || component == null || !component.isSignificant()) 
             return this;
@@ -114,23 +114,42 @@ public class GridAccelerator implements OrientationUpdatable, SourceIdentifier {
 
     /**
      * @return The first reachable {@link AncillaryNode} in this
-     * accelerator's internal array. If this accelerator has not
+     * terminus's internal array. If this terminus has not
      * yet been {@link #initializeFrom() initialized}, this method
      * will always return <code>null</code>
      */
-    public @Nullable AncillaryNode getFirst() {
+    public @Nullable AncillaryNode getFirstAncillary() {
+        return getAncillary(0);
+    }
+
+    /**
+     * @return The {@link AncillaryNode} at the given index
+     * in this terminus's internal array. If this terminus has not
+     * yet been {@link #initializeFrom() initialized}, this method
+     * will always return <code>null</code>
+     */
+    public @Nullable AncillaryNode getAncillary(int index) {
         if(isEmpty()) return null;
-        return exposedJoints[0];
+        if(index >= exposedJoints.length) return null;
+        return exposedJoints[index];
+    }
+
+    public AncillaryNode[] getAncillaries() {
+        return exposedJoints;
     }
 
     public boolean isEmpty() {
-        return exposedJoints == null || exposedJoints.length <= 0;
+        return size() <= 0;
+    }
+
+    public int size() {
+        return exposedJoints == null ? 0 : exposedJoints.length;
     }
 
     @Override
     public @NotNull Griddable<?> getSource() {
         if(isEmpty())
-            throw new IllegalStateException("Failed while getting source griddable for a accelerator which hasn't been loaded!");
+            throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
         return exposedJoints[0].getSource();
     }
 }

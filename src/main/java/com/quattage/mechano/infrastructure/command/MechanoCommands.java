@@ -27,7 +27,8 @@ public class MechanoCommands {
 
     private static LiteralCommandNode<CommandSourceStack> makeGrid() {
         return Commands.literal("grid")
-            .then(GridDumpCommand.make())
+            .then(GridManifestCommand.make())
+            .then(GridPeekCommand.make())
             .build();
     }
 }

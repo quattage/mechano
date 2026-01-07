@@ -38,13 +38,11 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  */
 public class HitboxDataProvider extends SimpleDataProvider {
 
-    private final String generatedName;
     private final Path inputDir;
 
-    @SuppressWarnings("deprecation")
+    
     public HitboxDataProvider(DataGenerator generator, GatherDataEvent event) {
         super(generator.getPackOutput(), event.getExistingFileHelper());
-        this.generatedName = WordUtils.capitalize(Mechano.ID) + "Hitboxes";
         this.inputDir = generator.getPackOutput()
             .getOutputFolder(PackOutput.Target.DATA_PACK)
             .getParent().getParent().getParent()
@@ -55,7 +53,12 @@ public class HitboxDataProvider extends SimpleDataProvider {
     public Path configureOutputDirectory(PackOutput output) {
         return output.getOutputFolder(PackOutput.Target.DATA_PACK)
             .getParent().getParent().getParent()
-            .resolve("main/java/com/quattage/" + Mechano.ID + "/foundation/block/hitbox/" + generatedName + ".java");
+            .resolve("main/java/com/quattage/" + Mechano.ID + "/foundation/block/hitbox/" + getGeneratedName() + ".java");
+    }
+
+    @SuppressWarnings("deprecation")
+    private String getGeneratedName() {
+        return WordUtils.capitalize(Mechano.ID) + "Hitboxes";
     }
 
     @Override
@@ -78,14 +81,14 @@ public class HitboxDataProvider extends SimpleDataProvider {
         createDirectory(inputDir);
         List<Path> files = this.listFiles(inputDir);
         if(files == null) return;
-        StringBuilder cls = this.generateClassFile(generatedName);
+        StringBuilder generatedClass = generateClassFile();
         Object2ObjectOpenHashMap<String[], ShapeAccumulator> hitboxes = new Object2ObjectOpenHashMap<>();
         TemporaryShape shape = new TemporaryShape();
         for(Path path : files) {
             try(Reader reader = Files.newBufferedReader(path)) {
                 String name = path.getFileName().toString();
                 readModel(
-                    cls, hitboxes, name.substring(0, name.lastIndexOf(".")), shape,
+                    generatedClass, hitboxes, name.substring(0, name.lastIndexOf(".")), shape,
                     (List<Map<String, Map<String, Object>>>)(Mechano.GSON.fromJson(reader, Map.class).get("elements"))
                 );
             } catch(IOException e) {
@@ -95,12 +98,12 @@ public class HitboxDataProvider extends SimpleDataProvider {
             count++;
         }
         shape.dispose();
-        this.defineFields(cls, hitboxes);
-        cls.append("\n}");
+        this.defineFields(generatedClass, hitboxes);
+        generatedClass.append("\n}");
         try(PrintWriter pw = createWriter()) {
-            pw.write(cls.toString());
+            pw.write(generatedClass.toString());
         } catch(IOException e) {
-            Mechano.LOGGER.error("Error creating class definition for '" + generatedName + ".java'");
+            Mechano.LOGGER.error("Error creating class definition for '" + getGeneratedName() + ".java'");
             e.printStackTrace();
         }
         long elapsed = (System.currentTimeMillis() - startTime);
@@ -110,9 +113,9 @@ public class HitboxDataProvider extends SimpleDataProvider {
     /**
      * Generates the static elements of the class including its header and hitter method
      */
-    private StringBuilder generateClassFile(String generatedName) {
+    private StringBuilder generateClassFile() {
         StringBuilder cls = new StringBuilder();
-        cls.append("package " + Mechano.class.getCanonicalName() + ".foundation.block.hitbox;\n\n");
+        cls.append(makePackageDeclarator() + "\n\n");
         writeImport(cls, Generated.class, true);
         writeImport(cls, VoxelShapeBuilder.class, false);
         writeImport(cls, HitboxRepresentable.class, false);
@@ -122,9 +125,15 @@ public class HitboxDataProvider extends SimpleDataProvider {
         writeImport(cls, IEventBus.class, true);
         cls.append("@SuppressWarnings(\"unused\")\n");
         cls.append("@Generated(\"" + this.getClass().getCanonicalName() + "\")\n");
-        cls.append("public class " + generatedName + " {\n\n");
+        cls.append("public class " + getGeneratedName() + " {\n\n");
         cls.append("\tpublic void register(IEventBus modBus) {}\n\n");
         return cls;
+    }
+
+    private String makePackageDeclarator() {
+        String root = Mechano.class.getCanonicalName();
+        root = root.substring(0, root.length() - (Mechano.class.getSimpleName().length() + 1));
+        return "package " + root + ".foundation.block.hitbox;";
     }
 
     private void writeImport(StringBuilder cls, Class<?> imp, boolean doubleBreak) {

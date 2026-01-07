@@ -1,7 +1,12 @@
 package com.quattage.mechano.infrastructure;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
@@ -15,49 +20,76 @@ public class MemoryAnalyzer {
         String out = "";
         long total = 0L;
         for(Field field : instance.getClass().getDeclaredFields()) {
+            if(!MemoryAnalyzer.isAnalyzable(field)) continue;
             field.setAccessible(true);
-            if(field.getType().isPrimitive()) continue;
             String member = "\n  │ " + field.getName() + ": ";
             Object subInstance = null;
             try { subInstance = field.get(instance); }
             catch (Exception e) { e.printStackTrace(); total += 32L; out += (member + "null, 32 bytes"); continue; }
-            if(subInstance == null) { total += 32L; out += (member + "null, 32 bytes"); continue; }
+            if(subInstance == null) { total += 8L; out += (member + "null, 8 bytes"); continue; }
             long size = MemoryAnalyzer.deepSize(subInstance);
             total += size;
             out += (member + "(" + subInstance.getClass().getSimpleName() + "), " + size + " bytes");
         }
-        return out += "\n  ┕ Total: " + total + " bytes";
+        long rtt = Runtime.getRuntime().totalMemory();
+        double percent = ((double)total / (double)rtt);
+        return out += "\n  ┕ Total: " + total + " bytes (" + percent + " % of heap space)";
     }
 
-    public static long deepSize(Object root) {
-        return MemoryAnalyzer.deepSize(root, 0, new IdentityHashMap<>());
-    }
-
+    public static long deepSize(Object root) { return MemoryAnalyzer.deepSize(root, 0, new IdentityHashMap<>()); }
     private static long deepSize(Object obj, int depth, Map<Object, Boolean> visited) {
-        if(obj == null || depth > MemoryAnalyzer.MAX_RECURSE)
-            return 0;
-        if(visited.put(obj, Boolean.TRUE) != null)
-            return 0;
+        if(obj == null || depth > MemoryAnalyzer.MAX_RECURSE || visited.put(obj, Boolean.TRUE) != null) return 0;
+        Class<?> clazz = obj.getClass();
+        if(!MemoryAnalyzer.isAnalyzable(clazz)) return 0;
         long size = ClassLayout.parseInstance(obj).instanceSize();
-        Class<?> cls = obj.getClass();
-        if(cls.isArray()) {
-            if(!cls.getComponentType().isPrimitive()) {
-                int len = ((Object[])obj).length;
-                for (int i = 0; i < len; i++)
-                    size += MemoryAnalyzer.deepSize(((Object[])obj)[i], depth + 1, visited);
+        if(clazz.isArray()) {
+            if(!clazz.getComponentType().isPrimitive()) {
+                for(int x = 0; x < ((Object[])obj).length; x++)
+                    size += MemoryAnalyzer.deepSize(((Object[])obj)[x], depth + 1, visited);
             }
             return size;
         }
-        while(cls != null) {
-            for(Field field : cls.getDeclaredFields()) {
-                if(Modifier.isStatic(field.getModifiers())) continue;
-                if(field.getType().isPrimitive()) continue;
-                if(!field.trySetAccessible()) continue;
+        while(clazz != null) {
+            for(Field field : clazz.getDeclaredFields()) {
+                if(!MemoryAnalyzer.isAnalyzable(field)) continue;
                 try { Object child = field.get(obj); size += MemoryAnalyzer.deepSize(child, depth + 1, visited); } 
                 catch (IllegalAccessException ignored) {}
             }
-            cls = cls.getSuperclass();
+            clazz = clazz.getSuperclass();
         }
         return size;
     }
+
+    public static boolean isAnalyzable(Field field) {
+        return field != null && !field.getType().isPrimitive() 
+            && !Modifier.isStatic(field.getModifiers()) 
+            && field.trySetAccessible()
+            && field.getAnnotation(DoNotAnalyze.class) == null
+            && field.getDeclaringClass().getAnnotation(DoNotAnalyze.class) == null;
+    }
+
+    public static boolean isAnalyzable(Object obj) {
+        return obj != null && MemoryAnalyzer.isAnalyzable(obj.getClass());
+    }
+
+    public static boolean isAnalyzable(Class<?> clazz) {
+        return clazz != null && !Proxy.isProxyClass(clazz) 
+            && !clazz.isHidden()
+            && !clazz.getPackageName().contains("net.minecraft")
+            && !clazz.getName().contains("$$Lambda") 
+            && clazz.getAnnotation(DoNotAnalyze.class) == null;
+    }
+
+    @Target( { ElementType.TYPE, ElementType.FIELD } )
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface DoNotAnalyze {
+        
+    }
+
+    // we're not gonna need the stackwalker where we're going
+    public static void whatCalledMe() {
+        try{ throw new StackTraceInvokerException(); }
+        catch(IllegalStateException e) { e.printStackTrace(); }
+    }
+    public static class StackTraceInvokerException extends RuntimeException {}
 }

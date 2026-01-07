@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.google.gson.stream.MalformedJsonException;
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
 import net.createmod.catnip.math.VecHelper;
@@ -164,7 +165,7 @@ public class VoxelShapeBuilder {
 	 * before a VoxelShape is constructed. This class is used by the {@link HitboxProvider}
 	 * to read from JSON.
 	 */
-	public static class TemporaryShape {
+	public static class TemporaryShape implements Disposable {
 
 		private @Nullable double[] shape = new double[6];
 		private Stage stage = Stage.EMPTY;
@@ -247,7 +248,7 @@ public class VoxelShapeBuilder {
 			clear();
 		}
 
-
+		@Override
 		public void dispose() {
 			this.stage = null;
 			this.shape = null;

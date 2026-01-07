@@ -34,6 +34,8 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
         super(pProperties);
     }
 
+    public abstract boolean canFloat();
+
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
 
@@ -59,6 +61,7 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
 
     @Override
     protected void neighborChanged(BlockState state, Level world, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
+        if(canFloat()) return;
         Direction facing = state.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp().getOpposite();
         BlockPos underPos = pos.relative(facing);
         if(!underPos.equals(neighborPos)) return;
@@ -81,6 +84,7 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
         BlockState underState = world.getBlockState(underPos);
         if(underState.getBlock() instanceof ConnectorHostOverridable cho)
             return cho.isConnectorAllowed(world, pos, state, underPos, underState);
+        if(canFloat()) return true;
         return isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_X) 
             || isSupported(world, underPos, underState, facing, BlockWithConnections.ROOT_Y);
     }

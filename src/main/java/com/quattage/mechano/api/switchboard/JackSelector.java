@@ -11,11 +11,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
 import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.api.transmitter.TransmitterType.TransmitterProvider;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.api.equipment.goggles.IHaveHoveringInformation;
@@ -84,14 +84,14 @@ public class JackSelector {
             return;
         }
         shouldShowAllNearby = true;
-        CircuitComponentProvider prov = hands.get();
+        TransmitterProvider prov = hands.get();
         accumulateTooltip(lp, prov);
         accumulateTooltip(lp, selected.get());
         nearbyJoints.clear();
     }
 
 
-    private void updateSelection(ClientLevel world, VectorOperations.Ray ray, CircuitComponentProvider prov, DeltaTracker deltas) { 
+    private void updateSelection(ClientLevel world, VectorOperations.Ray ray, TransmitterProvider prov, DeltaTracker deltas) { 
         lookedThisFrame = false;
         while(!nearbyJoints.isEmpty()) {
             final TargetAncillary sel = nearbyJoints.poll();
@@ -190,10 +190,10 @@ public class JackSelector {
     private HoldingSummary getHolding(Player player) {
         if(player == null) throw new NullPointerException("Couldn't instantiate a HoldingSummary - Player is null!");
         ItemStack stack = player.getMainHandItem();
-        if(stack.getItem() instanceof CircuitComponentProvider transmitterItem)
+        if(stack.getItem() instanceof TransmitterProvider transmitterItem)
             return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, transmitterItem);
         ItemStack offStack = player.getOffhandItem();
-        if(offStack.getItem() instanceof CircuitComponentProvider transmitterItem)
+        if(offStack.getItem() instanceof TransmitterProvider transmitterItem)
             return new HoldingSummary(player, InteractionHand.OFF_HAND, offStack, transmitterItem);
         return new HoldingSummary(player, InteractionHand.MAIN_HAND, stack, null);
     }
@@ -380,8 +380,8 @@ public class JackSelector {
     }
     }
 
-    protected static record HoldingSummary(Player player, InteractionHand hand, ItemStack stack, CircuitComponentProvider obj) {
-        public CircuitComponentProvider get() { return obj; }
+    protected static record HoldingSummary(Player player, InteractionHand hand, ItemStack stack, TransmitterProvider obj) {
+        public TransmitterProvider get() { return obj; }
         public boolean isHoldingReleventItem() { return player != null && hand != null && obj != null && stack != null; }
         @Override public final String toString() {
             return "'" + player.getName().getString() + "'' is holding '" + obj + "' in their (" + hand + ")";

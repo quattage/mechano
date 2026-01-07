@@ -45,7 +45,7 @@ public class JointLinkTask implements ActionTask {
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         UUIDSourceType.write((GridUUID)args[0], buffer);
         UUIDSourceType.write((GridUUID)args[1], buffer);
-        buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType<?>)args[2]));
+        buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType)args[2]));
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
             buffer.writeBoolean(true);
@@ -88,7 +88,7 @@ public class JointLinkTask implements ActionTask {
         AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
         GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
-        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType<?>)args[2]);
+        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);
         Set<ServerPlayer> trackers = GridIdentifiable.collectTrackers((ServerLevel)grid.getWorld(), startID, endID);
         if(args[3] != null) {
             Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
@@ -107,7 +107,7 @@ public class JointLinkTask implements ActionTask {
         AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
         GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
-        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType<?>)args[2]);
+        args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
             GridAction serverResult = (GridAction)args[4];
@@ -122,7 +122,7 @@ public class JointLinkTask implements ActionTask {
      * The actual implementation goes here and is identical between client and server. Most of 
      * the stuff further up in this class is for managing the task's serialization to a packet.
      */
-    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType<?> trns) {
+    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType trns) {
         return grid.addLink(new ComponentLink<>(trns, startID, startNode, endID, endNode));
     }
     

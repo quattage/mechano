@@ -55,11 +55,10 @@ public interface NodalSolver {
         FINISHED_LIMIT_REACHED(false),
         ABORTED_PROBLEMATIC_DATA(false),
         ABORTED_GENERIC_ERROR(false),
-        SETTING_UP(false),
         REFRESHING_TOPOLOGY(false),
         COMPUTING(false),
         IDLE(false),
-        NONE(false);
+        UNLOADED(false);
         private final boolean success;
         ConvergenceStatus(boolean success) { this.success = success; }
         public boolean indicatesSuccess() { return success; }
@@ -69,7 +68,7 @@ public interface NodalSolver {
 
     public class ConvergenceStatusHolder implements NonNullSupplier<ConvergenceStatus> {
         
-        private AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.NONE);
+        private AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.UNLOADED);
         private AtomicLong lastUpdateTime = new AtomicLong(System.currentTimeMillis());
         
         public ConvergenceStatusHolder set(ConvergenceStatus newStatus) {

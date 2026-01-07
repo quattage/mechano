@@ -1,5 +1,5 @@
 package com.quattage.mechano.api.grid.functional;
 
-public class PerfectInsulator {
+public class PerfectInsulator extends PerfectConductor {
     
 }

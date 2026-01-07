@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -12,22 +11,36 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.GridHierarchy;
-import com.quattage.mechano.api.grid.GridHierarchy.ComponentHierarchyInvalidException;
+import com.quattage.mechano.api.grid.GridReferent;
+import com.quattage.mechano.api.grid.GridReferent.ComponentHierarchyInvalidException;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
+import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.StringRepresentable;
 
-public interface CircuitComponent extends StringRepresentable {
+public interface CircuitComponent {
+
+    /**
+     * A shorthanded {@link UnionFactory} substitute for unions that represent
+     * perfect conductors. (e.g. a wire with no resistence.)
+     * @param grid Grid to operate within
+     * @param startAncillary {@link AncillaryNode} starting point
+     * @param endAncillary {@link AncillaryNode} ending point
+     * @return <code>null,</code> since a perfect union doesn't have a component associated with it.
+     */
+    static CircuitComponent perfectConductor(ServerGrid grid, AncillaryNode startAncillary, AncillaryNode endAncillary) {
+        grid.getNetlist().union(startAncillary.getParentNode(), endAncillary.getParentNode());
+        return null;
+    }
 
     /**
      * Throws errors if the provided string is null or blank.
@@ -44,9 +57,9 @@ public interface CircuitComponent extends StringRepresentable {
         if(child == null) throw new NullPointerException("child component is null!");
         if(parent == null) throw new NullPointerException("parent component is null!");
         if(child == parent) throw new ComponentHierarchyInvalidException(child);
-        if(child.getType() == null) throw new NullPointerException("child component returned a null type!");
-        if(parent.getType() == null) throw new NullPointerException("parent component returned a null type!");
-        if(!child.getType().canBeOwnedBy(parent.getType())) throw new ComponentHierarchyInvalidException(child, parent);
+        if(child.getReferentType() == null) throw new NullPointerException("child component returned a null type!");
+        if(parent.getReferentType() == null) throw new NullPointerException("parent component returned a null type!");
+        if(!child.getReferentType().canBeOwnedBy(parent.getReferentType())) throw new ComponentHierarchyInvalidException(child, parent);
     }
 
     /**
@@ -66,17 +79,6 @@ public interface CircuitComponent extends StringRepresentable {
      * @return
      */
     String getComponentID();
-
-    /**
-     * @return
-     */
-    String describeState();
-
-    /**
-     * Useful for translation keys or textures.
-     * @return This Components {@link #getComponentID() id} as a {@link ResourceLocation}
-     */
-    ResourceLocation asResource();
 
     /**
      * Used to determine whether or not this component is participating in
@@ -127,7 +129,7 @@ public interface CircuitComponent extends StringRepresentable {
      */
     GridUUID bindUUID(GridUUID id);
 
-    GridHierarchy getType();
+    GridReferent getReferentType();
 
     default void updateOwnership(CircuitComponent parent, int index) { updateOwnership(null, parent, index); }
     void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index);
@@ -170,11 +172,6 @@ public interface CircuitComponent extends StringRepresentable {
      */
     @Nullable CircuitComponent getParentComponent();
 
-    @Override
-    default String getSerializedName() {
-        return getComponentID().toLowerCase(Locale.ROOT);
-    }
-
     /**
      * Gets the charge that this component is currently storing, if applicable.
      * Otherwise, this method returns <code>BifrucatedLong.ZERO</code>
@@ -211,8 +208,6 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         @Override public final String getComponentID() { return componentID; }
-        @Override public String describeState() { return "No state descriptor"; }
-        @Override public ResourceLocation asResource() { return Mechano.asResource(getSerializedName().replace(" ", "_")); }
         @Override public boolean isGrounded() { return false; }
         @Override public void saturate() {}
         @Override public void reset() {}
@@ -228,7 +223,7 @@ public interface CircuitComponent extends StringRepresentable {
 
         @Override
         public String toString() {
-            return componentID + "[" + describeState() + "]@" + hashCode();
+            return componentID;
         }
 
         @Override
@@ -244,13 +239,13 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         @Override
-        public GridHierarchy getType() {
-            return GridHierarchy.FUNCTIONAL_COMPONENT;
+        public GridReferent getReferentType() {
+            return GridReferent.FUNCTIONAL_COMPONENT;
         }
 
         @Override
         public GridUUID bindUUID(GridUUID id) {
-            return id.withBinding(getType(), nodalIndex);
+            return id.withBinding(getReferentType(), nodalIndex);
         }
     }
 
@@ -264,10 +259,25 @@ public interface CircuitComponent extends StringRepresentable {
 
         public StampingComponent(String componentID) {
             super(componentID);
-            assertHasTerminals();
             this.terminals = defineTerminals();
             assertHasTerminals();
         }
+
+        public static void asStamperDo(@Nullable Grid grid, CircuitComponent component, Consumer<StampingComponent> cons) {
+        switch(component) {
+            case StampingComponent stamper -> cons.accept(stamper);
+            case Node n -> n.forEachTerminal(terminal -> { 
+                if(terminal.getParentComponent() instanceof StampingComponent stamper)
+                    cons.accept(stamper);
+            });
+            case Circuit circuit -> circuit.forEachComponent(comp -> {
+                if(comp instanceof StampingComponent stamper)
+                    cons.accept(stamper);
+            });
+            case null, default -> { if(grid != null) grid.warn("Skipped semantic execution for " + component 
+                + " - This component couldn't be paired down to a stamper!"); }
+        }
+    }
 
         public StampingComponent(String componentID, Terminal[] terminals) {
             super(componentID);
@@ -329,14 +339,6 @@ public interface CircuitComponent extends StringRepresentable {
         }
 
         /**
-         * The number of additional doubles to allocate in
-         * the {@link MNAIndexer} when stamping dynamically.
-         * For simple stuff like resistors, this number is zero.
-         * @return 
-         */
-        public abstract int getAllocations();
-
-        /**
          * "Stamping" refers to the process of an individual CircuitComponent
          * declaring its own presence in the NodalSnapshot. This method
          * stamps the topological impact of this component onto the current
@@ -346,13 +348,19 @@ public interface CircuitComponent extends StringRepresentable {
         public abstract void stamp(ServerGrid grid);
 
         /**
-         * "Stamping" refers to the process of an individual CircuitComponent
-         * declaring its own presence in the NodalSnapshot. This method
-         * stamps the time-varied values of this component for the current
-         * solver step. This method is run continuously as the grid resolves.
-         * @see #stamp
+         * @return <code>true</code> if the grid should call {@link #postProcess}
+         * on this element after solving.
          */
-        public abstract void stampDynamic(ServerGrid grid);
+        public boolean requiresPostProcessing() { return false; }
+
+        /**
+         * Called after the stamping process is complete and the matrix
+         * has been resolved for this tick. At the time of invocation,
+         * all other stampers have settled, so this is where you
+         * @param grid The grid to operate within
+         * @param current The current (in amps) that exists at this component
+         */
+        public void postProcess(ServerGrid grid, double current) {}
 
         /**
          * A helper method specific to some functional components to quickly
@@ -444,5 +452,57 @@ public interface CircuitComponent extends StringRepresentable {
          * @return The collector terminal, or null if one doesn't exist here. Only applies to transistors.
          */
         @Nullable public Terminal collector() { return null; }
+    }
+
+    /**
+     * Indicates that implementing {@link StampingComponent stampers}
+     * allocate additional doubles in the {@link MNAIndexer}
+     * This interface is not needed for simple components (e.g. resistors)
+     * that aren't current-dependent.
+     */
+    public interface StampsDynamically {
+        /**
+         * This method is essentially a "score" for how complex
+         * this component is when {@link StampingComponent#stampDynamic stamping dynamically}. <p>
+         * @return The number of additional doubles to allocate in
+         * the {@link MNAIndexer} to be flushed into the B vector.
+         */
+        int getAllocations();
+
+        /**
+         * "Stamping" refers to the process of an individual CircuitComponent
+         * declaring its own presence in the NodalSnapshot. This method
+         * stamps the time-varied values of this component for the current
+         * solver step. This method is run continuously as the grid resolves.
+         * @see #stamp
+         */
+        void stampDynamic(ServerGrid grid);
+    }
+
+    /**
+     * Indicates that implementing {@link StampingComponent stampers}
+     * require additional modification after all stamping has completed.
+     */
+    public interface NeedsPostProcessing {
+
+        /**
+         * Called after the stamping process is complete and the matrix
+         * has been resolved for this tick. At the time of invocation,
+         * all other stampers have settled, so this is where you
+         * @param grid The grid to operate within
+         * @param current The current (in amps) that exists at this component
+         */
+        void postProcess(ServerGrid grid);
+    }
+
+    @FunctionalInterface
+    public interface CurrentChangeCallback {
+        /**
+         * Called whenever the current in a given component is updated by the grid.
+         * @param grid Grid to operate within
+         * @param ampsThen The current (in amps) that this source used to have
+         * @param ampsNow The current (in amps) that this source has now
+         */
+        void onCurrentUpdated(ServerGrid grid, double ampsThen, double ampsNow);
     }
 }

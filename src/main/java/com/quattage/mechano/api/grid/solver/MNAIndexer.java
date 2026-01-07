@@ -1,33 +1,39 @@
 package com.quattage.mechano.api.grid.solver;
 
+import java.util.Set;
+
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.StampsDynamically;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 /**
- * Tracks any auxillary variables during multi-nodal analysis (MNA)
- * as {@link StampingComponent} instances allocate their own space in the mna vector.
+ * Tracks all active stampers as well as any auxillary variables during multi-nodal 
+ * analysis (MNA) as {@link StampingComponent} instances allocate their own space in 
+ * the B vector.
  */
 public class MNAIndexer {
     
-    private Object2IntOpenHashMap<StampingComponent> sourceIndices = new Object2IntOpenHashMap<>();
-    private int cursor, totalStampers;
+    private Set<StampingComponent> allStampers = new ObjectOpenHashSet<>();
+    private Object2IntOpenHashMap<StampsDynamically> sourceIndices = new Object2IntOpenHashMap<>();
+    private int cursor;
 
     public void allocate(StampingComponent component) {
-        totalStampers++;
-        if(sourceIndices.containsKey(component)) return;
-        int size = component.getAllocations();
+        if(!allStampers.add(component) || !(component instanceof StampsDynamically sd)) 
+            return;
+        int size = sd.getAllocations();
         if(size == 0) return;
         if(size < 0) throw new IllegalArgumentException("Attempted to allocate a negative number for " + component + "!");
-        sourceIndices.put(component, cursor);
+        sourceIndices.put(sd, cursor);
         cursor += size;
     }
 
     public void forget(StampingComponent component) {
-        totalStampers--;
-        if(!sourceIndices.containsKey(component)) return;
-        sourceIndices.removeInt(component);
-        cursor -= component.getAllocations();
+        if(!allStampers.remove(component) || !(component instanceof StampsDynamically sd)) 
+            return;
+        sourceIndices.removeInt(sd);
+        cursor -= sd.getAllocations();
     }
 
     public int get(StampingComponent component) {
@@ -44,19 +50,24 @@ public class MNAIndexer {
     }
 
     public int size() {
+        return allStampers.size();
+    }
+
+    public int total() {
         return cursor;
     }
 
-    public int totalStampers() {
-        return totalStampers;
+    public Set<StampingComponent> getAllStampers() {
+        return allStampers;
     }
 
     public boolean hasStampers() {
-        return totalStampers > 0;
+        return !(allStampers == null || allStampers.isEmpty());
     }
 
     public void clear() {
         sourceIndices = new Object2IntOpenHashMap<>();
-        cursor = 0; totalStampers = 0;
+        allStampers = new ObjectOpenHashSet<>();
+        cursor = 0;
     }
 }

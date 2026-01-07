@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.api.transmitter.TransmitterEntry;
+import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.world.level.LevelReader;
@@ -33,7 +34,7 @@ import net.minecraft.world.phys.Vec3;
  * by applying a basis vector and/or translating the PoseStack, depending on what context you're rendering from.
  * 
  */
-public abstract class CatenaryModel<T extends CatenaryModel<?>> {
+public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Disposable {
 
     // TODO flywheel and cache
 
@@ -42,25 +43,11 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
     public float span = 0f;
 
     /**
-     * Destroying the provided CatenaryModel will ensure that
-     * internal references are reset so it cannot be reused,
-     * which prevents potential leaks.
-     * @param cat
-     */
-    public static void disposeOf(CatenaryModel<?> cat) {
-        if(cat == null) return;
-        cat.halfOffset = null;
-        cat.span = 0;
-        cat.destroy();
-        // also nullify flywheel stuff and cache info if i ever do that in the future
-    }
-
-    /**
      * Calculates the {@link #setOffset offset} vector
      * for this Catenary given a known start and end point
      * @return This Catenary for chaining
      */
-    public abstract T setOffset(TransmitterEntry<?> trns, Vec3 start, Vec3 end);
+    public abstract T setOffset(TransmitterEntry trns, Vec3 start, Vec3 end);
 
     /**
      * Calculates the {@link #setOffset offset} vector
@@ -74,7 +61,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry<?> trns, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
 
     /**
      * A helper call that sets the first and last
@@ -125,7 +112,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * hit, as well as a strong likelihood to produce poor results,
      * especially at particularly high or low framerates. 
      */
-    public abstract void update(TransmitterEntry<?> trns);
+    public abstract void update(TransmitterEntry trns);
 
     /**
      * Runs {@link #update} <code>steps</code> number
@@ -136,7 +123,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * result.
      * @param steps
      */
-    public void updateAhead(TransmitterEntry<?> trns, int steps) {
+    public void updateAhead(TransmitterEntry trns, int steps) {
         for(int x = 0; x < steps; x++)
             update(trns);
     }
@@ -152,7 +139,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
      * for Catenary implementations that require it, but this method can still
      * be invoked manually in circumstances where doing so is useful.
      */
-    public abstract CatenaryModel<T> calculateSegmentation(TransmitterEntry<?> trns);
+    public abstract CatenaryModel<T> calculateSegmentation(TransmitterEntry trns);
 
     /**
      * Renders this Catenary to the provided stack. For more 
@@ -230,8 +217,11 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> {
             throw new IllegalStateException("Cannot update " + this + " - This Catenary has not been initialized!");
     }
 
-    protected abstract void destroy();
-
+    @Override
+    public void dispose() {
+        halfOffset = null;
+        span = 0;
+    }
 
     public abstract void lockSpan();
     public abstract void unlockSpan();

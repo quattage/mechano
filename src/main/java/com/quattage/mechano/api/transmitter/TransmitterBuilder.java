@@ -1,13 +1,12 @@
 package com.quattage.mechano.api.transmitter;
 
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.AbstractBuilder;
 import com.tterrag.registrate.builders.BuilderCallback;
 import com.tterrag.registrate.util.RegistrateDistExecutor;
 import com.tterrag.registrate.util.entry.RegistryEntry;
-import com.tterrag.registrate.util.nullness.NonNullBiFunction;
 import com.tterrag.registrate.util.nullness.NonNullConsumer;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import com.tterrag.registrate.util.nullness.NonnullType;
@@ -18,22 +17,33 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
-public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractBuilder<TransmitterType<?>, TransmitterType<T>, P, TransmitterBuilder<T, P>> {
+public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractBuilder<TransmitterType, TransmitterType, P, TransmitterBuilder<T, P>> {
 
     @SuppressWarnings("unchecked")
-    public static <T extends CircuitComponent, P> TransmitterBuilder<T, P> create(AbstractRegistrate<?> owner, String name, BuilderCallback callback, ResourceKey<? extends Registry<TransmitterType<?>>> key) {
+    public static <T extends CircuitComponent, P> TransmitterBuilder<T, P> create(AbstractRegistrate<?> owner, String name, BuilderCallback callback, ResourceKey<? extends Registry<TransmitterType>> key) {
         return new TransmitterBuilder<T, P>(owner, (P)owner, name, callback, key);
     }
 
-    private NonNullBiFunction<Node, Node, T> factory;
+    private UnionFactory factory;
     private NonNullSupplier<CatenaryRenderProperties> renderProperties;
 
     public TransmitterBuilder(AbstractRegistrate<?> owner, P parent, String name, BuilderCallback callback,
-            ResourceKey<? extends Registry<TransmitterType<?>>> registryKey) {
+            ResourceKey<? extends Registry<TransmitterType>> registryKey) {
         super(owner, parent, name, callback, registryKey);
     }
 
-    public TransmitterBuilder<T, P> component(NonNullBiFunction<Node, Node, T> factory) {
+    /**
+     * This is where you provide the actual implementation for this Transmitter. 
+     * You should supply a {@link UnionFactory} here that makes changes to the
+     * grid as needed and returns a {@link CircuitComponent} instance (or <code>null</code>)
+     * <p>
+     * It's reccomended
+     * for most use cases to store this function statically somewhere outside of the definition
+     * for the transmitter itself.
+     * @param factory The factory that this transmitter will run whenever connections are made
+     * @return This builder for chaining
+     */
+    public TransmitterBuilder<T, P> component(UnionFactory factory) {
         this.factory = factory;
         return this;
     }
@@ -53,18 +63,18 @@ public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractB
     }
 
     @Override
-    protected @NonnullType TransmitterType<T> createEntry() {
-        return new TransmitterType<T>(getName(), factory, renderProperties);
+    protected @NonnullType TransmitterType createEntry() {
+        return new TransmitterType(getName(), factory, renderProperties);
     }
 
     @Override
-    protected RegistryEntry<TransmitterType<?>, TransmitterType<T>> createEntryWrapper(
-            DeferredHolder<TransmitterType<?>, TransmitterType<T>> delegate) {
-        return new TransmitterEntry<>(getOwner(), delegate);
+    protected RegistryEntry<TransmitterType, TransmitterType> createEntryWrapper(
+            DeferredHolder<TransmitterType, TransmitterType> delegate) {
+        return new TransmitterEntry(getOwner(), delegate);
     }
 
     @Override
-    public TransmitterEntry<T> register() {
-        return (TransmitterEntry<T>)super.register();
+    public TransmitterEntry register() {
+        return (TransmitterEntry)super.register();
     }
 }

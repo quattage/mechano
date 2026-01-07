@@ -19,6 +19,7 @@ import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
 import com.quattage.mechano.api.switchboard.task.GridDumpTask;
+import com.quattage.mechano.api.switchboard.task.GridPeekTask;
 import com.quattage.mechano.api.switchboard.task.JointLinkTask;
 import com.quattage.mechano.api.switchboard.task.JointUnlinkTask;
 import com.quattage.mechano.api.switchboard.task.RequestActionTask;
@@ -42,6 +43,7 @@ public enum GridAction implements StringRepresentable {
     TASK_LINK_JOINTS                      ( ActionType.TASK_GENERIC, JointLinkTask.class ),
     TASK_UNLINK_JOINTS                    ( ActionType.TASK_GENERIC, JointUnlinkTask.class ),
     TASK_GRID_DUMP                        ( ActionType.TASK_GENERIC, GridDumpTask.class ),
+    TASK_GRID_PEEK                        ( ActionType.TASK_GENERIC, GridPeekTask.class),
     TASK_REQUEST                          ( ActionType.TASK_GENERIC, RequestActionTask.class ),
 
     RESPONSE_SUCCESS                      ( ActionType.RESPONSE_SUCCESS, null),
@@ -90,7 +92,7 @@ public enum GridAction implements StringRepresentable {
         try { 
             Constructor<T> ctor = taskClass.getDeclaredConstructor(new Class<?>[0]); 
             this.task = ctor.newInstance(new Object[0]);
-            if(this.task == null) throw new NullPointerException("constructor " + ctor + " returned null somehow idk");
+            if(this.task == null) throw new NullPointerException("Constructor " + ctor + " returned null somehow idk");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Unspecified error encoutered configuring GridActionTask for member '" + this + "'");

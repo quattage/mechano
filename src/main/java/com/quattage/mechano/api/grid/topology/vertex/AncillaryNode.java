@@ -11,10 +11,9 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.GridHierarchy;
-import com.quattage.mechano.api.grid.GridHierarchy.SourceIdentifier;
+import com.quattage.mechano.api.grid.GridReferent;
+import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.WorldlyObject;
@@ -25,7 +24,6 @@ import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -40,7 +38,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * {@link CircuitFactory} when creating circuits attached to {@link Griddable}
  * instances.
  */
-public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyObject {
+public abstract class AncillaryNode implements Node, WorldlyObject {
 
     public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
 
@@ -56,27 +54,27 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public boolean attach(Terminal pin) {
+    public boolean localAttach(Terminal pin) {
         assertAttached();
-        return parent.attach(pin);
+        return parent.localAttach(pin);
     }
 
     @Override
-    public boolean attach(Griddable<?> source, AncillaryNode jack) {
+    public boolean localAttach(Griddable<?> source, AncillaryNode jack) {
         assertAttached();
-        return parent.attach(source, jack);
+        return parent.localAttach(source, jack);
     }
 
     @Override
-    public boolean detach(Terminal pin) {
+    public boolean localDetach(Terminal pin) {
         assertAttached();
-        return parent.detach(pin);
+        return parent.localDetach(pin);
     }
 
     @Override
-    public boolean detach(Griddable<?> source, AncillaryNode jack) {
+    public boolean localDetach(Griddable<?> source, AncillaryNode jack) {
         assertAttached();
-        return parent.detach(source, jack);
+        return parent.localDetach(source, jack);
     }
 
     @Override
@@ -202,7 +200,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
 
     @OnlyIn(Dist.CLIENT)
     public void drawGUILabel(List<Component> tooltip, float posX, float posY, GuiGraphics graphics) {
-        getSource().drawGUILabel(tooltip, posX, posY, graphics);
+        SourceIdentifier.getSourceFor(this).drawGUILabel(tooltip, posX, posY, graphics);
     }
     
     @OnlyIn(Dist.CLIENT)
@@ -258,11 +256,6 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public ResourceLocation asResource() {
-        return Mechano.asResource(getSerializedName());
-    }
-
-    @Override
     public boolean isGrounded() {
         assertAttached();
         return parent.isGrounded();
@@ -283,7 +276,7 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     public GridUUID bindUUID(GridUUID id) {
         assertAttached();
         parent.bindUUID(id);
-        return id.withBinding(getType(), id.getBindingA(), parent.indexOf(this));
+        return id.withBinding(getReferentType(), id.getBindingA(), parent.indexOf(this));
     }
 
     @Override
@@ -291,16 +284,12 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
         return parent;
     }
 
-    @Override
-    public double getVoltage() {
-        if(parent == null) return 0;
-        return parent.getVoltage();
-    }
-
-    @Override
-    public void setVoltage(double volts) {
-        if(parent == null) return;
-        parent.setVoltage(volts);
+    /**
+     * A small shorthand <pre>(Node)getParentComponent()</pre>.
+     * @return The Node that this ancillary is attached to
+     */
+    public Node getParentNode() {
+        return (Node)getParentComponent();
     }
 
     @Override
@@ -331,8 +320,8 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
     }
 
     @Override
-    public GridHierarchy getType() {
-        return GridHierarchy.ANCILLARY_NODE;
+    public GridReferent getReferentType() {
+        return GridReferent.ANCILLARY_NODE;
     }
 
     @Override
@@ -350,13 +339,8 @@ public abstract class AncillaryNode implements Node, SourceIdentifier, WorldlyOb
         return componentID; 
     }
 
-    @Override public String describeState() { 
-        if(parent == null) return "@(null)";
-        return "@(" + parent.hashCode() + ")"; 
-    }
-
     @Override
     public String toString() {
-        return getComponentID() + "[" + describeState() + "]";
+        return getComponentID();
     }
 }

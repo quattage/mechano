@@ -17,6 +17,11 @@ public class SingleConnectorBlock extends BlockWithConnections<SingleConnectorBl
     }
 
     @Override
+    public boolean canFloat() {
+        return false;
+    }
+
+    @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return MechanoHitboxes.CONNECTOR_SINGLE.get(state);
     }

@@ -12,10 +12,10 @@ import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponentProvider;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.api.transmitter.TransmitterType.TransmitterProvider;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.MapLikeItemHoldable;
 import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
@@ -35,15 +35,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public abstract class SpoolItem extends Item implements CircuitComponentProvider, LeftClickCapturable, MapLikeItemHoldable {
-
-    private int startingDamage = -1;
-
-    public SpoolItem(Properties properties) {
-        super(properties);
-    }
-
-    public abstract TransmitterType<?> getTransmitter();
+public abstract class SpoolItem extends Item implements TransmitterProvider, LeftClickCapturable, MapLikeItemHoldable {
 
     /**
      * Removes all data from every spool in player's inventory. 
@@ -83,6 +75,12 @@ public abstract class SpoolItem extends Item implements CircuitComponentProvider
                 return true;
         }
         return false;
+    }
+
+    private int startingDamage = -1;
+
+    public SpoolItem(Properties properties) {
+        super(properties);
     }
 
     @Override

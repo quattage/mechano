@@ -69,9 +69,4 @@ public class WireJack extends AncillaryNode implements OrientationUpdatable {
         // TODO FIX
         makeOffsetVector().rotate(dir.getLocalUp().getRotation(), offset);
     }
-
-    @Override
-    public String describeState() {
-        return "(" + getXO() + ", " + getYO() + ", " + getZO() + ", " + getSize() + ") " + super.describeState();
-    }
 }

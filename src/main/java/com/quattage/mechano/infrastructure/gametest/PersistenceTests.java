@@ -74,14 +74,7 @@ public class PersistenceTests {
             test.fail("Encountered an exception while getting argument template for '" + task.getClass().getSimpleName() + "'");
             return true;
         }
-        if(template == null) {
-            test.fail("Task '" + task.getClass().getSimpleName() + "' returned a null argument template!");
-            return true;
-        }
-        if(template.length <= 0) {
-            test.fail("Task '" + task.getClass().getSimpleName() + "' returned an empty argument template!");
-            return true;
-        }
+        if(template == null) return false;
         for(int x = 0; x < template.length; x++) {
             Class<?> expected = template[x];
             if(expected == null) {

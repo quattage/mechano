@@ -1,12 +1,16 @@
-
 package com.quattage.mechano.foundation.block.hitbox;
 
 import javax.annotation.processing.Generated;
 
+import com.quattage.mechano.foundation.block.hitbox.VoxelShapeBuilder;
+import com.quattage.mechano.foundation.block.hitbox.HitboxRepresentable;
+import com.quattage.mechano.foundation.block.hitbox.LazyRotatableHitbox;
+import com.quattage.mechano.foundation.block.hitbox.HitboxStateTree;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.IEventBus;
 
 @SuppressWarnings("unused")
-@Generated("com.quattage.mechano.infrastructure.datagen.HitboxDataProvider.Provider")
+@Generated("com.quattage.mechano.infrastructure.datagen.HitboxDataProvider")
 public class MechanoHitboxes {
 
 	public void register(IEventBus modBus) {}
@@ -28,6 +32,16 @@ public class MechanoHitboxes {
 		.addBox(4.0, 12.95, 4.0, 12.0, 14.95, 12.0)
 		.addBox(4.0, 4.0, 4.0, 12.0, 9.0, 12.0)
 		.addBox(4.0, 10.0, 4.0, 12.0, 12.0, 12.0)
+		.optimize().make()
+	);
+
+	public static final LazyRotatableHitbox CREATIVE_VOLTAPLAST = new LazyRotatableHitbox(
+		VoxelShapeBuilder
+		.start(0.0, 0.0, 0.0, 16.0, 6.0, 16.0)
+		.addBox(2.0, 6.0, 0.0, 14.0, 14.0, 16.0)
+		.addBox(0.0, 6.0, 6.0, 16.0, 16.0, 10.0)
+		.addBox(4.0, 14.0, 10.0, 12.0, 16.0, 12.0)
+		.addBox(4.0, 14.0, 4.0, 12.0, 16.0, 6.0)
 		.optimize().make()
 	);
 

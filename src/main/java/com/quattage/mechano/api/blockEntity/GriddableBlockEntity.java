@@ -1,16 +1,22 @@
 package com.quattage.mechano.api.blockEntity;
 
+import java.util.List;
+import java.util.Set;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.GridAccelerator;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.foundation.tracking.GridUUID;
 import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 import com.quattage.mechano.foundation.tracking.TrackedObject;
 import com.quattage.mechano.foundation.tracking.UUIDSourceType;
@@ -33,7 +39,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable<VoxelUUID>{
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
-    private final GridAccelerator joints = new GridAccelerator();
+    private final GriddableTerminus joints = new GriddableTerminus();
     private VoxelUUID addr;
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -60,18 +66,38 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public VoxelUUID getUUID() {
-        if(this.addr == null) this.addr = new VoxelUUID(getBlockPos());
-        return this.addr;
+        if(this.addr == null) 
+            this.addr = new VoxelUUID(getBlockPos());
+        return this.addr;   
     }
 
     @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
-        joints.invalidate();
+        Grid grid = Grid.getUnsided(world);
+        GridUUID id = getUUID();
+        List<AncillaryPair> links = grid.getLinksBelongingTo(id);
+        if(links == null || links.isEmpty()) return;
+        // convert to array to avoid concurrency issues
+        AncillaryPair[] linksArray = links.toArray(new AncillaryPair[links.size()]);
+        for(int x = 0; x < linksArray.length; x++)
+            grid.removeLink(linksArray[x]);
+        GriddableTerminus gt = provideTerminus();
+        if(gt != null) gt.invalidate();
     }
 
     @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-        provideTerminus().updateOrientation(newState);
+        GriddableTerminus gt = getTerminus();
+        gt.updateOrientation(newState);
+        Set<AncillaryPair> adjs = analyzeAdjacents();   
+        if(adjs == null || adjs.isEmpty()) return;
+        Grid grid = Grid.getUnsided(world);
+        for(AncillaryPair pair : adjs) {
+            pair.validateSelf();
+            grid.addLink(pair);
+            if(grid instanceof ServerGrid sg)
+                sg.getNetlist().union(pair.getStartNode(), pair.getEndNode());
+        }
     }
 
     @Override
@@ -82,7 +108,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public void initialize() {
-        provideTerminus().updateOrientation(getBlockState());
+        getTerminus().updateOrientation(getBlockState());
     }
 
     @Override
@@ -91,8 +117,8 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override 
-    public GridAccelerator provideTerminus() { 
-        return joints.initializeFrom(getCircuit()); 
+    public GriddableTerminus provideTerminus() { 
+        return joints;
     }
 
     @Override 

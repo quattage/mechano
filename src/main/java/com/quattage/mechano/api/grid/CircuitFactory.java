@@ -8,7 +8,7 @@ import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
 import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.Joint;
+import com.quattage.mechano.api.grid.topology.vertex.Node.JointNode;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.foundation.block.orientation.Relative;
@@ -22,12 +22,9 @@ import net.minecraft.core.Direction;
 public class CircuitFactory {
 
     private ObjectArrayList<FunctionalComponent> components = new ObjectArrayList<>();
-    private Set<Terminal> terminals = new ObjectOpenHashSet<>();
     private Set<Node> preload = new ObjectOpenHashSet<>();
 
     public CircuitFactory() {}
-
-    
 
     public WireJackBuilder wireJack(String id) {
         assertNotConsumed();
@@ -41,11 +38,19 @@ public class CircuitFactory {
 
     public CircuitFactory solder(Terminal a, Terminal b) {
         assertNotConsumed();
-        if(!terminals.contains(a))
-            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain " + a);
-        if(!terminals.contains(b))
-            throw new IllegalArgumentException("Failed while soldering terminals in factory - This factory doesn't contain " + b);
-        
+        // TODO SOLDERING TERMINALS WITH IMPLICIT NODE
+        return this;
+    }
+
+    public CircuitFactory solder(Terminal pin, Node trace) {
+        pin.setConnectedTo(trace);
+        trace.localAttach(pin);
+        return this;
+    }
+
+    public CircuitFactory solder(Node trace, Terminal pin) {
+        pin.setConnectedTo(trace);
+        trace.localAttach(pin);
         return this;
     }
 
@@ -61,8 +66,7 @@ public class CircuitFactory {
     public <T extends FunctionalComponent> T supply(T component) {
         assertNotConsumed();
         if(component == null) throw new NullPointerException("Failed while adding new component to factory - The supplied component was null!");
-        if(terminals.contains(component.getTerminals().toArray()[0]))
-            throw new IllegalArgumentException("Failed while adding new component to factory - The supplied component '" + component + "' has already been added to this factory!");
+        if(components.contains(component)) throw new IllegalArgumentException("Failed while adding new component to factory - This factory already contained the provided component!");
         this.components.add(component);
         return component;
     }
@@ -79,7 +83,7 @@ public class CircuitFactory {
 
     public Node newNode() {
         assertNotConsumed();
-        Node j = new Joint(null);
+        Node j = new JointNode(null);
         supply(j);
         return j;
     }
@@ -100,13 +104,12 @@ public class CircuitFactory {
             throw new IllegalStateException("Attempted to create a CircuitComponent from a factory with no components or nodes!");
         Circuit c = new Circuit(source, components, preload);
         components = null;
-        terminals = null;
         preload = null;
         return c;
     }
 
     private void assertNotConsumed() {
-        if(components == null || terminals == null)
+        if(components == null)
             throw new IllegalStateException("Attempted to use a CircuitFactory that has already been consumed!");
     }
 
@@ -194,7 +197,7 @@ public class CircuitFactory {
 
         public WireJack make() {
             WireJack newJack = new WireJack(id, isVisible, EsoMath.quadShort2Long(x, y, z, s));
-            attachmentTarget.attach(null, newJack);
+            attachmentTarget.localAttach(null, newJack);
             return newJack;
         }
 
@@ -267,7 +270,7 @@ public class CircuitFactory {
 
         public BlockJack make() {
             BlockJack newJack = new BlockJack(id, isVisible, new RelativeDirection(rel));
-            attachmentTarget.attach(null, newJack);
+            attachmentTarget.localAttach(null, newJack);
             return newJack;
         }
     }

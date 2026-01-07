@@ -48,7 +48,7 @@ public class CatenaryMeshBuffer implements WorldlyObject {
     public static final CatenaryMeshBuffer REUSABLE = CatenaryMeshBuffer.asEmpty();
     private static final float RAD = 0.707107f;
 
-    private @Nullable TransmitterType<?> trns = MechanoTransmitters.HOOKUP.get();
+    private @Nullable TransmitterType trns = MechanoTransmitters.HOOKUP.get();
     private @Nullable Vec3 basis;
     private @NotNull MutableBlockPos lightLookup;
     private @Nullable BlockAndTintGetter world;
@@ -56,7 +56,7 @@ public class CatenaryMeshBuffer implements WorldlyObject {
     private final float[] data = new float[46];
 
 
-    public static CatenaryMeshBuffer as(TransmitterType<?> type) {
+    public static CatenaryMeshBuffer as(TransmitterType type) {
         CatenaryMeshBuffer output = new CatenaryMeshBuffer();
         return output.bindTo(type);
     }
@@ -74,7 +74,7 @@ public class CatenaryMeshBuffer implements WorldlyObject {
         lightLookup = new MutableBlockPos();
     }
 
-    public CatenaryMeshBuffer bindTo(TransmitterType<?> trns) {
+    public CatenaryMeshBuffer bindTo(TransmitterType trns) {
         Objects.requireNonNull(trns);
         if(!trns.getRenderProperties().isVisible()) {
             Mechano.LOGGER.warn("Cannot bind CatenaryMesher to TransmitterType '" + trns + "' - This type is not renderable!");
@@ -564,7 +564,7 @@ public class CatenaryMeshBuffer implements WorldlyObject {
         return this;
     }
 
-    public TransmitterType<?> getCurrentlyBoundType() {
+    public TransmitterType getCurrentlyBoundType() {
         return trns;
     }
 

@@ -9,7 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridHierarchy;
+import com.quattage.mechano.api.grid.GridReferent;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.tracking.UUIDSourceType.ScopeSpecifier;
@@ -29,14 +29,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  */
 public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridUUID> {
 
-    public static void assertValidType(GridUUID identifier, GridHierarchy type) {
+    public static void assertValidType(GridUUID identifier, GridReferent type) {
         if(identifier == null) 
             throw new NullPointerException("UUID validity assertion failed (got null value)");
         if(identifier.getReferentType() != type)
             throw new IllegalArgumentException("UUID validity assertion failed (bad type, expected '" + type + "', got '" + identifier.getReferentType() + "')");
     }
 
-    protected @Nullable GridHierarchy type;
+    protected @Nullable GridReferent type;
     protected short bindingA = Short.MIN_VALUE;
     protected short bindingB = Short.MIN_VALUE;
 
@@ -45,7 +45,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
     public GridUUID(CompoundTag tag) {
         if(tag.contains("cpt")) {
             byte idx = tag.getByte("cpt");
-            if(idx >= 0) this.type = GridHierarchy.values()[idx];
+            if(idx >= 0) this.type = GridReferent.values()[idx];
         }
         this.bindingA  = tag.getShort("ba");
         this.bindingB = tag.getShort("bb");
@@ -53,26 +53,26 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
 
     public GridUUID(ByteBuf buffer) {
         byte idx = buffer.readByte();
-        if(idx >= 0) this.type = GridHierarchy.values()[idx];
+        if(idx >= 0) this.type = GridReferent.values()[idx];
         this.bindingA = buffer.readShort();
         this.bindingB = buffer.readShort();
     }
 
     public GridUUID(Dynamic<?> dyn) {
         byte idx = dyn.get("cpt").asByte((byte)-1);
-        if(idx >= 0) this.type = GridHierarchy.values()[idx];
+        if(idx >= 0) this.type = GridReferent.values()[idx];
         this.bindingA = dyn.get("ba").asShort(Short.MIN_VALUE);
         this.bindingB = dyn.get("bb").asShort(Short.MIN_VALUE);
     }
 
-    public GridUUID withBinding(GridHierarchy type, int binding) {
+    public GridUUID withBinding(GridReferent type, int binding) {
         this.type = type;
         this.bindingA = clampedUnsigned(binding);
         this.bindingB = Short.MIN_VALUE;
         return this;
     }
 
-    public GridUUID withBinding(GridHierarchy type, int bindingA, int bindingB) {
+    public GridUUID withBinding(GridReferent type, int bindingA, int bindingB) {
         this.type = type;
         this.bindingA = clampedUnsigned(bindingA);
         this.bindingB = clampedUnsigned(bindingB);
@@ -85,17 +85,13 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
         return (short)(Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, (short)Math.abs(binding))) - Short.MAX_VALUE);
     }
 
-    public GridHierarchy getType() {
-        return type;
-    }
-
     @Nullable public Griddable<?> getTargetSource(Grid grid) {
         return getTargetSource(grid.getWorld());
     }
     @Override
     @Nullable public abstract Griddable<?> getTargetSource(LevelReader world);
 
-    public final GridHierarchy getReferentType() {
+    public final GridReferent getReferentType() {
         return type;
     }
 
@@ -180,7 +176,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
 
         @Override
         public GridUUID copy() {
-            return new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ())).withBinding(getType(), bindingA, bindingB);
+            return new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ())).withBinding(getReferentType(), bindingA, bindingB);
         }
 
         @Override
@@ -269,7 +265,7 @@ public abstract class GridUUID implements ScopeSpecifier, GridIdentifiable<GridU
 
         @Override
         public GridUUID copy() {
-            return new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits())).withBinding(getType(), bindingA, bindingB);
+            return new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits())).withBinding(getReferentType(), bindingA, bindingB);
         }
 
         @Override

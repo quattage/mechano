@@ -377,7 +377,7 @@ public class Catenaries {
         }
 
         // TODO switch to custom shader using more optimized vertex format
-        public final BiFunction<TransmitterEntry<?>, Boolean, RenderType> SOLID_MATERIAL 
+        public final BiFunction<TransmitterEntry, Boolean, RenderType> SOLID_MATERIAL 
             = Util.memoize((trns, chunk) -> {
                 if(chunk) return RenderType.SOLID;
                 RenderType.CompositeState composite = RenderType.CompositeState.builder()
@@ -392,7 +392,7 @@ public class Catenaries {
                 return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, composite);
             });
 
-        public final BiFunction<TransmitterEntry<?>, Boolean, RenderType> CUTOUT_MATERIAL 
+        public final BiFunction<TransmitterEntry, Boolean, RenderType> CUTOUT_MATERIAL 
             = Util.memoize((trns, chunk) -> {
                 if(chunk) return RenderType.CUTOUT;
                 RenderType.CompositeState composite = RenderType.CompositeState.builder()

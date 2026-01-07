@@ -42,8 +42,8 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
     @Override
     public ConvergenceStatus run(ServerGrid grid) {
 
-        CommonOps_DSCC.mult(grid.matrixTermA(), grid.matrixTermX(), temp);
-        CommonOps_DDRM.subtract(grid.matrixTermB(), temp, r);
+        CommonOps_DSCC.mult(grid.getMatrix(), grid.getSolution(), temp);
+        CommonOps_DDRM.subtract(grid.getVoltages(), temp, r);
         rHat.setTo(r);
         rho = VectorVectorMult_DDRM.innerProd(rHat, r);
         rhoOld = 1; alpha = 1; omega = 1;
@@ -51,24 +51,24 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
 
         for(int i = 0; i < NodalSolver.STEP_LIMIT; i++) {
 
-            CommonOps_DSCC.mult(grid.matrixTermA(), p, v);
+            CommonOps_DSCC.mult(grid.getMatrix(), p, v);
             d = VectorVectorMult_DDRM.innerProd(rHat, v);
             if(Math.abs(d) < (NodalSolver.EPSILON * 0.1d)) 
                 return ConvergenceStatus.ABORTED_PROBLEMATIC_DATA;
 
             alpha = rho / d;
-            CommonOps_DDRM.add(alpha, p, 1d, grid.matrixTermX(), h);
+            CommonOps_DDRM.add(alpha, p, 1d, grid.getSolution(), h);
             CommonOps_DDRM.add(-alpha, v, 1d, r, s);
             normS = NormOps_DDRM.normF(s);
             if(normS < NodalSolver.EPSILON) {
-                grid.matrixTermX().setTo(h);
+                grid.getSolution().setTo(h);
                 return ConvergenceStatus.FINISHED_SOLVED_EARLY;
             }
 
-            CommonOps_DSCC.mult(grid.matrixTermA(), s, t);
+            CommonOps_DSCC.mult(grid.getMatrix(), s, t);
             omega = VectorVectorMult_DDRM.innerProd(t, s) / VectorVectorMult_DDRM.innerProd(t, t);
 
-            CommonOps_DDRM.add(omega, s, 1d, h, grid.matrixTermX());
+            CommonOps_DDRM.add(omega, s, 1d, h, grid.getSolution());
             CommonOps_DDRM.add(-omega, t, 1d, s, r);
             normR = NormOps_DDRM.normF(r);
             if(normR < NodalSolver.EPSILON)

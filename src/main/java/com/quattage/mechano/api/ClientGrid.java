@@ -9,12 +9,12 @@ public final class ClientGrid extends Grid {
     }
 
     @Override
-    protected void onLoad() {
+    protected void load() {
 
     }
 
     @Override
-    protected void onUnload() {
+    protected void unload() {
 
     }
 

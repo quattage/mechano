@@ -17,7 +17,7 @@ public class JointUnlinkTask extends JointLinkTask {
     }
 
     @Override
-    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType<?> trns) {
+    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType trns) {
         return grid.removeLink(startID, endID);
     }
 }

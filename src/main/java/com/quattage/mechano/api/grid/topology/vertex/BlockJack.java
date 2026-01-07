@@ -1,13 +1,23 @@
 package com.quattage.mechano.api.grid.topology.vertex;
 
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes.DoubleLineConsumer;
@@ -28,6 +38,41 @@ public class BlockJack extends AncillaryNode implements OrientationUpdatable {
     public BlockJack(String name, boolean isVisible, RelativeDirection dir) {
         super(name, isVisible);
         this.dir = dir;
+    }
+
+    public Vec3i getPos(Vec3i basis) {
+        return basis.relative(dir.get());
+    }
+
+    public @Nullable BlockJack getOpposing(Level world, BlockPos basis) {
+        Objects.requireNonNull(world);
+        Objects.requireNonNull(basis);
+        BlockEntity be = world.getBlockEntity((BlockPos)getPos(basis));
+        if(be == parent) {
+            throw new IllegalStateException("Encountered an invalid blockentity traversal while getting opposing " 
+                + "ancillaries - BlockJack " + this + " refers to itself! (at " + getPos(basis) + ")");
+        }
+        if(!(be instanceof Griddable gbe)) return null;
+        GriddableTerminus terminus = gbe.getTerminus();
+        if(terminus.isEmpty()) return null;
+        for(int x = 0; x < terminus.size(); x++) {
+            AncillaryNode other = terminus.getAncillary(x);
+            if(other == this) {
+                throw new IllegalStateException("Encountered a leaked AncillaryNode instance (" 
+                    + other + ") - This ancillary has two hosts: " + this + "  , and " + gbe);
+            }
+            if(!(other instanceof BlockJack bj)) continue;
+            if(bj.isOpposing(this)) return bj;
+        }
+        return null;
+    }
+
+    public Direction getFacing() {
+        return dir.get();
+    }
+
+    public boolean isOpposing(BlockJack other) {
+        return other != null && other.dir.get().getOpposite().equals(this.dir.get());
     }
 
     @Override
@@ -108,10 +153,5 @@ public class BlockJack extends AncillaryNode implements OrientationUpdatable {
     @Override
     public void updateOrientation(CombinedOrientation dir) {
         this.dir.updateOrientation(dir);
-    }
-
-    @Override
-    public String describeState() {
-        return "(facing " + dir + ") " + super.describeState();
     }
 }

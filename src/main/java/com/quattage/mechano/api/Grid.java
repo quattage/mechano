@@ -13,9 +13,9 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
@@ -52,7 +52,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         // weakly referenced singletons are stored to skip hash capability lookups
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
-        protected final Object2ObjectOpenHashMap<GridUUID, List<ComponentLink<?>>> links = new Object2ObjectOpenHashMap<>();
+        protected final Object2ObjectOpenHashMap<GridUUID, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
 
         /**
          * To be called by internal registries to populate the world with an initial data attachment
@@ -75,7 +75,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         @SubscribeEvent
         public static void loadGrid(LevelEvent.Load evt) {
             LevelAccessor world = evt.getLevel();
-            Grid.getUnsided(world).onLoad();
+            Grid.getUnsided(world).load();
         }
 
         @SubscribeEvent
@@ -86,7 +86,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
         public static void unloadGrid(LevelEvent.Unload evt) {
             LevelAccessor world = evt.getLevel();
-            Grid.getUnsided(world).onUnload();
+            Grid.getUnsided(world).unload();
         }
 
         public static @NotNull Grid getUnsided(LevelReader world) {
@@ -156,77 +156,43 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             this.world = world;
         }
 
-        @Override
-        public Level getWorld() {
-            return world;
-        }
-
-        public void info(String msg) {
-            Grid.LOGGER.info("(" + getDimensionName() + ") " + msg);
-        }
-
-        public void warn(String msg) {
-            Grid.LOGGER.warn("(" + getDimensionName() + ") " + msg);
-        }
-
-        public void debug(String msg) {
-            Grid.LOGGER.debug("(" + getDimensionName() + ") " + msg);
-        }
-
-        public void error(String msg) {
-            Grid.LOGGER.error("(" + getDimensionName() + ") " + msg);
-        }
-
-        @Override
-        public String getDimensionName() {
-            return world.dimension().location().toString();
-        }
-
-        protected abstract void onLoad();
-        protected abstract void onUnload();
+        protected abstract void load();
+        protected abstract void unload();
         public abstract void tick();
 
-        public GridAction addLink(ComponentLink<?> link) {
+        /**
+         * Creates a new {@link ActionRunner} bound to this grid
+         * @param action The action to assign to the runner
+         * @return A new ActionRunner instance
+         */
+        public ActionRunner initiateTask(GridAction action) {
+            if(action == null) throw new NullPointerException("Error running task from " + this + " - The provided task is null!");
+            if(!action.isTask()) throw new IllegalArgumentException("Error running task from " + this + " - The provided action is not a task type!");
+            return new ActionRunner(this, action);
+        }
+
+        public GridAction addLink(AncillaryPair link) {
             Objects.requireNonNull(link);
-            link.validate();
-            ComponentLink<?> linkInverted = link.flippedCopy();
-            GridAction straight = addLinkSingle(link);
-            GridAction inverted = addLinkSingle(linkInverted);
-            if(straight.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
-                removeLink(link);
-                removeLink(linkInverted);
+            link.validateSelf();
+            AncillaryPair linkInverted = link.flippedCopy();
+            GridAction result = addLinkAsymmetric(link);
+            GridAction inverted = addLinkAsymmetric(linkInverted);
+            if(result.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
+                removeLinkAsymmetric(link.getStartID(), link.getEndID());
+                removeLinkAsymmetric(linkInverted.getStartID(), linkInverted.getEndID());
                 // always consume the failure case should one exist
-                if(!straight.getActionType().indicatesFailure())
-                    straight = inverted;
-            }
-            link.onAddedToGrid(this);
-            return straight;
+                if(!result.getActionType().indicatesFailure())
+                    result = inverted;
+            } else link.onAddedToGrid(this);
+            return result;
         }
 
-        public GridAction removeLink(ComponentLink<?> link) {
-            Objects.requireNonNull(link);
-            link.validate();
-            return removeLink(link.getStart(), link.getEnd());
-        }
-
-        public GridAction removeLink(GridUUID startID, GridUUID endID) {
-            Objects.requireNonNull(startID);
-            Objects.requireNonNull(endID);
-            GridAction straight = removeLinkSingle(startID, endID);
-            GridAction inverted = removeLinkSingle(endID, startID);
-            if(straight.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
-                if(!straight.getActionType().indicatesFailure())
-                    straight = inverted;
-            }
-            return straight;
-        }
-
-        private GridAction addLinkSingle(ComponentLink<?> link) {
-            List<ComponentLink<?>> linksAt = getLinksBelongingTo(link.getStart());
+        private GridAction addLinkAsymmetric(AncillaryPair link) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(link.getStartID());
             if(linksAt == null) {
-                linksAt = new ArrayList<ComponentLink<?>>();
+                linksAt = new ArrayList<AncillaryPair>();
                 linksAt.add(link);
-                links.put(link.getStart(), linksAt);
+                links.put(link.getStartID(), linksAt);
                 return GridAction.RESPONSE_SUCCESS;
             }
             if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
@@ -236,13 +202,29 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        private GridAction removeLinkSingle(GridUUID startID, GridUUID endID) {
-            List<ComponentLink<?>> linksAt = getLinksBelongingTo(startID);
+        public GridAction removeLink(AncillaryPair link) {
+            Objects.requireNonNull(link);
+            link.validateSelf();
+            return removeLink(link.getStartID(), link.getEndID());
+        }
+
+        public GridAction removeLink(GridUUID startID, GridUUID endID) {
+            Objects.requireNonNull(startID);
+            Objects.requireNonNull(endID);
+            GridAction result = removeLinkAsymmetric(startID, endID);
+            GridAction inverted = removeLinkAsymmetric(endID, startID);
+            if(result.getActionType().indicatesFailure() && !inverted.getActionType().indicatesFailure())
+                return inverted;
+            return result;
+        }
+
+        private GridAction removeLinkAsymmetric(GridUUID startID, GridUUID endID) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(startID);
             if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
             int toRemove = -1;
             for(int x = 0; x < linksAt.size(); x++) {
-                ComponentLink<?> link = linksAt.get(x);
-                if(link.getEnd().equals(endID)) {
+                AncillaryPair link = linksAt.get(x);
+                if(link.getEndID().equals(endID)) {
                     toRemove = x;
                     break;
                 }
@@ -256,8 +238,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        public List<ComponentLink<?>> getLinksBelongingTo(GridUUID uuid) {
-            List<ComponentLink<?>> linksAt = links.get(uuid);
+        public @Nullable List<AncillaryPair> getLinksBelongingTo(GridUUID uuid) {
+            List<AncillaryPair> linksAt = links.get(uuid);
             if(linksAt == null) return null;
             if(linksAt.isEmpty()) {
                 links.remove(uuid);
@@ -334,10 +316,10 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             CircuitComponent component = source.getCircuit();
             if(component == null)
                 throw new NullPointerException("Failed while querying for component at " + address + " - The source (" + source + ") failed to provide a valid CircuitComponent instance!");
-            if(component.getType() == address.getType()) {
+            if(component.getReferentType() == address.getReferentType()) {
                 if(address.hasBindings()) {
                     warn("Acquired CircuitComponent, but " + address + " has extraneous bindings that were ignored.");
-                    address.withBinding(address.getType(), -1, -1);
+                    address.withBinding(address.getReferentType(), -1, -1);
                 }
                 return component;
             }
@@ -347,7 +329,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
                     + ", which doesn't contain any sub-components with the correct binding.");
                 return null;
             }
-            return address.getType().findTarget(this, circuit, address);
+            return address.getReferentType().findTarget(this, circuit, address);
         }
 
         /**
@@ -370,10 +352,10 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         public String linksAsString() {
             if(links.isEmpty()) return "\n\tEmpty";
             String out = "";
-            for(Map.Entry<GridUUID, List<ComponentLink<?>>> entry : links.entrySet()) {
+            for(Map.Entry<GridUUID, List<AncillaryPair>> entry : links.entrySet()) {
                 GridUUID id = entry.getKey();
                 out += "\t- " + id + ":\n";
-                for(ComponentLink<?> link : entry.getValue())
+                for(AncillaryPair link : entry.getValue())
                     out += "\t\t* " + link + "\n";
                 out = out.substring(0, out.length() - 1);
                 out += "\n";
@@ -386,9 +368,30 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return getClass().getSimpleName() + "[" + getDimensionName() + "]";
         }
 
-        public ActionRunner initiateTask(GridAction action) {
-            if(action == null) throw new NullPointerException("Error running task from " + this + " - The provided task is null!");
-            if(!action.isTask()) throw new IllegalArgumentException("Error running task from " + this + " - The provided action is not a task type!");
-            return new ActionRunner(this, action);
+
+        @Override
+        public Level getWorld() {
+            return world;
+        }
+
+        @Override
+        public String getDimensionName() {
+            return world == null ? "n/a" : world.dimension().location().toString();
+        }
+
+        public void info(String msg) {
+            Grid.LOGGER.info("(" + getDimensionName() + ") " + msg);
+        }
+
+        public void warn(String msg) {
+            Grid.LOGGER.warn("(" + getDimensionName() + ") " + msg);
+        }
+
+        public void debug(String msg) {
+            Grid.LOGGER.debug("(" + getDimensionName() + ") " + msg);
+        }
+
+        public void error(String msg) {
+            Grid.LOGGER.error("(" + getDimensionName() + ") " + msg);
         }
     }

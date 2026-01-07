@@ -26,8 +26,10 @@ public class RelativeDirection implements OrientationUpdatable {
     }
 
     /**
-     * Gets this RelativeDirection's actual, globally-oriented 
-     * {@link Direction} in its current state.
+     * Gets this RelativeDirection's actual, globally-oriented {@link Direction} in its current 
+     * state. You'll need to ensure that {@link #updateOrientation} is called at least once
+     * before this method is called after blockstate changes so that the direction returned
+     * from this method is up-to-date.
      * @param dir (Optional) a {@link CombinedOrientation} to update this RelativeDirection with
      * @return The current global facing {@link Direction} that this RelativeDirection represents
      * @see #updateOrientation

@@ -3,9 +3,10 @@ package com.quattage.mechano.api.grid.functional;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.StampsDynamically;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
-public class Capacitor extends StampingComponent {
+public class Capacitor extends StampingComponent implements StampsDynamically {
 
     private final float capacitance;
     private double prevVoltage;
@@ -40,7 +41,7 @@ public class Capacitor extends StampingComponent {
 
     @Override
     public void stampDynamic(ServerGrid grid) {
-        double vNow = terminals[0].getNode().getVoltage() - terminals[1].getNode().getVoltage();
+        double vNow = terminals[0].getNode().getVoltage(grid) - terminals[1].getNode().getVoltage(grid);
         double ieq = (capacitance / Circuit.DELTA) * prevVoltage;
         int pI = terminals[0].getNode().getNodalIndex();
         int nI = terminals[1].getNode().getNodalIndex();

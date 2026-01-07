@@ -1,32 +1,31 @@
 package com.quattage.mechano.api;
 
-import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 
-import org.apache.commons.lang3.time.DurationFormatUtils;
-import org.apache.commons.lang3.time.StopWatch;
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.data.DMatrixSparseCSC;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.MechanoBuildParameters;
-import com.quattage.mechano.api.grid.functional.PerfectConductor;
-import com.quattage.mechano.api.grid.functional.PerfectInsulator;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
 import com.quattage.mechano.api.grid.solver.NodalSolver;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatus;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatusHolder;
-import com.quattage.mechano.api.grid.solver.NodeUnionSet;
 import com.quattage.mechano.api.grid.solver.StabilizedBiconjucateSolver;
-import com.quattage.mechano.api.grid.topology.Circuit;
+import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.CircuitComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
+import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.GroundedJoint;
+import com.quattage.mechano.api.grid.topology.vertex.Node.GroundNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.infrastructure.MemoryAnalyzer;
+import com.quattage.mechano.foundation.Disposable;
+import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -35,133 +34,163 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public final class ServerGrid extends Grid {
 
-    private GroundedJoint commonGround;    
-    protected final NodeUnionSet unionizer = new NodeUnionSet();
+    private @Nullable EnqueuedGridManifest activeManifest;
+    private @Nullable GroundNode commonGround;    
     private final MNAIndexer indexer = new MNAIndexer();
+    protected final NodeUnionSet netlist = new NodeUnionSet();
     private NodalSolver solver = new StabilizedBiconjucateSolver();
     protected final ConvergenceStatusHolder status = new ConvergenceStatusHolder();
 
-    private DMatrixSparseCSC A;
-    private DMatrixRMaj x, b;
+    private @Nullable DMatrixSparseCSC matrixA;
+    private @Nullable DMatrixRMaj matrixX, matrixB;
     private boolean isMatrixDirty = false;
     private boolean hasUnsavedChanges = false;
 
+    private @Nullable Collection<CircuitComponent> reducedComponents;
+
     protected ServerGrid(Level world) {
         super(world);
+        status.set(ConvergenceStatus.UNLOADED);
     }
 
     @Override
-    protected void onLoad() {
+    protected void load() {
         
     }
 
     @Override
-    protected void onUnload() {
-        solver.reset();
+    protected void unload() {
         clearAll();
-        unionizer.reset();
-        status.set(ConvergenceStatus.IDLE);
+        solver.reset();
+        netlist.reset();
         indexer.clear();
+        status.set(ConvergenceStatus.UNLOADED);
     }
 
     @Override
     public void tick() {
-        if(!!indexer.hasStampers()) {
-            this.status.set(ConvergenceStatus.IDLE);
-            A = null; x = null; b = null;
-            indexer.clear();
-            return;
+        tickManifest();
+        if(isMatrixDirty) preProcess();
+        if(shouldSolve()) {
+            runSolver();
+            postProcess();
         }
-        if(isMatrixDirty) dirtyTick();
-        if(!indexer.hasStampers()) return;
-        this.status.set(ConvergenceStatus.COMPUTING);
-        ConvergenceStatus newStatus = solver.run(this);
-        if(newStatus == null || newStatus == ConvergenceStatus.NONE) {
-            warn("Failed to retrieve status for tick, solver run returned no status!");
-            newStatus = ConvergenceStatus.NONE;
-        }
-        this.status.set(newStatus);
     }
 
-    private void dirtyTick() {
-        int size = (unionizer.rootCount() - 1) + indexer.size();
+    private void preProcess() {
         status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
-        A = new DMatrixSparseCSC(size, size, 10 * unionizer.rootCount());
-        x = createWorkingVector();
-        b = createWorkingVector();
+        final ObjectOpenHashSet<Node> emptyNodes = new ObjectOpenHashSet<>();
+        if(reducedComponents != null && !reducedComponents.isEmpty()) {
+            emptyNodes.ensureCapacity(reducedComponents.size() * 3);
+            for(CircuitComponent reduced : reducedComponents) {
+                StampingComponent.asStamperDo(this, reduced, stamper -> indexer.forget(stamper));
+                reduced.forEachNode(node -> {
+                    emptyNodes.add(node);
+                });
+                Disposable.dispose(reduced);
+            }
+        }
+        netlist.removeAll(emptyNodes);
+        int size = (netlist.size() - 1) + indexer.size();
+        matrixA = new DMatrixSparseCSC(size, size, 10 * netlist.size());
+        matrixX = createWorkingVector();
+        matrixB = createWorkingVector();
         solver.initialize(this);
-        A.sortIndices(null);
-        unionizer.assignIndices();
+        matrixA.sortIndices(null);
+        netlist.assignIndices();
+        reducedComponents = null;
         isMatrixDirty = false;
     }
 
-    @Override
-    public GridAction addLink(ComponentLink<?> link) {
-        GridAction output = super.addLink(link);
-        CircuitComponent component = link.getOrCreateInternalComponent();
-        if(component instanceof PerfectInsulator) {
-            link.forgetInternalComponent();
-            return GridAction.RESPONSE_SUCCESS;
+    private boolean shouldSolve() {
+        if(!indexer.hasStampers()) {
+            this.status.set(ConvergenceStatus.IDLE);
+            matrixA = null; matrixX = null; matrixB = null;
+            indexer.clear();
+            return false;
         }
-        if(output.getActionType().indicatesSuccess()) {
-            mark(link.getStartNode().getParentComponent());
-            mark(link.getEndNode().getParentComponent());
-            isMatrixDirty = true;
-            hasUnsavedChanges = true;
+        return true;
+    }
+
+    private void runSolver() {
+        // this.status.set(ConvergenceStatus.COMPUTING);
+        // ConvergenceStatus newStatus = solver.run(this);
+        // if(newStatus == null || newStatus == ConvergenceStatus.UNLOADED) {
+        //     warn("Failed to retrieve status for tick, solver run returned no status!");
+        //     newStatus = ConvergenceStatus.UNLOADED;
+        // }
+        // this.status.set(newStatus);
+    }
+
+    private void postProcess() {
+        for(StampingComponent sc : indexer.getAllStampers()) {
+            if(!(sc instanceof NeedsPostProcessing pp)) continue;
+            pp.postProcess(this);
         }
-        if(component instanceof PerfectConductor) {
-            link.forgetInternalComponent();
-            unionizer.union(link.getStartNode(), link.getEndNode());
-        }
-        return output;
     }
 
     @Override
-    public GridAction removeLink(ComponentLink<?> link) {
+    public GridAction addLink(AncillaryPair link) {
+        GridAction result = super.addLink(link);
+        if(!result.getActionType().indicatesSuccess()) return result;
+        if(link instanceof ComponentLink cl) {
+            CircuitComponent component = cl.apply(this);
+            if(component != null) {
+                component.updateOwnership(cl, -1);
+                mark(component);
+            }
+        }
+        mark(link.getStartNode().getParentComponent());
+        mark(link.getEndNode().getParentComponent());
+        isMatrixDirty = true;
+        hasUnsavedChanges = true;
+        return result;
+    }
+
+    @Override
+    public GridAction removeLink(AncillaryPair link) {
+        int preSize = getLinkCount();
         GridAction output = super.removeLink(link);
-        if(output.getActionType().indicatesSuccess()) {
+        if(!output.getActionType().indicatesSuccess()) return output;
+        if(link instanceof ComponentLink cl) {
+            CircuitComponent component = cl.get();
+            if(component != null)
+                unmark(component);
+            cl.invalidate();
+        }
+        if(getLinkCount() != preSize) {
             unmark(link.getStartNode().getParentComponent());
             unmark(link.getEndNode().getParentComponent());
-            isMatrixDirty = true;
-            hasUnsavedChanges = true;
         }
+        isMatrixDirty = true;
+        hasUnsavedChanges = true;
         return output;
     }
 
     private void mark(CircuitComponent component) {
+        Objects.requireNonNull(component);
+        if(!component.isSignificant()) warn("Skipped attempt to mark " + component + " - This component is insignificant!");
         if(component == null || !component.isSignificant()) return;
-        component.forEachNode(node -> { unionizer.add(node); });
-        if(component instanceof StampingComponent stamper) 
-            indexer.allocate(stamper);
-        else if(component instanceof Circuit circuit) {
-            circuit.forEachComponent(comp -> {
-                if(comp instanceof StampingComponent stamper)
-                    indexer.allocate(stamper);
-            });
-        }
+        component.forEachNode(node -> netlist.add(node));
+        StampingComponent.asStamperDo(this, component, stamper -> indexer.allocate(stamper));
     }
 
     private void unmark(CircuitComponent component) {
-        if(component == null) return;
-        component.forEachNode(node -> { 
-            unionizer.remove(node); 
-        });
-        if(component instanceof StampingComponent stamper) 
-            indexer.forget(stamper);
-        else if(component instanceof Circuit circuit) {
-            circuit.forEachComponent(comp -> {
-                if(comp instanceof StampingComponent stamper)
-                    indexer.forget(stamper);;
-            });
-        }
+        Objects.requireNonNull(component);
+        if(reducedComponents == null) reducedComponents = new HashSet<>();
+        reducedComponents.add(component);
     }
 
     public MNAIndexer indexer() {
         return indexer;
     }
 
-    public GroundedJoint getCommonGround() {
-        if(commonGround == null) commonGround = new GroundedJoint();
+    public GroundNode getOrCreateCommonGround() {
+        if(commonGround == null) commonGround = new GroundNode();
+        return commonGround;
+    }
+
+    public @Nullable GroundNode getCommonGround() {
         return commonGround;
     }
 
@@ -171,7 +200,7 @@ public final class ServerGrid extends Grid {
      * @see #clearAll
      */
     public void clearDynamic() {
-        b.zero();
+        matrixB.zero();
     }
 
     /**
@@ -180,8 +209,8 @@ public final class ServerGrid extends Grid {
      * @see #clearDynamic
      */
     public void clearAll() {
-        A.zero();
-        b.zero();
+        matrixA.zero();
+        matrixB.zero();
     }
 
     /**
@@ -190,8 +219,8 @@ public final class ServerGrid extends Grid {
      * made of all known stamped voltages.
      * @return <code>A (Matrix [n * n])</code>
      */
-    public DMatrixSparseCSC matrixTermA() {
-        return A;
+    public DMatrixSparseCSC getMatrix() {
+        return matrixA;
     }
 
     /**
@@ -202,8 +231,8 @@ public final class ServerGrid extends Grid {
      * @return <code>x (Vector[n])</code>
      * @see #getSolverStatus
      */
-    public DMatrixRMaj matrixTermX() {
-        return x;
+    public DMatrixRMaj getSolution() {
+        return matrixX;
     }
 
     /**
@@ -211,12 +240,12 @@ public final class ServerGrid extends Grid {
      * The <code>b</code> term in MNA represents the external forces
      * being applied to the matrix. In practical terms,
      * this method returns a vector which maps externally-induced 
-     * current (e.g. battery or alternator) to node 
+     * voltage (e.g. battery or alternator) to node 
      * index.
      * @return <code>b (Vector[n])</code>
      */
-    public DMatrixRMaj matrixTermB() {
-        return b;
+    public DMatrixRMaj getVoltages() {
+        return matrixB;
     }
 
     /**
@@ -229,7 +258,7 @@ public final class ServerGrid extends Grid {
      */
     public void stampA(int row, int col, double v) {
         if(row < 0 || col < 0) return;
-        A.unsafe_set(row, col, A.get(row, col) + v);
+        matrixA.unsafe_set(row, col, matrixA.get(row, col) + v);
     }
 
     /**
@@ -241,7 +270,7 @@ public final class ServerGrid extends Grid {
      */
     public void stampB(int index, double value) {
         if(index < 0) return;
-        b.set(index, value);
+        matrixB.set(index, value);
     }
 
     /**
@@ -250,7 +279,7 @@ public final class ServerGrid extends Grid {
      * @return A {@link DMAtrixRMaj vector} whose length is the number of rows in the current matrix.
      */
     public DMatrixRMaj createWorkingVector() {
-        return new DMatrixRMaj(A.getNumRows());
+        return new DMatrixRMaj(matrixA.getNumRows());
     }
 
     /**
@@ -259,39 +288,33 @@ public final class ServerGrid extends Grid {
      * doesn't ingest matrix values that are outdated.
      * @return {@link ConvergenceStatus}
      */
-    public ConvergenceStatus getConvergenceStatus() {
-        return status.get();
+    public ConvergenceStatusHolder getStatusHolder() {
+        return status;
     }
 
-    /**
-     * Returns a formatted string containing a comprehensive summary
-     * of this grid's current state and internal data.
-     */
-    public String writeManifest(@Nullable Entity requester) {
-        StopWatch timer = StopWatch.createStarted();
-        String out =  "\n▙▚▘▘\t\t\t\tMechano GridAPI manifest\t\t\t\t▝▝▞▟\n\n";
-            out += ""
-                + "API " + MechanoBuildParameters.asString() + "\n"
-                + "Requested at [" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()) + "]"
-                + " by '" + (requester == null ? "n/a" : requester.getName().getString()) + "' in " + getDimensionName() + "\n"
-                + "Solver method: " + solver.describeSelf() + "\n"
-                + "Lifecycle status: " + status + "\n"
-                + "Unsaved changes for this session? " + (hasUnsavedChanges ? "yes" : "no") + "\n"
-                + "Ground: " + (commonGround == null ? "n/a" : commonGround.hashCode()) + "\n"
-                + "Memory footprint analysis: " + MemoryAnalyzer.estimateFootprint(this) + "\n--\n"
-                + "Grid Contents:\n" + collectNodes() + "\n"
-                + "  ♨ github.com/quattage/mechano\n"
-                + "  ☎ discord.gg/85ufgRwy2g\n";
-        return out += "\n\n▛▞▖▖\t\t\t      Manifest generated in " + DurationFormatUtils.formatDuration(timer.getTime(), "ss.SSS") + "s      \t\t\t▗▗▚▜ \n";
+    public NodeUnionSet getNetlist() {
+        return netlist;
     }
 
-    private String collectNodes() {
-        String out = "";
-        if(unionizer.allRoots().isEmpty()) return "Empty";
-        for(Node node : unionizer.allRoots()) {
-            out += node.toFullString(unionizer) + "\n";
-        }
-        return out;
+    public NodalSolver getSolver() {
+        return solver;
+    }
+
+    public boolean hasUnsavedChanges() {
+        return hasUnsavedChanges;
+    }
+
+    public void enqueueManifest(Entity requester) {
+        Objects.requireNonNull(requester);
+        activeManifest = new EnqueuedGridManifest(this, requester);
+    }
+
+    private void tickManifest() {
+        if(activeManifest != null) { 
+            if(activeManifest.isConsumed())
+                activeManifest = null;
+            else activeManifest.tick();
+        };
     }
 
     public MinecraftServer getServer() {

@@ -7,13 +7,11 @@ import java.util.function.Consumer;
 import javax.annotation.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridHierarchy;
+import com.quattage.mechano.api.grid.GridReferent;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.foundation.tracking.GridUUID;
-
-import net.minecraft.resources.ResourceLocation;
 
 public class Terminal implements CircuitComponent {
     
@@ -82,22 +80,12 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public Collection<Terminal> getTerminals() {
-        Mechano.LOGGER.warn(this + " attempted to query itself.");
         return instantiator.getTerminals();
     }
 
     @Override
     public void forEachNode(Consumer<Node> cons) {
         if(connected != null) cons.accept(connected);
-    }
-
-    @Override
-    public String describeState() {
-        return "attached to '" + instantiator.getComponentID() + "'";
-    }
-
-    public String describeSelf() {
-        return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s '" + getComponentID() + "'";
     }
 
     @Override 
@@ -116,11 +104,6 @@ public class Terminal implements CircuitComponent {
     }
 
     @Override
-    public ResourceLocation asResource() {
-        return Mechano.asResource(getSerializedName());
-    }
-
-    @Override
     public boolean isSignificant() {
         return connected != null && instantiator != null;
     }
@@ -136,12 +119,12 @@ public class Terminal implements CircuitComponent {
 
     @Override
     public String toString() {
-        return describeSelf();
+        return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s '" + getComponentID() + "'";
     }
 
     @Override
-    public GridHierarchy getType() {
-        return GridHierarchy.TERMINAL;
+    public GridReferent getReferentType() {
+        return GridReferent.TERMINAL;
     }
 
     @Override

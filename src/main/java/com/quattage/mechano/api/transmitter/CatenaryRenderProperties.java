@@ -17,10 +17,10 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class CatenaryRenderProperties {
 
-    protected TransmitterEntry<?> entry;
+    protected TransmitterEntry entry;
     protected MeshExtruder extruder;
     protected Thickness thickness;
-    protected BiFunction<TransmitterEntry<?>, Boolean, RenderType> materialGetter;
+    protected BiFunction<TransmitterEntry, Boolean, RenderType> materialGetter;
 
     protected @Nullable TextureAtlasSprite sprite = null;
     private @Nullable ResourceLocation atlasLocation;
@@ -48,7 +48,7 @@ public class CatenaryRenderProperties {
         return this;
     }
 
-    public CatenaryRenderProperties material(BiFunction<TransmitterEntry<?>, Boolean, RenderType> materialGetter) {
+    public CatenaryRenderProperties material(BiFunction<TransmitterEntry, Boolean, RenderType> materialGetter) {
         Objects.requireNonNull(materialGetter);
         this.materialGetter = materialGetter;
         return this;
@@ -68,7 +68,7 @@ public class CatenaryRenderProperties {
         return atlasLocation;
     }
 
-    public BiFunction<TransmitterEntry<?>, Boolean, RenderType> getMaterialGetter() {
+    public BiFunction<TransmitterEntry, Boolean, RenderType> getMaterialGetter() {
         assertConfigured();
         return materialGetter;
     }

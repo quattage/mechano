@@ -13,7 +13,7 @@ import net.neoforged.neoforge.registries.RegistryBuilder;
 
 public final class MechanoRegistrate extends CreateRegistrate {
 
-    private final ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> trnsKey;
+    private final ResourceKey<Registry<TransmitterType>> trnsKey;
 
     public static MechanoRegistrate make(String modid) {
         return new MechanoRegistrate(modid);
@@ -24,13 +24,13 @@ public final class MechanoRegistrate extends CreateRegistrate {
         this.trnsKey = makeRegistry("transmitter_type", this::supplyTransmitterRegistry);
     }
 
-    @SuppressWarnings("unchecked")
-    public Registry<TransmitterType<? extends CircuitComponent>> getTransmitterRegistry() {
-        return (Registry<TransmitterType<? extends CircuitComponent>>)BuiltInRegistries.REGISTRY.getOrThrow((ResourceKey)trnsKey);
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public Registry<TransmitterType> getTransmitterRegistry() {
+        return (Registry<TransmitterType>)BuiltInRegistries.REGISTRY.getOrThrow((ResourceKey)trnsKey);
     }
 
-    private RegistryBuilder<TransmitterType<? extends CircuitComponent>> supplyTransmitterRegistry(ResourceKey<Registry<TransmitterType<? extends CircuitComponent>>> key) {
-        return new RegistryBuilder<TransmitterType<? extends CircuitComponent>>(key).maxId(256).sync(true);
+    private RegistryBuilder<TransmitterType> supplyTransmitterRegistry(ResourceKey<Registry<TransmitterType>> key) {
+        return new RegistryBuilder<TransmitterType>(key).maxId(256).sync(true);
     }
 
     public <T extends CircuitComponent, P> TransmitterBuilder<T, P> transmitter(String name) {

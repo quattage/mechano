@@ -42,8 +42,9 @@ public interface VoltageDecay {
      */
     public static class Constant implements VoltageDecay {
 
-        public final float voltage;
+        public float voltage;
         public Constant(float voltage) { this.voltage = voltage; }
+        public void setVoltage(float voltage) { this.voltage = voltage; }
         @Override public double apply(double soc) { return voltage; }
         @Override public double nominal() { return voltage; }
         @Override public double minimal() { return voltage; }

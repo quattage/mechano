@@ -121,6 +121,7 @@ public interface ActionTask {
 
     default String collectArgsAsString(Object... args) {
         String summary = "";
+        if(args == null || args.length <= 0) return "No arguments";
         for(Object obj : args) summary += "\n\n * " + obj.getClass().getSimpleName() + " :: " + obj.toString() + ", ";
         return summary.substring(0, summary.length() - 3);
     }

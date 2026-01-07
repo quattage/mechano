@@ -20,15 +20,17 @@ public class Resistor extends StampingComponent {
     protected Terminal[] defineTerminals() {
         return Terminal.pair(this);
     }
+    
+    /**
+     * @return The resistance (in ohms) of this resistor
+     */
+    public float getResistance() {
+        return ohms;
+    }
 
     @Override
     public @Nullable CircuitComponent getParentComponent() {
         return terminals[0].getParentComponent();
-    }
-
-    @Override
-    public int getAllocations() {
-        return 0;
     }
 
     @Override
@@ -42,18 +44,6 @@ public class Resistor extends StampingComponent {
             grid.stampA(aI, bI, -g);
             grid.stampA(bI, aI, -g);
         }
-    }
-
-    @Override
-    public void stampDynamic(ServerGrid grid) {
-        
-    }
-
-    
-
-    @Override
-    public @Nullable Terminal pinA() {
-        return terminals[0];
     }
 
     @Override

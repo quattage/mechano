@@ -3,22 +3,23 @@ package com.quattage.mechano.api.grid.topology;
 import java.util.Objects;
 
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridReferent;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 public class AncillaryPair {
 
-    protected GridUUID startID, endID;
-    protected AncillaryNode startNode, endNode;
+    protected ComponentUUID<?> startID, endID;
+    protected AncillaryNode<?> startNode, endNode;
 
-    public AncillaryPair(AncillaryNode startNode, AncillaryNode endNode) {
+    public AncillaryPair(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
         assignStart(startNode);
         assignEnd(endNode);
     }
 
-    public AncillaryPair(GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode) {
+    public AncillaryPair(ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         assignStart(startID, startNode);
         assignEnd(endID, endNode);
     }
@@ -27,41 +28,33 @@ public class AncillaryPair {
         return new AncillaryPair(endNode, startNode);
     }
 
-    public AncillaryPair assignStart(AncillaryNode startNode) {
+    public AncillaryPair assignStart(AncillaryNode<?> startNode) {
         Objects.requireNonNull(startNode);
         this.startNode = startNode;
-        this.startID = startNode.bindUUID(startNode.getSource().getUUID());
+        this.startID = startNode.bindUUID(startNode.getProviderSource().getUUID());
         return this;
     }
 
-    public AncillaryPair assignEnd(AncillaryNode endNode) {
+    public AncillaryPair assignEnd(AncillaryNode<?> endNode) {
         Objects.requireNonNull(endNode);
         this.endNode = endNode;
-        this.endID = endNode.bindUUID(endNode.getSource().getUUID());
+        this.endID = endNode.bindUUID(endNode.getProviderSource().getUUID());
         return this;
     }
 
-    public AncillaryPair assignStart(GridUUID startID, AncillaryNode startNode) {
+    public AncillaryPair assignStart(ComponentUUID<?> startID, AncillaryNode<?> startNode) {
         Objects.requireNonNull(startID);
-        GridReferent.throwIfMismatch(startID, GridReferent.ANCILLARY_NODE);
-        if(!startNode.isSignificant()) {
-            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + startID 
-                + " - The provided AncillaryNode is insignificant!");
-        }
+        GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY_NODE);
         Objects.requireNonNull(startNode);
         this.startID = startID;
         this.startNode = startNode;
         return this;
     }
 
-    public AncillaryPair assignEnd(GridUUID endID, AncillaryNode endNode) {
+    public AncillaryPair assignEnd(ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         Objects.requireNonNull(endID);
-        GridReferent.throwIfMismatch(endID, GridReferent.ANCILLARY_NODE);
+        GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY_NODE);
         Objects.requireNonNull(endNode);
-        if(!endNode.isSignificant()) {
-            throw new IllegalArgumentException("Failed while assigning ComponentLink starting point with " + endID 
-                + " - The provided AncillaryNode is insignificant!");
-        }
         this.endID = endID;
         this.endNode = endNode;
         return this;
@@ -75,28 +68,28 @@ public class AncillaryPair {
         
     }
 
-    public GridUUID getStartID() {
+    public ComponentUUID<?> getStartID() {
         return startID;
     }
     
-    public AncillaryNode getStartAncillary() {
+    public AncillaryNode<?> getStartAncillary() {
         return startNode;
     }
 
     public Node getStartNode() {
-        return (Node)getStartAncillary().getParentComponent();
+        return (Node)getStartAncillary().getParentConstruct();
     }
 
-    public GridUUID getEndID() {
+    public ComponentUUID<?> getEndID() {
         return endID;
     }
 
-    public AncillaryNode getEndAncillary() {
+    public AncillaryNode<?> getEndAncillary() {
         return endNode;
     }
 
     public Node getEndNode() {
-        return (Node)getEndAncillary().getParentComponent();
+        return (Node)getEndAncillary().getParentConstruct();
     }
 
     @Override
@@ -118,7 +111,6 @@ public class AncillaryPair {
     public AncillaryPair validateSelf() {
         assertHasIDs();
         assertHasAncillaries();
-        assertHasSignificance();
         assertHasSources();
         assertIDsMatch();
         assertNonConflict();
@@ -147,35 +139,24 @@ public class AncillaryPair {
         }
     }
 
-    private void assertHasSignificance() {
-        if(!startNode.isSignificant()) {
-            throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The starting jack is insignificant (This instance potentially leaked)");
-        }
-        if(!endNode.isSignificant()) {
-            throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The ending jack is insignificant (This instance potentially leaked)");
-        }
-    }
-
     private void assertHasSources() {
-        if(startNode.getSource() == null) {
+        if(startNode.getProviderSource() == null) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The starting jack has no source! (This instance potentially leaked)");
         }
-        if(endNode.getSource() == null) {
+        if(endNode.getProviderSource() == null) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The ending jack has no source! (This instance potentially leaked)");
         }
     }
 
     private void assertIDsMatch() {
-        GridUUID startIDRetrieved = startNode.bindUUID(startNode.getSource().getUUID());
+        ComponentUUID<?> startIDRetrieved = startNode.bindUUID(startNode.getProviderSource().getUUID());
         if(!startIDRetrieved.equals(startID)) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The starting jack returned a UUID that doesn't match! (got " + startIDRetrieved + ")");
         }
-        GridUUID endIDRetrieved = endNode.bindUUID(endNode.getSource().getUUID());
+        ComponentUUID<?> endIDRetrieved = endNode.bindUUID(endNode.getProviderSource().getUUID());
         if(!endIDRetrieved.equals(endID)) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The ending jack returned a UUID that doesn't match! (got " + endIDRetrieved + ")");
@@ -189,7 +170,7 @@ public class AncillaryPair {
         }
         if(startNode == endNode) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The starting and ending AncillaryNode instances are identical!");
+                + " - The starting and ending AncillaryNode<?> instances are identical!");
         }
     }
 }

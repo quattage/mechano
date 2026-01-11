@@ -1,6 +1,6 @@
 package com.quattage.mechano.api.transmitter;
 
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.AbstractBuilder;

@@ -1,8 +1,8 @@
 package com.quattage.mechano.content.creative;
 
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.functional.InfiniteVoltageSource;
+import com.quattage.mechano.api.grid.component.impl.InfiniteVoltageSource;
+import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 

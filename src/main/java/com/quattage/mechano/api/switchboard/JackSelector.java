@@ -11,7 +11,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.api.switchboard.action.GridAction;
@@ -58,7 +57,7 @@ public class JackSelector {
     
     private final TargetAncillary selected = new TargetAncillary();
     private final Queue<TargetAncillary> nearbyJoints = new PriorityQueue<>();
-    private @Nullable WireJack previousTarget = null;
+    private @Nullable WireJack<?> previousTarget = null;
     private ArrayList<Component> tooltip = new ArrayList<>();
 
     private boolean lookedThisFrame = false;
@@ -96,7 +95,7 @@ public class JackSelector {
         while(!nearbyJoints.isEmpty()) {
             final TargetAncillary sel = nearbyJoints.poll();
             if(sel == null || !sel.isVisible()) continue;
-            if(!sel.get().isIntersecting(sel.target.getSource().getSourcePos(), ray)) continue;
+            if(!sel.get().isIntersecting(sel.target.getProviderSource().getSourcePos(), ray)) continue;
             lookedThisFrame = true;
             if(prov == null) sel.updateResponse(GridAction.NONE);
             else sel.updateResponse(prov.evaluateTarget(world, sel.get()));
@@ -106,7 +105,7 @@ public class JackSelector {
         if(!lookedThisFrame) {
             if(selected.exists() && hoverTicks > 0) {
                 hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
-                selected.get().drawToOutliner(selected.target.getSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
+                selected.get().drawToOutliner(selected.target.getProviderSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
             } else reset();
         }
     }
@@ -118,7 +117,7 @@ public class JackSelector {
      * @param source The griddable that owns <code>joint</code>
      * @param joint the joint to be added
      */
-    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?> source, AncillaryNode joint) {
+    public void trackForThisFrame(@Nullable LocalPlayer tracker, Griddable<?> source, AncillaryNode<?> joint) {
         if(tracker == null) {
             tracker = Minecraft.getInstance().player;
             if(tracker == null)
@@ -285,19 +284,19 @@ public class JackSelector {
         return selected != null && selected.exists() && selected.isVisible();
     }
 
-    public @Nullable AncillaryNode target() {
+    public @Nullable AncillaryNode<?> target() {
         return hasSelection() ? selected.get() : null;
     }
 
     protected static class TargetAncillary implements Comparable<TargetAncillary> {
 
-        private AncillaryNode target = null;
+        private AncillaryNode<?> target = null;
         private GridAction response = GridAction.RESPONSE_FAIL_GENERIC;
         private float distanceToPlayer = 0;
 
         protected TargetAncillary() {}
 
-        protected TargetAncillary(AncillaryNode target, float distanceToPlayer) {
+        protected TargetAncillary(AncillaryNode<?> target, float distanceToPlayer) {
             this.target = target;
             this.distanceToPlayer = distanceToPlayer;
         }
@@ -317,7 +316,7 @@ public class JackSelector {
             this.response = GridAction.RESPONSE_FAIL_GENERIC;
         }
 
-        public boolean is(WireJack jack) {
+        public boolean is(WireJack<?> jack) {
             return target == jack;
         }
 
@@ -330,11 +329,11 @@ public class JackSelector {
         }
 
         public Color getColor() {
-            if(target == null || target.getSource() == null) return response.getActionType().getColor();
-            return response.getActionType().getColor(target.getSource().getBlockPos());
+            if(target == null || target.getProviderSource() == null) return response.getActionType().getColor();
+            return response.getActionType().getColor(target.getProviderSource().getBlockPos());
         }
 
-        public @Nullable AncillaryNode get() {
+        public @Nullable AncillaryNode<?> get() {
             return target;
         }
 
@@ -366,7 +365,7 @@ public class JackSelector {
      * @see #drawSelectedToBuffer
      */
     public void drawToOutliner(float hoverTicks, DeltaTracker deltas) {
-        target.drawToOutliner(target.getSource().getSourcePos(), getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
+        target.drawToOutliner(target.getProviderSource().getSourcePos(), getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
     }
 
     /**
@@ -376,7 +375,7 @@ public class JackSelector {
      * @see #drawSelectedToOutliner
      */
     public void drawToBuffer(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
-        target.drawToBuffer(target.getSource().getSourcePos(), camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
+        target.drawToBuffer(target.getProviderSource().getSourcePos(), camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
     }
     }
 

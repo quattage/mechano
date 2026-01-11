@@ -1,10 +1,9 @@
-package com.quattage.mechano.api.grid.functional;
+package com.quattage.mechano.api.grid.component.impl;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
+import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 public class Resistor extends StampingComponent {
@@ -26,11 +25,6 @@ public class Resistor extends StampingComponent {
      */
     public float getResistance() {
         return ohms;
-    }
-
-    @Override
-    public @Nullable CircuitComponent getParentComponent() {
-        return terminals[0].getParentComponent();
     }
 
     @Override

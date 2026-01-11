@@ -16,15 +16,16 @@ import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
 import com.quattage.mechano.api.switchboard.task.GridDumpTask;
 import com.quattage.mechano.api.switchboard.task.GridPeekTask;
-import com.quattage.mechano.api.switchboard.task.JointLinkTask;
-import com.quattage.mechano.api.switchboard.task.JointUnlinkTask;
+import com.quattage.mechano.api.switchboard.task.NodeUnionTask;
+import com.quattage.mechano.api.switchboard.task.NodeUnunionTask;
 import com.quattage.mechano.api.switchboard.task.RequestActionTask;
-import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.TrackedObject;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.resources.ResourceLocation;
@@ -40,8 +41,8 @@ import net.neoforged.neoforge.common.NeoForge;
 
 public enum GridAction implements StringRepresentable {
 
-    TASK_LINK_JOINTS                      ( ActionType.TASK_GENERIC, JointLinkTask.class ),
-    TASK_UNLINK_JOINTS                    ( ActionType.TASK_GENERIC, JointUnlinkTask.class ),
+    TASK_UNION_NODES                      ( ActionType.TASK_GENERIC, NodeUnionTask.class ),
+    TASK_UNUNION_NODES                    ( ActionType.TASK_GENERIC, NodeUnunionTask.class ),
     TASK_GRID_DUMP                        ( ActionType.TASK_GENERIC, GridDumpTask.class ),
     TASK_GRID_PEEK                        ( ActionType.TASK_GENERIC, GridPeekTask.class),
     TASK_REQUEST                          ( ActionType.TASK_GENERIC, RequestActionTask.class ),
@@ -69,12 +70,21 @@ public enum GridAction implements StringRepresentable {
             + o == null ? "handled!" : (" included in handler contained within class '" + o.getClass().getSimpleName() + "'!"));
     }
 
-    
-    public static GridAction dualExist(Object a, Object b) {
+    public static GridAction ofNullcheck(Object a, Object b) {
         if(a == null && b == null) return RESPONSE_FAIL_MISSING;
         if(a == null) return RESPONSE_FAIL_START_MISSING;
         if(b == null) return RESPONSE_FAIL_END_MISSING;
         return RESPONSE_SUCCESS;
+    }
+
+    public static GridAction ofNullcheck(Object o) {
+        return o == null ? RESPONSE_FAIL_END_MISSING : RESPONSE_SUCCESS;
+    }
+
+    public static GridAction ofResult(InteractionResult result) {
+        if(result == null) return RESPONSE_FAIL_CANCELLED;
+        if(result.consumesAction()) return GridAction.RESPONSE_SUCCESS;
+        return GridAction.RESPONSE_FAIL_GENERIC;
     }
 
     private final ActionType type;
@@ -234,7 +244,7 @@ public enum GridAction implements StringRepresentable {
         private Grid grid;
         private GridAction action;
         private Object[] args = new Object[0];
-        private TrackedObject[] trackers = new TrackedObject[0];
+        private GridReferent<?>[] trackers = new GridReferent<?>[0];
 
         public ActionRunner() {}
 
@@ -271,7 +281,7 @@ public enum GridAction implements StringRepresentable {
          * @param trackers varargs array of {@link TrackedObject TrackedObjects}
          * @return This ActionRunner for chaining
          */
-        public ActionRunner from(TrackedObject... trackers) {
+        public ActionRunner from(GridReferent<?>... trackers) {
             Objects.requireNonNull(trackers);
             this.trackers = trackers;
             return this;
@@ -285,9 +295,9 @@ public enum GridAction implements StringRepresentable {
          * @param trackers collection of {@link TrackedObject TrackedObjects}
          * @return This ActionRunner for chaining
          */
-        public ActionRunner from(Collection<TrackedObject> trackers) {
+        public ActionRunner from(Collection<GridReferent<?>> trackers) {
             Objects.requireNonNull(trackers);
-            this.trackers = trackers.toArray(new TrackedObject[trackers.size()]);
+            this.trackers = trackers.toArray(new GridReferent<?>[trackers.size()]);
             return this;
         }
 
@@ -340,9 +350,9 @@ public enum GridAction implements StringRepresentable {
         @OnlyIn(Dist.CLIENT)
         public GridAction requestRun() {
             Object[] internalArgs = args;
-            List<GridUUID> trackerIDs = new ArrayList<GridUUID>(trackers.length);
+            List<ComponentUUID<?>> trackerIDs = new ArrayList<ComponentUUID<?>>(trackers.length);
             for(int x = 0; x < trackers.length; x++) {
-                TrackedObject obj = trackers[x];
+                GridReferent<?> obj = trackers[x];
                 if(!(obj instanceof Griddable<?> gobj))
                     continue;
                 trackerIDs.add(gobj.getUUID());
@@ -368,7 +378,7 @@ public enum GridAction implements StringRepresentable {
             if(grid instanceof ServerGrid server) {
                 GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
                 if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-                return task.executeAsServer(server, args).broadcast(server, TrackedObject.collectTrackers((ServerLevel)grid.getWorld(), trackers), args);
+                return task.executeAsServer(server, args).broadcast(server, ComponentTracker.collect((ServerLevel)grid.getWorld(), trackers), args);
             }
             return GridAction.RESPONSE_FAIL_GENERIC;
         }
@@ -380,7 +390,7 @@ public enum GridAction implements StringRepresentable {
             if(!(grid instanceof ServerGrid server)) throw new IllegalArgumentException("what");
             GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
             if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-            return task.executeAsServer(server, args).broadcast(server, TrackedObject.collectTrackers((ServerLevel)grid.getWorld(), trackers), args);
+            return task.executeAsServer(server, args).broadcast(server, ComponentTracker.collect((ServerLevel)grid.getWorld(), trackers), args);
         }
     }
 

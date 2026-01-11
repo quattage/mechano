@@ -1,10 +1,10 @@
-package com.quattage.mechano.api.grid.functional;
+package com.quattage.mechano.api.grid.component.impl;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.solver.NodalSolver;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 public class HeatingElement extends Resistor implements NeedsPostProcessing {

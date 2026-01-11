@@ -1,6 +1,7 @@
 package com.quattage.mechano.foundation.numeric;
 
 import net.minecraft.core.Vec3i;
+import net.minecraft.util.Mth;
 
 /**
  * my beautiful util class
@@ -92,6 +93,14 @@ public class EsoMath {
             EsoMath.int2shortA(i),
             EsoMath.int2shortB(i)
         };
+    }
+
+    public static short toShortClamped(int x) {
+        return (short)Mth.clamp(x, Short.MIN_VALUE, Short.MAX_VALUE);
+    }
+
+    public static short toShortClamped(long x) {
+        return (short)Mth.clamp(x, Short.MIN_VALUE, Short.MAX_VALUE);
     }
 }
 

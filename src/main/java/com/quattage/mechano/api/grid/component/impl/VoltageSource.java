@@ -1,12 +1,12 @@
-package com.quattage.mechano.api.grid.functional;
+package com.quattage.mechano.api.grid.component.impl;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.VoltageDecay;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.NeedsPostProcessing;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampsDynamically;
+import com.quattage.mechano.api.grid.component.StampingComponent;
+import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
+import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 public abstract class VoltageSource extends StampingComponent implements StampsDynamically, NeedsPostProcessing {

@@ -2,8 +2,8 @@ package com.quattage.mechano.api.grid.solver;
 
 import java.util.Set;
 
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampsDynamically;
+import com.quattage.mechano.api.grid.component.StampingComponent;
+import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;

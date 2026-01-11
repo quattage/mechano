@@ -7,10 +7,12 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
@@ -59,8 +61,6 @@ public class TransmitterType {
         return renderProperties.get();
     }
 
-    
-
     public String getName() {
         return name;
     }
@@ -80,13 +80,10 @@ public class TransmitterType {
         }
     }
 
-
-    public static @Nullable CircuitComponent applyUnion(ServerGrid grid, UnionFactory factory, @Nullable Object src, AncillaryNode start, AncillaryNode end) {
-        if(grid == null) throw new GridUnionException(src, "Couldn't run facotry on null grid!");
+    public static @Nullable CircuitComponent applyUnion(ServerGrid grid, UnionFactory factory, @Nullable Object src, AncillaryNode<?> start, AncillaryNode<?> end) {
+        if(grid == null) throw new GridUnionException(src, "Couldn't run factory on null grid!");
         if(start == null) throw new GridUnionException(src, "start is null!");
-        if(!start.isSignificant()) throw new GridUnionException(src, "start is insignificant!");
         if(end == null) throw new GridUnionException(src, "end is null!");
-        if(!end.isSignificant()) throw new GridUnionException(src, "end is insignificant!");
         CircuitComponent output = null;
         try { output = factory.apply(grid, start, end); }
         catch(RuntimeException e) { 
@@ -94,12 +91,27 @@ public class TransmitterType {
             e.printStackTrace();
             throw new GridUnionException(src, "Encountered an error while applying factory! (See exception above)");
         }
-        if(output != null && src instanceof CircuitComponent cc) output.updateOwnership(cc, -1);
+        if(output != null && src instanceof GridConstruct parent && output instanceof GridConstruct child) 
+            child.updateOwnership(parent, -1);
         return output;
     }
 
     @FunctionalInterface
-    public interface UnionFactory extends TriFunction<ServerGrid, AncillaryNode, AncillaryNode, CircuitComponent>{
+    public interface UnionFactory extends TriFunction<ServerGrid, AncillaryNode<?>, AncillaryNode<?>, CircuitComponent>{
+
+        /**
+         * A shorthanded {@link UnionFactory} substitute for unions that represent
+         * perfect conductors. (e.g. a wire with no resistence.)
+         * @param grid Grid to operate within
+         * @param startAncillary {@link AncillaryNode} starting point
+         * @param endAncillary {@link AncillaryNode} ending point
+         * @return <code>null,</code> since a perfect union doesn't have a component associated with it.
+         */
+        static CircuitComponent perfectConductor(ServerGrid grid, AncillaryNode<?> startAncillary, AncillaryNode<?> endAncillary) {
+            grid.getNetlist().union(startAncillary.getAssociatedNode(), endAncillary.getAssociatedNode());
+            return null;
+        }
+
         /**
          * Supply some logic here to create an arbitrary connection between two 
          * {@link AncillaryNode ancillaries} - <code>startAncillary</code> and
@@ -116,13 +128,13 @@ public class TransmitterType {
          * in the creation of a discrete component.
          */
         @Override 
-        @Nullable CircuitComponent apply(ServerGrid grid, AncillaryNode startAncillary, AncillaryNode endAncillary);
+        @Nullable CircuitComponent apply(ServerGrid grid, AncillaryNode<?> startAncillary, AncillaryNode<?> endAncillary);
     }
 
     public interface TransmitterProvider {
         /**
          * Evalutaes the provided {@link Node} and returns a {@link GridAction response}
-         * indicating whether or not the targeted joint should be highlighted by the {@link JackSelector selector}
+         * indicating whether or not the targeted node should be highlighted by the {@link JackSelector selector}
          * <p>
          * <h3>Remember to tag implementations with</h3> 
          * <pre>@OnlyIn(Dist.CLIENT)</pre>
@@ -131,7 +143,7 @@ public class TransmitterType {
          * @return A {@link GridAction action} 
          */
         @OnlyIn(Dist.CLIENT)
-        default GridAction evaluateTarget(ClientLevel world, AncillaryNode target) {
+        default GridAction evaluateTarget(ClientLevel world, AncillaryNode<?> target) {
             return GridAction.RESPONSE_SUCCESS;
         }
         TransmitterType getTransmitter();

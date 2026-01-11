@@ -10,9 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -28,9 +27,9 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * This class is especially useful in contexts (e.g. rendering) that need frequent access to 
  * node and link information. 
  */
-public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier {
+public class GriddableTerminus implements OrientationUpdatable {
 
-    private @Nullable AncillaryNode[] exposedJoints;
+    private @Nullable AncillaryNode<?>[] exposedJoints;
 
     public GriddableTerminus() {}
 
@@ -38,7 +37,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
         initializeFrom(source);
     }
 
-    public GriddableTerminus(AncillaryNode[] exposedJoints) {
+    public GriddableTerminus(AncillaryNode<?>[] exposedJoints) {
         if((exposedJoints != null && exposedJoints.length > 0))
             this.exposedJoints = exposedJoints;
     }
@@ -52,10 +51,10 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
 
     public GriddableTerminus initializeFrom(CircuitComponent component) {
         Objects.requireNonNull(component);
-        if((exposedJoints != null && exposedJoints.length > 0) || component == null || !component.isSignificant()) 
+        if((exposedJoints != null && exposedJoints.length > 0) || component == null) 
             return this;
         if(component instanceof Circuit) {
-            Set<AncillaryNode> found = new ObjectOpenHashSet<>(component.size());
+            Set<AncillaryNode<?>> found = new ObjectOpenHashSet<>();
             component.forEachNode(joint -> {
                 if(joint == null) throw new NullPointerException("Encountered a null pointer while updating ancillaries for lazy holder");
                 found.addAll(joint.getAncillaries());
@@ -64,7 +63,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
             return this;
         }
         if(component instanceof Node n) {
-            Collection<AncillaryNode> jacks = n.getAncillaries(); 
+            Collection<AncillaryNode<?>> jacks = n.getAncillaries(); 
             exposedJoints = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryNode[jacks.size()]);
             return this;
         }
@@ -104,10 +103,10 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
      * onto a {@link CircuitComponent} with at least one {@link AncillaryNode jack}
      * @param cons Consumer to execute for each jack
      */
-    public void forEach(Consumer<AncillaryNode> cons) {
+    public void forEach(Consumer<AncillaryNode<?>> cons) {
         if(isEmpty()) return;
         for(int x = 0; x < exposedJoints.length; x++) {
-            AncillaryNode j = exposedJoints[x];
+            AncillaryNode<?> j = exposedJoints[x];
             if(j != null) cons.accept(j);
         }
     }
@@ -118,7 +117,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
      * yet been {@link #initializeFrom() initialized}, this method
      * will always return <code>null</code>
      */
-    public @Nullable AncillaryNode getFirstAncillary() {
+    public @Nullable AncillaryNode<?> getFirstAncillary() {
         return getAncillary(0);
     }
 
@@ -128,13 +127,13 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
      * yet been {@link #initializeFrom() initialized}, this method
      * will always return <code>null</code>
      */
-    public @Nullable AncillaryNode getAncillary(int index) {
+    public @Nullable AncillaryNode<?> getAncillary(int index) {
         if(isEmpty()) return null;
         if(index >= exposedJoints.length) return null;
         return exposedJoints[index];
     }
 
-    public AncillaryNode[] getAncillaries() {
+    public AncillaryNode<?>[] getAncillaries() {
         return exposedJoints;
     }
 
@@ -146,10 +145,15 @@ public class GriddableTerminus implements OrientationUpdatable, SourceIdentifier
         return exposedJoints == null ? 0 : exposedJoints.length;
     }
 
-    @Override
-    public @NotNull Griddable<?> getSource() {
+    public @NotNull Griddable<?> getProviderSource() {
         if(isEmpty())
             throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
-        return exposedJoints[0].getSource();
+        for(int x = 0; x < exposedJoints.length; x++) {
+            AncillaryNode<?> ancillary = exposedJoints[x];
+            if(ancillary == null) continue;
+            Griddable<?> source = ancillary.getProviderSource();
+            if(source != null) return source;
+        }
+        throw new IllegalStateException("Failed while getting source griddable for terminus - This terminus couldn't provide a Griddable source from any of its ancillaries!");
     }
 }

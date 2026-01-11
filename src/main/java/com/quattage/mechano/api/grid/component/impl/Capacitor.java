@@ -1,9 +1,9 @@
-package com.quattage.mechano.api.grid.functional;
+package com.quattage.mechano.api.grid.component.impl;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.component.StampingComponent;
+import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
 import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampsDynamically;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 public class Capacitor extends StampingComponent implements StampsDynamically {

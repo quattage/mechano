@@ -1,6 +1,6 @@
 package com.quattage.mechano.api.transmitter;
 
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.tterrag.registrate.util.nullness.NonNullBiFunction;
 import com.tterrag.registrate.util.nullness.NonnullType;

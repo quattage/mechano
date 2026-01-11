@@ -13,48 +13,41 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.CircuitProvider;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.foundation.WorldlyObject;
-import com.quattage.mechano.foundation.tracking.GridIdentifiable;
-import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.TrackedObject;
-import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * Indicates that an implementing subclass represents some object, be that an Entity or BlockEntity,
  * provides a Circuit and participates in the {@link Grid power grid}. <p>
  * Implementations are expected to provide:
  * <ul>
- *  <li> a {@link CircuitProvider#getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
- *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link UUIDSourceType data sources} for more info</li>
+ *  <li> a {@link #getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
+ *  <li> a {@link ComponentUUID uuid} pointing to the in-world location of the provided circuit - see {@link ComponentTracker data sources} for more info</li>
  *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
  * <code>@OnlyIn</code> annotation.
  */
-public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedObject, WorldlyObject, GridIdentifiable<T> {
+public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, GridReferent<T> {
 
     /**
      * Gets the blocks at <code>pos</code> and <code>adjacentPos</code>
@@ -78,6 +71,8 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
         return thisG.isInteractingWith(thatG);
     }
 
+    CircuitComponent getCircuit();
+
     Vector3d getSourcePos();
     Quaternionf getSourceRotation();
     BlockPos getBlockPos(); 
@@ -93,12 +88,12 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
     GriddableTerminus provideTerminus();
 
     @Override
-    default Griddable<?> getTargetSource(LevelReader world) {
+    default Griddable<?> getProviderSource(LevelReader world) {
         return this;
     }
 
-    @Override default boolean isDynamic() { return true; };
     default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
+
 
     /**
      * Allows grid-sided access to this Griddable's {@link GriddableTerminus accelerator},
@@ -134,7 +129,7 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
         thisTerminus.forEach(ancillary -> {
             if(!(ancillary instanceof BlockJack bj)) return;
             BlockJack opposite = bj.getOpposing(getWorld(), pos);
-            if(opposite != null && opposite.isSignificant()) 
+            if(opposite != null) 
                 output.add(new AncillaryPair(ancillary, opposite).validateSelf());
         });
         output.trim();
@@ -151,7 +146,7 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
         if(thisPos == thatPos || thisPos.distManhattan(thatPos) > 1) 
             return false;
         for(AncillaryPair ancs : analyzeAdjacents())
-            if(ancs.getEndNode().getSource() == other) return true;
+            if(ancs.getEndAncillary().getProviderSource() == other) return true;
         return false;
     }
 
@@ -161,46 +156,18 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
      * in gametests)
      * @return The first reachable ancillary in this griddable's {@link #getTerminus() terminus}
      */
-    default AncillaryNode getDefaultAncillary() {
+    default AncillaryNode<?> getDefaultAncillary() {
         GriddableTerminus acc = getTerminus();
         return acc.getFirstAncillary();
-    }
-
-    @Override
-    default void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
-        MinecraftServer server = world.getServer();
-        if(server == null)
-            server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
-        for(ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if(isBeingTrackedBy(player))
-                CatnipServices.NETWORK.sendToClient(player, packet);
-        }
     }
 
     @OnlyIn(Dist.CLIENT)
     default void showAllAncillaries() {
         provideTerminus().showAll(getSourcePos());
     }
-    
-    @Override
-    default boolean isInsideOf(LevelReader world, SectionPos section) {
-        return SectionPos.of(getBlockPos()).equals(section);
-    }
-
-    @Override
-    default boolean isInsideOf(LevelReader world, ChunkPos chunk) {
-        BlockPos pos = getBlockPos();
-        return SectionPos.blockToSectionCoord(pos.getX()) == chunk.x && SectionPos.blockToSectionCoord(pos.getZ()) == chunk.z;
-    }
-
 
     default int getSectionX() {
         return SectionPos.blockToSectionCoord(getBlockPos().getX());
-    }
-
-    @Override
-    default int getSectionY(LevelReader world) {
-        return SectionPos.blockToSectionCoord(getBlockPos().getY());
     }
 
     default int getSectionZ() {
@@ -209,7 +176,7 @@ public interface Griddable<T extends GridUUID> extends CircuitProvider, TrackedO
 
     default void drawGUILabel(List<Component> tooltip, float posX, float posY, GuiGraphics graphics) {}
 
-    default Vector3d getPositionOf(AncillaryNode joint) {
+    default Vector3d getPositionOf(AncillaryNode<?> joint) {
         Objects.requireNonNull(joint);
         Vector3f local = joint.getRotatedOffset(getSourceRotation());
         return getSourcePos().add(local);

@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.functional;
+package com.quattage.mechano.api.grid.component.impl;
 
 import com.quattage.mechano.api.grid.VoltageDecay;
 

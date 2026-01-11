@@ -7,9 +7,9 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.transmitter.TransmitterEntry;
 import com.quattage.mechano.foundation.Disposable;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.Vec3;
@@ -51,7 +51,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
 
     /**
      * Calculates the {@link #setOffset offset} vector
-     * for this catenary given a pair of {@link GridUUID addresses}
+     * for this catenary given a pair of {@link ComponentUUID addresses}
      * and enforces their order using the deterministic 
      * {@link TrackedConstruct#orderedByRenderPriority render priority}
      * to ensure that the sign of the offset vector's length is correct.
@@ -61,7 +61,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable GridUUID start, @Nullable GridUUID end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable ComponentUUID start, @Nullable ComponentUUID end, float pTicks);
 
     /**
      * A helper call that sets the first and last

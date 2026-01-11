@@ -3,10 +3,8 @@ package com.quattage.mechano.api.grid.topology.vertex;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import org.ejml.data.DMatrixRMaj;
@@ -15,34 +13,33 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridReferent;
-import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.ComponentLink;
-import com.quattage.mechano.api.grid.topology.netlist.NodalCluster;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.foundation.Disposable;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.core.BlockPos;
 
-public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
+public interface Node extends CircuitComponent, Disposable, GridConstruct {
 
     /**
-     * Gets the node that has the lower merge priority
+     * Gets the node that has the lower merge priority between
+     * <code>a</code> and </code>b</code>. Nodes with lower
+     * merge priority should take precedence over nodes
+     * with a higher merge priority.
      */
     static Node choosePrimary(Node a, Node b) {
         if(a == null && b == null) return null;
         if(a != null && b == null) return a;
         if(b != null && a == null) return b;
-        int amp = a.isGrounded() ? -1 : a.getMergePriority();
-        int bmp = b.isGrounded() ? -1 : b.getMergePriority();
+        int amp = a.getMergePriority();
+        int bmp = b.getMergePriority();
         if(amp < bmp) return a;
         if(bmp < amp) return b;
-        return a;
+        return System.identityHashCode(a) > System.identityHashCode(b) ? b : a;
     }
 
     /**
@@ -67,9 +64,9 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
     }
 
     boolean localAttach(Terminal pin);
-    boolean localAttach(@Nullable Griddable<?> source, AncillaryNode jack);
+    boolean localAttach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
     boolean localDetach(Terminal pin);
-    boolean localDetach(@Nullable Griddable<?> source, AncillaryNode jack);
+    boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
 
     int getCircuitIndex();
 
@@ -88,29 +85,15 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
     @ApiStatus.Internal
     void setNodalIndex(int nodalIndex);
 
-    List<AncillaryNode> getAncillaries();
+    List<AncillaryNode<?>> getAncillaries();
     @Override List<Terminal> getTerminals();
 
     @Override
     void dispose();
 
-    @Override
-    default String getComponentID() {
-        return "Node";
-    }
-
-    @Override 
-    default boolean isSignificant() { 
-        return hasTerminals() || hasAncillaries(); 
-    }
-
-    @Override default int size() { 
-        Collection<Terminal> terminals = getTerminals();
-        return terminals == null ? 0 : terminals.size();
-    }
-
     default boolean hasTerminals() { 
-        return size() > 0; 
+        Collection<Terminal> terminals = getTerminals();
+        return terminals != null && !terminals.isEmpty();
     }
 
     default boolean hasAncillaries() {
@@ -121,12 +104,12 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         return indexOf(terminal) >= 0;
     }
 
-    default boolean has(AncillaryNode ancillary) {
+    default boolean has(AncillaryNode<?> ancillary) {
         return indexOf(ancillary) >= 0;
     }
 
-    default int indexOf(AncillaryNode ancillary) {
-        List<AncillaryNode> ancillaries = getAncillaries();
+    default int indexOf(AncillaryNode<?> ancillary) {
+        List<AncillaryNode<?>> ancillaries = getAncillaries();
         if(ancillaries == null || ancillaries.isEmpty())
             return -1;
         return ancillaries.indexOf(ancillary);
@@ -168,79 +151,8 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
     }
 
     @Override
-    default GridUUID bindUUID(GridUUID id) {
-        return id.withBinding(getReferentType(), getCircuitIndex());
-    }
-    
-    @Override
-    default GridReferent getReferentType() {
-        return GridReferent.EMITTER_NODE;
-    }
-
-    // dear god
-    default String toFullString(@Nullable ServerGrid grid) {
-        String out = "    ▸ " + getComponentID() + " " + getNodalIndex() + ", " + (isGrounded() ? "Grounded" : "Ungrounded");
-        if(hasAncillaries()) {
-            Griddable<?> src = SourceIdentifier.getSourceFor(this);
-            BlockPos bp = src.getBlockPos();
-            out += "\n\t  Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
-            out += "\n\t  " + getAncillaries().size() + " Ancillaries: [";
-            for(AncillaryNode anc : getAncillaries())
-                out += anc.getComponentID() + ", ";
-            out = out.substring(0, out.length() - 2) + "]";
-        } else out += "\n\t  0 Ancillaries: [Empty]";
-        if(hasTerminals()) {
-            out += "\n\t  " + getTerminals().size() + " Terminals: [";
-            for(Terminal term : getTerminals())
-                out += "\n\t\t" + term.toString();
-            out += "]";
-        } else out += "\n\t  0 Terminals: [Empty]";
-        if(grid == null) return out;
-        Node[] children = NodalCluster.getConstituents(grid.getNetlist(), this);
-        if(children == null) return out = "\n\t  Non-root, no children.";
-        out += "\n\t  " + children.length + " child" + (children.length == 1 ? ":" : "ren:");
-        for(Node node : children) {
-            Griddable<?> source = SourceIdentifier.getSourceFor(node);
-            BlockPos bp = source == null ? null : source.getBlockPos();
-            out += "\n\t\t  ↪ " + node.getComponentID() + " " + node.getNodalIndex() + " (" + (source == null ? "no source" : source.getClass().getSimpleName() + " [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]") + ")";
-        }
-        final Set<AncillaryPair> collectedLinks = collectAttachedLinks(grid);
-        if(collectedLinks.isEmpty())
-            return out + "\n\t  0 Links [Empty]";
-        out += "\n\t  " + collectedLinks.size() + " links:";
-        for(AncillaryPair link : collectedLinks) {
-            Griddable<?> linkOwner = SourceIdentifier.getSourceFor(link.getStartNode());
-            BlockPos bp = linkOwner.getBlockPos();
-            String linkName = link instanceof ComponentLink cl ? cl.getComponentID() : "anonymous";
-            out += "\n\t\t  ☍ " + linkName + " ┳ from " + linkOwner.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
-            linkOwner =  SourceIdentifier.getSourceFor(link.getEndNode());
-            bp = linkOwner.getBlockPos();
-            out += "\n\t\t    " + whitespace(linkName) + " ┗  to  "  + linkOwner.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
-        }
-        return out;
-    }
-
-    private String whitespace(String original) {
-        String out = "";
-        for(int x = 0; x < original.length(); x++) out += " ";
-        return out;
-    }
-
-    default Set<AncillaryPair> collectAttachedLinks(ServerGrid grid) {
-        final Set<AncillaryPair> output = new HashSet<>();
-        Node[] children = NodalCluster.getConstituents(grid.getNetlist(), this);
-        this.addAncillaryLinks(grid, output);
-        for(Node node : children)
-            node.addAncillaryLinks(grid, output);
-        return output;
-    }
-
-    private void addAncillaryLinks(ServerGrid grid, Set<AncillaryPair> toModify) {
-        for(AncillaryNode ancillary : getAncillaries()) {
-            List<AncillaryPair> linksAt = grid.getLinksBelongingTo(grid.getAddressFor(ancillary.getSource(), ancillary));
-            if(linksAt == null || linksAt.isEmpty()) continue;
-            toModify.addAll(linksAt);
-        }
+    default ComponentHierarchy getHierarchyType() {
+        return ComponentHierarchy.EMITTER_NODE;
     }
 
     default double getVoltage(ServerGrid grid) {
@@ -252,20 +164,20 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         return solution.get(idx, 0);
     }
 
+    @Override
     default int getMergePriority() {
-        CircuitComponent component = getParentComponent();
-        if(component == null) return 2;
-        return component.getReferentType().getMergePriority();
+        GridConstruct superparent = getSuperparent();
+        return superparent.getHierarchyType().getMergePriority();
     }
 
     public static class JointNode implements Node {
 
-        private CircuitComponent parent;
+        private GridConstruct parent;
         protected @Nullable ObjectArrayList<Terminal> terminals;
-        protected @Nullable List<AncillaryNode> ancillaries = null;
+        protected @Nullable List<AncillaryNode<?>> ancillaries = null;
         private int circuitIndex, nodalIndex;
 
-        public JointNode(CircuitComponent parent) {
+        public JointNode(GridConstruct parent) {
             this.parent = parent;
             this.circuitIndex = -1;
             this.nodalIndex = -1;
@@ -282,7 +194,7 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-		public boolean localAttach(Griddable<?> source, AncillaryNode jack) {
+		public boolean localAttach(Griddable<?> source, AncillaryNode<?> jack) {
 			if(ancillaries == null)
                 ancillaries = new ArrayList<>();
             ancillaries.add(jack);
@@ -301,24 +213,12 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-		public boolean localDetach(Griddable<?> source, AncillaryNode jack) {
+		public boolean localDetach(Griddable<?> source, AncillaryNode<?> jack) {
 			boolean removed = ancillaries.remove(jack);
             if(ancillaries.isEmpty()) ancillaries = null;
             if(removed) jack.updateOwnership(null, null, -1);
             return removed;
 		}
-
-        @Override
-        public Griddable<?> getSource() {
-            if(!hasAncillaries()) return null;
-            for(AncillaryNode node : getAncillaries()) {
-                if(node == null) continue;
-                Griddable<?> source = node.getSource();
-                if(source == null) continue;
-                return source;
-            }
-            return null;
-        }
 
         @Override
         public int getCircuitIndex() {
@@ -340,7 +240,7 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-        public List<AncillaryNode> getAncillaries() {
+        public List<AncillaryNode<?>> getAncillaries() {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
         }
@@ -350,18 +250,8 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-        public @Nullable CircuitComponent getParentComponent() {
+        public @Nullable GridConstruct getParentConstruct() {
             return parent;
-        }
-
-        @Override
-        public void updateOwnership(Griddable<?> source, CircuitComponent parent, int index) {
-            CircuitComponent.assertValidOwnership(this, parent);
-            this.parent = parent;
-            this.circuitIndex = index;
-            if(source == null || !hasAncillaries()) return;
-            for(AncillaryNode jack : ancillaries)
-                jack.updateOwnership(source, this, 0);
         }
 
         @Override
@@ -372,8 +262,33 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
+        public String getComponentID() {
+            return "JointNode";
+        }
+
+        @Override
         public String toString() {
             return getComponentID();
+        }
+
+        @Override
+        public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+            GridConstruct.assertValidOwnership(this, parent);
+            this.parent = parent;
+            this.circuitIndex = index;
+            if(source == null || !hasAncillaries()) return;
+            for(AncillaryNode<?> jack : ancillaries)
+                jack.updateOwnership(source, this, 0);
+        }
+
+        @Override
+        public <T extends ComponentUUID<T>> T bindUUID(T id) {
+            throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
+        }
+
+        @Override
+        public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+            throw new UnsupportedOperationException("Unimplemented method 'findComponent'");
         }
     }
 
@@ -382,16 +297,6 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         protected @Nullable ObjectArrayList<Terminal> terminals;
 
         public GroundNode() {}
-
-        @Override
-        public String getComponentID() {
-            return "GroundNode";
-        }
-
-        @Override
-        public GridUUID bindUUID(GridUUID id) {
-            return id.withBinding(getReferentType(), -1);
-        }
 
         @Override
         public boolean localAttach(Terminal pin) {
@@ -404,7 +309,7 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-		public boolean localAttach(Griddable<?> source, AncillaryNode jack) {
+		public boolean localAttach(Griddable<?> source, AncillaryNode<?> jack) {
 			return false;
 		}
 
@@ -419,14 +324,9 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-		public boolean localDetach(Griddable<?> source, AncillaryNode jack) {
+		public boolean localDetach(Griddable<?> source, AncillaryNode<?> jack) {
 			return false;
 		}
-
-        @Override
-        public @Nullable Griddable<?> getSource() {
-            return null;
-        }
 
         @Override
         public int getCircuitIndex() {
@@ -444,7 +344,7 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-        public List<AncillaryNode> getAncillaries() {
+        public List<AncillaryNode<?>> getAncillaries() {
             return Collections.emptyList();
         }
 
@@ -453,12 +353,12 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         }
 
         @Override
-        public @Nullable CircuitComponent getParentComponent() {
+        public @Nullable GridConstruct getParentConstruct() {
             return null;
         }
 
         @Override
-        public void updateOwnership(Griddable<?> source, CircuitComponent parent, int index) {
+        public void updateOwnership(Griddable<?> source, GridConstruct parent, int index) {
             return;
         }
 
@@ -466,10 +366,23 @@ public interface Node extends CircuitComponent, SourceIdentifier, Disposable {
         public void dispose() {}
 
         @Override
+        public String getComponentID() {
+            return "GroundedNode";
+        }
+
+        @Override
         public String toString() {
             return getComponentID();
         }
+
+        @Override
+        public <T extends ComponentUUID<T>> T bindUUID(T id) {
+            return id;
+        }
+
+        @Override
+        public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+            return null;
+        }
     }
 }
-
-

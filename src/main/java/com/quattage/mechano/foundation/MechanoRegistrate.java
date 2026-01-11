@@ -1,7 +1,7 @@
 package com.quattage.mechano.foundation;
 
 
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterBuilder;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.simibubi.create.foundation.data.CreateRegistrate;

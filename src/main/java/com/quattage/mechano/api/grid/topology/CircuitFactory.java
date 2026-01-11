@@ -1,11 +1,12 @@
-package com.quattage.mechano.api.grid;
+package com.quattage.mechano.api.grid.topology;
 
 import java.util.Objects;
 import java.util.Set;
 
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.FunctionalComponent;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.DiscreteComponent;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Node.JointNode;
@@ -21,49 +22,56 @@ import net.minecraft.core.Direction;
 
 public class CircuitFactory {
 
-    private ObjectArrayList<FunctionalComponent> components = new ObjectArrayList<>();
-    private Set<Node> preload = new ObjectOpenHashSet<>();
+    private ObjectArrayList<DiscreteComponent> components = new ObjectArrayList<>();
+    private Set<Node> nodes = new ObjectOpenHashSet<>();
 
     public CircuitFactory() {}
 
     public WireJackBuilder wireJack(String id) {
         assertNotConsumed();
-        return new WireJackBuilder(this, id);
+        return new WireJackBuilder(id);
     }
 
     public BlockJackBuilder blockJack(String id) {
         assertNotConsumed();
-        return new BlockJackBuilder(this, id);
+        return new BlockJackBuilder(id);
     }
 
     public CircuitFactory solder(Terminal a, Terminal b) {
         assertNotConsumed();
-        // TODO SOLDERING TERMINALS WITH IMPLICIT NODE
+        Node primary = Node.choosePrimary(a.getNode(), b.getNode());
+        Node secondary = primary == a.getNode() ? b.getNode() : a.getNode();
+        if(primary == null) {
+            primary = newNode();
+            a.setConnectedTo(primary);
+            b.setConnectedTo(primary);
+        }
+        a.setConnectedTo(primary);
+        b.setConnectedTo(secondary);
+        
         return this;
     }
 
+    public CircuitFactory solder(Node trace, Terminal pin) { return solder(pin, trace); }
     public CircuitFactory solder(Terminal pin, Node trace) {
         pin.setConnectedTo(trace);
         trace.localAttach(pin);
         return this;
     }
 
-    public CircuitFactory solder(Node trace, Terminal pin) {
-        pin.setConnectedTo(trace);
-        trace.localAttach(pin);
-        return this;
-    }
-
     /**
-     * Supply a new CircuitComponent to this builder. This component may be soldered later in the builder chain.
-     * <pre>Resistor r1 = builder.supply(new Resistor())</pre>
-     * The resistor may be soldered later. Components that receive no soldering will be omitted from the final circuit when {@link #make() constructed}
-     * @param component The {@link FunctionalComponent} instance that will be added. The instance should created uniquely for this method call.
+     * Supply a new {@link DiscreteComponent} to this builder. This component may be soldered later in the 
+     * builder chain. <pre>Resistor r1 = builder.supply(new Resistor())</pre>
+     * The resistor must be {@link #solder soldered} at some point during the lifetime of this factory. 
+     * If this CircuitFactory is {@link #make applied } before this component
+     * receives any soldering, a {@link CircuitInstantiationException} will be thrown.
+     * @param <T> Must extend {@link DiscreteComponent}.
+     * @param component The {@link DiscreteComponent} instance that will be added. The instance should created uniquely for this method call.
      * @return The component that was added, so that a reference can be temporarily stored for later.
-     * @throws NullPointerException if the provided <code>component</code> is null
-     * @throws IllegalArgumentException if the provided <code>component</code> has already been added in a previous call
+     * @throws NullPointerException if <code>component</code> is null
+     * @throws IllegalArgumentException if <code>component</code> has already been added by a previous call
      */
-    public <T extends FunctionalComponent> T supply(T component) {
+    public <T extends DiscreteComponent> T supply(T component) {
         assertNotConsumed();
         if(component == null) throw new NullPointerException("Failed while adding new component to factory - The supplied component was null!");
         if(components.contains(component)) throw new IllegalArgumentException("Failed while adding new component to factory - This factory already contained the provided component!");
@@ -71,16 +79,27 @@ public class CircuitFactory {
         return component;
     }
 
+    /**
+     * Supply a new {@link Node} to this builder. 
+     * @param node The {@link Node} instance that will be added. The instance should created uniquely for this method call.
+     * @return This CircuitFactory for chaining
+     * @throws NullPointerException if <code>node</code> is null
+     * @throws IllegalArgumentException if <code>node</code> has already been added by a previous call
+     * @see #newNode
+     */
     public CircuitFactory supply(Node node) {
         assertNotConsumed();
-        if(node == null) return this;
-        if(node.isGrounded()) 
-            throw new IllegalArgumentException("Failed while including node in factory - Included nodes can't be grounded! (Try using the built-in grounded node instead.)");
-        if(!preload.add(node)) 
+        if(node == null) throw new NullPointerException("Failed while adding node to factory - The supplied node was null!");
+        if(!nodes.add(node)) 
             throw new IllegalArgumentException("Failed while including node in factory - This node is already in this factory!");
         return this;
     }
 
+    /**
+     * Creates a new {@link JointNode} and adds it to this CircuitFactory.
+     * @return A new {@link Node} instance.
+     * @see #supply(Node)
+     */
     public Node newNode() {
         assertNotConsumed();
         Node j = new JointNode(null);
@@ -88,24 +107,30 @@ public class CircuitFactory {
         return j;
     }
 
-    public Node ground() {
+    /**
+     * Consumes this CircuitFactory, turning it into a new Circuit instance.
+     * Places the CircuitFactory in a state where it cannot be reused.
+     * @return A new Circuit instance conforming to the attributes in this builder
+     */
+    public Circuit make(Griddable<?> source) {
         assertNotConsumed();
-        return ground();
+        if(components.size() <= 0 && nodes.size() <= 0) 
+            throw new CircuitInstantiationException("This factory is empty!");
+        Circuit circuit = new Circuit();
+        consumeComponents(source, circuit);
+        return circuit;
     }
 
-    /**
-     * Consumes this CircuitFactory, turning it into a new CircuitComponent instance.
-     * Places the CircuitFactory in a state where it cannot be reused.
-     * @return A new CircuitComponent instance conforming to the attributes in this builder
-     */
-    public CircuitComponent make(Griddable<?> source) {
-        assertNotConsumed();
-        if(components.size() <= 0 && preload.size() <= 0) 
-            throw new IllegalStateException("Attempted to create a CircuitComponent from a factory with no components or nodes!");
-        Circuit c = new Circuit(source, components, preload);
-        components = null;
-        preload = null;
-        return c;
+    // flushes all components in this factory into the destination circuit
+    private void consumeComponents(Griddable<?> source, Circuit circuit) {
+        circuit.components = this.components;
+        for(CircuitComponent component : circuit.components) {
+            if(component == null) throw new CircuitInstantiationException("Encountered a null component!");
+            if(component instanceof GridConstruct gc)
+                gc.updateOwnership(source, circuit, 0);
+        } 
+        circuit.components.trim();
+        this.components = null;
     }
 
     private void assertNotConsumed() {
@@ -115,14 +140,12 @@ public class CircuitFactory {
 
     public static class WireJackBuilder {
 
-        private final CircuitFactory prev;
         private final String id;
         private short x = Short.MIN_VALUE, y = Short.MIN_VALUE, z = Short.MIN_VALUE, s = (Short.MIN_VALUE + 37);
         private boolean isVisible = true;
         private Node attachmentTarget = null;
 
-        public WireJackBuilder(CircuitFactory prev, String id) {
-            this.prev = prev;
+        public WireJackBuilder(String id) {
             this.id = id;
         }
 
@@ -195,8 +218,8 @@ public class CircuitFactory {
             return this;    
         }
 
-        public WireJack make() {
-            WireJack newJack = new WireJack(id, isVisible, EsoMath.quadShort2Long(x, y, z, s));
+        public WireJack<?> make() {
+            WireJack<?> newJack = new WireJack<>(id, isVisible, EsoMath.quadShort2Long(x, y, z, s));
             attachmentTarget.localAttach(null, newJack);
             return newJack;
         }
@@ -210,14 +233,12 @@ public class CircuitFactory {
 
     public static class BlockJackBuilder {
 
-        private final CircuitFactory prev;
         private final String id;
         private Relative rel = Relative.BOTTOM;
         private boolean isVisible = false;
         private Node attachmentTarget = null;
 
-        private BlockJackBuilder(CircuitFactory prev, String id) {
-            this.prev = prev;
+        private BlockJackBuilder(String id) {
             this.id = id;
         }
 
@@ -272,6 +293,12 @@ public class CircuitFactory {
             BlockJack newJack = new BlockJack(id, isVisible, new RelativeDirection(rel));
             attachmentTarget.localAttach(null, newJack);
             return newJack;
+        }
+    }
+
+    private static class CircuitInstantiationException extends RuntimeException {
+        public CircuitInstantiationException(String message) {
+            super("Failed while running CircuitFactory - " + message);
         }
     }
 }

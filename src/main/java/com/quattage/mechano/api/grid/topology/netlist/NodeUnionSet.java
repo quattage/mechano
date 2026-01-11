@@ -11,9 +11,9 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -409,7 +409,7 @@ public class NodeUnionSet {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
             out += "\n\t▸" + summarizeNodeFull(root);
-            src = SourceIdentifier.getSourceFor(root);
+            src = GridReferent.getProviderSourceFor(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
                 out += "\n\t\tOwned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
@@ -422,7 +422,7 @@ public class NodeUnionSet {
             out += "\n\t\t" + contents.size() + " children:";
             for(Node child : contents) {
                 out += "\n\t\t\t" + summarizeNodeFull(child);
-                src = SourceIdentifier.getSourceFor(root);
+                src = GridReferent.getProviderSourceFor(grid.getWorld(), root);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
                     out += "\n\t\t\t\tOwned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";

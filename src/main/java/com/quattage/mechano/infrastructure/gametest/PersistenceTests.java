@@ -5,12 +5,12 @@ import java.util.UUID;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.EntityUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.GridUUID.EntityUUID;
-import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
-import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -33,12 +33,12 @@ public class PersistenceTests {
         PersistenceTests.testUUID(test, new EntityUUID(UUID.randomUUID()));
     }
 
-    private static void testUUID(GameTestHelper test, GridUUID expected) {
+    private static void testUUID(GameTestHelper test, ComponentUUID<?> expected) {
         ItemStack newStack = new ItemStack(MechanoItems.SPOOL_HOOKUP.get(), 1);
         newStack.set(MechanoData.UUID, expected);
         CompoundTag serialized = (CompoundTag)newStack.save(test.getLevel().registryAccess());
         serialized = serialized.getCompound("components").getCompound(MechanoData.UUID.getRegisteredName());
-        GridUUID result = UUIDSourceType.read(serialized);
+        ComponentUUID<?> result = ComponentTracker.read(serialized);
         if(result == null) {
             test.fail("Serialization returned a null UUID for type '" + expected.getClass().getSimpleName() + "'");
             return;

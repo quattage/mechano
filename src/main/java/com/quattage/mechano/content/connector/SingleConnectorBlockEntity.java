@@ -1,6 +1,6 @@
 package com.quattage.mechano.content.connector;
 
-import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 

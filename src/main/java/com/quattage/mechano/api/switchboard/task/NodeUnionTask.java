@@ -10,15 +10,14 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.tracking.GridIdentifiable;
-import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.UUIDSourceType;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.player.LocalPlayer;
@@ -28,13 +27,13 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public class JointLinkTask implements ActionTask {
+public class NodeUnionTask implements ActionTask {
 
     @Override
     public Class<?>[] getArgumentTemplate() {
         return new Class<?>[] {
-            GridUUID.class,
-            GridUUID.class,
+            ComponentUUID.class,
+            ComponentUUID.class,
             TransmitterType.class,
             UUID.class,
             GridAction.class,
@@ -43,8 +42,8 @@ public class JointLinkTask implements ActionTask {
 
     @Override
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
-        UUIDSourceType.write((GridUUID)args[0], buffer);
-        UUIDSourceType.write((GridUUID)args[1], buffer);
+        ComponentTracker.write((ComponentUUID<?>)args[0], buffer);
+        ComponentTracker.write((ComponentUUID<?>)args[1], buffer);
         buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType)args[2]));
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
@@ -59,8 +58,8 @@ public class JointLinkTask implements ActionTask {
     @Override
     public Object[] dynamicDecode(ByteBuf buffer) {
         return new Object[] {
-            UUIDSourceType.read(buffer),
-            UUIDSourceType.read(buffer),
+            ComponentTracker.read(buffer),
+            ComponentTracker.read(buffer),
             Mechano.REGISTRATE.getTransmitterRegistry().byId(buffer.readInt()),
             buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null,
             GridAction.values()[buffer.readInt()]
@@ -82,30 +81,30 @@ public class JointLinkTask implements ActionTask {
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        GridUUID startID = (GridUUID)args[0];
-        GridUUID endID = (GridUUID)args[1];
-        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
-        GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
+        ComponentUUID<?> startID = (ComponentUUID<?>)args[0];
+        ComponentUUID<?> endID = (ComponentUUID<?>)args[1];
+        AncillaryNode<?> startNode = grid.findComponent(startID, AncillaryNode.class);
+        AncillaryNode<?> endNode = grid.findComponent(endID, AncillaryNode.class);
+        GridAction prematureCancel = GridAction.ofNullcheck(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
         args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);
-        Set<ServerPlayer> trackers = GridIdentifiable.collectTrackers((ServerLevel)grid.getWorld(), startID, endID);
+        Set<ServerPlayer> trackers = ComponentTracker.collect((ServerLevel)grid.getWorld(), startID, endID);
         if(args[3] != null) {
             Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
             if(caller instanceof ServerPlayer sp) trackers.add(sp);
         }
-        GridAction.TASK_LINK_JOINTS.broadcastBelligerent(grid, trackers, args);
+        GridAction.TASK_UNION_NODES.broadcastBelligerent(grid, trackers, args);
         return (GridAction)args[4];
     }
 
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        GridUUID startID = (GridUUID)args[0];
-        GridUUID endID = (GridUUID)args[1];
-        AncillaryNode startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode endNode = grid.findComponent(endID, AncillaryNode.class);
-        GridAction prematureCancel = GridAction.dualExist(startNode, endNode);
+        ComponentUUID<?> startID = (ComponentUUID<?>)args[0];
+        ComponentUUID<?> endID = (ComponentUUID<?>)args[1];
+        AncillaryNode<?> startNode = grid.findComponent(startID, AncillaryNode.class);
+        AncillaryNode<?> endNode = grid.findComponent(endID, AncillaryNode.class);
+        GridAction prematureCancel = GridAction.ofNullcheck(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
         args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);
         UUID uuid = (UUID)args[3];
@@ -122,7 +121,7 @@ public class JointLinkTask implements ActionTask {
      * The actual implementation goes here and is identical between client and server. Most of 
      * the stuff further up in this class is for managing the task's serialization to a packet.
      */
-    protected GridAction unsidedHandle(Grid grid, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode, TransmitterType trns) {
+    protected GridAction unsidedHandle(Grid grid, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode, TransmitterType trns) {
         return grid.addLink(new ComponentLink<>(trns, startID, startNode, endID, endNode));
     }
     

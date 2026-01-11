@@ -14,8 +14,11 @@ import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.netlist.NodalCluster;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
@@ -24,8 +27,6 @@ import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
-import com.quattage.mechano.foundation.tracking.GridUUID;
-import com.quattage.mechano.foundation.tracking.GridUUID.VoxelUUID;
 import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
 
 import net.minecraft.core.BlockPos;
@@ -256,9 +257,9 @@ public class GraphTests {
         ConnectorBlockEntity cbeB = test.getBlockEntity(posB);
         test.assertTrue(cbeB != null, "ConnectorBlockEntity B couldn't be located.");
 
-        GridUUID idA = new VoxelUUID(test.absolutePos(posA));
+        ComponentUUID<?> idA = new VoxelUUID(test.absolutePos(posA));
         test.assertValueEqual(cbeA.getUUIDSafe(), idA, "UUID A");
-        GridUUID idB = new VoxelUUID(test.absolutePos(posB));
+        ComponentUUID<?> idB = new VoxelUUID(test.absolutePos(posB));
         test.assertValueEqual(cbeB.getUUIDSafe(), idB, "UUID B");
 
         test.succeed();
@@ -272,7 +273,6 @@ public class GraphTests {
         test.assertTrue(cbe != null, "ConnectorBlockEntity couldn't be located.");
         CircuitComponent component = cbe.getCircuit();
         test.assertTrue(component != null, "Griddable failed to provide a non-null circuit");
-        test.assertTrue(component.isSignificant(), "Griddable failed ot provide a valid circuit");
         test.succeed();
     }
 
@@ -292,15 +292,15 @@ public class GraphTests {
             return;
         }
         accelerator.forEach(expected -> {
-            GridUUID address = grid.getAddressFor(cbe, expected);
-            CircuitComponent result = grid.findComponent(address);
+            ComponentUUID<?> address = grid.getAddressFor(cbe, expected);
+            CircuitComponent result = grid.findSubComponent(address);
             if(result == null) {
                 test.fail("Reachability check for '" + cbe.getCircuit().getComponentID().toLowerCase(Locale.ROOT) 
                     + "' belonging to " + cbe.getClass().getSimpleName().toLowerCase() + " failed while acquiring component at " + address);
                 return;
             }
             if(result != expected) {
-                if(result.getReferentType() == expected.getReferentType()) {
+                if(result.getHierarchyType() == expected.getHierarchyType()) {
                     test.fail("Reachability check for " + expected + " returned a mismatched instance - expected (" 
                         + expected.hashCode() + "), got (" + result.hashCode() + ")");
                 }
@@ -321,15 +321,13 @@ public class GraphTests {
         test.assertTrue(cbeA != null, "ConnectorBlockEntity A couldn't be located.");
         test.assertTrue(cbeB != null, "ConnectorBlockEntity B couldn't be located.");
 
-        GridUUID idA = cbeA.getUUID(), idB = cbeB.getUUID();
-        AncillaryNode startNode = cbeA.getDefaultAncillary(), endNode = cbeB.getDefaultAncillary();
+        ComponentUUID<?> idA = cbeA.getUUID(), idB = cbeB.getUUID();
+        AncillaryNode<?> startNode = cbeA.getDefaultAncillary(), endNode = cbeB.getDefaultAncillary();
         test.assertTrue(startNode != null, "ConnectorBlockEntity A couldn't provide a default ancilllary");
         test.assertTrue(endNode != null, "ConnectorBlockEntity B couldn't provide a default ancilllary");
-        test.assertTrue(startNode.isSignificant(), "ConnectorBlockEntity A couldn't provide a significant ancillary");
-        test.assertTrue(endNode.isSignificant(), "ConnectorBlockEntity B couldn't provide a significant ancillary");
 
-        GridUUID startID = startNode.bindUUID(idA.copy());
-        GridUUID endID = endNode.bindUUID(idB.copy());
+        ComponentUUID<?> startID = startNode.bindUUID(idA.copy());
+        ComponentUUID<?> endID = endNode.bindUUID(idB.copy());
         test.assertTrue(startID != idA, "ConnectorBlockEntity A's uuid copy returned the same instance");
         test.assertTrue(endID != idB, "ConnectorBlockEntity B's uuid copy returned the same instance");
         test.assertTrue(!idA.equals(startID), "The starting node didn't alter the binding of ConnectorBlockEntity A's uuid");
@@ -366,12 +364,7 @@ public class GraphTests {
         }
 
         @Override
-        public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
-            
-        }
-
-        @Override
-        public @Nullable CircuitComponent getParentComponent() {
+        public @Nullable GridConstruct getParentConstruct() {
             return null;
         }
 
@@ -381,7 +374,7 @@ public class GraphTests {
         }
 
         @Override
-        public boolean localAttach(@Nullable Griddable<?> source, AncillaryNode jack) {
+        public boolean localAttach(@Nullable Griddable<?> source, AncillaryNode<?> jack) {
             return false;
         }
 
@@ -391,17 +384,13 @@ public class GraphTests {
         }
 
         @Override
-        public boolean localDetach(@Nullable Griddable<?> source, AncillaryNode jack) {
+        public boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack) {
             return false;
         }
+        
 
         @Override
-        public @Nullable Griddable<?> getSource() {
-            return null;
-        }
-
-        @Override
-        public List<AncillaryNode> getAncillaries() {
+        public List<AncillaryNode<?>> getAncillaries() {
             return Collections.emptyList();
         }
 
@@ -448,6 +437,11 @@ public class GraphTests {
         @Override
         public String getComponentID() {
             return id;
+        }
+
+        @Override
+        public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+            return this;
         }
     }
 }

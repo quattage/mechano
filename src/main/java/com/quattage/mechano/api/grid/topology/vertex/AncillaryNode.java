@@ -3,7 +3,6 @@ package com.quattage.mechano.api.grid.topology.vertex;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -11,21 +10,25 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.api.grid.CircuitFactory;
-import com.quattage.mechano.api.grid.GridReferent;
-import com.quattage.mechano.api.grid.GridReferent.SourceIdentifier;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
+import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -38,12 +41,12 @@ import net.neoforged.api.distmarker.OnlyIn;
  * {@link CircuitFactory} when creating circuits attached to {@link Griddable}
  * instances.
  */
-public abstract class AncillaryNode implements Node, WorldlyObject {
+public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node, WorldlyObject, GridReferent<T> {
 
     public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
 
     private final String componentID;
-    private @Nullable Griddable<?> source;
+    private @Nullable Griddable<T> source;
     protected @Nullable Node parent;
     private boolean isVisible = true;
 
@@ -60,7 +63,7 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     }
 
     @Override
-    public boolean localAttach(Griddable<?> source, AncillaryNode jack) {
+    public boolean localAttach(Griddable<?> source, AncillaryNode<?> jack) {
         assertAttached();
         return parent.localAttach(source, jack);
     }
@@ -72,13 +75,13 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     }
 
     @Override
-    public boolean localDetach(Griddable<?> source, AncillaryNode jack) {
+    public boolean localDetach(Griddable<?> source, AncillaryNode<?> jack) {
         assertAttached();
         return parent.localDetach(source, jack);
     }
 
     @Override
-    public List<AncillaryNode> getAncillaries() {
+    public List<AncillaryNode<?>> getAncillaries() {
         assertAttached();
         return parent.getAncillaries();
     }
@@ -96,11 +99,15 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
      * @param attached (Optional) The {@link Node} that this ancillary is attached to
      */
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
-        CircuitComponent.assertValidOwnership(this, parent);
-        this.source = source; 
-        if(parent instanceof Node n) this.parent = n;
-        else throw new RuntimeException(""); // aaaahhhhh
+    @SuppressWarnings("unchecked")
+    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+        GridConstruct.assertValidOwnership(this, parent);
+        this.source = (@Nullable Griddable<T>) source; 
+        this.parent = (Node) parent;
+    }
+
+    public int getAncillaryNodex() {
+        return parent == null ? -1 : parent.getAncillaries().indexOf(this);
     }
 
     public abstract float getXO();
@@ -200,28 +207,14 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
 
     @OnlyIn(Dist.CLIENT)
     public void drawGUILabel(List<Component> tooltip, float posX, float posY, GuiGraphics graphics) {
-        SourceIdentifier.getSourceFor(this).drawGUILabel(tooltip, posX, posY, graphics);
+        assertAttached();
+        source.drawGUILabel(tooltip, posX, posY, graphics);
     }
     
     @OnlyIn(Dist.CLIENT)
     public boolean isIntersecting(Vector3d basis, VectorOperations.Ray ray) {
         AABB hitbox = makeAABB(basis, getSize());
         return hitbox.clip(ray.start, ray.end).isPresent();
-    }
-
-    /**
-     * Must be called at least once per ancillary instance to 
-     * initially populate this object's internal Griddable<?>reference.
-     * If this method is not called, ancillaries will not work correctly.
-     * @param source
-     */
-    public void loadOnto(Griddable<?> source) {
-        this.source = source;
-    }
-
-    @Override
-    public @NotNull Griddable<?> getSource() {
-        return source;
     }
 
     @Override
@@ -243,7 +236,7 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     }
 
     @Override
-    public int indexOf(AncillaryNode jack) {
+    public int indexOf(AncillaryNode<?> jack) {
         if(jack == this) return parent.indexOf(jack);
         throw new UnsupportedOperationException("Failed while getting the index of a jack from itself - The supplied Jack instance didn't match this one (" 
             + jack + ") - This method shouldn't be called on AncillaryJack instances!");
@@ -270,26 +263,44 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     @Override
     public void reset() {
         assertAttached();
+        parent.reset();
     }
 
     @Override
-    public GridUUID bindUUID(GridUUID id) {
-        assertAttached();
-        parent.bindUUID(id);
-        return id.withBinding(getReferentType(), id.getBindingA(), parent.indexOf(this));
-    }
-
-    @Override
-    public @Nullable CircuitComponent getParentComponent() {
+    public @Nullable GridConstruct getParentConstruct() {
         return parent;
     }
 
-    /**
-     * A small shorthand <pre>(Node)getParentComponent()</pre>.
-     * @return The Node that this ancillary is attached to
-     */
-    public Node getParentNode() {
-        return (Node)getParentComponent();
+    @Override
+    public ComponentTracker getTrackerScope() {
+        assertAttached();
+        return source.getTrackerScope();
+    }
+
+    @Override
+    public @Nullable Griddable<?> getProviderSource(LevelReader world) {
+        assertAttached();
+        return source;
+    }
+
+    public @Nullable Griddable<?> getProviderSource() {
+        assertAttached();
+        return source;
+    }
+
+    @Override
+    public boolean isBeingTrackedBy(ServerPlayer sp) {
+        return source == null ? false : source.isBeingTrackedBy(sp);
+    }
+
+    @Override
+    public T getUUID() {
+        throw new UnsupportedOperationException("AncillaryNodes cannot be queried for UUIDs - Use bindUUID() instead");
+    }
+
+    public Node getAssociatedNode() {
+        assertAttached();
+        return parent;
     }
 
     @Override
@@ -299,14 +310,8 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     }
 
     @Override
-    public void updateOwnership(CircuitComponent parent, int index) {
+    public void updateOwnership(GridConstruct parent, int index) {
         this.parent.updateOwnership(parent, index);
-    }
-
-    @Override
-    public int size() {
-        if(parent == null) return 0;
-        return parent.size();
     }
 
     @Override 
@@ -320,18 +325,15 @@ public abstract class AncillaryNode implements Node, WorldlyObject {
     }
 
     @Override
-    public GridReferent getReferentType() {
-        return GridReferent.ANCILLARY_NODE;
-    }
-
-    @Override
-    public boolean isSignificant() {
-        return parent != null && parent.isSignificant();
+    public ComponentHierarchy getHierarchyType() {
+        return ComponentHierarchy.ANCILLARY_NODE;
     }
 
     private void assertAttached() { 
         if(parent == null) 
             throw new IllegalArgumentException("Error performing operation on AncillaryJack - This jack has no parent node!");
+        if(source == null)
+            throw new IllegalArgumentException("Error performing operation on AncillaryJack - This jack has no source griddable!");
     }
 
     @Override 

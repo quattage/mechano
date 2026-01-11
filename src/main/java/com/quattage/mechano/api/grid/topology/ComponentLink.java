@@ -9,37 +9,39 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridReferent;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 /**
  * A link that connects two {@link AncillaryNode ancillaries}
  * together, like a wire.
  */
-public class ComponentLink<T extends CircuitComponent> extends AncillaryPair implements CircuitComponent {
+public class ComponentLink<T extends CircuitComponent> extends AncillaryPair implements CircuitComponent, GridConstruct {
 
     private final TransmitterType trns;
     private boolean isInstantiated = false;
     private CircuitComponent component;
 
-    public ComponentLink(TransmitterType trns, AncillaryNode startNode, AncillaryNode endNode) {
+    public ComponentLink(TransmitterType trns, AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
         super(startNode, endNode);
         Objects.requireNonNull(trns);
         this.trns = trns;
     }
 
-    public ComponentLink(TransmitterType trns, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode) {
+    public ComponentLink(TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         super(startID, startNode, endID, endNode);
         Objects.requireNonNull(trns);
         this.trns = trns;
     }
 
-    private ComponentLink(boolean isInstantiated, CircuitComponent component, TransmitterType trns, GridUUID startID, AncillaryNode startNode, GridUUID endID, AncillaryNode endNode) {
+    private ComponentLink(boolean isInstantiated, CircuitComponent component, TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         this(trns, startID, startNode, endID, endNode);
         this.isInstantiated = isInstantiated;
         this.component = component;
@@ -73,8 +75,8 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     @Override
     public Collection<Terminal> getTerminals() {
-        Collection<Terminal> tA = (startNode == null || !startNode.isSignificant()) ? Collections.emptyList() : startNode.getParentComponent().getTerminals();
-        Collection<Terminal> tB = (endNode == null || !endNode.isSignificant()) ? Collections.emptyList() : endNode.getParentComponent().getTerminals();
+        Collection<Terminal> tA = (startNode == null) ? Collections.emptyList() : startNode.getTerminals();
+        Collection<Terminal> tB = (endNode == null) ? Collections.emptyList() : endNode.getTerminals();
         // i avoid using addAll() here because we cannot guarantee that the collections above are returned as
         // shallow-copies by API users (in fact, its inadvisable to do so) - instead, the collections 
         // are concatenated using primitive arrays
@@ -90,11 +92,6 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     public void forEachNode(Consumer<Node> cons) {
         if(startNode != null) startNode.forEachNode(cons);
         if(endNode != null) endNode.forEachNode(cons);
-    }
-
-    @Override
-    public boolean isSignificant() {
-        return (startNode != null && startNode.isSignificant()) || (endNode != null && endNode.isSignificant());
     }
 
     @Override
@@ -123,27 +120,7 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     }
 
     @Override
-    public int size() {
-        return 2;
-    }
-
-    @Override
-    public GridUUID bindUUID(GridUUID id) {
-        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
-    }
-
-    @Override
-    public GridReferent getReferentType() {
-        return GridReferent.COMPONENT_LINK;
-    }
-
-    @Override
-    public void updateOwnership(@Nullable Griddable<?> source, CircuitComponent parent, int index) {
-        return;
-    }
-
-    @Override
-    public @Nullable CircuitComponent getParentComponent() {
+    public @Nullable GridConstruct getParentConstruct() {
         return startNode;
     }
 
@@ -155,6 +132,24 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     @Override
     public String toString() {
         return getComponentID();
+    }
+
+    @Override
+    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {}
+
+    @Override
+    public <R extends ComponentUUID<R>> R bindUUID(R id) {
+        return id;
+    }
+
+    @Override
+    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+        return this;
+    }
+
+    @Override
+    public ComponentHierarchy getHierarchyType() {
+        return ComponentHierarchy.COMPONENT_LINK;
     }
 }
 

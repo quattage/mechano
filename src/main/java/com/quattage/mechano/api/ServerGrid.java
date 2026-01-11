@@ -8,15 +8,16 @@ import org.ejml.data.DMatrixRMaj;
 import org.ejml.data.DMatrixSparseCSC;
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.GridConstruct;
+import com.quattage.mechano.api.grid.component.StampingComponent;
+import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
 import com.quattage.mechano.api.grid.solver.NodalSolver;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatus;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatusHolder;
 import com.quattage.mechano.api.grid.solver.StabilizedBiconjucateSolver;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.NeedsPostProcessing;
-import com.quattage.mechano.api.grid.topology.CircuitComponent.StampingComponent;
 import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
@@ -136,12 +137,13 @@ public final class ServerGrid extends Grid {
         if(link instanceof ComponentLink cl) {
             CircuitComponent component = cl.apply(this);
             if(component != null) {
-                component.updateOwnership(cl, -1);
+                if(component instanceof GridConstruct gc)
+                    gc.updateOwnership(cl, -1);
                 mark(component);
             }
         }
-        mark(link.getStartNode().getParentComponent());
-        mark(link.getEndNode().getParentComponent());
+        mark(link.getStartNode().getParentConstruct());
+        mark(link.getEndNode().getParentConstruct());
         isMatrixDirty = true;
         hasUnsavedChanges = true;
         return result;
@@ -159,8 +161,8 @@ public final class ServerGrid extends Grid {
             cl.invalidate();
         }
         if(getLinkCount() != preSize) {
-            unmark(link.getStartNode().getParentComponent());
-            unmark(link.getEndNode().getParentComponent());
+            unmark((CircuitComponent)link.getStartNode().getParentConstruct());
+            unmark((CircuitComponent)link.getEndNode().getParentConstruct());
         }
         isMatrixDirty = true;
         hasUnsavedChanges = true;
@@ -169,8 +171,6 @@ public final class ServerGrid extends Grid {
 
     private void mark(CircuitComponent component) {
         Objects.requireNonNull(component);
-        if(!component.isSignificant()) warn("Skipped attempt to mark " + component + " - This component is insignificant!");
-        if(component == null || !component.isSignificant()) return;
         component.forEachNode(node -> netlist.add(node));
         StampingComponent.asStamperDo(this, component, stamper -> indexer.allocate(stamper));
     }

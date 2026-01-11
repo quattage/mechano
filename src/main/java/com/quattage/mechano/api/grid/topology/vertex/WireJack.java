@@ -1,11 +1,14 @@
 
 package com.quattage.mechano.api.grid.topology.vertex;
 
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.grid.CircuitFactory;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.numeric.EsoMath;
@@ -19,7 +22,7 @@ import net.minecraft.world.phys.Vec3;
  * WireJacks are pushed to the selector so that their hitboxes can be highlighted when
  * players look at them.
  */
-public class WireJack extends AncillaryNode implements OrientationUpdatable {
+public class WireJack<T extends ComponentUUID<T>> extends AncillaryNode<T> implements OrientationUpdatable {
 
     private final long data;
     private final Vector3f offset;
@@ -68,5 +71,16 @@ public class WireJack extends AncillaryNode implements OrientationUpdatable {
     public void updateOrientation(CombinedOrientation dir) {
         // TODO FIX
         makeOffsetVector().rotate(dir.getLocalUp().getRotation(), offset);
+    }
+
+    @Override
+    @SuppressWarnings("hiding")
+    public <T extends ComponentUUID<T>> T bindUUID(T id) {
+        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
+    }
+
+    @Override
+    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+        return this;
     }
 }

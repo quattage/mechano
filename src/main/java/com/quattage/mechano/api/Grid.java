@@ -13,15 +13,15 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
+import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.foundation.WorldlyObject;
-import com.quattage.mechano.foundation.tracking.GridIdentifiable;
-import com.quattage.mechano.foundation.tracking.GridUUID;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -52,7 +52,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         // weakly referenced singletons are stored to skip hash capability lookups
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
-        protected final Object2ObjectOpenHashMap<GridUUID, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
+        protected final Object2ObjectOpenHashMap<ComponentUUID<?>, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
 
         /**
          * To be called by internal registries to populate the world with an initial data attachment
@@ -208,7 +208,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return removeLink(link.getStartID(), link.getEndID());
         }
 
-        public GridAction removeLink(GridUUID startID, GridUUID endID) {
+        public GridAction removeLink(ComponentUUID<?> startID, ComponentUUID<?> endID) {
             Objects.requireNonNull(startID);
             Objects.requireNonNull(endID);
             GridAction result = removeLinkAsymmetric(startID, endID);
@@ -218,7 +218,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return result;
         }
 
-        private GridAction removeLinkAsymmetric(GridUUID startID, GridUUID endID) {
+        private GridAction removeLinkAsymmetric(ComponentUUID<?> startID, ComponentUUID<?> endID) {
             List<AncillaryPair> linksAt = getLinksBelongingTo(startID);
             if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
             int toRemove = -1;
@@ -238,7 +238,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        public @Nullable List<AncillaryPair> getLinksBelongingTo(GridUUID uuid) {
+        public @Nullable List<AncillaryPair> getLinksBelongingTo(ComponentUUID<?> uuid) {
             List<AncillaryPair> linksAt = links.get(uuid);
             if(linksAt == null) return null;
             if(linksAt.isEmpty()) {
@@ -253,22 +253,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         /**
-         * Acquires a {@link GridUUID} instance pointing to <code>source</code>
-         * and bound to the default {@link CircuitComponent} returned by 
-         * the provided {@link Griddable}
-         * @param source
-         * @return A (newly instantiated or cachced) GridUUID instance. 
-         * While modification is allowed, it is not reccomended.
-         * @see {@link Griddable#getAddress()}
-         */
-        public GridUUID getAddressFor(Griddable<?> obj) {
-            Objects.requireNonNull(obj);
-            CircuitComponent component = obj.getCircuit();
-            return getAddressFor(obj, component);
-        }
-
-        /**
-         * Acquires a {@link GridUUID} instance pointing to <code>source</code>
+         * Acquires a {@link ComponentUUID} instance pointing to <code>source</code>
          * and bound to the supplied {@link CircuitComponent} <code>component</code>.
          * <h3>There is no error checking to ensure that the supplied <code>component</code>
          * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
@@ -281,15 +266,15 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
          * @see {@link Griddable#getAddress()}
          * @see {@link CircuitComponent#bindUUID}
          */
-        public GridUUID getAddressFor(GridIdentifiable<?> obj, CircuitComponent component) {
+        public <T extends ComponentUUID<T>> T getAddressFor(GridReferent<T> obj, GridConstruct component) {
             Objects.requireNonNull(obj);
             Objects.requireNonNull(component);
-            GridUUID id = obj.getUUIDSafe();
+            T id = obj.getUUIDSafe();
             if(id == null) {
                 throw new NullPointerException("Couldn't get address for " + obj
                     + " - This source Griddable<?>instance returned a null address!");
             }
-            GridUUID boundID = component.bindUUID(id);
+            T boundID = component.bindUUID(id);
             if(boundID == null) {
                 throw new NullPointerException("Couldn't bind address to " + component
                     + " - This component didn't return a modified UUID instance!");
@@ -299,37 +284,6 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
                     + " - This component returned a new ID instance!");
             }
             return boundID;
-        }
-
-        public <T extends CircuitComponent> @Nullable T findComponent(GridUUID address, Class<T> type) {
-            CircuitComponent out = findComponent(address);
-            return type.isInstance(out) ? type.cast(out) : null;
-        }
-
-        public @Nullable CircuitComponent findComponent(GridUUID address) {
-            Objects.requireNonNull(address);
-            Griddable<?> source = address.getTargetSource(this);
-            if(source == null) {
-                warn("Couldn't acquire component from " + address + " No source at this address could be found!");
-                return null;
-            }
-            CircuitComponent component = source.getCircuit();
-            if(component == null)
-                throw new NullPointerException("Failed while querying for component at " + address + " - The source (" + source + ") failed to provide a valid CircuitComponent instance!");
-            if(component.getReferentType() == address.getReferentType()) {
-                if(address.hasBindings()) {
-                    warn("Acquired CircuitComponent, but " + address + " has extraneous bindings that were ignored.");
-                    address.withBinding(address.getReferentType(), -1, -1);
-                }
-                return component;
-            }
-            if(!(component instanceof Circuit circuit)) {
-                warn("Couldn't acqiure component from " + address + " - The source (" 
-                    + source.getClass().getSimpleName() + ") supplied a " + component.getClass().getSimpleName() 
-                    + ", which doesn't contain any sub-components with the correct binding.");
-                return null;
-            }
-            return address.getReferentType().findTarget(this, circuit, address);
         }
 
         /**
@@ -344,16 +298,16 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
          * @param obj {@link GridIdentifiable} to address
          * @return <code>true</code> if <code>obj</code> is reachable.
          */
-        public boolean isReachable(GridIdentifiable<?> obj) {
-            Griddable<?> source = obj.getUUIDSafe().getTargetSource(this);
+        public boolean isReachable(GridReferent<?> obj) {
+            Griddable<?> source = obj.getUUIDSafe().getProviderSource(getWorld());
             return source != null && source.getCircuit() != null;
         }
 
         public String linksAsString() {
             if(links.isEmpty()) return "\n\tEmpty";
             String out = "";
-            for(Map.Entry<GridUUID, List<AncillaryPair>> entry : links.entrySet()) {
-                GridUUID id = entry.getKey();
+            for(Map.Entry<ComponentUUID<?>, List<AncillaryPair>> entry : links.entrySet()) {
+                ComponentUUID<?> id = entry.getKey();
                 out += "\t- " + id + ":\n";
                 for(AncillaryPair link : entry.getValue())
                     out += "\t\t* " + link + "\n";

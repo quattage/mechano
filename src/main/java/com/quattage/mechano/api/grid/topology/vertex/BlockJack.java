@@ -6,9 +6,12 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.grid.CircuitFactory;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
+import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;
@@ -26,11 +29,11 @@ import net.minecraft.world.phys.shapes.Shapes.DoubleLineConsumer;
  * A voxel-voxel interaction. This mirrors NeoForge's sided capability system specifically
  * for Mechano's GridAPI. This class is designed specifically to be added to
  * Circuits directly via the {@link CircuitFactory factory.} Only circuits which
- * belong to BlockEntities can make use of this class.
+ * belong to BlockEntities refer to a {@link VoxelUUID} can make use of this class.
  * 
  * TODO sided capability faking for forge-energy parity
  */
-public class BlockJack extends AncillaryNode implements OrientationUpdatable {
+public class BlockJack extends AncillaryNode<VoxelUUID> implements OrientationUpdatable {
 
     private static final float THICK = 2f / 16f;
     private RelativeDirection dir;
@@ -56,7 +59,7 @@ public class BlockJack extends AncillaryNode implements OrientationUpdatable {
         GriddableTerminus terminus = gbe.getTerminus();
         if(terminus.isEmpty()) return null;
         for(int x = 0; x < terminus.size(); x++) {
-            AncillaryNode other = terminus.getAncillary(x);
+            AncillaryNode<?> other = terminus.getAncillary(x);
             if(other == this) {
                 throw new IllegalStateException("Encountered a leaked AncillaryNode instance (" 
                     + other + ") - This ancillary has two hosts: " + this + "  , and " + gbe);
@@ -153,5 +156,15 @@ public class BlockJack extends AncillaryNode implements OrientationUpdatable {
     @Override
     public void updateOrientation(CombinedOrientation dir) {
         this.dir.updateOrientation(dir);
+    }
+
+    @Override
+    public <T extends ComponentUUID<T>> T bindUUID(T id) {
+        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
+    }
+
+    @Override
+    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+        return this;
     }
 }

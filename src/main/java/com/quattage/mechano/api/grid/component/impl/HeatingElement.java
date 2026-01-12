@@ -21,7 +21,7 @@ public class HeatingElement extends Resistor implements NeedsPostProcessing {
     @Override
     public void postProcess(ServerGrid grid) {
         double r = (double)getResistance();
-        double i = (pinA().getNode().getVoltage(grid) - pinB().getNode().getVoltage(grid)) / r;
+        double i = (pinA().getAttachedNode().getVoltage(grid) - pinB().getAttachedNode().getVoltage(grid)) / r;
         double newCurrent = i * i * r;
         if(cc != null && Math.abs(this.current - newCurrent) < NodalSolver.EPSILON)
             cc.onCurrentUpdated(grid, newCurrent, newCurrent);

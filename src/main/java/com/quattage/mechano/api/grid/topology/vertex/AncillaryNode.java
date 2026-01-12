@@ -15,6 +15,7 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
@@ -45,7 +46,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
 
     public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
 
-    private final String componentID;
+    private String componentID;
     private @Nullable Griddable<T> source;
     protected @Nullable Node parent;
     private boolean isVisible = true;
@@ -87,7 +88,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     }
 
     @Override
-    public List<Terminal> getTerminals() {
+    public Terminal[] getTerminals() {
         assertAttached();
         return parent.getTerminals();
     }
@@ -100,7 +101,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
      */
     @Override
     @SuppressWarnings("unchecked")
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
         GridConstruct.assertValidOwnership(this, parent);
         this.source = (@Nullable Griddable<T>) source; 
         this.parent = (Node) parent;
@@ -230,12 +231,6 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     }
 
     @Override
-    public int getCircuitIndex() {
-        assertAttached();
-        return parent.getCircuitIndex();
-    }
-
-    @Override
     public int indexOf(AncillaryNode<?> jack) {
         if(jack == this) return parent.indexOf(jack);
         throw new UnsupportedOperationException("Failed while getting the index of a jack from itself - The supplied Jack instance didn't match this one (" 
@@ -305,13 +300,11 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
 
     @Override
     public void dispose() {
+        if(parent != null) 
+            componentID += " (disposed)";
         this.parent = null;
         this.source = null;
-    }
-
-    @Override
-    public void updateOwnership(GridConstruct parent, int index) {
-        this.parent.updateOwnership(parent, index);
+        isVisible = false;
     }
 
     @Override 
@@ -344,5 +337,10 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     @Override
     public String toString() {
         return getComponentID();
+    }
+
+    @Override
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        return this;
     }
 }

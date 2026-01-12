@@ -1,6 +1,5 @@
 package com.quattage.mechano.api.grid.topology;
 
-import java.util.Collection;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
@@ -8,16 +7,14 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.infrastructure.BreakoutException;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.util.Mth;
 
 /**
@@ -66,14 +63,6 @@ public class Circuit implements CircuitComponent, GridConstruct {
     }
 
     @Override
-    public Collection<Terminal> getTerminals() {
-        ObjectOpenHashSet<Terminal> output = new ObjectOpenHashSet<>(components.size() * 3);
-        forEachComponent(component -> { output.addAll(component.getTerminals()); });
-        output.trim();
-        return output;
-    }
-
-    @Override
     public boolean isGrounded() {
         try { forEachComponent(component -> { 
                 if(component.isGrounded()) throw new BreakoutException(); 
@@ -95,8 +84,8 @@ public class Circuit implements CircuitComponent, GridConstruct {
     }
 
     @Override
-    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
-        throw new UnsupportedOperationException("Unimplemented method 'findComponent'");
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        return components.get(binding.get());
     }
 
     @Override
@@ -107,5 +96,11 @@ public class Circuit implements CircuitComponent, GridConstruct {
     @Override
     public ComponentHierarchy getHierarchyType() {
         return ComponentHierarchy.COMPOSING_CIRCUIT;
+    }
+
+    @Override
+    public int indexOfChild(GridConstruct child) {
+        if(child.getHierarchyType() != ComponentHierarchy.DISCRETE_COMPONENT) return -1;
+        return components.indexOf(child);
     }
 }

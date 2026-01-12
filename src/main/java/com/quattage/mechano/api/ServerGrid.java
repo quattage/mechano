@@ -1,7 +1,6 @@
 package com.quattage.mechano.api;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Objects;
 
 import org.ejml.data.DMatrixRMaj;
@@ -9,7 +8,6 @@ import org.ejml.data.DMatrixSparseCSC;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
@@ -18,7 +16,6 @@ import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatus;
 import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatusHolder;
 import com.quattage.mechano.api.grid.solver.StabilizedBiconjucateSolver;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Node.GroundNode;
@@ -133,52 +130,14 @@ public final class ServerGrid extends Grid {
     @Override
     public GridAction addLink(AncillaryPair link) {
         GridAction result = super.addLink(link);
-        if(!result.getActionType().indicatesSuccess()) return result;
-        if(link instanceof ComponentLink cl) {
-            CircuitComponent component = cl.apply(this);
-            if(component != null) {
-                if(component instanceof GridConstruct gc)
-                    gc.updateOwnership(cl, -1);
-                mark(component);
-            }
-        }
-        mark(link.getStartNode().getParentConstruct());
-        mark(link.getEndNode().getParentConstruct());
-        isMatrixDirty = true;
-        hasUnsavedChanges = true;
+        
         return result;
     }
 
     @Override
     public GridAction removeLink(AncillaryPair link) {
-        int preSize = getLinkCount();
         GridAction output = super.removeLink(link);
-        if(!output.getActionType().indicatesSuccess()) return output;
-        if(link instanceof ComponentLink cl) {
-            CircuitComponent component = cl.get();
-            if(component != null)
-                unmark(component);
-            cl.invalidate();
-        }
-        if(getLinkCount() != preSize) {
-            unmark((CircuitComponent)link.getStartNode().getParentConstruct());
-            unmark((CircuitComponent)link.getEndNode().getParentConstruct());
-        }
-        isMatrixDirty = true;
-        hasUnsavedChanges = true;
         return output;
-    }
-
-    private void mark(CircuitComponent component) {
-        Objects.requireNonNull(component);
-        component.forEachNode(node -> netlist.add(node));
-        StampingComponent.asStamperDo(this, component, stamper -> indexer.allocate(stamper));
-    }
-
-    private void unmark(CircuitComponent component) {
-        Objects.requireNonNull(component);
-        if(reducedComponents == null) reducedComponents = new HashSet<>();
-        reducedComponents.add(component);
     }
 
     public MNAIndexer indexer() {

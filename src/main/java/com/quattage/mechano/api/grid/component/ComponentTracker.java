@@ -17,6 +17,8 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy.ComponentNotFoundException;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.ComponentUUID.EntityUUID;
 import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
@@ -25,6 +27,7 @@ import com.quattage.mechano.api.grid.topology.ComponentLink;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.foundation.WorldlyObject;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 
 import io.netty.buffer.ByteBuf;
@@ -98,6 +101,52 @@ public enum ComponentTracker {
             return ComponentTracker.values()[buffer.readInt()].createUUID(buffer);
         }
     };
+
+    
+
+    public static CircuitComponent find(WorldlyObject world, ComponentUUID<?> id) {
+        return ComponentTracker.find(world.getWorld(), id);
+    }
+
+    public static CircuitComponent find(LevelReader world, ComponentUUID<?> id) {
+        try{ return ComponentTracker.findOrThrow(world, id); } catch(ComponentNotFoundException e) { return null; }
+    }
+
+    public static CircuitComponent findOrThrow(WorldlyObject world, ComponentUUID<?> id) {
+        return ComponentTracker.findOrThrow(world.getWorld(), id);
+    }
+
+    public static CircuitComponent findOrThrow(LevelReader world, ComponentUUID<?> id) {
+        Griddable<?> source = id.getProviderSource(world);
+        if(source == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
+        GridConstruct previous = source;
+        for(int x = 0; x < id.getBindingCount(); x++) {
+            ComponentBinding binding = id.getBinding(x);
+            if(binding == null) throw new NullPointerException("Encountered a null binding while traversing UUID");
+            if(previous == null) throw new ComponentNotFoundException(id, "Couldn't find sub-component for binding at index " + x);
+            CircuitComponent sub = null;
+            try { sub = previous.getComponent(binding); } catch(RuntimeException e) {
+                if(e instanceof ComponentNotFoundException cnfe) throw cnfe;
+                e.printStackTrace();
+                throw new ComponentNotFoundException(id, "Component getter for '" + sub.getClass().getSimpleName() + "' encountered an exception (see above)");
+            }
+            if(sub == previous && x < id.getBindingCount())
+                throw new ComponentNotFoundException(id, "Component getter in '" + previous.getClass().getSimpleName() + "' returned itself!");
+            if(sub instanceof GridConstruct gc) {
+                if(gc.getHierarchyType() != binding.getHierarchyType()) {
+                    throw new ComponentNotFoundException(id, "Returned component instance didn't conform to the expected type! (expected " + binding.getHierarchyType() + ", got " + gc.getHierarchyType());
+                }
+                previous = gc;
+                continue;
+            }
+            if(sub == null) throw new ComponentNotFoundException(id, "Couldn't find sub-component for binding at index " + x + ", the value returned by getter in '" + previous.getClass().getSimpleName() + "' was null!");
+            if(x == id.getBindingCount() - 1) return sub;
+            throw new ComponentNotFoundException(id, "Traversed a non-construct object at binding index " + x + " (got" + sub.getClass().getSimpleName() + ")");
+
+        }
+        if(previous instanceof CircuitComponent comp) return comp;
+        throw new ComponentNotFoundException(id, "The object at this address is not a valid substitute for a CircuitCompoent! (got" + previous.getClass().getSimpleName() + ")");
+    }
 
     // TODO make this use a stream instead because this could have really bad iteration performance in worst case scenarios
     public static Set<ServerPlayer> collect(ServerLevel world, Collection<GridReferent<?>> objs) {
@@ -268,11 +317,10 @@ public enum ComponentTracker {
 
     public enum ComponentHierarchy implements StringRepresentable {
 
-
         COMPONENT_LINK(2, ComponentLink.class),
         COMPOSING_CIRCUIT(0, Circuit.class, COMPONENT_LINK),
-        EMITTER_NODE(3, Node.class, COMPOSING_CIRCUIT),
-        ANCILLARY_NODE(4, AncillaryNode.class, EMITTER_NODE),
+        NODE(3, Node.class, COMPOSING_CIRCUIT),
+        ANCILLARY_NODE(4, AncillaryNode.class, NODE),
         DISCRETE_COMPONENT(1, DiscreteComponent.class, COMPOSING_CIRCUIT, COMPONENT_LINK),
         TERMINAL(5, Terminal.class, DISCRETE_COMPONENT),
         NONE(20, null);
@@ -280,7 +328,6 @@ public enum ComponentTracker {
         private final byte mergePriority;
         private final Class<? extends CircuitComponent> typeClass;
         private final ComponentHierarchy[] parents;
-
 
         ComponentHierarchy(int mergePriority, Class<? extends CircuitComponent> typeClass) {
             this.mergePriority = (byte)mergePriority;
@@ -319,9 +366,12 @@ public enum ComponentTracker {
             return mergePriority;
         }
 
-        public static class ComponentUnqueryableException extends RuntimeException {
-            public ComponentUnqueryableException(ComponentUUID<?> address) {
-                super("Component of type '" + address.getHierarchyType() + "' cannot be queried!");
+        public static class ComponentNotFoundException extends RuntimeException {
+            public ComponentNotFoundException(String message) {
+                super(message);
+            }
+            public ComponentNotFoundException(ComponentUUID<?> id, String message) {
+                super("Error getting component at " + id + " - " + message);
             }
         }
 

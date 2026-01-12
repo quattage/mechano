@@ -83,8 +83,8 @@ public class NodeUnionTask implements ActionTask {
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         ComponentUUID<?> startID = (ComponentUUID<?>)args[0];
         ComponentUUID<?> endID = (ComponentUUID<?>)args[1];
-        AncillaryNode<?> startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode<?> endNode = grid.findComponent(endID, AncillaryNode.class);
+        AncillaryNode<?> startNode = (AncillaryNode<?>) ComponentTracker.find(grid, startID);
+        AncillaryNode<?> endNode = (AncillaryNode<?>) ComponentTracker.find(grid, endID);
         GridAction prematureCancel = GridAction.ofNullcheck(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
         args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);
@@ -102,8 +102,8 @@ public class NodeUnionTask implements ActionTask {
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
         ComponentUUID<?> startID = (ComponentUUID<?>)args[0];
         ComponentUUID<?> endID = (ComponentUUID<?>)args[1];
-        AncillaryNode<?> startNode = grid.findComponent(startID, AncillaryNode.class);
-        AncillaryNode<?> endNode = grid.findComponent(endID, AncillaryNode.class);
+        AncillaryNode<?> startNode = (AncillaryNode<?>) ComponentTracker.find(grid, startID);
+        AncillaryNode<?> endNode = (AncillaryNode<?>) ComponentTracker.find(grid, endID);
         GridAction prematureCancel = GridAction.ofNullcheck(startNode, endNode);
         if(prematureCancel.getActionType().indicatesFailure()) return prematureCancel;
         args[4] = this.unsidedHandle(grid, startID, startNode, endID, endNode, (TransmitterType)args[2]);

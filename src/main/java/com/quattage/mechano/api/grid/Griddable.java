@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -15,7 +16,10 @@ import org.joml.Vector3f;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
@@ -47,7 +51,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
  * <code>@OnlyIn</code> annotation.
  */
-public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, GridReferent<T> {
+public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, GridReferent<T>, GridConstruct {
 
     /**
      * Gets the blocks at <code>pos</code> and <code>adjacentPos</code>
@@ -71,11 +75,12 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
         return thisG.isInteractingWith(thatG);
     }
 
-    CircuitComponent getCircuit();
-
     Vector3d getSourcePos();
     Quaternionf getSourceRotation();
     BlockPos getBlockPos(); 
+
+    @Override
+    @Nullable CircuitComponent getComponent(ComponentBinding binding);
 
     /**
      * Overridden by subclasses to provide a {@link GriddableTerminus} instance. 
@@ -108,7 +113,7 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
      */
     @ApiStatus.NonExtendable
     default GriddableTerminus getTerminus() {
-        GriddableTerminus terminus = provideTerminus().initializeFrom(getCircuit());
+        GriddableTerminus terminus = provideTerminus().initializeFrom(getComponent(null));
         return terminus;
     }
 
@@ -151,8 +156,7 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
     }
 
     /**
-     * Gets the default {@link AncillaryNode} for instances
-     * where the {@link JackSelector} is not accessible (like
+     * Gets the default {@link AncillaryNode} for instances     * where the {@link JackSelector} is not accessible (like
      * in gametests)
      * @return The first reachable ancillary in this griddable's {@link #getTerminus() terminus}
      */
@@ -180,5 +184,15 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
         Objects.requireNonNull(joint);
         Vector3f local = joint.getRotatedOffset(getSourceRotation());
         return getSourcePos().add(local);
+    }
+
+    @Override
+    default ComponentHierarchy getHierarchyType() {
+        return ComponentHierarchy.NONE;
+    }
+
+    @Override
+    default @Nullable GridConstruct getParentConstruct() {
+        return null;
     }
 }

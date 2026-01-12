@@ -1,23 +1,20 @@
 package com.quattage.mechano.api.grid.topology;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.transmitter.TransmitterType;
+import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 
 /**
  * A link that connects two {@link AncillaryNode ancillaries}
@@ -52,11 +49,19 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         return new ComponentLink<T>(isInstantiated, component, trns, endID, endNode, startID, startNode);
     }
 
-    public @Nullable CircuitComponent get() {
+    /**
+     * Returns the {@link CircuitComponent} backed by this ComponentLink.
+     * <code>null</code> values returned here indicate either that this ComponentLink's
+     * hasn't been instantiated yet or that the result of a previous call to {@link #apply}
+     * returned no component.
+     * @return The CircuitComponent controlled and instantiated by this ComponentLink's {@link UnionFactory}
+     * @see #apply
+     */
+    public CircuitComponent unsafeGet() {
         return component;
     }
 
-    public @Nullable CircuitComponent apply(ServerGrid grid) {
+    public @Nullable CircuitComponent get(ServerGrid grid) {
         if(isInstantiated) return component;
         this.component = TransmitterType.applyUnion(grid, trns.getFactory(), this, getStartAncillary(), getEndAncillary());
         isInstantiated = true;
@@ -71,21 +76,6 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     public TransmitterType getTransmitter() {
         return trns;
-    }
-
-    @Override
-    public Collection<Terminal> getTerminals() {
-        Collection<Terminal> tA = (startNode == null) ? Collections.emptyList() : startNode.getTerminals();
-        Collection<Terminal> tB = (endNode == null) ? Collections.emptyList() : endNode.getTerminals();
-        // i avoid using addAll() here because we cannot guarantee that the collections above are returned as
-        // shallow-copies by API users (in fact, its inadvisable to do so) - instead, the collections 
-        // are concatenated using primitive arrays
-        int tal = tA.size();
-        int tbl = tB.size();
-        Terminal[] tm = new Terminal[tal + tbl];
-        System.arraycopy(tA.toArray(), 0, tm, 0, tal);
-        System.arraycopy(tB.toArray(), 0, tm, tal, tbl);
-        return Arrays.asList(tm);
     }
 
     @Override
@@ -120,11 +110,6 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     }
 
     @Override
-    public @Nullable GridConstruct getParentConstruct() {
-        return startNode;
-    }
-
-    @Override
     public String getComponentID() {
         return "link_" + trns.getName();
     }
@@ -135,21 +120,20 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {}
-
-    @Override
-    public <R extends ComponentUUID<R>> R bindUUID(R id) {
-        return id;
-    }
-
-    @Override
-    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
-        return this;
-    }
-
-    @Override
     public ComponentHierarchy getHierarchyType() {
         return ComponentHierarchy.COMPONENT_LINK;
+    }
+
+    @Override
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY_NODE)
+            return binding.get() == 0 ? startNode : endNode;
+        return component;
+    }
+
+    @Override
+    public @Nullable GridConstruct getParentConstruct() {
+        return null;
     }
 }
 

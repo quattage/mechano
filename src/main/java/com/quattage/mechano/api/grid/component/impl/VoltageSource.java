@@ -60,8 +60,8 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
 
     @Override
     public void stamp(ServerGrid grid) {
-        int pI = terminals[0].getNode().getNodalIndex();
-        int nI = terminals[1].getNode().getNodalIndex();
+        int pI = terminals[0].getAttachedNode().getNodalIndex();
+        int nI = terminals[1].getAttachedNode().getNodalIndex();
         cIndex = grid.indexer().get(this);
         if(pI >= 0) {
             grid.stampA(pI, cIndex, 1);

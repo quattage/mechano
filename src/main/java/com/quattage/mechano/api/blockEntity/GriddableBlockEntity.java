@@ -14,6 +14,7 @@ import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
@@ -41,7 +42,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
-    public final CircuitComponent getCircuit() {    
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
         if(circuit != null) return circuit;
         CircuitFactory builder = new CircuitFactory();
         constructCircuit(builder);

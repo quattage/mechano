@@ -1,14 +1,15 @@
 package com.quattage.mechano.api.grid.component;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
@@ -18,7 +19,7 @@ import com.quattage.mechano.api.grid.topology.vertex.Terminal;
  * A {@link DiscreteComponent} which contains an array of connected {@link Terminal terminals}
  * and can stamp to the {@link ServerGrid grid}. This class can be tracked by the {@link NodalIndexer}
  */
-public abstract class StampingComponent extends DiscreteComponent {
+public abstract class StampingComponent extends DiscreteComponent implements TerminalProvider {
 
     protected Terminal[] terminals;
 
@@ -66,21 +67,9 @@ public abstract class StampingComponent extends DiscreteComponent {
 
     protected abstract Terminal[] defineTerminals();
 
-    private void assertHasTerminals() {
-        if(this.terminals == null) {
-            throw new NullPointerException("Error processing StampingComponent '" 
-                + getComponentID() + " - This component's terminal array is null!");
-        }
-        if(terminals.length <= 0) {
-            throw new NullPointerException("Error processing StampingComponent '" 
-                + getComponentID() + " - This component's terminal array is empty!");
-        }
-        for(int x = 0; x < terminals.length; x++) {
-            if(terminals[x] == null) {
-                throw new NullPointerException("Error processing StampingComponent '" 
-                    + getComponentID() + "' - Terminal at index " + x + " is null!");
-            }
-        }
+    @Override
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        return terminals[binding.get()];
     }
 
     @Override
@@ -90,25 +79,31 @@ public abstract class StampingComponent extends DiscreteComponent {
     }
 
     @Override
-    public Collection<Terminal> getTerminals() {
-        if(terminals.length == 1) return Collections.singleton(terminals[0]);
-        return Arrays.asList(terminals);
+    public Terminal[] getTerminals() {
+        return terminals;
     }
 
     @Override
     public boolean isGrounded() {
-        for(int x = 0; x < terminals.length; x++)
-            if(terminals[x].isGrounded()) return true;
-        return false;
+        return hasGroundedTerminal();
     }
 
     @Override
-    public void updateOwnership(GridConstruct parent, int index) {
-        super.updateOwnership(parent, index);
+    public void updateOwnership(Griddable<?> source, GridConstruct parent) {
+        super.updateOwnership(source, parent);
         for(int x = 0; x < terminals.length; x++) {
             Terminal t = terminals[x];
-            t.updateOwnership(this, x);
+            t.updateOwnership(source, this);
         }
+    }
+
+    @Override
+    public int indexOfChild(GridConstruct child) {
+        if(!(child instanceof Terminal) || terminals == null || terminals.length <= 0) 
+            return -1;
+        for(int x = 0; x < terminals.length; x++)
+            if(terminals[x] == child) return x;
+        return -1;
     }
 
     /**

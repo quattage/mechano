@@ -1,6 +1,5 @@
 package com.quattage.mechano.api.grid.topology.vertex;
 
-import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -10,10 +9,12 @@ import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.GridConstruct;
+import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
 
-public class Terminal implements CircuitComponent, GridConstruct {
+public class Terminal implements CircuitComponent, GridConstruct, TerminalProvider {
     
     private final DiscreteComponent instantiator;
     private @Nullable Node connected;
@@ -41,17 +42,12 @@ public class Terminal implements CircuitComponent, GridConstruct {
         this.connected = trace;
     }
 
-    public @Nullable Node getNode() {
+    public @Nullable Node getAttachedNode() {
         return connected;
     }
 
     public boolean isAttached() {
         return connected != null;
-    }
-
-    @Override
-    public Collection<Terminal> getTerminals() {
-        return instantiator.getTerminals();
     }
 
     @Override
@@ -85,7 +81,7 @@ public class Terminal implements CircuitComponent, GridConstruct {
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
         return;
     }
 
@@ -95,8 +91,8 @@ public class Terminal implements CircuitComponent, GridConstruct {
     }
 
     @Override
-    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
-        return connected;
+    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        return binding.getHierarchyType() == ComponentHierarchy.DISCRETE_COMPONENT ? instantiator : connected;
     }
 
     @Override
@@ -107,5 +103,10 @@ public class Terminal implements CircuitComponent, GridConstruct {
     @Override
     public ComponentHierarchy getHierarchyType() {
         return ComponentHierarchy.TERMINAL;
+    }
+
+    @Override
+    public Terminal[] getTerminals() {
+        return new Terminal[] { this };
     }
 }

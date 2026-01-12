@@ -29,7 +29,6 @@ public class CreativeVoltaplastBlock extends BlockWithConnections<CreativeVoltap
         return true;
     }
 
-
     @Override
     public boolean isConnectorAllowed(LevelReader world, BlockPos connectorPos, BlockState connectorState,
             BlockPos thisPos, BlockState thisState) {
@@ -37,7 +36,7 @@ public class CreativeVoltaplastBlock extends BlockWithConnections<CreativeVoltap
         if(gbe == null) return false;
         GriddableTerminus terminus = gbe.getTerminus();
         if(terminus.isEmpty()) return false;
-        for(AncillaryNode ancillary : terminus.getAncillaries()) {
+        for(AncillaryNode<?> ancillary : terminus.getAncillaries()) {
             if(!(ancillary instanceof BlockJack bj)) continue;
             if(!bj.getPos(thisPos).equals(connectorPos)) continue;
             Direction connectorDir = connectorState.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp();

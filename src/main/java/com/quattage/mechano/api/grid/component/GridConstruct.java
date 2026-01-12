@@ -1,6 +1,7 @@
 package com.quattage.mechano.api.grid.component;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
@@ -9,6 +10,7 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
@@ -64,11 +66,19 @@ public interface GridConstruct {
         if(pobj.getHierarchyType() != type) throw new ComponentHierarchyInvalidException(obj, type);
     }
 
-    default void updateOwnership(GridConstruct parent, int index) { updateOwnership(null, parent, index); }
-    default void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+    default void updateOwnership(GridConstruct parent) { updateOwnership(null, parent); }
+    default void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
         Mechano.LOGGER.warn("Cannot update ownership of construct '" + this.getClass().getSimpleName() + "'");
     }
 
+    default int getHierarchyIndex() {
+        GridConstruct parent = getParentConstruct();
+        return parent == null ? -1 : parent.indexOfChild(this);
+    }
+
+    default int indexOfChild(GridConstruct child) {
+        return -1;
+    }
 
     ComponentHierarchy getHierarchyType();
 
@@ -76,21 +86,32 @@ public interface GridConstruct {
         return getHierarchyType().getMergePriority();
     }
 
+
     /**
      * Modify the {@link ComponentUUID} bindings of <code>id</code>
      * to point towards this SourceIdentiifer.
      * @param id GridUUID to bind
      * @return The provided {@link ComponentUUID}, modified as a result of this call.
      */
-    default <T extends ComponentUUID<T>> T bindUUID(T id) { return id; }
+    default <T extends ComponentUUID<T>> T bindUUID(T id) { 
+        return id.withBinding(getHierarchyIndex(), getHierarchyType());
+    }
 
     /**
      * Search this GridConstruct's internal data to find a
      * CircuitComponent using the provided {@link ComponentUUID}'s bindings
-     * @param id ID to look for
+     * @param binding {@link ComponentBinding} used to search this component for a sub-component. Defaults to {@link ComponentBinding#EMPTY}
      * @return a {@link CircuitComponent}, or <code>null</code>
      */
-    @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id);
+    @Nullable CircuitComponent getComponent(ComponentBinding binding);
+
+    /**
+     * Search this GridConstruct's internal data to find a
+     * CircuitComponent using the provided {@link ComponentUUID}'s bindings
+     * @param binding {@link ComponentBinding} used to search this component for a sub-component. Defaults to {@link ComponentBinding#EMPTY}
+     * @return a {@link CircuitComponent}, or <code>null</code>
+     */
+    @Nullable default CircuitComponent getComponent() { return getComponent(ComponentBinding.EMPTY); }
 
     /**
      * Used to enforce a parent/child relationship for components and the 
@@ -184,6 +205,78 @@ public interface GridConstruct {
             for(ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if(isBeingTrackedBy(player))
                     CatnipServices.NETWORK.sendToClient(player, packet);
+            }
+        }
+    }
+
+    public interface TerminalProvider {
+        
+        Terminal[] getTerminals();
+
+        default int indexOfTerminal(Terminal terminal) {
+            Terminal[] terminals = getTerminals();
+            if(terminals == null || terminals.length <= 0)
+                return -1;
+            for(int x = 0; x < terminals.length; x++)
+                if(terminals[x] == terminal) return x;
+            return -1;
+        }
+
+        default boolean hasTerminals() {
+            Terminal[] terminals = getTerminals();
+            return terminals != null && terminals.length > 0;
+        }
+
+        default boolean has(Terminal terminal) {
+            return indexOfTerminal(terminal) > -1;
+        }
+
+        default void forEachTerminal(Consumer<Terminal> cons) {
+            Terminal[] terminals = getTerminals();
+            if(terminals == null || terminals.length <= 0)
+                return;
+            for(int x = 0; x < terminals.length; x++)
+                cons.accept(terminals[x]);
+        }
+
+        default void forEachAttachedNode(Consumer<Node> cons) {
+            Terminal[] terminals = getTerminals();
+            if(terminals == null || terminals.length <= 0)
+                return;
+            for(int x = 0; x < terminals.length; x++) {
+                Node attached = terminals[x].getAttachedNode();
+                if(attached != null)
+                    cons.accept(attached);
+            }
+        }
+
+        default boolean hasGroundedTerminal() {
+            Terminal[] terminals = getTerminals();
+                if(terminals == null || terminals.length <= 0)
+                    return false;
+            for(int x = 0; x < terminals.length; x++) {
+                Terminal terminal = terminals[x];
+                if(terminal != null && terminal.isGrounded() && terminal.isAttached()) 
+                    return true;
+            }
+            return false;
+        }
+
+        default void assertHasTerminals() {
+            Terminal[] terminals = getTerminals();
+            if(terminals == null) {
+                throw new NullPointerException("Error processing StampingComponent '" 
+                    + getClass().getSimpleName() + " - This component's terminal array is null!");
+            }
+            if(terminals.length <= 0) {
+                throw new NullPointerException("Error processing StampingComponent '" 
+                    + getClass().getSimpleName() + " - This component's terminal array is empty!");
+            }
+            for(int x = 0; x < terminals.length; x++) {
+                if(terminals[x] == null) {
+                    throw new NullPointerException("Error processing StampingComponent '" 
+                        + getClass().getSimpleName() + "' - Terminal at index " + x + " is null!");
+                }
             }
         }
     }

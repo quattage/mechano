@@ -17,7 +17,7 @@ public class NodeUnunionTask extends NodeUnionTask {
     }
 
     @Override
-    protected GridAction unsidedHandle(Grid grid, ComponentUUID startID, AncillaryNode startNode, ComponentUUID endID, AncillaryNode endNode, TransmitterType trns) {
+    protected GridAction unsidedHandle(Grid grid, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode, TransmitterType trns) {
         return grid.removeLink(startID, endID);
     }
 }

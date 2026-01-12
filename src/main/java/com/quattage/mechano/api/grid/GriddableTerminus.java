@@ -44,7 +44,7 @@ public class GriddableTerminus implements OrientationUpdatable {
 
     public GriddableTerminus initializeFrom(Griddable<?> source) {
         Objects.requireNonNull(source);
-        CircuitComponent component = source.getCircuit();
+        CircuitComponent component = source.getComponent(null);
         if(component == null) throw new NullPointerException("Griddable " + source + " couldn't provide a valid CircuitComponent!");
         return initializeFrom(component);
     }
@@ -129,7 +129,7 @@ public class GriddableTerminus implements OrientationUpdatable {
      */
     public @Nullable AncillaryNode<?> getAncillary(int index) {
         if(isEmpty()) return null;
-        if(index >= exposedJoints.length) return null;
+        if(index >= exposedJoints.length || index < 0) return null;
         return exposedJoints[index];
     }
 

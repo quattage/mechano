@@ -1,12 +1,10 @@
 
 package com.quattage.mechano.api.grid.topology.vertex;
 
-import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -77,10 +75,5 @@ public class WireJack<T extends ComponentUUID<T>> extends AncillaryNode<T> imple
     @SuppressWarnings("hiding")
     public <T extends ComponentUUID<T>> T bindUUID(T id) {
         throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
-    }
-
-    @Override
-    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
-        return this;
     }
 }

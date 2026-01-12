@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.foundation.numeric.EsoMath;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 
 /**
  * A {@link CircuitComponent} with a singular function that can be
@@ -13,7 +13,6 @@ import com.quattage.mechano.foundation.numeric.EsoMath;
 public abstract class DiscreteComponent implements CircuitComponent, GridConstruct {
 
     private final String componentID;
-    private short index;
     private GridConstruct parent;
 
     public DiscreteComponent(String componentID) {
@@ -37,23 +36,12 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent, int index) {
+    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
         this.parent = parent;
-        this.index = EsoMath.toShortClamped(index);
     }
 
     @Override
-    public <T extends ComponentUUID<T>> T bindUUID(T id) {
-        // USE INDEX;
-        return GridConstruct.super.bindUUID(id);
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    @Override
-    public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+    public @Nullable CircuitComponent getComponent(ComponentBinding id) {
         return this;
     }
 

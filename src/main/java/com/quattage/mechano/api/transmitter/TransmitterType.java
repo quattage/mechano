@@ -92,7 +92,7 @@ public class TransmitterType {
             throw new GridUnionException(src, "Encountered an error while applying factory! (See exception above)");
         }
         if(output != null && src instanceof GridConstruct parent && output instanceof GridConstruct child) 
-            child.updateOwnership(parent, -1);
+            child.updateOwnership(parent);
         return output;
     }
 

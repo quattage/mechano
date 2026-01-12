@@ -1,5 +1,6 @@
 package com.quattage.mechano.api.grid.component;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -32,76 +33,72 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  */
 public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridReferent<T> {
 
-    protected @Nullable ComponentHierarchy type;
     protected ComponentBinding[] bindings;
 
-    public ComponentUUID() {}
+    public ComponentUUID() {
+        this.bindings = new ComponentBinding[0];
+    }
 
     public ComponentUUID(CompoundTag tag) {
-        if(tag.contains("cpt")) {
-            byte idx = tag.getByte("cpt");
-            if(idx >= 0) this.type = ComponentHierarchy.values()[idx];
-        }
         short bndc = tag.getByte("bndc");
         bindings = new ComponentBinding[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(tag.getShort("bd" + x));
+            bindings[x] = new ComponentBinding(x, tag);
     }
 
     public ComponentUUID(ByteBuf buffer) {
-        byte idx = buffer.readByte();
-        if(idx >= 0) this.type = ComponentHierarchy.values()[idx];
         short bndc = buffer.readByte();
         bindings = new ComponentBinding[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(buffer.readShort());
+            bindings[x] = new ComponentBinding(x, buffer);
     }
 
     public ComponentUUID(Dynamic<?> dyn) {
-        byte idx = dyn.get("cpt").asByte((byte)-1);
-        if(idx >= 0) this.type = ComponentHierarchy.values()[idx];
         short bndc = dyn.get("bndc").asByte((byte)0);
         bindings = new ComponentBinding[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(dyn.get("bd" + x).asShort((short) 0));
+            bindings[x] = new ComponentBinding(x, dyn);
     }
 
     public abstract T copy();
 
     public void write(CompoundTag tag) {
-        tag.putByte("cpt", type == null ? (byte)-1 : (byte)type.ordinal());
         tag.putByte("bndc", (byte) bindings.length);
         for(int x = 0; x < bindings.length; x++)
-            tag.putShort("bd" + x, bindings[x].value);
+            bindings[x].write(x, tag);
     }
 
     public void write(ByteBuf buffer) {
-        buffer.writeByte(type == null ? (byte)-1 : (byte)type.ordinal());
         buffer.writeByte((byte) bindings.length);
         for(int x = 0; x < bindings.length; x++)
-            buffer.writeShort(bindings[x].value);
+            bindings[x].write(x, buffer);
     }
 
     public void write(RecordBuilder<?> builder) {
-        builder.add("cpt", type == null ? (byte)-1 : (byte)type.ordinal(), Codec.BYTE);
         builder.add("bndc", (byte) bindings.length, Codec.BYTE);
         for(int x = 0; x < bindings.length; x++)
-            builder.add("bd" + x, bindings[x].value, Codec.SHORT);
+            bindings[x].write(x, builder);
     }
 
     @SuppressWarnings("unchecked")
-    public T withBinding(int value) {
-        if(bindings.length > 254) throw new IllegalStateException("Couldn't apply binding to " + this + " - This UUID is full!");
+    public T withBinding(int value, ComponentHierarchy target) {
+        if(bindings.length >= Byte.MAX_VALUE) throw new IllegalStateException("Couldn't apply binding to " + this + " - This UUID is full!");
         ComponentBinding[] copy = new ComponentBinding[bindings.length + 1];
         System.arraycopy(bindings, 0, copy, 0, bindings.length);
-        copy[bindings.length] = new ComponentBinding(value);
+        copy[bindings.length] = new ComponentBinding(value, target);
         this.bindings = copy;
         return (T) this;
     }
 
-    public ComponentHierarchy getHierarchyType() {
-        return type;
-    }    
+    public ComponentBinding getBinding(int index) {
+        if(index <= 0 || index >= bindings.length) return ComponentBinding.EMPTY;
+        ComponentBinding binding = bindings[index];
+        return binding == null ? ComponentBinding.EMPTY : binding;
+    }
+
+    public int getBindingCount() {
+        return bindings == null ? 0 : bindings.length;
+    }
 
     @Override
     @SuppressWarnings("unchecked")
@@ -135,7 +132,7 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
 
     @Override
     public String toString() {
-        return "ComponentUUID[" + getTrackerScope() + ", " + getHierarchyType() + ", (" + describeData() + ")]";
+        return getTrackerScope() + "_UUID: " + describeData() + ", " + describeBindings();
     }
 
     /**
@@ -173,10 +170,9 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         @Override
         public VoxelUUID copy() {
             VoxelUUID out = new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ()));
-            out.type = this.type;
             out.bindings = new ComponentBinding[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
-                out.bindings[x] = new ComponentBinding(this.bindings[x].value);
+                out.bindings[x] = this.bindings[x].copy();
             return out;
         }
 
@@ -231,6 +227,11 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             if(!this.pos.equals(that.pos)) return false;
             return this.areBindingsEqual(that);
         }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(pos, Arrays.hashCode(bindings));
+        }
     }
 
     /**
@@ -271,10 +272,9 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         @Override
         public EntityUUID copy() {
             EntityUUID out = new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
-            out.type = this.type;
             out.bindings = new ComponentBinding[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
-                out.bindings[x] = new ComponentBinding(this.bindings[x].value);
+                out.bindings[x] = this.bindings[x].copy();
             return out;
         }
 
@@ -337,13 +337,57 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             if(!this.uuid.equals(that.uuid)) return false;
             return this.areBindingsEqual(that);
         }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(uuid, Arrays.hashCode(bindings));
+        }
     }
 
     public static class ComponentBinding {
 
         private final short value;
-        private ComponentBinding(int value) {
+        private final ComponentHierarchy type;
+
+        public static final ComponentBinding EMPTY = new ComponentBinding(-1, ComponentHierarchy.NONE);
+
+        private ComponentBinding(int value, ComponentHierarchy target) {
             this.value = EsoMath.toShortClamped(value);
+            this.type = target;
+        }
+
+        private ComponentBinding(int idx, CompoundTag tag) {
+            this.value = tag.getShort("cbv" + idx);
+            this.type = ComponentHierarchy.values()[tag.getByte("cbt" + idx)];
+        }
+
+        private ComponentBinding(int idx, ByteBuf buffer) {
+            this.value = buffer.readShort();
+            this.type = ComponentHierarchy.values()[buffer.readByte()];
+        }
+
+        private ComponentBinding(int idx, Dynamic<?> dyn) {
+            this.value = dyn.get("cbv" + idx).asShort((short) 0);
+            this.type = ComponentHierarchy.values()[dyn.get("cbt" + idx).asByte((byte)(ComponentHierarchy.values().length - 1))];
+        }
+
+        protected void write(int idx, CompoundTag tag) {
+            tag.putShort("cbv" + idx, value);
+            tag.putByte("cbt" + idx, (byte) type.ordinal());
+        }
+
+        protected void write(int idx, ByteBuf buffer) {
+            buffer.writeShort(value);
+            buffer.writeByte(type.ordinal());
+        }
+
+        protected void write(int idx, RecordBuilder<?> builder) {
+            builder.add("cbv" + idx, value, Codec.SHORT);
+            builder.add("cbt" + idx, (byte) type.ordinal(), Codec.BYTE);
+        }
+
+        public ComponentBinding copy() {
+            return new ComponentBinding(this.value, this.type);
         }
 
         @Override
@@ -352,8 +396,12 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             return this.value == that.value;
         }
 
+        public boolean isValid() { return value >= 0 && type != null && type != ComponentHierarchy.NONE; }
+        
         public int get() { return (int) value; }
+        public ComponentHierarchy getHierarchyType() { return type; }
+
         @Override public int hashCode() { return value; }
-        @Override public String toString() { return "" + value; }
+        @Override public String toString() { return value + ", " + type; }
     }
 }

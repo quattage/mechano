@@ -1,6 +1,5 @@
 package com.quattage.mechano.api.grid.component;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -10,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -25,15 +23,6 @@ public interface CircuitComponent {
             throw new IllegalArgumentException("Couldn't instantiate CircuitComponent from null or empty string!");
     }
 
-    /**
-     * Gets all terminals associated with this component.
-     * (ex. a Diode would return a list of two members: [anode, cathode])
-     * If this component is compositional (like a Circuit object), calls to
-     * this method will need to construct a collection of terminals, which
-     * may be rather expensive.
-     * @return all terminals attached to this component
-     */
-    Collection<Terminal> getTerminals();
     void forEachNode(Consumer<Node> cons);
 
     default ComponentHierarchy getHierarchyType() {

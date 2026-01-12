@@ -39,15 +39,9 @@ public class PersistenceTests {
         CompoundTag serialized = (CompoundTag)newStack.save(test.getLevel().registryAccess());
         serialized = serialized.getCompound("components").getCompound(MechanoData.UUID.getRegisteredName());
         ComponentUUID<?> result = ComponentTracker.read(serialized);
-        if(result == null) {
-            test.fail("Serialization returned a null UUID for type '" + expected.getClass().getSimpleName() + "'");
-            return;
-        }
-        if(!result.equals(expected)) {
-            test.fail("Malformed serialization output for UUID of type '" + expected.getClass().getSimpleName() 
-                + "' - got " + result + ", expected " + expected + " (source tag: " + serialized + ")");
-            return;
-        }
+        test.assertFalse(result == null, "Serialization returned a null UUID for type '" + expected.getClass().getSimpleName() + "'");
+        test.assertFalse(result == expected, "what");
+        test.assertValueEqual(expected, result, "serialization output");
         test.succeed();
     }
 

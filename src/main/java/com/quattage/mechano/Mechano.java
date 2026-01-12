@@ -16,7 +16,6 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.common.Mod;
 
 @Mod(Mechano.ID)
@@ -31,7 +30,7 @@ public class Mechano {
     public static final Gson GSON = new GsonBuilder().setLenient().create();
 
     public Mechano(IEventBus modBus, ModContainer container) {
-        ModLoadingContext ctx = ModLoadingContext.get();
+        // ModLoadingContext ctx = ModLoadingContext.get()
         Mechano.REGISTRATE.registerEventListeners(modBus);
         MechanoBlocks.register(modBus);
         MechanoBlockEntities.register(modBus);

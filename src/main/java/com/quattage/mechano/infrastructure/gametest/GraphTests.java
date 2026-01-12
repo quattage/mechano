@@ -15,7 +15,9 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
 import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
@@ -230,7 +232,7 @@ public class GraphTests {
         ServerGrid grid = Grid.server(test.getLevel());
         GraphTests.fillUnionSet(grid.getNetlist(), "StressTestNode", 200);
         grid.tick();
-        String manifest = EnqueuedGridManifest.getImmediately(grid);
+        EnqueuedGridManifest.getImmediately(grid);
         // Mechano.LOGGER.warn("\n" + manifest);
         test.succeed();
     }
@@ -271,7 +273,7 @@ public class GraphTests {
         test.setBlock(posA, MechanoBlocks.CONNECTOR_SINGLE.getDefaultState());
         ConnectorBlockEntity cbe = test.getBlockEntity(posA);
         test.assertTrue(cbe != null, "ConnectorBlockEntity couldn't be located.");
-        CircuitComponent component = cbe.getCircuit();
+        CircuitComponent component = cbe.getComponent();
         test.assertTrue(component != null, "Griddable failed to provide a non-null circuit");
         test.succeed();
     }
@@ -293,9 +295,9 @@ public class GraphTests {
         }
         accelerator.forEach(expected -> {
             ComponentUUID<?> address = grid.getAddressFor(cbe, expected);
-            CircuitComponent result = grid.findSubComponent(address);
+            CircuitComponent result = ComponentTracker.find(grid, address);
             if(result == null) {
-                test.fail("Reachability check for '" + cbe.getCircuit().getComponentID().toLowerCase(Locale.ROOT) 
+                test.fail("Reachability check for '" + cbe.getComponent().getComponentID().toLowerCase(Locale.ROOT) 
                     + "' belonging to " + cbe.getClass().getSimpleName().toLowerCase() + " failed while acquiring component at " + address);
                 return;
             }
@@ -387,7 +389,6 @@ public class GraphTests {
         public boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack) {
             return false;
         }
-        
 
         @Override
         public List<AncillaryNode<?>> getAncillaries() {
@@ -405,8 +406,8 @@ public class GraphTests {
         }
 
         @Override
-        public List<Terminal> getTerminals() {
-            return Collections.emptyList();
+        public Terminal[] getTerminals() {
+            return new Terminal[0];
         }
 
         @Override
@@ -420,8 +421,8 @@ public class GraphTests {
         }
 
         @Override
-        public int getCircuitIndex() {
-            return -1;
+        public int getHierarchyIndex() {
+            return index;
         }
 
         @Override
@@ -440,7 +441,7 @@ public class GraphTests {
         }
 
         @Override
-        public @Nullable CircuitComponent findSubComponent(ComponentUUID<?> id) {
+        public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
             return this;
         }
     }

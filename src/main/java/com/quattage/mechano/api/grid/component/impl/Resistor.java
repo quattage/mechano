@@ -30,8 +30,8 @@ public class Resistor extends StampingComponent {
     @Override
     public void stamp(ServerGrid grid) {
         double g = 1d / (double)ohms;
-        int aI = pinA().getNode().getNodalIndex();
-        int bI = pinB().getNode().getNodalIndex();
+        int aI = pinA().getAttachedNode().getNodalIndex();
+        int bI = pinB().getAttachedNode().getNodalIndex();
         if(aI >= 0) grid.stampA(aI, aI, g);
         if(bI >= 0) grid.stampA(bI, bI, g);
         if(aI >= 0 && bI >= 0) {

@@ -39,8 +39,8 @@ public class CircuitFactory {
 
     public CircuitFactory solder(Terminal a, Terminal b) {
         assertNotConsumed();
-        Node primary = Node.choosePrimary(a.getNode(), b.getNode());
-        Node secondary = primary == a.getNode() ? b.getNode() : a.getNode();
+        Node primary = Node.choosePrimary(a.getAttachedNode(), b.getAttachedNode());
+        Node secondary = primary == a.getAttachedNode() ? b.getAttachedNode() : a.getAttachedNode();
         if(primary == null) {
             primary = newNode();
             a.setConnectedTo(primary);
@@ -127,8 +127,8 @@ public class CircuitFactory {
         for(CircuitComponent component : circuit.components) {
             if(component == null) throw new CircuitInstantiationException("Encountered a null component!");
             if(component instanceof GridConstruct gc)
-                gc.updateOwnership(source, circuit, 0);
-        } 
+                gc.updateOwnership(source, circuit);
+        }
         circuit.components.trim();
         this.components = null;
     }

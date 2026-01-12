@@ -12,6 +12,7 @@ import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
@@ -19,7 +20,6 @@ import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.TransmitterType.TransmitterProvider;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.MapLikeItemHoldable;
-import com.quattage.mechano.foundation.mixin.client.accessor.PlayerInfoAccessor;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -30,7 +30,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -100,7 +99,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
      * between the selected {@link AncillaryNode} and the player.
      */
     @OnlyIn(Dist.CLIENT)
-    private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode initialTarget) {
+    private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode<?> initialTarget) {
         if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
             return InteractionResultHolder.fail(stack);
         Griddable<?> source = initialTarget.getProviderSource();
@@ -109,7 +108,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
         ComponentUUID<?> sourceID = grid.getAddressFor(source, initialTarget);
-        CircuitComponent component = grid.findSubComponent(sourceID);
+        CircuitComponent component = ComponentTracker.find(grid, sourceID);
         if(component == null || (component != initialTarget))
             return InteractionResultHolder.fail(stack);
         stack.set(MechanoData.UUID, sourceID);
@@ -124,7 +123,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
         if(subsequentTarget == null) 
             return InteractionResultHolder.fail(stack);
         ComponentUUID<?> initialTargetID = stack.get(MechanoData.UUID);
-        AncillaryNode<?> initialTarget = (AncillaryNode<?>)grid.findSubComponent(initialTargetID);
+        AncillaryNode<?> initialTarget = (AncillaryNode<?>) ComponentTracker.find(grid, initialTargetID);
         Griddable<?> initialSource = initialTarget.getProviderSource();
         if(initialSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
@@ -165,7 +164,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     @Override
     public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
         if(!stack.has(MechanoData.UUID)) return false;
-        ComponentUUID addr = stack.get(MechanoData.UUID);
+        ComponentUUID<?> addr = stack.get(MechanoData.UUID);
         if(addr == null) return false;
         stack.remove(MechanoData.UUID);
 
@@ -196,22 +195,22 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     }
 
 
-    /**
-     * A helper method for setting the durability of this spool
-     * based on the proportional length of the currently awaiting catenary
-     * @param stack
-     * @param length
-     * @param maxLength
-     */
-    private void applyDurability(Entity entity, ItemStack stack, float length) {
-        if(startingDamage < 0) return;
-        if(entity instanceof Player player) {
-            GameType mode = ((PlayerInfoAccessor)player).mechano$getPlayerInfo().getGameMode();
-            if(mode == null || mode == GameType.CREATIVE || mode == GameType.SPECTATOR)
-                return;
-        }            
-        stack.setDamageValue(Math.min(stack.getMaxDamage(), Math.max(1, startingDamage + (int)Math.ceil((length * 2f)))));
-    }
+    // /**
+    //  * A helper method for setting the durability of this spool
+    //  * based on the proportional length of the currently awaiting catenary
+    //  * @param stack
+    //  * @param length
+    //  * @param maxLength
+    //  */
+    // private void applyDurability(Entity entity, ItemStack stack, float length) {
+    //     if(startingDamage < 0) return;
+    //     if(entity instanceof Player player) {
+    //         GameType mode = ((PlayerInfoAccessor)player).mechano$getPlayerInfo().getGameMode();
+    //         if(mode == null || mode == GameType.CREATIVE || mode == GameType.SPECTATOR)
+    //             return;
+    //     }            
+    //     stack.setDamageValue(Math.min(stack.getMaxDamage(), Math.max(1, startingDamage + (int)Math.ceil((length * 2f)))));
+    // }
 
     /**
      * Minecraft's default "Durability: xx/xx" tooltip is added

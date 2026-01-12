@@ -61,7 +61,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
      * just pass 1.
      */
-    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable ComponentUUID start, @Nullable ComponentUUID end, float pTicks);
+    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable ComponentUUID<?> start, @Nullable ComponentUUID<?> end, float pTicks);
 
     /**
      * A helper call that sets the first and last

@@ -300,7 +300,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
          */
         public boolean isReachable(GridReferent<?> obj) {
             Griddable<?> source = obj.getUUIDSafe().getProviderSource(getWorld());
-            return source != null && source.getCircuit() != null;
+            return source != null && source.getComponent() != null;
         }
 
         public String linksAsString() {

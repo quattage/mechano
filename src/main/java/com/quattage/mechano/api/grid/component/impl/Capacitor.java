@@ -29,8 +29,8 @@ public class Capacitor extends StampingComponent implements StampsDynamically {
     @Override
     public void stamp(ServerGrid grid) {
         double g = capacitance / Circuit.DELTA;
-        int pI = terminals[0].getNode().getNodalIndex();
-        int nI = terminals[1].getNode().getNodalIndex();
+        int pI = terminals[0].getAttachedNode().getNodalIndex();
+        int nI = terminals[1].getAttachedNode().getNodalIndex();
         if(pI >= 0) grid.stampA(pI, pI,  g);
         if(nI >= 0) grid.stampA(nI, nI,  g);
         if(pI >= 0 && nI >= 0) {
@@ -41,10 +41,10 @@ public class Capacitor extends StampingComponent implements StampsDynamically {
 
     @Override
     public void stampDynamic(ServerGrid grid) {
-        double vNow = terminals[0].getNode().getVoltage(grid) - terminals[1].getNode().getVoltage(grid);
+        double vNow = terminals[0].getAttachedNode().getVoltage(grid) - terminals[1].getAttachedNode().getVoltage(grid);
         double ieq = (capacitance / Circuit.DELTA) * prevVoltage;
-        int pI = terminals[0].getNode().getNodalIndex();
-        int nI = terminals[1].getNode().getNodalIndex();
+        int pI = terminals[0].getAttachedNode().getNodalIndex();
+        int nI = terminals[1].getAttachedNode().getNodalIndex();
         if(pI >= 0) grid.stampB(pI,  ieq);
         if(nI >= 0) grid.stampB(nI, -ieq);
         prevVoltage = vNow;

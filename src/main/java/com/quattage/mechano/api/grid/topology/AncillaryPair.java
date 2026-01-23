@@ -2,12 +2,20 @@ package com.quattage.mechano.api.grid.topology;
 
 import java.util.Objects;
 
+import org.joml.Vector3d;
+
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.component.GridConstruct;
+import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.phys.Vec3;
 
 public class AncillaryPair {
 
@@ -44,7 +52,7 @@ public class AncillaryPair {
 
     public AncillaryPair assignStart(ComponentUUID<?> startID, AncillaryNode<?> startNode) {
         Objects.requireNonNull(startID);
-        GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY_NODE);
+        GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(startNode);
         this.startID = startID;
         this.startNode = startNode;
@@ -53,7 +61,7 @@ public class AncillaryPair {
 
     public AncillaryPair assignEnd(ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         Objects.requireNonNull(endID);
-        GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY_NODE);
+        GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(endNode);
         this.endID = endID;
         this.endNode = endNode;
@@ -108,13 +116,44 @@ public class AncillaryPair {
         return "[" + getStartID() + " -> " + getEndID() + "]";
     }
 
+    public NodePair asNodePair() {
+        return new NodePair(getStartNode(), getEndNode());
+    }
+
+    public Vec3 halfwayBetween() {
+        assertHasAncillaries();
+        Vector3d startPos = startNode.getRealPosition();
+        Vector3d endPos = endNode.getRealPosition();
+        return new Vec3(
+            (startPos.x + endPos.x) / 2d,
+            (startPos.y + endPos.y) / 2d,
+            (startPos.z + endPos.z) / 2d
+        );
+    }
+
+    public BlockPos getMiddlePos(LevelReader world) {
+        assertHasAncillaries();
+        BlockPos startPos = startNode.getBlockPos(world);
+        BlockPos endPos = startNode.getBlockPos(world);
+        return new BlockPos(
+            (int)((startPos.getX() + endPos.getX()) / 2f),
+            (int)((startPos.getY() + endPos.getY()) / 2f),
+            (int)((startPos.getZ() + endPos.getZ()) / 2f)
+        );
+    }
+
     public AncillaryPair validateSelf() {
         assertHasIDs();
         assertHasAncillaries();
         assertHasSources();
-        assertIDsMatch();
         assertNonConflict();
         return this;
+    }
+
+    public boolean isDynamic() {
+        Griddable<?> startSource = startNode.getProviderSource();
+        Griddable<?> endSource = endNode.getProviderSource();
+        return (startSource != null && startSource.canMoveDynamically()) || (endSource != null && endSource.canMoveDynamically());
     }
 
     private void assertHasIDs() {
@@ -128,7 +167,7 @@ public class AncillaryPair {
         }
     }
 
-    private void assertHasAncillaries() {
+    protected void assertHasAncillaries() {
         if(startNode == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
                 + " - The starting jack is null! (It was never assigned using assignStart())");
@@ -147,19 +186,6 @@ public class AncillaryPair {
         if(endNode.getProviderSource() == null) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The ending jack has no source! (This instance potentially leaked)");
-        }
-    }
-
-    private void assertIDsMatch() {
-        ComponentUUID<?> startIDRetrieved = startNode.bindUUID(startNode.getProviderSource().getUUID());
-        if(!startIDRetrieved.equals(startID)) {
-            throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The starting jack returned a UUID that doesn't match! (got " + startIDRetrieved + ")");
-        }
-        ComponentUUID<?> endIDRetrieved = endNode.bindUUID(endNode.getProviderSource().getUUID());
-        if(!endIDRetrieved.equals(endID)) {
-            throw new IllegalStateException("An operation failed on ComponentLink " + this 
-                + " - The ending jack returned a UUID that doesn't match! (got " + endIDRetrieved + ")");
         }
     }
 

@@ -1,9 +1,16 @@
 package com.quattage.mechano.api.grid.solver;
 
 import java.util.Set;
+import java.util.function.Consumer;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
+import com.quattage.mechano.api.grid.topology.Circuit;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -15,29 +22,53 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  */
 public class MNAIndexer {
     
-    private Set<StampingComponent> allStampers = new ObjectOpenHashSet<>();
-    private Object2IntOpenHashMap<StampsDynamically> sourceIndices = new Object2IntOpenHashMap<>();
+    private Set<StampingComponent> allStampers;
+    private Object2IntOpenHashMap<StampsDynamically> sourceIndices;
     private int cursor;
 
+    public static void asStamperDo(@Nullable Grid grid, CircuitComponent component, Consumer<StampingComponent> cons) {
+        switch(component) {
+            case StampingComponent stamper -> cons.accept(stamper);
+            case Node n -> n.forEachTerminal(terminal -> { 
+                if(terminal.getParentConstruct() instanceof StampingComponent stamper)
+                    cons.accept(stamper);
+            });
+            case Circuit circuit -> circuit.forEachComponent(comp -> {
+                if(comp instanceof StampingComponent stamper)
+                    cons.accept(stamper);
+            });
+            case null, default -> { if(grid != null) grid.warn("Skipped semantic execution for " + component 
+                + " - This component couldn't be paired down to a stamper!"); }
+        }
+    }
+
+    public void allocate(CircuitComponent component) {
+        MNAIndexer.asStamperDo(null, component, this::allocate);
+    }
+
     public void allocate(StampingComponent component) {
-        if(!allStampers.add(component) || !(component instanceof StampsDynamically sd)) 
+        if(!getStampers().add(component) || !(component instanceof StampsDynamically sd)) 
             return;
         int size = sd.getAllocations();
         if(size == 0) return;
         if(size < 0) throw new IllegalArgumentException("Attempted to allocate a negative number for " + component + "!");
-        sourceIndices.put(sd, cursor);
+        getSourceIndices().put(sd, cursor);
         cursor += size;
     }
 
+    public void forget(CircuitComponent component) {
+        MNAIndexer.asStamperDo(null, component, this::forget);
+    }
+
     public void forget(StampingComponent component) {
-        if(!allStampers.remove(component) || !(component instanceof StampsDynamically sd)) 
+        if(!getStampers().remove(component) || !(component instanceof StampsDynamically sd)) 
             return;
-        sourceIndices.removeInt(sd);
+        getSourceIndices().removeInt(sd);
         cursor -= sd.getAllocations();
     }
 
     public int get(StampingComponent component) {
-        if(sourceIndices.isEmpty()) {
+        if(sourceIndices == null || sourceIndices.isEmpty()) {
             throw new IllegalStateException("Couldn't get source index for stamper " 
                 + component + " - This tracker doesn't contain any allocations!");
         }
@@ -49,16 +80,22 @@ public class MNAIndexer {
         return output;
     }
 
+    public Object2IntOpenHashMap<StampsDynamically> getSourceIndices() {
+        if(sourceIndices == null) sourceIndices = new Object2IntOpenHashMap<>();
+        return sourceIndices;
+    }
+
+    public Set<StampingComponent> getStampers() {
+        if(allStampers == null) allStampers = new ObjectOpenHashSet<>();
+        return allStampers;
+    }
+
     public int size() {
-        return allStampers.size();
+        return allStampers == null ? 0 : allStampers.size();
     }
 
     public int total() {
         return cursor;
-    }
-
-    public Set<StampingComponent> getAllStampers() {
-        return allStampers;
     }
 
     public boolean hasStampers() {
@@ -66,8 +103,8 @@ public class MNAIndexer {
     }
 
     public void clear() {
-        sourceIndices = new Object2IntOpenHashMap<>();
-        allStampers = new ObjectOpenHashSet<>();
+        sourceIndices = null;
+        allStampers = null;
         cursor = 0;
     }
 }

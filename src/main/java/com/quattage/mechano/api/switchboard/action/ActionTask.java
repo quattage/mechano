@@ -1,6 +1,7 @@
 package com.quattage.mechano.api.switchboard.action;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -9,6 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;
@@ -94,6 +97,11 @@ public interface ActionTask {
     @OnlyIn(Dist.CLIENT)
     GridAction executeAsClient(int attempt, ClientGrid grid, Object... args);
 
+
+    default GridAction executeTopological(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints, Object[] args) {
+        return GridAction.NONE;
+    }
+
     /**
      * Log a message associated with this task's execution. Implementations 
      * or API users may call this method to print debug messages.
@@ -120,10 +128,10 @@ public interface ActionTask {
     }
 
     default String collectArgsAsString(Object... args) {
-        String summary = "";
-        if(args == null || args.length <= 0) return "No arguments";
-        for(Object obj : args) summary += "\n\n * " + obj.getClass().getSimpleName() + " :: " + obj.toString() + ", ";
-        return summary.substring(0, summary.length() - 3);
+        String summary = "Arguments:";
+        if(args == null || args.length <= 0) return summary + "\n  none";
+        for(Object obj : args) summary += "\n  - " + obj.getClass().getSimpleName() + ":\n     " + obj.toString() + ", ";
+        return summary.substring(0, summary.length() - 1);
     }
 
 

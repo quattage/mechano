@@ -18,19 +18,19 @@ public class CreativeVoltaplastBlockEntity extends GriddableBlockEntity {
 
     @Override
     public void constructCircuit(CircuitFactory circuit) {
-        Node positive = circuit.newNode();
-        Node negative = circuit.newNode();
+        Node positive = circuit.newNode("positive");
+        Node negative = circuit.newNode("negative");
         InfiniteVoltageSource battery = circuit.supply(new InfiniteVoltageSource("creative_voltoplast", 12f));
         circuit.solder(positive, battery.positive());
         circuit.solder(negative, battery.negative());
         circuit.blockJack("positive")
             .attachedTo(positive)
-            .face(Relative.FRONT)
+            .face(Relative.BACK)
             .visibleByDefault()
             .make();
         circuit.blockJack("negative")
             .attachedTo(negative)
-            .face(Relative.BACK)
+            .face(Relative.FRONT)
             .visibleByDefault()
             .make();
     }

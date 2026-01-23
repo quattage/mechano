@@ -1,7 +1,9 @@
 package com.quattage.mechano.api;
 
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.data.DMatrixSparseCSC;
@@ -17,15 +19,17 @@ import com.quattage.mechano.api.grid.solver.NodalSolver.ConvergenceStatusHolder;
 import com.quattage.mechano.api.grid.solver.StabilizedBiconjucateSolver;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
+import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Node.GroundNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.Disposable;
+import com.quattage.mechano.foundation.numeric.EsoMath;
 import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -41,10 +45,8 @@ public final class ServerGrid extends Grid {
 
     private @Nullable DMatrixSparseCSC matrixA;
     private @Nullable DMatrixRMaj matrixX, matrixB;
-    private boolean isMatrixDirty = false;
-    private boolean hasUnsavedChanges = false;
 
-    private @Nullable Collection<CircuitComponent> reducedComponents;
+    private final TopologyProcessQueue processQueue = new TopologyProcessQueue();
 
     protected ServerGrid(Level world) {
         super(world);
@@ -52,23 +54,27 @@ public final class ServerGrid extends Grid {
     }
 
     @Override
-    protected void load() {
+    public void load() {
         
     }
 
     @Override
-    protected void unload() {
+    public void unload() {
+        status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
         clearAll();
         solver.reset();
         netlist.reset();
         indexer.clear();
+        processQueue.clear();
         status.set(ConvergenceStatus.UNLOADED);
     }
 
     @Override
     public void tick() {
         tickManifest();
-        if(isMatrixDirty) preProcess();
+        if(processQueue.hasChanges())
+            preProcess();
+
         if(shouldSolve()) {
             runSolver();
             postProcess();
@@ -77,18 +83,8 @@ public final class ServerGrid extends Grid {
 
     private void preProcess() {
         status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
-        final ObjectOpenHashSet<Node> emptyNodes = new ObjectOpenHashSet<>();
-        if(reducedComponents != null && !reducedComponents.isEmpty()) {
-            emptyNodes.ensureCapacity(reducedComponents.size() * 3);
-            for(CircuitComponent reduced : reducedComponents) {
-                StampingComponent.asStamperDo(this, reduced, stamper -> indexer.forget(stamper));
-                reduced.forEachNode(node -> {
-                    emptyNodes.add(node);
-                });
-                Disposable.dispose(reduced);
-            }
-        }
-        netlist.removeAll(emptyNodes);
+        processQueue.applyTo(this);
+        if(netlist.isEmpty()) return;
         int size = (netlist.size() - 1) + indexer.size();
         matrixA = new DMatrixSparseCSC(size, size, 10 * netlist.size());
         matrixX = createWorkingVector();
@@ -96,8 +92,6 @@ public final class ServerGrid extends Grid {
         solver.initialize(this);
         matrixA.sortIndices(null);
         netlist.assignIndices();
-        reducedComponents = null;
-        isMatrixDirty = false;
     }
 
     private boolean shouldSolve() {
@@ -121,23 +115,34 @@ public final class ServerGrid extends Grid {
     }
 
     private void postProcess() {
-        for(StampingComponent sc : indexer.getAllStampers()) {
+        for(StampingComponent sc : indexer.getStampers()) {
             if(!(sc instanceof NeedsPostProcessing pp)) continue;
             pp.postProcess(this);
         }
     }
 
-    @Override
-    public GridAction addLink(AncillaryPair link) {
-        GridAction result = super.addLink(link);
-        
-        return result;
+    public GridAction removeLinkDeferred(AncillaryPair link) {
+        Objects.requireNonNull(link);
+        processQueue.add(this, GridAction.TASK_LINK_DESTROY, link);
+        return GridAction.RESPONSE_SUCCESS;
     }
 
-    @Override
-    public GridAction removeLink(AncillaryPair link) {
-        GridAction output = super.removeLink(link);
-        return output;
+    public GridAction removeComponent(CircuitComponent component) {
+        Objects.requireNonNull(component);
+            processQueue.add(this, GridAction.TASK_COMPONENT_DESTROY, component);
+        return GridAction.RESPONSE_SUCCESS;
+    }
+
+    public GridAction addComponent(CircuitComponent component) {
+        Objects.requireNonNull(component);
+        processQueue.add(this, GridAction.TASK_COMPONENT_CREATE, component);
+        return GridAction.RESPONSE_SUCCESS;
+    }
+
+    public GridAction addLinkDeferred(AncillaryPair link) {
+        Objects.requireNonNull(link);
+        processQueue.add(this, GridAction.TASK_LINK_CREATE, link);
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     public MNAIndexer indexer() {
@@ -168,8 +173,8 @@ public final class ServerGrid extends Grid {
      * @see #clearDynamic
      */
     public void clearAll() {
-        matrixA.zero();
-        matrixB.zero();
+        if(matrixA != null) matrixA.zero();
+        if(matrixB != null) matrixB.zero();
     }
 
     /**
@@ -251,16 +256,12 @@ public final class ServerGrid extends Grid {
         return status;
     }
 
-    public NodeUnionSet getNetlist() {
+    public NodeUnionSet netlist() {
         return netlist;
     }
 
     public NodalSolver getSolver() {
         return solver;
-    }
-
-    public boolean hasUnsavedChanges() {
-        return hasUnsavedChanges;
     }
 
     public void enqueueManifest(Entity requester) {
@@ -281,5 +282,152 @@ public final class ServerGrid extends Grid {
         if(server == null)
             server = Objects.requireNonNull(ServerLifecycleHooks.getCurrentServer(), "Cannot send clientbound payloads on the client");
         return server;
+    }
+
+    public TopologyProcessQueue getProcessQueue() {
+        return processQueue;
+    }
+
+
+    public static class TopologyProcessQueue {
+
+        private @Nullable PriorityQueue<TaskWrapper> queue;
+        private boolean hasUnsavedChanges = false;
+
+        public void applyTo(ServerGrid grid) {
+            if(!hasChanges()) return;
+            final Set<Node> removedNodes = new HashSet<>(queue.size() * 3);
+            final Set<NodePair> disjoints = new HashSet<>(queue.size() * 3);
+            boolean brokeEarly = false;
+            TaskWrapper wrapper = null;
+            while(!queue.isEmpty()) {
+                wrapper = queue.poll();
+                if(wrapper.creates()) {
+                    brokeEarly = true;
+                    break;
+                }
+                wrapper.run(grid, removedNodes, disjoints);
+            }
+            grid.netlist.massRemove(removedNodes, disjoints);
+            if(brokeEarly) wrapper.run(grid, removedNodes, disjoints);
+            while(!queue.isEmpty()) {
+                wrapper = queue.poll();
+                wrapper.run(grid, removedNodes, disjoints);
+            }
+            clear();
+        }
+
+        public void add(@Nullable Grid grid, GridAction task, Object... args) {
+            for(Object obj : args) {
+                if(Disposable.hasBeenDisposed(obj))
+                    if(grid != null) {
+                        grid.warn("Skipped scheduling of topology restructuring task '" + task.getSerializedName() 
+                            + "' - An argument (" + obj.getClass().getSimpleName() + ") was disposed already!");
+                    }
+            }
+            if(this.queue == null)
+                this.queue = new PriorityQueue<>(16);
+            TaskWrapper toAdd = instantiateTask(grid, task, args);
+            if(toAdd == null) return;
+            this.queue.add(new TaskWrapper(task, queue.size(), args));
+            this.hasUnsavedChanges = true;
+        }
+
+        public @Nullable TaskWrapper instantiateTask(@Nullable Grid grid, GridAction task, Object... args) {
+            Objects.requireNonNull(grid);
+            Objects.requireNonNull(task);
+            if(!task.isTask()) {
+                if(grid != null) grid.error("Attempted to queue action '" + task + "' but this action is not a task type.");
+                return null;
+            }
+            if(!task.isWrappable()) {
+                if(grid != null) grid.error("Attempted to queue action '" + task + "' but this task cannot be wrapped into the queue.");
+                return null;
+            }
+            return new TaskWrapper(task, queue.size(), args);
+        }
+
+        /**
+         * Used for testing
+         */
+        public void addRandom(ServerGrid grid, RandomSource random) {
+            Objects.requireNonNull(grid);
+            Objects.requireNonNull(random);
+            int idx = EsoMath.randomInt(random, 0, 3);
+            GridAction task = GridAction.values()[idx];
+            add(grid, task, new Object[0]);
+        }
+
+        public boolean hasChanges() {
+            return queue != null && !queue.isEmpty();
+        }
+
+        public boolean hasUnsavedChanges() {
+            return hasUnsavedChanges;
+        }
+
+        public long size() {
+            return !hasChanges() ? 0 : queue.size();
+        }
+
+        private void clear() {
+            queue = null;
+        }
+
+        @Override
+        public String toString() {
+            String out =  "TopologyProcessQueue:\n";
+            out += "  Unsaved changes: " + (hasUnsavedChanges ? "yes" : "no") + "\n";
+            out += "  Topology:\n";
+            if(!hasChanges()) return out + "    [Empty]";
+            PriorityQueue<TaskWrapper> copy = new PriorityQueue<>(queue.size());
+            while(!queue.isEmpty()) {
+                TaskWrapper head = queue.poll();
+                out += "    " + head + "\n";
+                copy.add(head);
+            }
+            this.queue = copy;
+            return out;
+        }
+    }
+
+    private static class TaskWrapper implements Comparable<TaskWrapper> {
+
+        private final GridAction action;
+        private final Object[] args;
+        private final int index;
+
+        private TaskWrapper(GridAction task, int index, Object[] args) {
+            Objects.requireNonNull(task);
+            this.action = task;
+            this.index = index;
+            if(args == null) args = new Object[0];
+            this.args = args;
+        }
+
+        private GridAction run(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints) {
+            GridAction output = this.action.getTask().executeTopological(grid, removedNodes, disjoints, args);
+            return output == null ? GridAction.NONE : output;
+        }
+
+        public boolean creates() {
+            return action == GridAction.TASK_LINK_CREATE || action == GridAction.TASK_COMPONENT_CREATE;
+        }
+
+        private int getPriority() {
+            return action.ordinal();
+        }
+
+		@Override
+		public int compareTo(TaskWrapper that) {
+            int priorityCompare = Integer.compare(this.getPriority(), that.getPriority());
+            if(priorityCompare != 0) return priorityCompare;
+            return Integer.compare(this.index, that.index);
+		}
+
+        @Override
+        public String toString() {
+            return action.getTask().getClass().getSimpleName() + " (index " + index + "), " + action.getTask().collectArgsAsString(args);
+        }
     }
 }

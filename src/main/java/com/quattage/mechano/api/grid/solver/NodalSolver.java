@@ -50,20 +50,34 @@ public interface NodalSolver {
     void reset();
 
     public enum ConvergenceStatus implements StringRepresentable {
+
         FINISHED_SOLVED_EARLY(true),
         FINISHED_SOLVED_LATE(true),
         FINISHED_LIMIT_REACHED(false),
         ABORTED_PROBLEMATIC_DATA(false),
         ABORTED_GENERIC_ERROR(false),
         REFRESHING_TOPOLOGY(false),
-        COMPUTING(false),
+        COMPUTING_SOLUTION(false),
         IDLE(false),
         UNLOADED(false);
+
         private final boolean success;
+
         ConvergenceStatus(boolean success) { this.success = success; }
-        public boolean indicatesSuccess() { return success; }
-        @Override public String getSerializedName() { return name().toLowerCase(Locale.ROOT); }
-        @Override public String toString() { return getSerializedName(); }
+
+        public boolean indicatesSuccess() { 
+            return success; 
+        }
+
+        @Override 
+        public String getSerializedName() { 
+            return name().toLowerCase(Locale.ROOT); 
+        }
+
+        @Override 
+        public String toString() { 
+            return getSerializedName(); 
+        }
     }
 
     public class ConvergenceStatusHolder implements NonNullSupplier<ConvergenceStatus> {

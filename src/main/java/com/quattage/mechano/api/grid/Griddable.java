@@ -14,11 +14,10 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
@@ -44,7 +43,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * Implementations are expected to provide:
  * <ul>
  *  <li> a {@link #getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
- *  <li> a {@link ComponentUUID uuid} pointing to the in-world location of the provided circuit - see {@link ComponentTracker data sources} for more info</li>
+ *  <li> a {@link ComponentUUID uuid} pointing to the in-world location of the provided circuit - see {@link GridComponentTracker data sources} for more info</li>
  *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic
@@ -77,10 +76,9 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
 
     Vector3d getSourcePos();
     Quaternionf getSourceRotation();
-    BlockPos getBlockPos(); 
 
     @Override
-    @Nullable CircuitComponent getComponent(ComponentBinding binding);
+    @Nullable CircuitComponent getComponent(UUIDComposite binding);
 
     /**
      * Overridden by subclasses to provide a {@link GriddableTerminus} instance. 
@@ -99,13 +97,12 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
 
     default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
 
-
     /**
-     * Allows grid-sided access to this Griddable's {@link GriddableTerminus accelerator},
+     * Allows grid-sided access to this Griddable's {@link GriddableTerminus terminus},
      * which contains a bakeable acceleration structure for getting all
      * {@link AncillaryNode ancillaries} involving this Griddable's 
-     * {@link #getCircuit circuit}. This method contains validity checks and will
-     * initialize the accelerator if needed. The initialized accelerator can be 
+     * {@link #getComponent internal component}. This method contains validity checks 
+     * and will initialize the terminus if needed. The initialized terminus can be 
      * {@link GriddableTerminus#invalidate invalidated later} if the baked data is
      * out of date.
      * @return The instance returned by {@link #provideTerminus() the provider}
@@ -113,7 +110,7 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
      */
     @ApiStatus.NonExtendable
     default GriddableTerminus getTerminus() {
-        GriddableTerminus terminus = provideTerminus().initializeFrom(getComponent(null));
+        GriddableTerminus terminus = provideTerminus().initializeFrom(getComponent());
         return terminus;
     }
 
@@ -129,7 +126,7 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
     default Set<AncillaryPair> analyzeAdjacents() {
         ObjectOpenHashSet<AncillaryPair> output = new ObjectOpenHashSet<>(4);
         GriddableTerminus thisTerminus = getTerminus();
-        final BlockPos pos = getBlockPos();
+        final BlockPos pos = getBlockPos(null);
         if(thisTerminus.isEmpty()) return Collections.emptySet();
         thisTerminus.forEach(ancillary -> {
             if(!(ancillary instanceof BlockJack bj)) return;
@@ -188,7 +185,12 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
 
     @Override
     default ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.NONE;
+        return ComponentHierarchy.STRANGER;
+    }
+
+    @Override
+    default int indexOfChild(GridConstruct child) {
+        return child == getComponent() ? 0 : -1;
     }
 
     @Override

@@ -10,12 +10,12 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
@@ -25,6 +25,7 @@ import com.quattage.mechano.foundation.numeric.VectorOperations;
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -134,7 +135,6 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
      */
     public abstract AABB makeAABB(Vector3d basis, float size);
 
-
     public Vector3f getRotatedOffset(Quaternionf rotation) {
         Vector3f centered = new Vector3f(getXO() + 0.5f, getYO() + 0.5f, getZO() + 0.5f);
         return centered.rotate(rotation);
@@ -143,6 +143,10 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     public Vector3d getRealPosition(Vector3d basePos, Quaternionf baseRot, Vector3d workingVector) {
         Vector3f off = getRotatedOffset(baseRot);
         return basePos.add(off, workingVector);
+    }
+
+    public Vector3d getRealPosition() {
+        return getProviderSource().getPositionOf(this);
     }
 
     public boolean isVisible() { 
@@ -267,7 +271,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     }
 
     @Override
-    public ComponentTracker getTrackerScope() {
+    public GridComponentTracker getTrackerScope() {
         assertAttached();
         return source.getTrackerScope();
     }
@@ -281,6 +285,11 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     public @Nullable Griddable<?> getProviderSource() {
         assertAttached();
         return source;
+    }
+
+    @Override
+    public BlockPos getBlockPos(@Nullable LevelReader world) {
+        return source.getBlockPos(world);
     }
 
     @Override
@@ -307,6 +316,11 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
         isVisible = false;
     }
 
+    @Override
+    public boolean hasBeenDisposed() {
+        return componentID.endsWith("(disposed)");
+    }
+
     @Override 
     public boolean hasAncillaries() { 
         return true; 
@@ -319,7 +333,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
 
     @Override
     public ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.ANCILLARY_NODE;
+        return ComponentHierarchy.ANCILLARY;
     }
 
     private void assertAttached() { 
@@ -340,7 +354,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     }
 
     @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
         return this;
     }
 }

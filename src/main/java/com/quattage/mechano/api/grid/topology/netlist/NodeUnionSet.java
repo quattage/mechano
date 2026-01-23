@@ -11,9 +11,9 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -35,7 +35,7 @@ import net.minecraft.core.BlockPos;
 public class NodeUnionSet {
 
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> transitiveTree;  // union-find transitive access (semi-cyclic)
-    protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> adjacencyTree;    // undirected graph (undirected, non-cyclic)
+    protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> adjacencyTree;    // adjacency matrix (undirected, non-cyclic)
     protected Object2ObjectOpenHashMap<Node, Node> relations;                           // union-find discoverability (cyclic)
 
     public NodeUnionSet() {
@@ -94,6 +94,13 @@ public class NodeUnionSet {
         adjacentJoin(b, a);
     }
 
+    private void disjoin(Node a, Node b) {
+        Set<Node> branchA = adjacencyTree.get(a);
+        if(branchA != null) branchA.remove(b);
+        Set<Node> branchB = adjacencyTree.get(b);
+        if(branchB != null) branchB.remove(a);
+    }
+
     /**
      * A somewhat expensive method that manually
      * compresses all transitive paths in this NodeUnionSet.
@@ -137,6 +144,54 @@ public class NodeUnionSet {
     }
 
     /**
+     * An optimized removal method that allows the removal of singular nodes as well as 
+     * the ability to sever connections between node pairs.
+     * @param nodes A collection of nodes to remove.
+     * @param nodes A collection of {@link NodePair} objects representing unions to remove.
+     * @see #removeAll
+     */
+    public void massRemove(@Nullable Collection<Node> nodesToRemove, @Nullable Collection<NodePair> unionsToRemove) {
+        final Map<Node, Pair<Node, Node[]>> affected = new HashMap<>();
+        if(nodesToRemove != null) {
+            for(Node removed : nodesToRemove) {
+                if(removed == null) continue;
+                Node root = find(removed);
+                if(root == null) continue;
+                affected.put(root, Pair.of(removed, null));
+            }
+        }
+        if(unionsToRemove != null) {
+            for(NodePair pair : unionsToRemove) {
+                Node root = find(pair.a);
+                if(root == null) continue;
+                affected.put(root, Pair.of(root, null));
+            }
+        }
+        for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet()) {
+            Node removed = entry.getValue().getFirst();
+            entry.setValue(Pair.of(removed, NodalCluster.getConstituents(this, entry.getKey())));
+        }
+        if(nodesToRemove != null) for(Node toRemove : nodesToRemove) removeNode(toRemove);
+        if(unionsToRemove != null) for(NodePair pair : unionsToRemove) {
+            disjoin(pair.a, pair.b);
+            if(!hasConnections(pair.a)) remove(pair.a);
+            if(!hasConnections(pair.b)) remove(pair.b);
+        }
+        for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet())
+            NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofDiscontinuities(this, entry.getValue().getSecond()));
+        for(Node rerooted : affected.keySet()) {
+            Node cyclicRoot = relations.get(rerooted);
+            if(cyclicRoot == null || rerooted != cyclicRoot)
+                transitiveTree.remove(rerooted);
+            if(!hasConnections(rerooted)) {
+                transitiveTree.remove(rerooted);
+                adjacencyTree.remove(rerooted);
+            }
+        }
+    }
+
+
+    /**
      * Removes multiple nodes from this NodeUnionSet at once.
      * The affected branches are collected and processed 
      * intelligently to save on compute time. This method
@@ -173,7 +228,7 @@ public class NodeUnionSet {
     public void removeAll(Collection<Node> nodes, boolean patch) {
         Objects.requireNonNull(nodes);
         if(nodes.isEmpty()) return;
-        Map<Node, Pair<Node, Node[]>> affected = new HashMap<>();
+        final Map<Node, Pair<Node, Node[]>> affected = new HashMap<>();
         for(Node removed : nodes) {
             if(removed == null) continue;
             Node root = find(removed);
@@ -186,7 +241,7 @@ public class NodeUnionSet {
             NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofDiscontinuities(this, entry.getValue().getSecond()));
         for(Node rerooted : affected.keySet()) {
             Node cyclicRoot = relations.get(rerooted);
-            if(cyclicRoot != null && rerooted != cyclicRoot)
+            if(cyclicRoot == null || rerooted != cyclicRoot)
                 transitiveTree.remove(rerooted);
         }
     }
@@ -300,6 +355,13 @@ public class NodeUnionSet {
         return true;
     }
 
+    public boolean addAll(Collection<Node> nodes) {
+        boolean changed = false;
+        for(Node node : nodes)
+            if(add(node)) changed = true;
+        return changed;
+    }
+
     /**
      * Gets a node by its {@link CircuitComponent#getComponentID component id}.
      * Requires iteration over this NodeUnionSet's entire transitive tree.
@@ -385,7 +447,7 @@ public class NodeUnionSet {
             out += "-- " + summarizeNode(branch.getKey(), showRelative);
             Set<Node> branchTopo = branch.getValue();
             if(branchTopo == null || branchTopo.isEmpty()) {
-                out += "   [Stub]";
+                out += "   [Stub]\n";
                 continue;
             }
             for(Node leaf : branchTopo)
@@ -393,6 +455,7 @@ public class NodeUnionSet {
         }
         return out;
     }
+
 
     private String summarizeNode(Node node, boolean showRelative) {
         String out = "";
@@ -408,26 +471,26 @@ public class NodeUnionSet {
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
-            out += "\n\t▸" + summarizeNodeFull(root);
-            src = GridReferent.getProviderSourceFor(grid.getWorld(), root);
+            out += "\n  ▸" + summarizeNodeFull(root);
+            src = GridComponentTracker.getSource(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
-                out += "\n\t\tOwned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
-            } else out += "\n\t\tOwned by anonymous source";
-            out += "\n\t\tParented to: " + summarizeNodeFull(relations.get(root));
+                out += "\n    Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
+            } else out += "\n    Owned by anonymous source";
+            out += "\n    Parented to: " + summarizeNodeFull(relations.get(root));
             if(contents == null || contents.isEmpty()) {
-                out += "\n\t!! Stub !!";
+                out += "\n  !! Stub !!";
                 continue;
             }
-            out += "\n\t\t" + contents.size() + " children:";
+            out += "\n    " + contents.size() + " children:";
             for(Node child : contents) {
-                out += "\n\t\t\t" + summarizeNodeFull(child);
-                src = GridReferent.getProviderSourceFor(grid.getWorld(), root);
+                out += "\n      " + summarizeNodeFull(child);
+                src = GridComponentTracker.getSource(grid.getWorld(), child);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
-                    out += "\n\t\t\t\tOwned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
-                } else out += "\n\t\t\t\tOwned by anonymous source";
-                out += "\n\t\t\t\tParented to: " + summarizeNodeFull(relations.get(child));
+                    out += "\n        Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
+                } else out += "\n        Owned by anonymous source";
+                out += "\n        Parented to: " + summarizeNodeFull(relations.get(child));
             }
         }
         return out;
@@ -435,5 +498,20 @@ public class NodeUnionSet {
 
     private String summarizeNodeFull(@Nullable Node node) {
         return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + node.getNodalIndex() + ",  #" + node.hashCode() + ")";
+    }
+
+    public static record NodePair(Node a, Node b) {
+
+        @Override
+        public final boolean equals(Object obj) {
+            if(this == obj) return true;
+            if(!(obj instanceof NodePair that)) return false;
+            return (this.a == that.a && this.b == that.b) || (this.a == that.b && this.b == that.a);
+        }
+
+        @Override
+        public final int hashCode() {
+            return a.hashCode() & b.hashCode();
+        }
     }
 }

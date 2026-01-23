@@ -70,10 +70,4 @@ public class WireJack<T extends ComponentUUID<T>> extends AncillaryNode<T> imple
         // TODO FIX
         makeOffsetVector().rotate(dir.getLocalUp().getRotation(), offset);
     }
-
-    @Override
-    @SuppressWarnings("hiding")
-    public <T extends ComponentUUID<T>> T bindUUID(T id) {
-        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
-    }
 }

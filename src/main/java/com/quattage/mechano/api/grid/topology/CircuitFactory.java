@@ -6,12 +6,14 @@ import java.util.Set;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
+import com.quattage.mechano.api.grid.component.DiscreteComponent.NodeStub;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Node.JointNode;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 import com.quattage.mechano.api.grid.topology.vertex.WireJack;
+import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;
 import com.quattage.mechano.foundation.numeric.EsoMath;
@@ -20,7 +22,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.Direction;
 
-public class CircuitFactory {
+public class CircuitFactory implements Disposable {
 
     private ObjectArrayList<DiscreteComponent> components = new ObjectArrayList<>();
     private Set<Node> nodes = new ObjectOpenHashSet<>();
@@ -37,24 +39,9 @@ public class CircuitFactory {
         return new BlockJackBuilder(id);
     }
 
-    public CircuitFactory solder(Terminal a, Terminal b) {
-        assertNotConsumed();
-        Node primary = Node.choosePrimary(a.getAttachedNode(), b.getAttachedNode());
-        Node secondary = primary == a.getAttachedNode() ? b.getAttachedNode() : a.getAttachedNode();
-        if(primary == null) {
-            primary = newNode();
-            a.setConnectedTo(primary);
-            b.setConnectedTo(primary);
-        }
-        a.setConnectedTo(primary);
-        b.setConnectedTo(secondary);
-        
-        return this;
-    }
-
     public CircuitFactory solder(Node trace, Terminal pin) { return solder(pin, trace); }
     public CircuitFactory solder(Terminal pin, Node trace) {
-        pin.setConnectedTo(trace);
+        pin.updateOwnership(trace);
         trace.localAttach(pin);
         return this;
     }
@@ -107,6 +94,13 @@ public class CircuitFactory {
         return j;
     }
 
+    public Node newNode(String name) {
+        assertNotConsumed();
+        Node j = new JointNode(null, name);
+        supply(j);
+        return j;
+    }
+
     /**
      * Consumes this CircuitFactory, turning it into a new Circuit instance.
      * Places the CircuitFactory in a state where it cannot be reused.
@@ -118,6 +112,7 @@ public class CircuitFactory {
             throw new CircuitInstantiationException("This factory is empty!");
         Circuit circuit = new Circuit();
         consumeComponents(source, circuit);
+        dispose();
         return circuit;
     }
 
@@ -129,8 +124,25 @@ public class CircuitFactory {
             if(component instanceof GridConstruct gc)
                 gc.updateOwnership(source, circuit);
         }
+        circuit.components.ensureCapacity(circuit.components.size() + this.nodes.size());
+        for(Node node : nodes) {
+            NodeStub ns = new NodeStub(node);
+            circuit.components.add(ns);
+            ns.updateOwnership(source, circuit);
+        }
+        circuit.owner = source;
         circuit.components.trim();
+    }
+
+    @Override
+    public void dispose() {
         this.components = null;
+        this.nodes = null;
+    }
+
+    @Override
+    public boolean hasBeenDisposed() {
+        return this.components == null;
     }
 
     private void assertNotConsumed() {

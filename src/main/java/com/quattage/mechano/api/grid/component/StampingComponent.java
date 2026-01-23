@@ -5,13 +5,11 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
-import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
@@ -27,22 +25,6 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
         super(componentID);
         this.terminals = defineTerminals();
         assertHasTerminals();
-    }
-
-    public static void asStamperDo(@Nullable Grid grid, CircuitComponent component, Consumer<StampingComponent> cons) {
-        switch(component) {
-            case StampingComponent stamper -> cons.accept(stamper);
-            case Node n -> n.forEachTerminal(terminal -> { 
-                if(terminal.getParentConstruct() instanceof StampingComponent stamper)
-                    cons.accept(stamper);
-            });
-            case Circuit circuit -> circuit.forEachComponent(comp -> {
-                if(comp instanceof StampingComponent stamper)
-                    cons.accept(stamper);
-            });
-            case null, default -> { if(grid != null) grid.warn("Skipped semantic execution for " + component 
-                + " - This component couldn't be paired down to a stamper!"); }
-        }
     }
 
     public StampingComponent(String componentID, Terminal[] terminals) {
@@ -68,7 +50,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
     protected abstract Terminal[] defineTerminals();
 
     @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
         return terminals[binding.get()];
     }
 
@@ -95,6 +77,18 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
             Terminal t = terminals[x];
             t.updateOwnership(source, this);
         }
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        forEachTerminal(Terminal::dispose);
+        terminals = null;
+    }
+
+    @Override
+    public boolean hasBeenDisposed() {
+        return terminals == null;
     }
 
     @Override
@@ -138,14 +132,16 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
      * component does not contain said terminal.
      * @return The anode terminal, or null if one doesn't exist here.
      */
-    @Nullable public Terminal anode() { return null; }
+    @Nullable public Terminal anode() { return pinA(); }
+
     /**
      * A helper method specific to some functional components to quickly
      * get a terminal of a certain type, or <code>null</code> if this particular
      * component does not contain said terminal.
      * @return The cathode terminal, or null if one doesn't exist here.
      */
-    @Nullable public Terminal cathode() { return null; }
+    @Nullable public Terminal cathode() { return pinB(); }
+
     /**
      * A helper method specific to some functional components to quickly
      * get a terminal of a certain type, or <code>null</code> if this particular

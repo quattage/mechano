@@ -10,9 +10,9 @@ import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
@@ -107,8 +107,8 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
-        ComponentUUID<?> sourceID = grid.getAddressFor(source, initialTarget);
-        CircuitComponent component = ComponentTracker.find(grid, sourceID);
+        ComponentUUID<?> sourceID = GridComponentTracker.getAddress(source, initialTarget);
+        CircuitComponent component = GridComponentTracker.findOrThrow(grid, sourceID);
         if(component == null || (component != initialTarget))
             return InteractionResultHolder.fail(stack);
         stack.set(MechanoData.UUID, sourceID);
@@ -123,7 +123,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
         if(subsequentTarget == null) 
             return InteractionResultHolder.fail(stack);
         ComponentUUID<?> initialTargetID = stack.get(MechanoData.UUID);
-        AncillaryNode<?> initialTarget = (AncillaryNode<?>) ComponentTracker.find(grid, initialTargetID);
+        AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, initialTargetID);
         Griddable<?> initialSource = initialTarget.getProviderSource();
         if(initialSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
@@ -134,10 +134,10 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
         }
-        if(!grid.isReachable(initialSource) || !grid.isReachable(subsequentSource)) 
+        if(!GridComponentTracker.isReachable(grid.getWorld(), initialSource) || !GridComponentTracker.isReachable(grid.getWorld(), subsequentSource)) 
             return InteractionResultHolder.fail(stack);
-        ComponentUUID<?> subsequentTargetID = grid.getAddressFor(subsequentSource, subsequentTarget);
-        GridAction request = grid.initiateTask(GridAction.TASK_UNION_NODES)
+        ComponentUUID<?> subsequentTargetID = GridComponentTracker.getAddress(subsequentSource, subsequentTarget);
+        GridAction request = grid.initiateTask(GridAction.TASK_LINK_CREATE)
             .from(initialSource, subsequentSource)
             .withArguments(initialTargetID, subsequentTargetID, getTransmitter(), player.getUUID())
             .requestRun();
@@ -194,7 +194,6 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
         return stack.has(MechanoData.UUID);
     }
 
-
     // /**
     //  * A helper method for setting the durability of this spool
     //  * based on the proportional length of the currently awaiting catenary
@@ -216,11 +215,11 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
      * Minecraft's default "Durability: xx/xx" tooltip is added
      * to all damageable items automatically. If this method
      * returns <code>true</code>, that behaviour is skipped
-     * by the {@link MechanoClientEvents#onTooltipGather tooltip overwriter.}
-     * This method is designed to be used in conjunction with
-     * an override to {@link #appendHoverText} to replace the 
-     * durability indicator with one that makes more sense
-     * for spools (by clarifying the unit as a meter)
+     * by the {@link MechanoClientEvents#onTooltipGather tooltip event.}
+     * Suppressing the tooltip is intended to be used in conjuction with
+     * an override to {@link #appendHoverText} in order to replace the 
+     * durability hint with one that makes more sense for spools 
+     * by converting the durability value to meters.
      */
     public boolean hidesDefaultTooltip() { return true; }
 

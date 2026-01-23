@@ -45,6 +45,8 @@ import net.neoforged.neoforge.client.event.AddSectionGeometryEvent.SectionRender
  */
 public class CatenaryMeshBuffer implements WorldlyObject {
 
+    // TODO hardware acceleration/flywheel
+
     public static final CatenaryMeshBuffer REUSABLE = CatenaryMeshBuffer.asEmpty();
     private static final float RAD = 0.707107f;
 

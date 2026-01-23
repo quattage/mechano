@@ -10,12 +10,11 @@ import org.ejml.data.DMatrixRMaj;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
@@ -63,9 +62,6 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
     void setNodalIndex(int nodalIndex);
 
     List<AncillaryNode<?>> getAncillaries();
-
-    @Override
-    void dispose();
 
     default boolean hasAncillaries() {
         return getAncillaries() != null && getAncillaries().size() > 0;
@@ -119,12 +115,12 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
     @Override
     default int getMergePriority() {
         GridConstruct superparent = getSuperparent();
-        return superparent.getHierarchyType().getMergePriority();
+        return superparent.getMergePriority();
     }
 
     @Override
     default int indexOfChild(GridConstruct child) {
-        if(child.getHierarchyType() == ComponentHierarchy.ANCILLARY_NODE && hasAncillaries())
+        if(child.getHierarchyType() == ComponentHierarchy.ANCILLARY && hasAncillaries())
             return getAncillaries().indexOf(child);
         if(child.getHierarchyType() == ComponentHierarchy.TERMINAL && hasTerminals())
             return indexOfTerminal((Terminal) child);
@@ -133,28 +129,39 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
 
     public static class JointNode implements Node {
 
+        private String componentID;
         private GridConstruct parent;
         protected @Nullable ObjectArrayList<Terminal> terminals;
-        protected @Nullable List<AncillaryNode<?>> ancillaries = null;
+        protected @Nullable List<AncillaryNode<?>> ancillaries;
         private int nodalIndex;
 
         public JointNode(GridConstruct parent) {
             this.parent = parent;
+            this.componentID = "node";
             this.nodalIndex = -1;
         }
+
+        public JointNode(GridConstruct parent, String componentID) {
+            this.parent = parent;
+            this.componentID = componentID;
+            this.nodalIndex = -1;
+        }
+
 
         @Override
         public boolean localAttach(Terminal pin) {
             Objects.requireNonNull(pin);
             if(this == pin.getAttachedNode()) 
                 return false;
-            pin.setConnectedTo(this);
+            pin.updateOwnership(this);
+            if(terminals == null) terminals = new ObjectArrayList<>();
             terminals.add(pin);
             return true;
         }
 
         @Override
 		public boolean localAttach(Griddable<?> source, AncillaryNode<?> jack) {
+            Objects.requireNonNull(jack);
 			if(ancillaries == null)
                 ancillaries = new ArrayList<>();
             ancillaries.add(jack);
@@ -165,27 +172,29 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         @Override
         public boolean localDetach(Terminal pin) {
             Objects.requireNonNull(pin);
+            if(terminals == null) return false;
             if(terminals.remove(pin)) {  
-                pin.setConnectedTo(null);
+                pin.updateOwnership(null);
                 return true;
             }
+            if(terminals.isEmpty()) terminals = null;
             return false;
         }
 
         @Override
 		public boolean localDetach(Griddable<?> source, AncillaryNode<?> jack) {
-			boolean removed = ancillaries.remove(jack);
+            Objects.requireNonNull(jack);
+            if(ancillaries == null) return false;
+            if(ancillaries.remove(jack)) {  
+                jack.updateOwnership(null);
+                return true;
+            }
             if(ancillaries.isEmpty()) ancillaries = null;
-            if(removed) jack.dispose();
-            return removed;
+            return false;
 		}
 
         @Override
         public int getNodalIndex() {
-            if(nodalIndex < 0 && !isGrounded()) {
-                Mechano.LOGGER.warn("nodal index for " + this + " returned invalid value (" 
-                    + nodalIndex + ") - Perhaps the matrix hasn't been initialized?");
-            }
             return nodalIndex;
         }
 
@@ -202,6 +211,7 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
 
         @Override
         public Terminal[] getTerminals() {
+            if(terminals == null) return new Terminal[0];
             return terminals.toArray(new Terminal[terminals.size()]);
         }
 
@@ -214,11 +224,17 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         public void dispose() {
             this.parent = null;
             this.terminals = null;
+            this.componentID += " (disposed)";
+        }
+
+        @Override
+        public boolean hasBeenDisposed() {
+            return parent == null && terminals == null;
         }
 
         @Override
         public String getComponentID() {
-            return "JointNode";
+            return componentID;
         }
 
         @Override
@@ -236,8 +252,8 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         }
 
         @Override
-        public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
-            if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY_NODE) {
+        public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
+            if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY) {
                 if(!hasAncillaries()) return null;
                 return ancillaries.get(binding.get());
             }
@@ -256,7 +272,8 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
             Objects.requireNonNull(pin);
             if(this == pin.getAttachedNode()) 
                 return false;
-            pin.setConnectedTo(this);
+            pin.updateOwnership(this);
+            if(terminals == null) terminals = new ObjectArrayList<>();
             terminals.add(pin);
             return true;
         }
@@ -269,10 +286,12 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         @Override
         public boolean localDetach(Terminal pin) {
             Objects.requireNonNull(pin);
+            if(terminals == null) return false;
             if(terminals.remove(pin)) {  
-                pin.setConnectedTo(null);
+                pin.updateOwnership(null);
                 return true;
             }
+            if(terminals.isEmpty()) terminals = null;
             return false;
         }
 
@@ -298,6 +317,7 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
 
         @Override
         public Terminal[] getTerminals() {
+            if(terminals == null) return new Terminal[0];
             return terminals.toArray(new Terminal[terminals.size()]);
         }
 
@@ -308,15 +328,18 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
 
         @Override
         public ComponentHierarchy getHierarchyType() {
-            return ComponentHierarchy.NONE;
+            return ComponentHierarchy.STRANGER;
         }
 
         @Override
         public void dispose() {}
 
         @Override
+        public boolean hasBeenDisposed() { return false; }
+
+        @Override
         public String getComponentID() {
-            return "GroundedNode";
+            return "ground";
         }
 
         @Override
@@ -325,7 +348,7 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         }
 
         @Override
-        public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+        public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
             return terminals.get(binding.get());
         }
     }

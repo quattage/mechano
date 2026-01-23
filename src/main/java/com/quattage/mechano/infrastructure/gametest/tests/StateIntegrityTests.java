@@ -1,21 +1,17 @@
-package com.quattage.mechano.infrastructure.gametest;
+package com.quattage.mechano.infrastructure.gametest.tests;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
+import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.MechanoTestHolder;
 
 import net.minecraft.gametest.framework.GameTest;
-import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Rotation;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
-@GameTestHolder(Mechano.ID)
-@PrefixGameTestTemplate(false)
+@MechanoTestHolder
 public class StateIntegrityTests {
 
-
-    @GameTest(template = "empty", batch="stateIntegrityTests")
-    public static void checkOrientations(GameTestHelper test) {
+    @GameTest
+    public static void checkOrientations(MechanoGameTestHelper test) {
         String result = "";
 
         result += StateIntegrityTests.test(CombinedOrientation.NORTH_UP, Rotation.CLOCKWISE_90, CombinedOrientation.EAST_UP);

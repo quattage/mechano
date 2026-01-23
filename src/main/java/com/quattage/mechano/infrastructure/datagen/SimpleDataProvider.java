@@ -55,7 +55,7 @@ public abstract class SimpleDataProvider implements DataProvider {
     public abstract void generate();
 
     protected final void createDirectory(Path dir) {
-        try { Files.createDirectories(dir); } catch(IOException e) {
+        try { Files.createDirectories(dir); } catch (IOException e) {
             Mechano.LOGGER.error("Failure while creating hitbox directory!");
             e.printStackTrace();
         }
@@ -72,7 +72,7 @@ public abstract class SimpleDataProvider implements DataProvider {
                 .filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".json"))
                 .collect(Collectors.toList());
-        } catch(IOException e) {
+        } catch (IOException e) {
             Mechano.LOGGER.error("Failure while traversing hitbox directory!");
             e.printStackTrace();
         }

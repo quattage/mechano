@@ -196,7 +196,7 @@ public class VoxelShapeBuilder {
 				read(3, (ArrayList<Object>)(s.getValue()));
 				this.stage = Stage.COMPLETE;
 			} else if(this.stage == Stage.COMPLETE) throw new IllegalStateException(
-				"This Temporary Shape has already been assembled! Additional calls to accept() aren't allowed!"
+				"This Temporary Shape has already been assembled! Additional calls to collect() aren't allowed!"
 			);
 		}
 
@@ -209,7 +209,7 @@ public class VoxelShapeBuilder {
 				this.shape[3] = x; this.shape[4] = y; this.shape[5] = z;
 				this.stage = Stage.COMPLETE;
 			} else if(this.stage == Stage.COMPLETE) throw new IllegalStateException(
-				"This TemporaryShape has already been assembled! Additional calls to accept() aren't allowed!"
+				"This TemporaryShape has already been assembled! Additional calls to collect() aren't allowed!"
 			);
 		}
 
@@ -220,13 +220,13 @@ public class VoxelShapeBuilder {
 				if(o instanceof String s) {
 					try {
 						value = Double.valueOf(s);
-					} catch(NumberFormatException e) {
+					} catch (NumberFormatException e) {
 						throw new MalformedJsonException("Token '" + value + "' is not a numerical value!");
 					}
 				} else {
 					try{
 						value = (double)o;
-					} catch(ClassCastException e) {
+					} catch (ClassCastException e) {
 						throw new MalformedJsonException("Token '" + value + "' is not a numerical value!");
 					}
 				}
@@ -254,7 +254,13 @@ public class VoxelShapeBuilder {
 			this.shape = null;
 		}
 
-		public void assertNotDisposed() {
+		@Override
+		public boolean hasBeenDisposed() {
+			return this.stage == null && this.shape == null;
+		}
+
+		@Override
+        public void assertNotDisposed() {
 			if(this.stage == null || this.shape == null)
 				throw new IllegalStateException("Couldn't perform an operation on a TemporaryShape that has already been destroyed!");
 		}

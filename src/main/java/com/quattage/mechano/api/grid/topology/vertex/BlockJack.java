@@ -8,7 +8,6 @@ import org.joml.Vector3d;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -155,10 +154,5 @@ public class BlockJack extends AncillaryNode<VoxelUUID> implements OrientationUp
     @Override
     public void updateOrientation(CombinedOrientation dir) {
         this.dir.updateOrientation(dir);
-    }
-
-    @Override
-    public <T extends ComponentUUID<T>> T bindUUID(T id) {
-        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
     }
 }

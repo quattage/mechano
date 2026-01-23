@@ -9,8 +9,9 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.foundation.numeric.EsoMath;
 
@@ -19,45 +20,56 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ChunkMap.TrackedEntity;
-import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
- * A unique identifier which points to a {@link CircuitComponent} object.
- * Serialized using the {@link ComponentTracker#CODEC tracker codec}
+ * An instance of this class can be used to locate a {@link CircuitComponent}
+ * object from anywhere in the world, as long as said CircuitComponent
+ * belongs to an identifiable {@link Griddable} instance currently loaded
+ * by the level. Use the {@link GridComponentTracker} to instantiate, serialize 
+ * and use ComponentUUIDs.
  */
 public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridReferent<T> {
 
-    protected ComponentBinding[] bindings;
+    protected UUIDComposite[] bindings;
 
     public ComponentUUID() {
-        this.bindings = new ComponentBinding[0];
+        this.bindings = new UUIDComposite[0];
     }
 
     public ComponentUUID(CompoundTag tag) {
         short bndc = tag.getByte("bndc");
-        bindings = new ComponentBinding[bndc];
+        bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(x, tag);
+            bindings[x] = new UUIDComposite(x, tag);
     }
 
     public ComponentUUID(ByteBuf buffer) {
         short bndc = buffer.readByte();
-        bindings = new ComponentBinding[bndc];
+        bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(x, buffer);
+            bindings[x] = new UUIDComposite(x, buffer);
     }
 
     public ComponentUUID(Dynamic<?> dyn) {
         short bndc = dyn.get("bndc").asByte((byte)0);
-        bindings = new ComponentBinding[bndc];
+        bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
-            bindings[x] = new ComponentBinding(x, dyn);
+            bindings[x] = new UUIDComposite(x, dyn);
+    }
+
+    public ComponentUUID(RandomSource random) {
+        short bndc = EsoMath.toShortClamped(EsoMath.randomInt(random, 0, 15));
+        bindings = new UUIDComposite[bndc];
+        for(int x = 0; x < bindings.length; x++)
+            bindings[x] = new UUIDComposite(random);
     }
 
     public abstract T copy();
@@ -83,17 +95,22 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
     @SuppressWarnings("unchecked")
     public T withBinding(int value, ComponentHierarchy target) {
         if(bindings.length >= Byte.MAX_VALUE) throw new IllegalStateException("Couldn't apply binding to " + this + " - This UUID is full!");
-        ComponentBinding[] copy = new ComponentBinding[bindings.length + 1];
-        System.arraycopy(bindings, 0, copy, 0, bindings.length);
-        copy[bindings.length] = new ComponentBinding(value, target);
+        UUIDComposite[] copy = new UUIDComposite[bindings.length + 1];
+        System.arraycopy(bindings, 0, copy, 1, bindings.length);
+        copy[0] = new UUIDComposite(value, target);
         this.bindings = copy;
         return (T) this;
     }
 
-    public ComponentBinding getBinding(int index) {
-        if(index <= 0 || index >= bindings.length) return ComponentBinding.EMPTY;
-        ComponentBinding binding = bindings[index];
-        return binding == null ? ComponentBinding.EMPTY : binding;
+    public ComponentHierarchy getTargetType() {
+        if(!hasBindings()) return ComponentHierarchy.STRANGER;
+        return bindings[bindings.length - 1].getHierarchyType();
+    }
+
+    public UUIDComposite getBinding(int index) {
+        if(index < 0 || index >= bindings.length) return UUIDComposite.EMPTY;
+        UUIDComposite binding = bindings[index];
+        return binding == null ? UUIDComposite.EMPTY : binding;
     }
 
     public int getBindingCount() {
@@ -127,7 +144,7 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         String out = "[";
         for(int x = 0; x < bindings.length; x++)
             out += bindings[x] + ", ";
-        return out.substring(0, out.length() - 1) + "]";
+        return out.substring(0, out.length() - 2) + "]";
     }
 
     @Override
@@ -167,10 +184,19 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             this.pos = new BlockPos(dyn.get("x").asInt(0), dyn.get("y").asInt(0), dyn.get("z").asInt(0));
         }
 
+        public VoxelUUID(RandomSource random) {
+            super(random);
+            this.pos = new BlockPos(
+                EsoMath.randomInt(random, -512, 512), 
+                EsoMath.randomInt(random, -64, 64), 
+                EsoMath.randomInt(random, -512, 512)
+            );
+        }
+
         @Override
         public VoxelUUID copy() {
             VoxelUUID out = new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ()));
-            out.bindings = new ComponentBinding[this.bindings.length];
+            out.bindings = new UUIDComposite[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
                 out.bindings[x] = this.bindings[x].copy();
             return out;
@@ -185,14 +211,12 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
 
         @Override
         public boolean isBeingTrackedBy(ServerPlayer sp) {
-            Objects.requireNonNull(sp);
-            ChunkTrackingView view = sp.getChunkTrackingView();
-            return view != null && view.contains(pos.getX(), pos.getZ());
+            return sp.getChunkTrackingView().contains(new ChunkPos(this.pos));
         }
 
         @Override
-        public ComponentTracker getTrackerScope() {
-            return ComponentTracker.VOXEL;
+        public GridComponentTracker getTrackerScope() {
+            return GridComponentTracker.VOXEL;
         }
 
         @Override
@@ -232,6 +256,11 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         public int hashCode() {
             return Objects.hash(pos, Arrays.hashCode(bindings));
         }
+
+        @Override
+        public BlockPos getBlockPos(@Nullable LevelReader world) {
+            return pos;
+        }
     }
 
     /**
@@ -269,10 +298,15 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             this.uuid = new UUID(dyn.get("um").asLong(0), dyn.get("ul").asLong(0));
         }
 
+        public EntityUUID(RandomSource random) {
+            super(random);
+            this.uuid = UUID.randomUUID();
+        }
+
         @Override
         public EntityUUID copy() {
             EntityUUID out = new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
-            out.bindings = new ComponentBinding[this.bindings.length];
+            out.bindings = new UUIDComposite[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
                 out.bindings[x] = this.bindings[x].copy();
             return out;
@@ -300,8 +334,8 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         }
 
         @Override
-        public ComponentTracker getTrackerScope() {
-            return ComponentTracker.ENTITY;
+        public GridComponentTracker getTrackerScope() {
+            return GridComponentTracker.ENTITY;
         }
 
         @Override
@@ -342,33 +376,52 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         public int hashCode() {
             return Objects.hash(uuid, Arrays.hashCode(bindings));
         }
+
+        @Override
+        public BlockPos getBlockPos(@Nullable LevelReader world) {
+            Griddable<?> source = getProviderSource(world);
+            return source.getBlockPos(world);
+        }
     }
 
-    public static class ComponentBinding {
+    /**
+     * A single sub-coordinate with that points towards
+     * a specific {@link CircuitComponent} of a speciifc
+     * {@link ComponentHierarchy hierarchical type} at an
+     * arbitrary index. A series of bindings are used to
+     * traverse the hierarchy structure for a specific
+     * in-world circuit accessible via the {@link Griddable}.
+     */
+    public static class UUIDComposite {
 
         private final short value;
         private final ComponentHierarchy type;
 
-        public static final ComponentBinding EMPTY = new ComponentBinding(-1, ComponentHierarchy.NONE);
+        public static final UUIDComposite EMPTY = new UUIDComposite(-1, ComponentHierarchy.STRANGER);
 
-        private ComponentBinding(int value, ComponentHierarchy target) {
+        private UUIDComposite(int value, ComponentHierarchy target) {
             this.value = EsoMath.toShortClamped(value);
             this.type = target;
         }
 
-        private ComponentBinding(int idx, CompoundTag tag) {
+        private UUIDComposite(int idx, CompoundTag tag) {
             this.value = tag.getShort("cbv" + idx);
             this.type = ComponentHierarchy.values()[tag.getByte("cbt" + idx)];
         }
 
-        private ComponentBinding(int idx, ByteBuf buffer) {
+        private UUIDComposite(int idx, ByteBuf buffer) {
             this.value = buffer.readShort();
             this.type = ComponentHierarchy.values()[buffer.readByte()];
         }
 
-        private ComponentBinding(int idx, Dynamic<?> dyn) {
+        private UUIDComposite(int idx, Dynamic<?> dyn) {
             this.value = dyn.get("cbv" + idx).asShort((short) 0);
             this.type = ComponentHierarchy.values()[dyn.get("cbt" + idx).asByte((byte)(ComponentHierarchy.values().length - 1))];
+        }
+
+        private UUIDComposite(RandomSource random) {
+            this.value = EsoMath.toShortClamped(EsoMath.randomInt(random, Short.MIN_VALUE, Short.MAX_VALUE));
+            this.type = ComponentHierarchy.values()[EsoMath.randomInt(random, 0, ComponentHierarchy.values().length - 1)];
         }
 
         protected void write(int idx, CompoundTag tag) {
@@ -386,22 +439,22 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
             builder.add("cbt" + idx, (byte) type.ordinal(), Codec.BYTE);
         }
 
-        public ComponentBinding copy() {
-            return new ComponentBinding(this.value, this.type);
+        public UUIDComposite copy() {
+            return new UUIDComposite(this.value, this.type);
         }
 
         @Override
         public boolean equals(Object obj) {
-            if(!(obj instanceof ComponentBinding that)) return false;
+            if(!(obj instanceof UUIDComposite that)) return false;
             return this.value == that.value;
         }
 
-        public boolean isValid() { return value >= 0 && type != null && type != ComponentHierarchy.NONE; }
+        public boolean isValid() { return value >= 0 && type != null && type != ComponentHierarchy.STRANGER; }
         
         public int get() { return (int) value; }
         public ComponentHierarchy getHierarchyType() { return type; }
 
         @Override public int hashCode() { return value; }
-        @Override public String toString() { return value + ", " + type; }
+        @Override public String toString() { return "(" + type + ": " + value + ")"; }
     }
 }

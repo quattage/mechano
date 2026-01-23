@@ -2,6 +2,7 @@ package com.quattage.mechano.foundation.numeric;
 
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 
 /**
  * my beautiful util class
@@ -93,6 +94,14 @@ public class EsoMath {
             EsoMath.int2shortA(i),
             EsoMath.int2shortB(i)
         };
+    }
+
+    public static int randomInt(RandomSource random) {
+        return EsoMath.randomInt(random, -64, 64);
+    }
+
+    public static int randomInt(RandomSource random, int min, int max) {
+        return random.nextInt((max - min) + 1) + min;
     }
 
     public static short toShortClamped(int x) {

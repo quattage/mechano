@@ -7,7 +7,7 @@ import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
@@ -15,18 +15,33 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public interface CircuitComponent {
 
+    String[] RESERVED_KEYWORDS = new String[] {
+        "ground",
+        "node",
+        "empty",
+        "disposed"
+    };
+
     /**
-     * Throws errors if the provided string is null or blank.
+     * Throws errors if the provided string is null, blank, or contains
+     * keywords that shouldn't be used.
      */
     static void assertValidID(String componentID) {
         if(componentID == null || componentID.isBlank())
             throw new IllegalArgumentException("Couldn't instantiate CircuitComponent from null or empty string!");
+        for(int x = 0; x < CircuitComponent.RESERVED_KEYWORDS.length; x++) {
+            String kw = CircuitComponent.RESERVED_KEYWORDS[x];
+            if(componentID.contains(kw)) {
+                throw new IllegalArgumentException("Couldn't initialize CircuitCompoonent with id '" + componentID 
+                    + "' - This CircuitComponent contains the reserved keyword '" + kw + "'!");
+            }
+        }
     }
 
     void forEachNode(Consumer<Node> cons);
 
     default ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.COMPOSING_CIRCUIT;
+        return ComponentHierarchy.CIRCUIT;
     }
 
     /**
@@ -69,8 +84,8 @@ public interface CircuitComponent {
      * Collects all Joints associated with this CircuitComponent that match
      * the given filter. 
      * @param filter
-     * @return A list containing all relevent joints. This list will never be
-     * empty, but will instead return <cogetAllNodesMatching  */
+     * @return A list containing all relevent joints.
+     */
     @Nullable default List<Node> getAllJointsMatching(Predicate<Node> filter) {
         Objects.requireNonNull(filter);
         List<Node> collected = new ObjectArrayList<>();
@@ -78,6 +93,6 @@ public interface CircuitComponent {
             if(!filter.test(joint)) return;
             collected.add(joint);
         });
-        return collected.isEmpty() ? null : collected;
+        return collected;
     }
 }

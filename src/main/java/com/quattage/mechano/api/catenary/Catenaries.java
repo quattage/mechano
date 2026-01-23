@@ -47,8 +47,6 @@ public class Catenaries {
         return RenderPipeline.SINGLETON;
     }
 
-
-
     /**
      * The physical properties of a catenary, such as its elasticity and tensile strength
      */
@@ -300,6 +298,19 @@ public class Catenaries {
         }
     }
 
+    public static class SpanData {
+
+        private final int maximum;
+
+        public SpanData(int maximum) {
+            this.maximum = maximum;
+        }
+
+        public int getMaximumDistance() {
+            return maximum;
+        }
+    }
+
     /**
      * A collection of client-only tools and objects critical to the catenary rendering pipeline
      */
@@ -486,5 +497,6 @@ public class Catenaries {
                 return (float)pix / 32f;
             }
         }
+        
     }
 }

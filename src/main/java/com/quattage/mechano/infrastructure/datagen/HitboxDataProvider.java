@@ -91,7 +91,7 @@ public class HitboxDataProvider extends SimpleDataProvider {
                     generatedClass, hitboxes, name.substring(0, name.lastIndexOf(".")), shape,
                     (List<Map<String, Map<String, Object>>>)(Mechano.GSON.fromJson(reader, Map.class).get("elements"))
                 );
-            } catch(IOException e) {
+            } catch (IOException e) {
                 Mechano.LOGGER.error("Error reading file '" + path + "'");
                 e.printStackTrace();
             }
@@ -102,7 +102,7 @@ public class HitboxDataProvider extends SimpleDataProvider {
         generatedClass.append("\n}");
         try(PrintWriter pw = createWriter()) {
             pw.write(generatedClass.toString());
-        } catch(IOException e) {
+        } catch (IOException e) {
             Mechano.LOGGER.error("Error creating class definition for '" + getGeneratedName() + ".java'");
             e.printStackTrace();
         }
@@ -161,7 +161,7 @@ public class HitboxDataProvider extends SimpleDataProvider {
                     shape.flushInto(accumulator);
                 }
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             Mechano.LOGGER.error("An error occured while extracting usable data from JSON hitbox model '" + filename + "'");
             e.printStackTrace();
             shape.clear();

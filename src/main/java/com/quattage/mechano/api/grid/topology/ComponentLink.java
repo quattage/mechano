@@ -4,17 +4,24 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
+
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * A link that connects two {@link AncillaryNode ancillaries}
@@ -22,8 +29,8 @@ import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
  */
 public class ComponentLink<T extends CircuitComponent> extends AncillaryPair implements CircuitComponent, GridConstruct {
 
+    private @Nullable CatenaryModel<?> catenary;
     private final TransmitterType trns;
-    private boolean isInstantiated = false;
     private CircuitComponent component;
 
     public ComponentLink(TransmitterType trns, AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
@@ -38,38 +45,34 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         this.trns = trns;
     }
 
-    private ComponentLink(boolean isInstantiated, CircuitComponent component, TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
+    private ComponentLink(CircuitComponent component, TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
         this(trns, startID, startNode, endID, endNode);
-        this.isInstantiated = isInstantiated;
         this.component = component;
     }
 
     @Override
     public ComponentLink<T> flippedCopy() {
-        return new ComponentLink<T>(isInstantiated, component, trns, endID, endNode, startID, startNode);
+        return new ComponentLink<T>(component, trns, endID, endNode, startID, startNode);
     }
 
     /**
      * Returns the {@link CircuitComponent} backed by this ComponentLink.
-     * <code>null</code> values returned here indicate either that this ComponentLink's
-     * hasn't been instantiated yet or that the result of a previous call to {@link #apply}
+     * <code>null</code> values returned here indicate either that this ComponentLink's component
+     * hasn't been instantiated yet or that the result of a previous call to {@link #applyTo}
      * returned no component.
      * @return The CircuitComponent controlled and instantiated by this ComponentLink's {@link UnionFactory}
      * @see #apply
      */
-    public CircuitComponent unsafeGet() {
+    public @Nullable CircuitComponent getApplied() {
         return component;
     }
 
-    public @Nullable CircuitComponent get(ServerGrid grid) {
-        if(isInstantiated) return component;
+    public @Nullable CircuitComponent applyTo(ServerGrid grid) {
         this.component = TransmitterType.applyUnion(grid, trns.getFactory(), this, getStartAncillary(), getEndAncillary());
-        isInstantiated = true;
         return this.component;
     }
 
     public void invalidate() {
-        this.isInstantiated = false;
         this.component.reset();
         this.component = null;
     }
@@ -91,22 +94,12 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     @Override
     public void saturate() {
-        if(!isInstantiated) return;
-        if(component == null) {
-            throw new NullPointerException("An operation on " + this 
-                + " required a valid component, but the component was null!");
-        }
-        component.saturate();
+        if(component != null) component.saturate();
     }
 
     @Override
     public void reset() {
-        if(!isInstantiated) return;
-        if(component == null) {
-            throw new NullPointerException("An operation on " + this 
-                + " required a valid component, but the component was null!");
-        }
-        component.reset();
+        if(component != null) component.reset();
     }
 
     @Override
@@ -116,17 +109,17 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     @Override
     public String toString() {
-        return getComponentID();
+        return getComponentID() + "[" + startID + " -> " + endID + "]";
     }
 
     @Override
     public ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.COMPONENT_LINK;
+        return ComponentHierarchy.LINK;
     }
 
     @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
-        if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY_NODE)
+    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
+        if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY)
             return binding.get() == 0 ? startNode : endNode;
         return component;
     }
@@ -135,5 +128,23 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     public @Nullable GridConstruct getParentConstruct() {
         return null;
     }
+
+    @OnlyIn(Dist.CLIENT)
+    public CatenaryModel<?> getCatenary() {
+        return catenary;
+    }
+
+    @OnlyIn(Dist.CLIENT) 
+    public void tickCatenary(ClientLevel world) {
+        assertHasAncillaries();
+        Griddable<?> startSource = startNode.getProviderSource();
+        Griddable<?> endSource = startNode.getProviderSource();
+        if(GridReferent.choosePrimary(startSource, endSource) != startSource) return;
+        Vector3d startPos = startNode.getRealPosition();
+        Vector3d endPos = endNode.getRealPosition();
+        catenary.setOffset(trns, startPos, endPos);
+    }
+
 }
+
 

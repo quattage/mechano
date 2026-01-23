@@ -1,6 +1,5 @@
 package com.quattage.mechano.api.blockEntity;
 
-import java.util.List;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
@@ -9,13 +8,13 @@ import org.joml.Vector3d;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
+import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
@@ -35,14 +34,13 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     private @Nullable CircuitComponent circuit; // instantiated lazily
     private final GriddableTerminus joints = new GriddableTerminus();
-    private VoxelUUID addr;
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 
     @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
+    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
         if(circuit != null) return circuit;
         CircuitFactory builder = new CircuitFactory();
         constructCircuit(builder);
@@ -61,21 +59,19 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public VoxelUUID getUUID() {
-        if(this.addr == null) 
-            this.addr = new VoxelUUID(getBlockPos());
-        return this.addr;   
+        return new VoxelUUID(getBlockPos());
+    }
+
+    @Override
+    public BlockPos getBlockPos(@Nullable LevelReader world) {
+        return getBlockPos();
     }
 
     @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
-        Grid grid = Grid.getUnsided(world);
-        ComponentUUID<?> id = getUUID();
-        List<AncillaryPair> links = grid.getLinksBelongingTo(id);
-        if(links == null || links.isEmpty()) return;
-        // convert to array to avoid concurrency issues
-        AncillaryPair[] linksArray = links.toArray(new AncillaryPair[links.size()]);
-        for(int x = 0; x < linksArray.length; x++)
-            grid.removeLink(linksArray[x]);
+        if(world.isClientSide || circuit == null) return;
+        ServerGrid grid = Grid.server(world);
+        grid.removeComponent(circuit);
         GriddableTerminus gt = provideTerminus();
         if(gt != null) gt.invalidate();
     }
@@ -91,7 +87,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
             pair.validateSelf();
             grid.addLink(pair);
             if(grid instanceof ServerGrid sg)
-                sg.getNetlist().union(pair.getStartNode(), pair.getEndNode());
+                sg.netlist().union(pair.getStartNode(), pair.getEndNode());
         }
     }
 
@@ -143,8 +139,8 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
-    public ComponentTracker getTrackerScope() {
-        return ComponentTracker.VOXEL;
+    public GridComponentTracker getTrackerScope() {
+        return GridComponentTracker.VOXEL;
     }
 
     @Override
@@ -156,5 +152,10 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     @Override 
     public String toString() { 
         return "GBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     
+    }
+
+    @Override
+    public int getMergePriority() {
+        return circuit instanceof GridConstruct gc ? gc.getMergePriority() : 5;
     }
 }

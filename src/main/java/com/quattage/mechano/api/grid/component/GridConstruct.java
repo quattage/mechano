@@ -8,15 +8,16 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.grid.topology.vertex.Terminal;
 
 import net.createmod.catnip.platform.CatnipServices;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -57,13 +58,28 @@ public interface GridConstruct {
      * <code>type</code>. This method is useful for gametests or after
      * serialization/deserialization to prevent cascading bugs
      * @param obj
-     * @param type
+     * @param expected
      * @see #assertValidOwnership
      */
-    static void assertHierarchyIs(Object obj, ComponentHierarchy type) {
-        if(obj == null) throw new NullPointerException("object is null!");
-        if(!(obj instanceof GridConstruct pobj)) throw new IllegalArgumentException("Object (" + obj.getClass().getSimpleName() + ") is not a parentable object!");
-        if(pobj.getHierarchyType() != type) throw new ComponentHierarchyInvalidException(obj, type);
+    static void assertHierarchyIs(Object obj, ComponentHierarchy expected) {
+        switch (obj) {
+            case null -> throw new NullPointerException("object is null!");
+            case ComponentHierarchy actual -> {
+                if(actual == expected) return;
+                throw new ComponentHierarchyInvalidException(actual, expected);
+            }
+            case ComponentUUID<?> id -> {
+                if(id.getTargetType() == expected) return;
+                throw new ComponentHierarchyInvalidException(id.getTargetType(), expected);
+            }
+            case GridConstruct gc -> {
+                if(gc.getHierarchyType() == expected) return;
+                throw new ComponentHierarchyInvalidException(obj, expected);
+            }
+            default -> {
+                throw new IllegalArgumentException("Object (" + obj.getClass().getSimpleName() + ") is not a parentable object!");
+            }
+        }
     }
 
     default void updateOwnership(GridConstruct parent) { updateOwnership(null, parent); }
@@ -100,18 +116,18 @@ public interface GridConstruct {
     /**
      * Search this GridConstruct's internal data to find a
      * CircuitComponent using the provided {@link ComponentUUID}'s bindings
-     * @param binding {@link ComponentBinding} used to search this component for a sub-component. Defaults to {@link ComponentBinding#EMPTY}
+     * @param binding {@link UUIDComposite} used to search this component for a sub-component. Defaults to {@link UUIDComposite#EMPTY}
      * @return a {@link CircuitComponent}, or <code>null</code>
      */
-    @Nullable CircuitComponent getComponent(ComponentBinding binding);
+    @Nullable CircuitComponent getComponent(UUIDComposite binding);
 
     /**
      * Search this GridConstruct's internal data to find a
      * CircuitComponent using the provided {@link ComponentUUID}'s bindings
-     * @param binding {@link ComponentBinding} used to search this component for a sub-component. Defaults to {@link ComponentBinding#EMPTY}
+     * @param binding {@link UUIDComposite} used to search this component for a sub-component. Defaults to {@link UUIDComposite#EMPTY}
      * @return a {@link CircuitComponent}, or <code>null</code>
      */
-    @Nullable default CircuitComponent getComponent() { return getComponent(ComponentBinding.EMPTY); }
+    @Nullable default CircuitComponent getComponent() { return getComponent(UUIDComposite.EMPTY); }
 
     /**
      * Used to enforce a parent/child relationship for components and the 
@@ -132,29 +148,38 @@ public interface GridConstruct {
      */
     default @Nullable GridConstruct getSuperparent() {
         GridConstruct parent = getParentConstruct();
-        if(parent == null) return null;
         for(int x = 0; x < 255; x++) {
             if(!(parent instanceof GridConstruct hp)) return parent;
             GridConstruct candidate = hp.getParentConstruct();
-            if(candidate == null) return parent;
+            if(candidate == null || candidate == parent) return parent;
             parent = candidate;
         }
         Mechano.LOGGER.warn("Component hierarchy traversal for " + this + " failed to identify a superparent.");
         return null;
     }
 
+    default void forEachConstructInHierarchy(Consumer<GridConstruct> cons) {
+        cons.accept(this);
+        GridConstruct parent = getParentConstruct();
+        for(int x = 0; x < 255; x++) {
+            if(!(parent instanceof GridConstruct hp)) return;
+            cons.accept(parent);
+            GridConstruct candidate = hp.getParentConstruct();
+            if(candidate == null || candidate == parent) return;
+            parent = candidate;
+        }
+    }
+
     /**
      * An object that refers in some way to one or more {@link GridConstruct} objects.
-     * (e.g. a BlockEntity with a {@link Circuit}) would be a good candidate for this
-     * interface)
+     * (e.g. a BlockEntity with a {@link Circuit})
      */
     public interface GridReferent<T extends ComponentUUID<T>> {
 
-
-        static @Nullable Griddable<?> getProviderSourceFor(@Nullable LevelReader world, Object obj) {
-            if(obj instanceof AncillaryNode<?> an) return an.getProviderSource();
-            if(!(obj instanceof GridReferent<?> gr)) return null;
-            return gr.getProviderSource(world);
+        static GridReferent<?> choosePrimary(GridReferent<?> a, GridReferent<?> b) {
+            if(a.canMoveDynamically() && !b.canMoveDynamically()) return a;
+            if(b.canMoveDynamically() && !a.canMoveDynamically()) return b;
+            return System.identityHashCode(a) > System.identityHashCode(b) ? a : b;
         }
 
         /**
@@ -183,7 +208,7 @@ public interface GridConstruct {
             return uuid;
         }
 
-        ComponentTracker getTrackerScope();
+        GridComponentTracker getTrackerScope();
 
         /**
          * Provides access to the instantiator/composer source object
@@ -206,6 +231,24 @@ public interface GridConstruct {
                 if(isBeingTrackedBy(player))
                     CatnipServices.NETWORK.sendToClient(player, packet);
             }
+        }
+
+        default BlockPos getBlockPos() {
+            return getBlockPos(null);
+        }
+
+        BlockPos getBlockPos(@Nullable LevelReader world);
+
+        default boolean canMoveDynamically() {
+            return canReceiveVelocity();
+        }
+
+        default boolean canReceiveVelocity() {
+            return false;
+        }
+
+        default int getApproximateMass() {
+            return Integer.MAX_VALUE;
         }
     }
 
@@ -287,6 +330,9 @@ public interface GridConstruct {
         }
         public ComponentHierarchyInvalidException(Object root, ComponentHierarchy expected) {
             super("Component of type '" + root.getClass().getSimpleName() + "' doesn't conform to the expected hierarchy type " + expected + "!");
+        }
+        public ComponentHierarchyInvalidException(ComponentHierarchy actual, ComponentHierarchy expected) {
+            super("An operation got '" + actual + ",' but required '" + expected + "'!");
         }
         public ComponentHierarchyInvalidException(GridConstruct child, GridConstruct parent) {
             super("Component of type '" + child.getClass().getSimpleName() + "' cannot be owned by '" + parent.getClass().getSimpleName() + "'");

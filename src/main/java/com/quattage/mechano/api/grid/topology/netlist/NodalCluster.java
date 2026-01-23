@@ -249,9 +249,9 @@ public class NodalCluster implements Disposable {
         this.contents = null;
     }
 
-    private void assertNotDisposed() {
-        if(head == null && contents == null)
-            throw new IllegalStateException("An operation on a NodalCluster failed because this NodalCluster has already been disposed!");
+    @Override
+    public boolean hasBeenDisposed() {
+        return head == null && contents == null;
     }
 
     public static String asString(List<NodalCluster> clusters) {

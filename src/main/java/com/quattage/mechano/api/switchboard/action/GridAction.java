@@ -15,16 +15,18 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
+import com.quattage.mechano.api.switchboard.task.ComponentCreateTask;
+import com.quattage.mechano.api.switchboard.task.ComponentDestroyTask;
 import com.quattage.mechano.api.switchboard.task.GridDumpTask;
 import com.quattage.mechano.api.switchboard.task.GridPeekTask;
-import com.quattage.mechano.api.switchboard.task.NodeUnionTask;
-import com.quattage.mechano.api.switchboard.task.NodeUnunionTask;
+import com.quattage.mechano.api.switchboard.task.NodeLinkCreateTask;
+import com.quattage.mechano.api.switchboard.task.NodeLinkDestroyTask;
 import com.quattage.mechano.api.switchboard.task.RequestActionTask;
 
 import net.createmod.catnip.platform.CatnipServices;
@@ -41,25 +43,30 @@ import net.neoforged.neoforge.common.NeoForge;
 
 public enum GridAction implements StringRepresentable {
 
-    TASK_UNION_NODES                      ( ActionType.TASK_GENERIC, NodeUnionTask.class ),
-    TASK_UNUNION_NODES                    ( ActionType.TASK_GENERIC, NodeUnunionTask.class ),
+    // do not reorder
+    TASK_LINK_DESTROY                     ( ActionType.TASK_GENERIC, NodeLinkDestroyTask.class ),
+    TASK_COMPONENT_DESTROY                ( ActionType.TASK_GENERIC, ComponentDestroyTask.class),
+    TASK_COMPONENT_CREATE                 ( ActionType.TASK_GENERIC, ComponentCreateTask.class),
+    TASK_LINK_CREATE                      ( ActionType.TASK_GENERIC, NodeLinkCreateTask.class ),
+    
     TASK_GRID_DUMP                        ( ActionType.TASK_GENERIC, GridDumpTask.class ),
     TASK_GRID_PEEK                        ( ActionType.TASK_GENERIC, GridPeekTask.class),
     TASK_REQUEST                          ( ActionType.TASK_GENERIC, RequestActionTask.class ),
 
-    RESPONSE_SUCCESS                      ( ActionType.RESPONSE_SUCCESS, null),
-    RESPONSE_FAIL_DUPLICATE_ELEMENT       ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_FAIL_ELEMENT_FULL            ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_FAIL_TOO_CLOSE               ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_FAIL_TOO_FAR                 ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_FAIL_INCOMPATIBLE            ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_FAIL_CANCELLED               ( ActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_DIM_MISMATCH            ( ActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_MISSING                 ( ActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_START_MISSING           ( ActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_END_MISSING             ( ActionType.RESPONSE_FAIL_HARD, null),
-    RESPONSE_FAIL_GENERIC                 ( ActionType.RESPONSE_FAIL_SOFT, null),
-    RESPONSE_TASK_CANCELLED               ( ActionType.RESPONSE_FAIL_HARD, null),
+    RESPONSE_SUCCESS                      ( ActionType.RESPONSE_SUCCESS ),
+    RESPONSE_FAIL_DUPLICATE_ELEMENT       ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_FAIL_ELEMENT_FULL            ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_FAIL_TOO_CLOSE               ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_FAIL_TOO_FAR                 ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_FAIL_INCOMPATIBLE            ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_FAIL_CANCELLED               ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_FAIL_DIM_MISMATCH            ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_FAIL_MISSING                 ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_FAIL_START_MISSING           ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_FAIL_END_MISSING             ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_FAIL_GENERIC                 ( ActionType.RESPONSE_FAIL_SOFT ),
+    RESPONSE_TASK_CANCELLED               ( ActionType.RESPONSE_FAIL_HARD ),
+    RESPONSE_NEEDS_ADDITIONAL_PROCESSING  (ActionType.RESPONSE_FAIL_SOFT),
 
     NONE                                  ( ActionType.NONE, null );
 
@@ -89,6 +96,10 @@ public enum GridAction implements StringRepresentable {
 
     private final ActionType type;
     private final @Nullable ActionTask task;
+
+    <T extends ActionTask> GridAction(ActionType type) {
+        this(type, null);
+    }
 
     <T extends ActionTask> GridAction(ActionType type, @Nullable Class<T> taskClass) {
         Objects.requireNonNull(type);
@@ -160,6 +171,11 @@ public enum GridAction implements StringRepresentable {
         if(sp == null) return broadcastBelligerent(grid, args);
         CatnipServices.NETWORK.sendToClient(sp, new GridActionS2CPacket(this, args));
         return this;
+    }
+
+
+    public boolean isWrappable() {
+        return ordinal() < 4;
     }
 
     /**
@@ -331,6 +347,7 @@ public enum GridAction implements StringRepresentable {
          * @return A {@link GridAction} describing the results of this immediate execution.
          */
         public GridAction executeImmediately() {
+            this.args = action.getTask().validateArguments(args);
             return get();
         }
 
@@ -378,7 +395,7 @@ public enum GridAction implements StringRepresentable {
             if(grid instanceof ServerGrid server) {
                 GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
                 if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-                return task.executeAsServer(server, args).broadcast(server, ComponentTracker.collect((ServerLevel)grid.getWorld(), trackers), args);
+                return task.executeAsServer(server, args).broadcast(server, GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
             }
             return GridAction.RESPONSE_FAIL_GENERIC;
         }
@@ -390,7 +407,7 @@ public enum GridAction implements StringRepresentable {
             if(!(grid instanceof ServerGrid server)) throw new IllegalArgumentException("what");
             GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
             if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-            return task.executeAsServer(server, args).broadcast(server, ComponentTracker.collect((ServerLevel)grid.getWorld(), trackers), args);
+            return task.executeAsServer(server, args).broadcast(server, GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
         }
     }
 

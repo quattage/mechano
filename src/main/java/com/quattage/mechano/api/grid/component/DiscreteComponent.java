@@ -1,18 +1,22 @@
 package com.quattage.mechano.api.grid.component;
 
+import java.util.function.Consumer;
+
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
+import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.foundation.Disposable;
 
 /**
  * A {@link CircuitComponent} with a singular function that can be
  * parented to another CircuitComponent.
  */
-public abstract class DiscreteComponent implements CircuitComponent, GridConstruct {
+public abstract class DiscreteComponent implements CircuitComponent, GridConstruct, Disposable {
 
-    private final String componentID;
+    private String componentID;
     private GridConstruct parent;
 
     public DiscreteComponent(String componentID) {
@@ -32,7 +36,7 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
 
     @Override
     public ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.DISCRETE_COMPONENT;
+        return ComponentHierarchy.DISCRETE;
     }
 
     @Override
@@ -41,12 +45,83 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
     }
 
     @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding id) {
+    public @Nullable CircuitComponent getComponent(UUIDComposite id) {
         return this;
     }
 
     @Override
     public @Nullable GridConstruct getParentConstruct() {
         return parent;
+    }
+
+    @Override
+    public void dispose() {
+        componentID += " (disposed";
+        parent = null;
+    }
+
+
+    public static class NodeStub extends DiscreteComponent {
+
+        private Node node;
+
+        public NodeStub(Node node) {
+            super("NodeStub");
+            this.node = node;
+        }
+
+        @Override
+        public void forEachNode(Consumer<Node> cons) {
+            cons.accept(node);
+        }
+
+        @Override
+        public String toString() {
+            return "NodeStub (" + node.toString() + ")";
+        }
+
+        @Override
+        public int indexOfChild(GridConstruct child) {
+            return child == node ? 0 : -1;
+        }
+
+        @Override
+        public @Nullable CircuitComponent getComponent(UUIDComposite id) {
+            return (id.getHierarchyType() == ComponentHierarchy.NODE && id.get() == 0) ? node : null;
+        }
+        @Override
+        public ComponentHierarchy getHierarchyType() {
+            return ComponentHierarchy.STUB;
+        }
+
+        @Override
+        public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
+            super.updateOwnership(source, parent);
+            node.updateOwnership(source, this);
+        }
+
+        @Override
+        public void dispose() {
+            this.node = null;
+            super.dispose();
+        }
+
+        @Override
+        public boolean hasBeenDisposed() {
+            return this.node == null;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(this == obj) return true;
+            if(obj instanceof Node tn) return this.node == tn;
+            if(!(obj instanceof NodeStub that)) return false;
+            return this.node == that.node;
+        }
+
+        @Override
+        public int hashCode() {
+            return node.hashCode();
+        }
     }
 }

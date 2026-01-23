@@ -14,6 +14,7 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.Circuit;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.vertex.WireJack;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
@@ -44,7 +45,7 @@ public class GriddableTerminus implements OrientationUpdatable {
 
     public GriddableTerminus initializeFrom(Griddable<?> source) {
         Objects.requireNonNull(source);
-        CircuitComponent component = source.getComponent(null);
+        CircuitComponent component = source.getComponent();
         if(component == null) throw new NullPointerException("Griddable " + source + " couldn't provide a valid CircuitComponent!");
         return initializeFrom(component);
     }
@@ -56,7 +57,7 @@ public class GriddableTerminus implements OrientationUpdatable {
         if(component instanceof Circuit) {
             Set<AncillaryNode<?>> found = new ObjectOpenHashSet<>();
             component.forEachNode(joint -> {
-                if(joint == null) throw new NullPointerException("Encountered a null pointer while updating ancillaries for lazy holder");
+                if(joint == null) throw new NullPointerException("Encountered a null ancillary while initializing terminus!");
                 found.addAll(joint.getAncillaries());
             });
             exposedJoints = found.isEmpty() ? null : found.toArray(new AncillaryNode[found.size()]);
@@ -118,7 +119,12 @@ public class GriddableTerminus implements OrientationUpdatable {
      * will always return <code>null</code>
      */
     public @Nullable AncillaryNode<?> getFirstAncillary() {
-        return getAncillary(0);
+        if(isEmpty()) return null;
+        for(int x = 0; x < exposedJoints.length; x++) {
+            AncillaryNode<?> node = exposedJoints[x];
+            if(node instanceof WireJack) return node;
+        }
+        return exposedJoints[0];
     }
 
     /**

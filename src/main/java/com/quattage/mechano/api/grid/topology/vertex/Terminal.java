@@ -5,20 +5,20 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.ComponentBinding;
+import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
+import com.quattage.mechano.foundation.Disposable;
 
-public class Terminal implements CircuitComponent, GridConstruct, TerminalProvider {
+public class Terminal implements CircuitComponent, GridConstruct, TerminalProvider, Disposable {
     
-    private final DiscreteComponent instantiator;
-    private @Nullable Node connected;
-    private String id;
+    private DiscreteComponent instantiator;
+    private Node connected;
+    private String componentID;
 
     public static Terminal[] pair(DiscreteComponent instantiator) {
         return new Terminal[] { new Terminal(instantiator, "pinA"), new Terminal(instantiator, "pinB") };
@@ -36,10 +36,6 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
         Objects.requireNonNull(instantiator);
         CircuitComponent.assertValidID(id);
         this.instantiator = instantiator;
-    }
-
-    public final void setConnectedTo(@Nullable Node trace) {
-        this.connected = trace;
     }
 
     public @Nullable Node getAttachedNode() {
@@ -67,7 +63,7 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
 
     @Override 
     public String getComponentID() { 
-        return id; 
+        return componentID; 
     }
 
     @Override
@@ -82,17 +78,14 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
 
     @Override
     public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
-        return;
+        GridConstruct.assertValidOwnership(this, parent);
+        if(parent instanceof Node node) this.connected = node;
     }
 
     @Override
-    public <T extends ComponentUUID<T>> T bindUUID(T id) {
-        throw new UnsupportedOperationException("Unimplemented method 'bindUUID'");
-    }
-
-    @Override
-    public @Nullable CircuitComponent getComponent(ComponentBinding binding) {
-        return binding.getHierarchyType() == ComponentHierarchy.DISCRETE_COMPONENT ? instantiator : connected;
+    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
+        return binding.getHierarchyType() == ComponentHierarchy.DISCRETE 
+            || binding.getHierarchyType() == ComponentHierarchy.STRANGER ? instantiator : connected;
     }
 
     @Override
@@ -108,5 +101,19 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
     @Override
     public Terminal[] getTerminals() {
         return new Terminal[] { this };
+    }
+
+    @Override
+    public void dispose() {
+        if(connected == null) return;
+        componentID += " (disposed)";
+        connected.localDetach(this);
+        connected = null;
+        instantiator = null;
+    }
+
+    @Override
+    public boolean hasBeenDisposed() {
+        return componentID.endsWith("(disposed)");
     }
 }

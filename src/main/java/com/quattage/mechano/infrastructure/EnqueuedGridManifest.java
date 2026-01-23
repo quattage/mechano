@@ -13,7 +13,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import com.quattage.mechano.MechanoBuildParameters;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.infrastructure.MemoryAnalyzer.DoNotAnalyze;
+import com.quattage.mechano.infrastructure.ReflectionWizard.DoNotAnalyze;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -89,11 +89,11 @@ public class EnqueuedGridManifest {
                 + " by '" + (requester == null ? "n/a" : requester.getName().getString()) + "' in " + grid.getDimensionName() + "\n"
                 + "Solver method: " + grid.getSolver().describeSelf() + "\n"
                 + "Lifecycle status: " + grid.getStatusHolder() + "\n"
-                + "Unsaved changes for this session? " + (grid.hasUnsavedChanges() ? "yes" : "no") + "\n"
+                + "Unsaved changes for this session? " + (grid.getProcessQueue().hasUnsavedChanges() ? "yes" : "no") + "\n"
                 + "Ground: " + (grid.getCommonGround() == null ? "not yet instantiated" : grid.getCommonGround().hashCode()) + "\n"
-                + "Memory footprint analysis: " + MemoryAnalyzer.estimateFootprint(grid) + "\n--\n"
+                + "Memory footprint analysis: " + ReflectionWizard.estimateFootprint(grid) + "\n--\n"
                 + "Indexer: " + grid.indexer().size() + " stampers, " + grid.indexer().total() + " allocations\n\n"
-                + "Netlist contents:" + grid.getNetlist().toFullString(grid) + "\n\n\n"
+                + "Netlist contents:" + grid.netlist().toFullString(grid) + "\n\n\n"
                 + "--\n"
                 + "  ♨ github.com/quattage/mechano\n"
                 + "  ☎ discord.gg/85ufgRwy2g\n"
@@ -135,7 +135,7 @@ public class EnqueuedGridManifest {
         try(PrintWriter pw = new PrintWriter(output)) {
             pw.print(resultString);
             pw.close();
-        } catch(Exception e) {}
+        } catch (Exception e) {}
     }
 
     private String getDirectory() {

@@ -83,6 +83,10 @@ public class CatenaryRenderProperties {
         return materialGetter.apply(entry, true);
     }
 
+    public MeshExtruder getExtruder() {
+        return extruder;
+    }
+
     public Thickness getThickness() {
         assertConfigured();
         return thickness;

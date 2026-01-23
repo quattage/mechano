@@ -7,6 +7,8 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.catenary.Catenaries.PhysicalMaterial;
+import com.quattage.mechano.api.catenary.Catenaries.Soundscape;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.GridConstruct;
 import com.quattage.mechano.api.grid.solver.MNAIndexer;
@@ -29,6 +31,9 @@ public class TransmitterType {
     private final String name;
     private final UnionFactory factory;
     private final NonNullSupplier<CatenaryRenderProperties> renderProperties;
+    private final PhysicalMaterial phys;
+    private final Soundscape sounds;
+    private final int maxSpan;
 
     /**
      * Retrieves a {@link TransmitterType} from its associated {@link TransmitterEntry} 
@@ -43,13 +48,16 @@ public class TransmitterType {
         return trns;
     }
 
-    public TransmitterType(@Nullable String name, UnionFactory factory, NonNullSupplier<CatenaryRenderProperties> renderProperties) {
+    public TransmitterType(@Nullable String name, UnionFactory factory, NonNullSupplier<CatenaryRenderProperties> renderProperties, PhysicalMaterial phys, Soundscape sounds, int maxSpan) {
         Objects.requireNonNull(factory);
         if(name == null || name.isBlank()) name = "unnamed";
         else name = name.toLowerCase();
         this.factory = factory;
         this.name = name;
         this.renderProperties = renderProperties;
+        this.phys = phys == null ? PhysicalMaterial.AIR : phys;
+        this.sounds = sounds == null ? Soundscape.AIR : sounds;
+        this.maxSpan = maxSpan;
     }
 
     public UnionFactory getFactory() {
@@ -61,6 +69,18 @@ public class TransmitterType {
         return renderProperties.get();
     }
 
+    public PhysicalMaterial getPhysicalProperties() {
+        return phys;
+    }
+
+    public int getMaximumSpan() {
+        return maxSpan;
+    }
+
+    public Soundscape getSounds() {
+        return sounds;
+    }
+
     public String getName() {
         return name;
     }
@@ -69,7 +89,6 @@ public class TransmitterType {
     public String toString() {
         return "TransmitterType[" + name + "]";
     }
-
 
     public static class GridUnionException extends RuntimeException {
         public GridUnionException(@Nullable Object src, String message) {
@@ -86,7 +105,7 @@ public class TransmitterType {
         if(end == null) throw new GridUnionException(src, "end is null!");
         CircuitComponent output = null;
         try { output = factory.apply(grid, start, end); }
-        catch(RuntimeException e) { 
+        catch (RuntimeException e) { 
             if(e instanceof GridUnionException gue) throw gue;
             e.printStackTrace();
             throw new GridUnionException(src, "Encountered an error while applying factory! (See exception above)");
@@ -108,7 +127,7 @@ public class TransmitterType {
          * @return <code>null,</code> since a perfect union doesn't have a component associated with it.
          */
         static CircuitComponent perfectConductor(ServerGrid grid, AncillaryNode<?> startAncillary, AncillaryNode<?> endAncillary) {
-            grid.getNetlist().union(startAncillary.getAssociatedNode(), endAncillary.getAssociatedNode());
+            grid.netlist().union(startAncillary.getAssociatedNode(), endAncillary.getAssociatedNode());
             return null;
         }
 

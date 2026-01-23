@@ -2,13 +2,13 @@ package com.quattage.mechano.api.catenary.model;
 
 
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack.Pose;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.transmitter.TransmitterEntry;
+import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.Disposable;
 
 import net.minecraft.world.level.LevelReader;
@@ -47,21 +47,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * for this Catenary given a known start and end point
      * @return This Catenary for chaining
      */
-    public abstract T setOffset(TransmitterEntry trns, Vec3 start, Vec3 end);
-
-    /**
-     * Calculates the {@link #setOffset offset} vector
-     * for this catenary given a pair of {@link ComponentUUID addresses}
-     * and enforces their order using the deterministic 
-     * {@link TrackedConstruct#orderedByRenderPriority render priority}
-     * to ensure that the sign of the offset vector's length is correct.
-     * @param world World to operate within
-     * @param start GridUUID starting position
-     * @param end GridUUID ending position (start/end order here is arbitrary)
-     * @param pTicks Partial ticks to use for lerping where necessary. When in doubt,
-     * just pass 1.
-     */
-    public abstract T setOrderedOffset(LevelReader world, TransmitterEntry trns, @Nullable ComponentUUID<?> start, @Nullable ComponentUUID<?> end, float pTicks);
+    public abstract T setOffset(TransmitterType trns, Vector3d start, Vector3d end);
 
     /**
      * A helper call that sets the first and last
@@ -112,7 +98,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * hit, as well as a strong likelihood to produce poor results,
      * especially at particularly high or low framerates. 
      */
-    public abstract void update(TransmitterEntry trns);
+    public abstract void update(TransmitterType trns);
 
     /**
      * Runs {@link #update} <code>steps</code> number
@@ -123,7 +109,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * result.
      * @param steps
      */
-    public void updateAhead(TransmitterEntry trns, int steps) {
+    public void updateAhead(TransmitterType trns, int steps) {
         for(int x = 0; x < steps; x++)
             update(trns);
     }
@@ -139,7 +125,7 @@ public abstract class CatenaryModel<T extends CatenaryModel<?>> implements Dispo
      * for Catenary implementations that require it, but this method can still
      * be invoked manually in circumstances where doing so is useful.
      */
-    public abstract CatenaryModel<T> calculateSegmentation(TransmitterEntry trns);
+    public abstract CatenaryModel<T> calculateSegmentation(TransmitterType trns);
 
     /**
      * Renders this Catenary to the provided stack. For more 

@@ -35,7 +35,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
             if(task == null) throw new IllegalArgumentException("Failed while decoding response task '" + response + "' - This response type didn't produce a task!");
             Object[] decodedArgs = null;
             try { decodedArgs = task.dynamicDecode(buffer); }
-            catch(RuntimeException e) { throw new GridActionDecodeException(e, response); }
+            catch (RuntimeException e) { throw new GridActionDecodeException(e, response); }
             if(decodedArgs == null) decodedArgs = new Object[0];
             return new GridActionC2SPacket(response, decodedArgs);
         }
@@ -46,7 +46,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
             ActionTask task = value.action.getTask();
             if(task == null) throw new IllegalArgumentException("Failed while encoding response task '" + value.action + "' - This response type didn't produce a task!");
             try { task.dynamicEncode(value.args, buffer); }
-            catch(RuntimeException e) { throw new GridActionEncodeException(e, value.action); }
+            catch (RuntimeException e) { throw new GridActionEncodeException(e, value.action); }
         }
     };
 

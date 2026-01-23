@@ -12,11 +12,9 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
 import com.quattage.mechano.api.switchboard.action.GridAction;
@@ -46,13 +44,13 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
     @EventBusSubscriber
     public abstract sealed class Grid implements WorldlyObject permits ClientGrid, ServerGrid {
     // these words aren't in the bible
-        
+
         protected static final Logger LOGGER = LogUtils.getLogger();
 
         // weakly referenced singletons are stored to skip hash capability lookups
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
-        protected final Object2ObjectOpenHashMap<ComponentUUID<?>, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
+        protected final Object2ObjectOpenHashMap<Griddable<?>, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
 
         /**
          * To be called by internal registries to populate the world with an initial data attachment
@@ -178,8 +176,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             GridAction result = addLinkAsymmetric(link);
             GridAction inverted = addLinkAsymmetric(linkInverted);
             if(result.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
-                removeLinkAsymmetric(link.getStartID(), link.getEndID());
-                removeLinkAsymmetric(linkInverted.getStartID(), linkInverted.getEndID());
+                removeLinkAsymmetric(GridComponentTracker.getSource(link.getStartNode()), link.getEndID());
+                removeLinkAsymmetric(GridComponentTracker.getSource(linkInverted.getStartNode()), linkInverted.getEndID());
                 // always consume the failure case should one exist
                 if(!result.getActionType().indicatesFailure())
                     result = inverted;
@@ -188,11 +186,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         private GridAction addLinkAsymmetric(AncillaryPair link) {
-            List<AncillaryPair> linksAt = getLinksBelongingTo(link.getStartID());
+            Griddable<?> owner = GridComponentTracker.getSource(link.getStartNode());
+            List<AncillaryPair> linksAt = getLinksBelongingTo(owner);
             if(linksAt == null) {
                 linksAt = new ArrayList<AncillaryPair>();
                 linksAt.add(link);
-                links.put(link.getStartID(), linksAt);
+                links.put(owner, linksAt);
                 return GridAction.RESPONSE_SUCCESS;
             }
             if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
@@ -205,21 +204,13 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         public GridAction removeLink(AncillaryPair link) {
             Objects.requireNonNull(link);
             link.validateSelf();
-            return removeLink(link.getStartID(), link.getEndID());
-        }
-
-        public GridAction removeLink(ComponentUUID<?> startID, ComponentUUID<?> endID) {
-            Objects.requireNonNull(startID);
-            Objects.requireNonNull(endID);
-            GridAction result = removeLinkAsymmetric(startID, endID);
-            GridAction inverted = removeLinkAsymmetric(endID, startID);
-            if(result.getActionType().indicatesFailure() && !inverted.getActionType().indicatesFailure())
-                return inverted;
+            GridAction result = removeLinkAsymmetric(GridComponentTracker.getSource(link.getStartNode()), link.getEndID());
+            removeLinkAsymmetric(GridComponentTracker.getSource(link.getEndNode()), link.getStartID());
             return result;
         }
 
-        private GridAction removeLinkAsymmetric(ComponentUUID<?> startID, ComponentUUID<?> endID) {
-            List<AncillaryPair> linksAt = getLinksBelongingTo(startID);
+        private GridAction removeLinkAsymmetric(Griddable<?> source, ComponentUUID<?> endID) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(source);
             if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
             int toRemove = -1;
             for(int x = 0; x < linksAt.size(); x++) {
@@ -232,17 +223,17 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             if(toRemove < 0) return GridAction.RESPONSE_FAIL_END_MISSING;
             linksAt.remove(toRemove);
             if(linksAt.isEmpty()) {
-                links.remove(startID);
+                links.remove(source);
                 links.trim();
             }
             return GridAction.RESPONSE_SUCCESS;
         }
 
-        public @Nullable List<AncillaryPair> getLinksBelongingTo(ComponentUUID<?> uuid) {
-            List<AncillaryPair> linksAt = links.get(uuid);
+        public @Nullable List<AncillaryPair> getLinksBelongingTo(Griddable<?> source) {
+            List<AncillaryPair> linksAt = links.get(source);
             if(linksAt == null) return null;
             if(linksAt.isEmpty()) {
-                links.remove(uuid);
+                links.remove(source);
                 return null;
             }
             return linksAt;
@@ -252,63 +243,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return links.size();
         }
 
-        /**
-         * Acquires a {@link ComponentUUID} instance pointing to <code>source</code>
-         * and bound to the supplied {@link CircuitComponent} <code>component</code>.
-         * <h3>There is no error checking to ensure that the supplied <code>component</code>
-         * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
-         * you need to garantee this yourself.</h3>
-         * @param source The {@link Griddable} to pull a UUID instance from
-         * @param component The particular {@link CircuitComponent} that the returned UUID will be bound to, 
-         * provided it belongs to <code>source</code>
-         * @return A (newly instantiated or cachced) GridUUID instance. 
-         * While modification is allowed, it is not reccomended.
-         * @see {@link Griddable#getAddress()}
-         * @see {@link CircuitComponent#bindUUID}
-         */
-        public <T extends ComponentUUID<T>> T getAddressFor(GridReferent<T> obj, GridConstruct component) {
-            Objects.requireNonNull(obj);
-            Objects.requireNonNull(component);
-            T id = obj.getUUIDSafe();
-            if(id == null) {
-                throw new NullPointerException("Couldn't get address for " + obj
-                    + " - This source Griddable<?>instance returned a null address!");
-            }
-            T boundID = component.bindUUID(id);
-            if(boundID == null) {
-                throw new NullPointerException("Couldn't bind address to " + component
-                    + " - This component didn't return a modified UUID instance!");
-            }
-            if(boundID != id) {
-                throw new IllegalStateException("Couldn't bind address to " + component
-                    + " - This component returned a new ID instance!");
-            }
-            return boundID;
-        }
-
-        /**
-         * Checks whether or not the provided object can be discovered by this
-         * Grid. Non-reachable objects are either not loaded by Minecraft or
-         * no longer exist for whatever reason. In most scenarios, you can 
-         * already guarantee the reachability of a {@link Griddable} as long 
-         * as you use tranditional instantiation methods (like placing a block 
-         * or spawning an entity) - In situations where that is not the case, 
-         * (e.g. tests) this method will tell you whether or not <code>obj</code>
-         * can be discovered in the world.
-         * @param obj {@link GridIdentifiable} to address
-         * @return <code>true</code> if <code>obj</code> is reachable.
-         */
-        public boolean isReachable(GridReferent<?> obj) {
-            Griddable<?> source = obj.getUUIDSafe().getProviderSource(getWorld());
-            return source != null && source.getComponent() != null;
-        }
-
         public String linksAsString() {
             if(links.isEmpty()) return "\n\tEmpty";
             String out = "";
-            for(Map.Entry<ComponentUUID<?>, List<AncillaryPair>> entry : links.entrySet()) {
-                ComponentUUID<?> id = entry.getKey();
-                out += "\t- " + id + ":\n";
+            for(Map.Entry<Griddable<?>, List<AncillaryPair>> entry : links.entrySet()) {
+                Griddable<?> source = entry.getKey();
+                out += "\t- " + source.getClass().getSimpleName() + ":\n";
                 for(AncillaryPair link : entry.getValue())
                     out += "\t\t* " + link + "\n";
                 out = out.substring(0, out.length() - 1);
@@ -321,7 +261,6 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         public String toString() {
             return getClass().getSimpleName() + "[" + getDimensionName() + "]";
         }
-
 
         @Override
         public Level getWorld() {

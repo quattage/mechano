@@ -6,7 +6,7 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.component.ComponentTracker;
+import com.quattage.mechano.api.grid.GridComponentTracker;
 import com.quattage.mechano.api.grid.component.ComponentUUID;
 
 import net.minecraft.core.component.DataComponentType;
@@ -36,7 +36,7 @@ public class MechanoData {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ComponentUUID<?>>> UUID = 
         MechanoData.COMPONENT_REGISTRY.registerComponentType(
             "grid_identifier",
-            b -> b.persistent(ComponentTracker.CODEC).networkSynchronized(ComponentTracker.STREAM_CODEC)
+            b -> b.persistent(GridComponentTracker.CODEC).networkSynchronized(GridComponentTracker.STREAM_CODEC)
     );
 
 

@@ -12,6 +12,9 @@ jobs:
     - name: Setup JDK 21
       run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
 
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:

@@ -109,7 +109,7 @@ public interface GridConstruct {
      * @param id GridUUID to bind
      * @return The provided {@link GridUUID}, modified as a result of this call.
      */
-    default <T extends GridUUID<T>> T bindUUID(T id) { 
+    default GridUUID<?> bindUUID(GridUUID<?> id) { 
         return id.withBinding(getHierarchyIndex(), getHierarchyType());
     }
 

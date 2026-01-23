@@ -9,9 +9,9 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 
@@ -43,9 +43,9 @@ public class RequestActionTask implements ActionTask {
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         GridAction action = (GridAction)args[0];
         buffer.writeInt(action.ordinal());
-        List<ComponentUUID<?>> senders = (List<ComponentUUID<?>>)args[1];
+        List<GridUUID<?>> senders = (List<GridUUID<?>>)args[1];
         buffer.writeInt(senders.size());
-        for(ComponentUUID<?> addr : senders) GridComponentTracker.write(addr, buffer);
+        for(GridUUID<?> addr : senders) GridTracking.write(addr, buffer);
         Object[] taskArgs = ((List<Object>)args[2]).toArray();
         action.getTask().dynamicEncode(taskArgs, buffer);
     }
@@ -54,9 +54,9 @@ public class RequestActionTask implements ActionTask {
     public @Nullable Object[] dynamicDecode(ByteBuf buffer) {
         GridAction action = GridAction.values()[buffer.readInt()];
         int sendersLength = buffer.readInt();
-        List<ComponentUUID<?>> senders = new ArrayList<>(sendersLength);
+        List<GridUUID<?>> senders = new ArrayList<>(sendersLength);
         for(int x = 0; x < sendersLength; x++)
-            senders.add(GridComponentTracker.read(buffer));
+            senders.add(GridTracking.read(buffer));
         List<Object> actionArgs = Arrays.asList(action.getTask().dynamicDecode(buffer));
         Object[] output = new Object[] { action, senders, actionArgs };     
         return output;
@@ -66,7 +66,7 @@ public class RequestActionTask implements ActionTask {
     @SuppressWarnings("unchecked")
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         GridAction action = (GridAction)args[0];
-        Set<ServerPlayer> trackers = GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), (List<GridReferent<?>>)args[1]);
+        Set<ServerPlayer> trackers = GridTracking.collectPlayersTracking((ServerLevel)grid.getWorld(), (List<GridReferent<?>>)args[1]);
         if(trackers.isEmpty()) {
             // immediately warn and fail (even if it isn't necessary) since this edge case could cause issues later
             grid.warn("Skipped sending wrapped request for " + action + " - The supplied collection of senders couldn't be re-addressed.");

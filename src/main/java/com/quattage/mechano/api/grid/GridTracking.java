@@ -21,22 +21,20 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy.ComponentNotFoundException;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy.ComponentNotFoundException;
+import com.quattage.mechano.api.grid.GridUUID.EntityUUID;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
+import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
+import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.EntityUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent.NodeStub;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.ComponentLink;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 
@@ -56,13 +54,13 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 
 /**
  * A central class for managing the serialization and representation of various data sources.
- * Simultaneously represents a discriminator for {@link ComponentUUID} serialization, as well
+ * Simultaneously represents a discriminator for {@link GridUUID} serialization, as well
  * as a loosely defined set of {@link Griddable} source types. Griddables can be attached to
  * {@link Entity entities}, {@link BlockEntity block entities}, or even the {@link LevelReader level}
  * (theoretically), and these all need ways to distinguish between one another, since these objects
  * are stored differently by the Level and have different needs.
  */
-public enum GridComponentTracker {
+public enum GridTracking {
     
     VOXEL(VoxelUUID.class, BlockEntity.class),
     CHUNK(VoxelUUID.class, LevelChunk.class),
@@ -71,11 +69,11 @@ public enum GridComponentTracker {
 
     private static final String PREFIX = "type";
 
-    public static final Codec<ComponentUUID<?>> CODEC = new Codec<>() {
-        @Override public <T> DataResult<T> encode(ComponentUUID<?> input, DynamicOps<T> ops, T prefix) {
-            GridComponentTracker type = input.getTrackerScope();
+    public static final Codec<GridUUID<?>> CODEC = new Codec<>() {
+        @Override public <T> DataResult<T> encode(GridUUID<?> input, DynamicOps<T> ops, T prefix) {
+            GridTracking type = input.getTrackerScope();
             RecordBuilder<T> builder = ops.mapBuilder();
-            builder.add(GridComponentTracker.PREFIX, type.ordinal(), Codec.INT);
+            builder.add(GridTracking.PREFIX, type.ordinal(), Codec.INT);
             try { input.write(builder); } catch (Exception e) {
                 String message = "Unknown error occured while encoding UUID type '" + type + "'";
                 Mechano.LOGGER.error(message);
@@ -84,15 +82,15 @@ public enum GridComponentTracker {
             }
             return builder.build(prefix);
         }
-        @Override public <T> DataResult<Pair<ComponentUUID<?>, T>> decode(DynamicOps<T> ops, T input) {
+        @Override public <T> DataResult<Pair<GridUUID<?>, T>> decode(DynamicOps<T> ops, T input) {
             Dynamic<T> dyn = new Dynamic<>(ops, input);
-            int ordinal = dyn.get(GridComponentTracker.PREFIX).asInt(-1);
-            GridComponentTracker[] types = GridComponentTracker.values();
+            int ordinal = dyn.get(GridTracking.PREFIX).asInt(-1);
+            GridTracking[] types = GridTracking.values();
             if(ordinal < 0 || ordinal >= types.length)
                 return DataResult.error(() -> "Ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
-            GridComponentTracker datasource = types[ordinal];
+            GridTracking datasource = types[ordinal];
             try {
-                ComponentUUID<?> newInstance = datasource.createUUID(dyn);
+                GridUUID<?> newInstance = datasource.createUUID(dyn);
                 return DataResult.success(Pair.of(newInstance, input));
             } catch (Exception e) {
                 String message = "Unknown error occured while decoding UUID type '" + datasource + "'";
@@ -103,29 +101,29 @@ public enum GridComponentTracker {
         }
     };
 
-    public static final StreamCodec<? super RegistryFriendlyByteBuf, ComponentUUID<?>> STREAM_CODEC = new StreamCodec<>() {
-        @Override public void encode(RegistryFriendlyByteBuf buffer, ComponentUUID<?> value) {
+    public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID<?>> STREAM_CODEC = new StreamCodec<>() {
+        @Override public void encode(RegistryFriendlyByteBuf buffer, GridUUID<?> value) {
             buffer.writeInt(value.getTrackerScope().ordinal());
             value.write(buffer);
         }
-        @Override public ComponentUUID<?> decode(RegistryFriendlyByteBuf buffer) {
-            return GridComponentTracker.values()[buffer.readInt()].createUUID(buffer);
+        @Override public GridUUID<?> decode(RegistryFriendlyByteBuf buffer) {
+            return GridTracking.values()[buffer.readInt()].createUUID(buffer);
         }
     };
 
-    public static CircuitComponent find(WorldlyObject world, ComponentUUID<?> id) {
-        return GridComponentTracker.find(world.getWorld(), id);
+    public static CircuitComponent find(WorldlyObject world, GridUUID<?> id) {
+        return GridTracking.find(world.getWorld(), id);
     }
 
-    public static CircuitComponent find(LevelReader world, ComponentUUID<?> id) {
-        try{ return GridComponentTracker.findOrThrow(world, id); } catch (ComponentNotFoundException e) { return null; }
+    public static CircuitComponent find(LevelReader world, GridUUID<?> id) {
+        try{ return GridTracking.findOrThrow(world, id); } catch (ComponentNotFoundException e) { return null; }
     }
 
-    public static CircuitComponent findOrThrow(WorldlyObject world, ComponentUUID<?> id) {
-        return GridComponentTracker.findOrThrow(world.getWorld(), id);
+    public static CircuitComponent findOrThrow(WorldlyObject world, GridUUID<?> id) {
+        return GridTracking.findOrThrow(world.getWorld(), id);
     }
 
-    public static CircuitComponent findOrThrow(LevelReader world, ComponentUUID<?> id) {
+    public static CircuitComponent findOrThrow(LevelReader world, GridUUID<?> id) {
         Griddable<?> source = id.getProviderSource(world);
         if(source == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
         if(!id.hasBindings()) throw new ComponentNotFoundException(id, "The provided ID has no bindings!");
@@ -161,7 +159,7 @@ public enum GridComponentTracker {
     }
 
     /**
-     * Acquires a {@link ComponentUUID} instance pointing to <code>source</code>
+     * Acquires a {@link GridUUID} instance pointing to <code>source</code>
      * and bound to the supplied {@link CircuitComponent} <code>component</code>.
      * <h3>There is no error checking to ensure that the supplied <code>component</code>
      * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
@@ -174,7 +172,7 @@ public enum GridComponentTracker {
      * @see {@link Griddable#getAddress()}
      * @see {@link GridConstruct#bindUUID}
      */
-    public static <T extends ComponentUUID<T>> T getAddress(GridReferent<T> obj, GridConstruct component) {
+    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj, GridConstruct component) {
         Objects.requireNonNull(obj);
         Objects.requireNonNull(component);
         T id = obj.getUUIDSafe();
@@ -186,7 +184,7 @@ public enum GridComponentTracker {
     }
 
     /**
-     * Acquires a {@link ComponentUUID} instance pointing to <code>source</code>
+     * Acquires a {@link GridUUID} instance pointing to <code>source</code>
      * and bound to the supplied {@link CircuitComponent} <code>component</code>.
      * <h3>There is no error checking to ensure that the supplied <code>component</code>
      * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
@@ -199,13 +197,13 @@ public enum GridComponentTracker {
      * @see {@link Griddable#getAddress()}
      * @see {@link GridConstruct#bindUUID}
      */
-    public static <T extends ComponentUUID<T>> T getAddress(GridReferent<T> obj) {
+    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj) {
         Objects.requireNonNull(obj);
         return obj.getUUIDSafe();
     }
 
     public static @Nullable Griddable<?> getSource(Object obj) {
-        return GridComponentTracker.getSource(null, obj);
+        return GridTracking.getSource(null, obj);
     }
 
     public static @Nullable Griddable<?> getSource(@Nullable LevelReader world, Object obj) {
@@ -274,33 +272,33 @@ public enum GridComponentTracker {
         return source != null && source.getComponent() != null;
     }
 
-    public static void forEachSourceType(Consumer<GridComponentTracker> cons) {
-        for(int x = 0; x < GridComponentTracker.values().length; x++) {
-            GridComponentTracker type = GridComponentTracker.values()[x];
+    public static void forEachSourceType(Consumer<GridTracking> cons) {
+        for(int x = 0; x < GridTracking.values().length; x++) {
+            GridTracking type = GridTracking.values()[x];
             cons.accept(type);
         }
     }
 
-    public static CompoundTag write(ComponentUUID<?> addr, CompoundTag tag) {
-        tag.putInt(GridComponentTracker.PREFIX, addr.getTrackerScope().ordinal());
+    public static CompoundTag write(GridUUID<?> addr, CompoundTag tag) {
+        tag.putInt(GridTracking.PREFIX, addr.getTrackerScope().ordinal());
         addr.write(tag);
         return tag;
     }
 
-    public static ByteBuf write(ComponentUUID<?> addr, ByteBuf buffer) {
+    public static ByteBuf write(GridUUID<?> addr, ByteBuf buffer) {
         buffer.writeInt(addr.getTrackerScope().ordinal());
         addr.write(buffer);
         return buffer;
     }
 
-    public static void write(ComponentUUID<?> addr, RecordBuilder<?> builder) {
-        builder.add(GridComponentTracker.PREFIX, addr.getTrackerScope().ordinal(), Codec.INT);
+    public static void write(GridUUID<?> addr, RecordBuilder<?> builder) {
+        builder.add(GridTracking.PREFIX, addr.getTrackerScope().ordinal(), Codec.INT);
         addr.write(builder);
     }
 
-    public static ComponentUUID<?> read(CompoundTag tag) {
-        int ordinal = tag.getInt(GridComponentTracker.PREFIX);
-        GridComponentTracker[] types = GridComponentTracker.values();
+    public static GridUUID<?> read(CompoundTag tag) {
+        int ordinal = tag.getInt(GridTracking.PREFIX);
+        GridTracking[] types = GridTracking.values();
         if(ordinal < 0 || ordinal >= types.length) {
             throw new IllegalStateException("Discriminator couldn't determine type from " + tag 
                 +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
@@ -308,9 +306,9 @@ public enum GridComponentTracker {
         return types[ordinal].createUUID(tag);
     }
 
-    public static ComponentUUID<?> read(ByteBuf buffer) {
+    public static GridUUID<?> read(ByteBuf buffer) {
         int ordinal = buffer.readInt();
-        GridComponentTracker[] types = GridComponentTracker.values();
+        GridTracking[] types = GridTracking.values();
         if(ordinal < 0 || ordinal >= types.length) {
             throw new IllegalStateException("Discriminator couldn't determine type from " + buffer 
                 + " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
@@ -318,9 +316,9 @@ public enum GridComponentTracker {
         return types[ordinal].createUUID(buffer);
     }
 
-    public static ComponentUUID<?> read(Dynamic<?> dyn) {
-        int ordinal = dyn.get(GridComponentTracker.PREFIX).asInt(-1);
-        GridComponentTracker[] types = GridComponentTracker.values();
+    public static GridUUID<?> read(Dynamic<?> dyn) {
+        int ordinal = dyn.get(GridTracking.PREFIX).asInt(-1);
+        GridTracking[] types = GridTracking.values();
         if(ordinal < 0 || ordinal >= types.length) {
             throw new IllegalStateException("Discriminator couldn't determine type from " + dyn 
                 +  " - ordinal '" + ordinal + "' is out of range for enum of length " + types.length);
@@ -331,26 +329,26 @@ public enum GridComponentTracker {
     /**
      * This class uses reflection, and so stores
      * references to the various constructors in each
-     * {@link ComponentUUID} class. This method clears those
+     * {@link GridUUID} class. This method clears those
      * weakly-referenced constructors from the discriminator.
      */
     public static void clearReferences() {
-        for(int x = 0; x < GridComponentTracker.values().length; x++)
-            GridComponentTracker.values()[x].clear();
+        for(int x = 0; x < GridTracking.values().length; x++)
+            GridTracking.values()[x].clear();
     }
 
-    private final Class<? extends ComponentUUID<?>> clazz; 
+    private final Class<? extends GridUUID<?>> clazz; 
     private final Class<? extends IAttachmentHolder> referent;
-    private WeakReference<Constructor<? extends ComponentUUID<?>>> tagCtor = new WeakReference<>(null);;
-    private WeakReference<Constructor<? extends ComponentUUID<?>>> byteBufCtor = new WeakReference<>(null);
-    private WeakReference<Constructor<? extends ComponentUUID<?>>> dynamicCtor = new WeakReference<>(null);;
+    private WeakReference<Constructor<? extends GridUUID<?>>> tagCtor = new WeakReference<>(null);;
+    private WeakReference<Constructor<? extends GridUUID<?>>> byteBufCtor = new WeakReference<>(null);
+    private WeakReference<Constructor<? extends GridUUID<?>>> dynamicCtor = new WeakReference<>(null);;
 
-    <T extends ComponentUUID<T>> GridComponentTracker(Class<T> clazz, Class<? extends IAttachmentHolder> referent) {
+    <T extends GridUUID<T>> GridTracking(Class<T> clazz, Class<? extends IAttachmentHolder> referent) {
         this.clazz = clazz;
         this.referent = referent;
     }
 
-    public Class<? extends ComponentUUID<?>> getUUIDClass() {
+    public Class<? extends GridUUID<?>> getUUIDClass() {
         return clazz;
     }
 
@@ -364,7 +362,7 @@ public enum GridComponentTracker {
         tagCtor.clear();
     }
 
-    private ComponentUUID<?> createUUID(CompoundTag tag) {
+    private GridUUID<?> createUUID(CompoundTag tag) {
         if(clazz == null) throw new NullPointerException("Cannot instantiate ComponentUUID '" + this + "' because this enum member hasn't been configured!");
         try {
             if(tagCtor.refersTo(null)) tagCtor = new WeakReference<>(clazz.getDeclaredConstructor(CompoundTag.class));
@@ -378,9 +376,9 @@ public enum GridComponentTracker {
         }
     }
 
-    public ComponentUUID<?> createRandomUUID(RandomSource random) {
+    public GridUUID<?> createRandomUUID(RandomSource random) {
         try {
-            Constructor<? extends ComponentUUID<?>> randomCtor = clazz.getDeclaredConstructor(RandomSource.class);
+            Constructor<? extends GridUUID<?>> randomCtor = clazz.getDeclaredConstructor(RandomSource.class);
             return randomCtor.newInstance(random);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
             e.printStackTrace();
@@ -391,7 +389,7 @@ public enum GridComponentTracker {
         }
     }
 
-    private ComponentUUID<?> createUUID(ByteBuf buffer) {
+    private GridUUID<?> createUUID(ByteBuf buffer) {
         if(clazz == null) throw new NullPointerException("Cannot instantiate ComponentUUID " + this + " because this enum member hasn't been configured!");
         try {
             if(byteBufCtor.refersTo(null)) byteBufCtor = new WeakReference<>(clazz.getDeclaredConstructor(ByteBuf.class));
@@ -405,7 +403,7 @@ public enum GridComponentTracker {
         }
     }
 
-    private ComponentUUID<?> createUUID(Dynamic<?> dyn) {
+    private GridUUID<?> createUUID(Dynamic<?> dyn) {
         if(clazz == null) throw new NullPointerException("Cannot instantiate ComponentUUID " + this + " because this enum member hasn't been configured!");
         try {
             if(dynamicCtor.refersTo(null)) dynamicCtor = new WeakReference<>(clazz.getDeclaredConstructor(Dynamic.class));
@@ -475,7 +473,7 @@ public enum GridComponentTracker {
             public ComponentNotFoundException(String message) {
                 super(message);
             }
-            public ComponentNotFoundException(ComponentUUID<?> id, String message) {
+            public ComponentNotFoundException(GridUUID<?> id, String message) {
                 super("Error getting component at " + id + " - " + message);
             }
         }

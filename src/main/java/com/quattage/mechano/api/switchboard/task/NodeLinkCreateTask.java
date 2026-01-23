@@ -9,13 +9,13 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.ComponentLink;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.SpoolItem;
@@ -35,8 +35,8 @@ public class NodeLinkCreateTask implements ActionTask {
     @Override
     public Class<?>[] getArgumentTemplate() {
         return new Class<?>[] {
-            ComponentUUID.class,
-            ComponentUUID.class,
+            GridUUID.class,
+            GridUUID.class,
             TransmitterType.class,
             UUID.class,
             GridAction.class,
@@ -45,8 +45,8 @@ public class NodeLinkCreateTask implements ActionTask {
 
     @Override
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
-        GridComponentTracker.write((ComponentUUID<?>)args[0], buffer);
-        GridComponentTracker.write((ComponentUUID<?>)args[1], buffer);
+        GridTracking.write((GridUUID<?>)args[0], buffer);
+        GridTracking.write((GridUUID<?>)args[1], buffer);
         buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType)args[2]));
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
@@ -61,8 +61,8 @@ public class NodeLinkCreateTask implements ActionTask {
     @Override
     public Object[] dynamicDecode(ByteBuf buffer) {
         return new Object[] {
-            GridComponentTracker.read(buffer),
-            GridComponentTracker.read(buffer),
+            GridTracking.read(buffer),
+            GridTracking.read(buffer),
             Mechano.REGISTRATE.getTransmitterRegistry().byId(buffer.readInt()),
             buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null,
             GridAction.values()[buffer.readInt()]
@@ -84,15 +84,15 @@ public class NodeLinkCreateTask implements ActionTask {
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        ComponentUUID<?> startID = (ComponentUUID<?>)args[0];
-        ComponentUUID<?> endID = (ComponentUUID<?>)args[1];
+        GridUUID<?> startID = (GridUUID<?>)args[0];
+        GridUUID<?> endID = (GridUUID<?>)args[1];
         AncillaryNode<?> startNode = null, endNode = null; 
-        try { startNode = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, startID); } 
+        try { startNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, startID); } 
         catch (Exception e) { return GridAction.RESPONSE_FAIL_START_MISSING; }
-        try { endNode = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, endID); } 
+        try { endNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, endID); } 
         catch (Exception e) { return GridAction.RESPONSE_FAIL_END_MISSING; }
         args[4] = grid.addLinkDeferred(new ComponentLink<>((TransmitterType)args[2], startID, startNode, endID, endNode));
-        Set<ServerPlayer> trackers = GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), startID, endID);
+        Set<ServerPlayer> trackers = GridTracking.collectPlayersTracking((ServerLevel)grid.getWorld(), startID, endID);
         if(args[3] != null) {
             Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
             if(caller instanceof ServerPlayer sp) trackers.add(sp);
@@ -104,12 +104,12 @@ public class NodeLinkCreateTask implements ActionTask {
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        ComponentUUID<?> startID = (ComponentUUID<?>) args[0];
-        ComponentUUID<?> endID = (ComponentUUID<?>) args[1];
+        GridUUID<?> startID = (GridUUID<?>) args[0];
+        GridUUID<?> endID = (GridUUID<?>) args[1];
         AncillaryNode<?> startNode = null, endNode = null; 
-        try { startNode = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, startID); } 
+        try { startNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, startID); } 
         catch (Exception e) { return GridAction.RESPONSE_FAIL_START_MISSING; }
-        try { endNode = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, endID); } 
+        try { endNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, endID); } 
         catch (Exception e) { return GridAction.RESPONSE_FAIL_END_MISSING; }
         args[4] = grid.addLink(new ComponentLink<>((TransmitterType)args[2], startID, startNode, endID, endNode));
         UUID uuid = (UUID)args[3];

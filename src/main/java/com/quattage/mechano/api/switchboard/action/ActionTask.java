@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;

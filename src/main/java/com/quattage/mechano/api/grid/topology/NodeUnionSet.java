@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.netlist;
+package com.quattage.mechano.api.grid.topology;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -11,10 +11,10 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -472,7 +472,7 @@ public class NodeUnionSet {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
             out += "\n  ▸" + summarizeNodeFull(root);
-            src = GridComponentTracker.getSource(grid.getWorld(), root);
+            src = GridTracking.getSource(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
                 out += "\n    Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
@@ -485,7 +485,7 @@ public class NodeUnionSet {
             out += "\n    " + contents.size() + " children:";
             for(Node child : contents) {
                 out += "\n      " + summarizeNodeFull(child);
-                src = GridComponentTracker.getSource(grid.getWorld(), child);
+                src = GridTracking.getSource(grid.getWorld(), child);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
                     out += "\n        Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";

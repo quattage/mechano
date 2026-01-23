@@ -1,7 +1,7 @@
 package com.quattage.mechano.infrastructure.gametest.tests;
 
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.MechanoTestHolder;
@@ -13,9 +13,9 @@ public class PersistenceTests {
     
     @GameTest
     public static void checkUUIDSerialize(MechanoGameTestHelper test) {
-        GridComponentTracker[] trackerTypes = GridComponentTracker.values();
-        for(GridComponentTracker tracker : trackerTypes) {
-            ComponentUUID<?> randomUUID = tracker.createRandomUUID(test.getLevel().random);
+        GridTracking[] trackerTypes = GridTracking.values();
+        for(GridTracking tracker : trackerTypes) {
+            GridUUID<?> randomUUID = tracker.createRandomUUID(test.getLevel().random);
             test.checkUUID(randomUUID);
         }
         test.succeed();

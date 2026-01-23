@@ -10,11 +10,11 @@ import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.TransmitterType.TransmitterProvider;
@@ -66,7 +66,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
      * Due to the iterative nature of this method, this shouldn't be called often
      * @param player ServerPlayer or AbstractClientPlayer instance - this method is unsided
      * @returns <code>true</code> if the given <code>player</code>'s inventory contains a <code>SpoolItem</code> with
-     * a {@link ComponentUUID} attachment
+     * a {@link GridUUID} attachment
      */
     public static boolean hasAwaiting(Player player) {
         for(ItemStack stack : player.getInventory().items) {
@@ -107,8 +107,8 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
-        ComponentUUID<?> sourceID = GridComponentTracker.getAddress(source, initialTarget);
-        CircuitComponent component = GridComponentTracker.findOrThrow(grid, sourceID);
+        GridUUID<?> sourceID = GridTracking.getAddress(source, initialTarget);
+        CircuitComponent component = GridTracking.findOrThrow(grid, sourceID);
         if(component == null || (component != initialTarget))
             return InteractionResultHolder.fail(stack);
         stack.set(MechanoData.UUID, sourceID);
@@ -122,8 +122,8 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     private InteractionResultHolder<ItemStack> handleSecondRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode<?> subsequentTarget) {
         if(subsequentTarget == null) 
             return InteractionResultHolder.fail(stack);
-        ComponentUUID<?> initialTargetID = stack.get(MechanoData.UUID);
-        AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridComponentTracker.findOrThrow(grid, initialTargetID);
+        GridUUID<?> initialTargetID = stack.get(MechanoData.UUID);
+        AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridTracking.findOrThrow(grid, initialTargetID);
         Griddable<?> initialSource = initialTarget.getProviderSource();
         if(initialSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
@@ -134,9 +134,9 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
         }
-        if(!GridComponentTracker.isReachable(grid.getWorld(), initialSource) || !GridComponentTracker.isReachable(grid.getWorld(), subsequentSource)) 
+        if(!GridTracking.isReachable(grid.getWorld(), initialSource) || !GridTracking.isReachable(grid.getWorld(), subsequentSource)) 
             return InteractionResultHolder.fail(stack);
-        ComponentUUID<?> subsequentTargetID = GridComponentTracker.getAddress(subsequentSource, subsequentTarget);
+        GridUUID<?> subsequentTargetID = GridTracking.getAddress(subsequentSource, subsequentTarget);
         GridAction request = grid.initiateTask(GridAction.TASK_LINK_CREATE)
             .from(initialSource, subsequentSource)
             .withArguments(initialTargetID, subsequentTargetID, getTransmitter(), player.getUUID())
@@ -148,12 +148,12 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     @Override
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slotId, boolean isSelected) {
         if(!world.isClientSide) return;
-        ComponentUUID<?> startAddress = stack.get(MechanoData.UUID);
+        GridUUID<?> startAddress = stack.get(MechanoData.UUID);
         if(startAddress == null) return;
         
     }
 
-    private void cancelAwaitingConnection(@Nullable ComponentUUID<?> startAddress, @Nullable ComponentUUID<?> endAddress, ItemStack stack) {
+    private void cancelAwaitingConnection(@Nullable GridUUID<?> startAddress, @Nullable GridUUID<?> endAddress, ItemStack stack) {
         stack.remove(MechanoData.UUID);
         if(startingDamage > -1) stack.setDamageValue(startingDamage);
         startingDamage = -1;
@@ -164,7 +164,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     @Override
     public boolean onLeftClick(Player player, ItemStack stack, @Nullable InteractionHand hand) {
         if(!stack.has(MechanoData.UUID)) return false;
-        ComponentUUID<?> addr = stack.get(MechanoData.UUID);
+        GridUUID<?> addr = stack.get(MechanoData.UUID);
         if(addr == null) return false;
         stack.remove(MechanoData.UUID);
 

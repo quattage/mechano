@@ -3,6 +3,7 @@ package com.quattage.mechano.api.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.switchboard.JackSelector;
 
 import net.minecraft.client.Minecraft;
@@ -12,6 +13,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implements BlockEntityRenderer<T> {
 
@@ -46,26 +48,27 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
         });
     }
 
-    // public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
-    //     be.forEachCatenary(cat -> {
-    //         if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel())) return;
-    //         cat.render(be, bufferSource, matrixStack, pTicks);
-    //     });
-    // }
+    public void renderMovingWires(T be, MultiBufferSource bufferSource, PoseStack matrixStack, float pTicks) {
+        be.forEachExternalLink(link -> {
+            // if(!WindManager.INSTANCE.isEnabled() && !cat.isMoving(be.getLevel())) return;
+            link.render(be, bufferSource, matrixStack, pTicks);
+        });
+    }
 
     @Override
     public AABB getRenderBoundingBox(T be) {
         return be.getRenderBoundingBox();
     }
     
-    // @Override
-    // public boolean shouldRender(T be, Vec3 cameraPos) {
-    //     if(be.getSurrogate() != null && be.getSurrogate().isSynced()) return true;
-    //     return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
-    // }
+    @Override
+    public boolean shouldRender(T be, Vec3 cameraPos) {
+        if(shouldRenderOffScreen(be)) return true;
+        return Vec3.atCenterOf(be.getBlockPos()).closerThan(cameraPos, (double)this.getViewDistance());
+    }
 
-    // @Override
-    // public boolean shouldRenderOffScreen(T be) {
-    //     return be.getSurrogate() != null && be.getSurrogate().isSynced();
-    // }
+    @Override
+    public boolean shouldRenderOffScreen(T be) {
+        GriddableTerminus gt = be.getTerminus();
+        return gt.hasConnections();
+    }
 }

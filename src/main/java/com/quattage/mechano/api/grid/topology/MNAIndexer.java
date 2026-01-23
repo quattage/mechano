@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.solver;
+package com.quattage.mechano.api.grid.topology;
 
 import java.util.Set;
 import java.util.function.Consumer;
@@ -6,11 +6,11 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;

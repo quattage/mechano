@@ -4,9 +4,9 @@ import java.util.Set;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 
 import net.minecraft.client.player.LocalPlayer;

@@ -5,8 +5,8 @@ import java.util.Set;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.Disposable;
 

@@ -1,18 +1,16 @@
-package com.quattage.mechano.api.grid.topology;
+package com.quattage.mechano.api.grid.component;
 
 import java.util.Objects;
 import java.util.Set;
 
+import com.quattage.mechano.api.grid.GridConstruct;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent.NodeStub;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Node.JointNode;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
-import com.quattage.mechano.api.grid.topology.vertex.WireJack;
+import com.quattage.mechano.api.grid.topology.landmark.BlockJack;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Node.JointNode;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.WireJack;
 import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;

@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.component.StampingComponent;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 public class Resistor extends StampingComponent {
 

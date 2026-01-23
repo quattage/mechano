@@ -4,10 +4,11 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
 
 /**

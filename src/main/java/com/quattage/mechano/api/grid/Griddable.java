@@ -14,15 +14,13 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.BlockJack;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.BlockJack;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.foundation.WorldlyObject;
 
@@ -43,14 +41,14 @@ import net.neoforged.api.distmarker.OnlyIn;
  * Implementations are expected to provide:
  * <ul>
  *  <li> a {@link #getCircuit() circuit component} which describes this Griddable's internal circuit configuration </li>
- *  <li> a {@link ComponentUUID uuid} pointing to the in-world location of the provided circuit - see {@link GridComponentTracker data sources} for more info</li>
+ *  <li> a {@link GridUUID uuid} pointing to the in-world location of the provided circuit - see {@link GridTracking data sources} for more info</li>
  *  <li> a {@link GriddableTerminus} describing all outside access points so that this Griddable<?>can attach to others to form part of a larger whole in the {@link Grid power grid}
  *</ul>
  * Implementations of this class should expect to handle both server and client sided logic
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
  * <code>@OnlyIn</code> annotation.
  */
-public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, GridReferent<T>, GridConstruct {
+public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridReferent<T>, GridConstruct {
 
     /**
      * Gets the blocks at <code>pos</code> and <code>adjacentPos</code>
@@ -181,6 +179,17 @@ public interface Griddable<T extends ComponentUUID<T>> extends WorldlyObject, Gr
         Objects.requireNonNull(joint);
         Vector3f local = joint.getRotatedOffset(getSourceRotation());
         return getSourcePos().add(local);
+    }
+
+    default void forEachExternalLink(Consumer<AncillaryPair> cons) {
+        Grid grid = Grid.getUnsided(getWorld());
+        List<AncillaryPair> links = grid.getLinksBelongingTo(this);
+        if(links == null || links.isEmpty()) return;
+        for(int x = 0; x < links.size(); x++) {
+            AncillaryPair link = links.get(x);
+            if(link == null) continue;
+            cons.accept(link);
+        }
     }
 
     @Override

@@ -6,8 +6,8 @@ package com.quattage.mechano;
 import java.util.function.Supplier;
 
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -33,10 +33,10 @@ public class MechanoData {
                 .build()
     );
 
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ComponentUUID<?>>> UUID = 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID<?>>> UUID = 
         MechanoData.COMPONENT_REGISTRY.registerComponentType(
             "grid_identifier",
-            b -> b.persistent(GridComponentTracker.CODEC).networkSynchronized(GridComponentTracker.STREAM_CODEC)
+            b -> b.persistent(GridTracking.CODEC).networkSynchronized(GridTracking.STREAM_CODEC)
     );
 
 

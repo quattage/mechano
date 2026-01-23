@@ -7,7 +7,7 @@ import com.quattage.mechano.api.grid.VoltageDecay;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 public abstract class VoltageSource extends StampingComponent implements StampsDynamically, NeedsPostProcessing {
 

@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.vertex;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
 
@@ -6,10 +6,10 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
-import com.quattage.mechano.api.grid.topology.CircuitFactory;
+import com.quattage.mechano.api.grid.component.CircuitFactory;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.block.orientation.RelativeDirection;

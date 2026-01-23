@@ -1,25 +1,28 @@
-package com.quattage.mechano.api.grid.topology;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
 
 import org.joml.Vector3d;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
 
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class AncillaryPair {
 
-    protected ComponentUUID<?> startID, endID;
+    protected GridUUID<?> startID, endID;
     protected AncillaryNode<?> startNode, endNode;
 
     public AncillaryPair(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
@@ -27,7 +30,7 @@ public class AncillaryPair {
         assignEnd(endNode);
     }
 
-    public AncillaryPair(ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
+    public AncillaryPair(GridUUID<?> startID, AncillaryNode<?> startNode, GridUUID<?> endID, AncillaryNode<?> endNode) {
         assignStart(startID, startNode);
         assignEnd(endID, endNode);
     }
@@ -50,7 +53,7 @@ public class AncillaryPair {
         return this;
     }
 
-    public AncillaryPair assignStart(ComponentUUID<?> startID, AncillaryNode<?> startNode) {
+    public AncillaryPair assignStart(GridUUID<?> startID, AncillaryNode<?> startNode) {
         Objects.requireNonNull(startID);
         GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(startNode);
@@ -59,7 +62,7 @@ public class AncillaryPair {
         return this;
     }
 
-    public AncillaryPair assignEnd(ComponentUUID<?> endID, AncillaryNode<?> endNode) {
+    public AncillaryPair assignEnd(GridUUID<?> endID, AncillaryNode<?> endNode) {
         Objects.requireNonNull(endID);
         GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(endNode);
@@ -76,7 +79,7 @@ public class AncillaryPair {
         
     }
 
-    public ComponentUUID<?> getStartID() {
+    public GridUUID<?> getStartID() {
         return startID;
     }
     
@@ -88,7 +91,7 @@ public class AncillaryPair {
         return (Node)getStartAncillary().getParentConstruct();
     }
 
-    public ComponentUUID<?> getEndID() {
+    public GridUUID<?> getEndID() {
         return endID;
     }
 
@@ -142,6 +145,22 @@ public class AncillaryPair {
         );
     }
 
+    public boolean isDynamic() {
+        Griddable<?> startSource = startNode.getProviderSource();
+        Griddable<?> endSource = endNode.getProviderSource();
+        return (startSource != null && startSource.canMoveDynamically()) || 
+            (endSource != null && endSource.canMoveDynamically());
+    }
+
+    public AncillaryPair getFlipped(LevelReader world) {
+        return Grid.getUnsided(world).getLink(endNode.getProviderSource(), startID);
+    }
+
+    @OnlyIn(Dist.CLIENT) 
+    public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        
+    }
+
     public AncillaryPair validateSelf() {
         assertHasIDs();
         assertHasAncillaries();
@@ -150,11 +169,6 @@ public class AncillaryPair {
         return this;
     }
 
-    public boolean isDynamic() {
-        Griddable<?> startSource = startNode.getProviderSource();
-        Griddable<?> endSource = endNode.getProviderSource();
-        return (startSource != null && startSource.canMoveDynamically()) || (endSource != null && endSource.canMoveDynamically());
-    }
 
     private void assertHasIDs() {
         if(startID == null) {

@@ -10,11 +10,11 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.WireJack;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.WireJack;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
 import com.quattage.mechano.foundation.block.orientation.OrientationUpdatable;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
@@ -31,6 +31,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 public class GriddableTerminus implements OrientationUpdatable {
 
     private @Nullable AncillaryNode<?>[] exposedJoints;
+    private boolean hasConnections = false;
 
     public GriddableTerminus() {}
 
@@ -149,6 +150,18 @@ public class GriddableTerminus implements OrientationUpdatable {
 
     public int size() {
         return exposedJoints == null ? 0 : exposedJoints.length;
+    }
+
+    public void setHasConnections() {
+        setHasConnections(true);
+    }
+
+    public void setHasConnections(boolean hasConnections) {
+        this.hasConnections = hasConnections;
+    }
+
+    public boolean hasConnections() {
+        return hasConnections;
     }
 
     public @NotNull Griddable<?> getProviderSource() {

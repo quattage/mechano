@@ -8,15 +8,15 @@ import org.joml.Vector3d;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
+import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.ComponentUUID.VoxelUUID;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.CircuitFactory;
+import com.quattage.mechano.api.grid.component.CircuitFactory;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
 import net.minecraft.core.BlockPos;
@@ -139,8 +139,8 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
-    public GridComponentTracker getTrackerScope() {
-        return GridComponentTracker.VOXEL;
+    public GridTracking getTrackerScope() {
+        return GridTracking.VOXEL;
     }
 
     @Override

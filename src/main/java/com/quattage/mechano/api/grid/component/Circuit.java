@@ -1,18 +1,16 @@
-package com.quattage.mechano.api.grid.topology;
+package com.quattage.mechano.api.grid.component;
 
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.DiscreteComponent;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.infrastructure.BreakoutException;
 

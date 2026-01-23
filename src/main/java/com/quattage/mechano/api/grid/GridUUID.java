@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.component;
+package com.quattage.mechano.api.grid;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -9,10 +9,9 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.foundation.numeric.EsoMath;
 
 import io.netty.buffer.ByteBuf;
@@ -33,39 +32,39 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * An instance of this class can be used to locate a {@link CircuitComponent}
  * object from anywhere in the world, as long as said CircuitComponent
  * belongs to an identifiable {@link Griddable} instance currently loaded
- * by the level. Use the {@link GridComponentTracker} to instantiate, serialize 
+ * by the level. Use the {@link GridTracking} to instantiate, serialize 
  * and use ComponentUUIDs.
  */
-public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridReferent<T> {
+public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T> {
 
     protected UUIDComposite[] bindings;
 
-    public ComponentUUID() {
+    public GridUUID() {
         this.bindings = new UUIDComposite[0];
     }
 
-    public ComponentUUID(CompoundTag tag) {
+    public GridUUID(CompoundTag tag) {
         short bndc = tag.getByte("bndc");
         bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
             bindings[x] = new UUIDComposite(x, tag);
     }
 
-    public ComponentUUID(ByteBuf buffer) {
+    public GridUUID(ByteBuf buffer) {
         short bndc = buffer.readByte();
         bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
             bindings[x] = new UUIDComposite(x, buffer);
     }
 
-    public ComponentUUID(Dynamic<?> dyn) {
+    public GridUUID(Dynamic<?> dyn) {
         short bndc = dyn.get("bndc").asByte((byte)0);
         bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
             bindings[x] = new UUIDComposite(x, dyn);
     }
 
-    public ComponentUUID(RandomSource random) {
+    public GridUUID(RandomSource random) {
         short bndc = EsoMath.toShortClamped(EsoMath.randomInt(random, 0, 15));
         bindings = new UUIDComposite[bndc];
         for(int x = 0; x < bindings.length; x++)
@@ -129,7 +128,7 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         return bindings != null && bindings.length > 0;
     }
 
-    protected boolean areBindingsEqual(ComponentUUID<?> other) {
+    protected boolean areBindingsEqual(GridUUID<?> other) {
         if(!hasBindings() && !other.hasBindings()) return true;
         if(this.bindings.length != other.bindings.length) return false;
         for(int x = 0; x < bindings.length; x++) {
@@ -153,10 +152,10 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
     }
 
     /**
-     * A {@link ComponentUUID} whose primary coordinate is a 
+     * A {@link GridUUID} whose primary coordinate is a 
      * {@link BlockPos} for targeting voxels in the Minecraft level.
      */
-    public static class VoxelUUID extends ComponentUUID<VoxelUUID> {
+    public static class VoxelUUID extends GridUUID<VoxelUUID> {
 
         private BlockPos pos;
 
@@ -215,8 +214,8 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         }
 
         @Override
-        public GridComponentTracker getTrackerScope() {
-            return GridComponentTracker.VOXEL;
+        public GridTracking getTrackerScope() {
+            return GridTracking.VOXEL;
         }
 
         @Override
@@ -264,10 +263,10 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
     }
 
     /**
-     * A {@link ComponentUUID} whose primary coordinate is a {@link UUID 64-bit UUID} 
+     * A {@link GridUUID} whose primary coordinate is a {@link UUID 64-bit UUID} 
      * for refering to entities loaded by the Minecraft level.
      */
-    public static class EntityUUID extends ComponentUUID<EntityUUID> {
+    public static class EntityUUID extends GridUUID<EntityUUID> {
 
         private UUID uuid;
 
@@ -334,8 +333,8 @@ public abstract class ComponentUUID<T extends ComponentUUID<T>> implements GridR
         }
 
         @Override
-        public GridComponentTracker getTrackerScope() {
-            return GridComponentTracker.ENTITY;
+        public GridTracking getTrackerScope() {
+            return GridTracking.ENTITY;
         }
 
         @Override

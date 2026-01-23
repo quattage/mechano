@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -6,20 +6,25 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.catenary.model.SimulatedCatenary;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -39,13 +44,13 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         this.trns = trns;
     }
 
-    public ComponentLink(TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
+    public ComponentLink(TransmitterType trns, GridUUID<?> startID, AncillaryNode<?> startNode, GridUUID<?> endID, AncillaryNode<?> endNode) {
         super(startID, startNode, endID, endNode);
         Objects.requireNonNull(trns);
         this.trns = trns;
     }
 
-    private ComponentLink(CircuitComponent component, TransmitterType trns, ComponentUUID<?> startID, AncillaryNode<?> startNode, ComponentUUID<?> endID, AncillaryNode<?> endNode) {
+    private ComponentLink(CircuitComponent component, TransmitterType trns, GridUUID<?> startID, AncillaryNode<?> startNode, GridUUID<?> endID, AncillaryNode<?> endNode) {
         this(trns, startID, startNode, endID, endNode);
         this.component = component;
     }
@@ -130,8 +135,27 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     }
 
     @OnlyIn(Dist.CLIENT)
-    public CatenaryModel<?> getCatenary() {
+    public CatenaryModel<?> getCatenary(LevelReader world) {
+        if(catenary != null) return catenary;
+        AncillaryPair opposite = getFlipped(world);
+        if(opposite instanceof ComponentLink<?> cl && cl.catenary != null) {
+            this.catenary = cl.catenary;
+            return catenary;
+        }
+        initializeCatenary();
+        if(opposite instanceof ComponentLink<?> cl) 
+            cl.catenary = this.catenary;
         return catenary;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void initializeCatenary() {
+        catenary = new SimulatedCatenary();
+        catenary.setOffset(trns, startNode.getRealPosition(), endNode.getRealPosition())
+            .initializeSpan()
+            .calculateSegmentation(trns)
+            .pinEndpoints();
+        catenary.update(trns);
     }
 
     @OnlyIn(Dist.CLIENT) 
@@ -145,6 +169,15 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         catenary.setOffset(trns, startPos, endPos);
     }
 
+    @Override
+    @OnlyIn(Dist.CLIENT) 
+    public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        Vec3 worldMid = halfwayBetween();
+        CatenaryMeshBuffer.REUSABLE 
+            .bindTo(trns).at(worldMid).in(owner.getLevel())
+            .render(buffers, matrixStack, getCatenary(owner.getLevel()), worldMid.subtract(Vec3.atLowerCornerOf(owner.getBlockPos())), pTicks);
+        CatenaryMeshBuffer.REUSABLE.reset();
+    }
 }
 
 

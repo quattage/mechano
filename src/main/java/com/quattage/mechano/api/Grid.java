@@ -12,11 +12,11 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.topology.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.foundation.WorldlyObject;
@@ -176,8 +176,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             GridAction result = addLinkAsymmetric(link);
             GridAction inverted = addLinkAsymmetric(linkInverted);
             if(result.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
-                removeLinkAsymmetric(GridComponentTracker.getSource(link.getStartNode()), link.getEndID());
-                removeLinkAsymmetric(GridComponentTracker.getSource(linkInverted.getStartNode()), linkInverted.getEndID());
+                removeLinkAsymmetric(GridTracking.getSource(link.getStartNode()), link.getEndID());
+                removeLinkAsymmetric(GridTracking.getSource(linkInverted.getStartNode()), linkInverted.getEndID());
                 // always consume the failure case should one exist
                 if(!result.getActionType().indicatesFailure())
                     result = inverted;
@@ -186,7 +186,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         private GridAction addLinkAsymmetric(AncillaryPair link) {
-            Griddable<?> owner = GridComponentTracker.getSource(link.getStartNode());
+            Griddable<?> owner = GridTracking.getSource(link.getStartNode());
             List<AncillaryPair> linksAt = getLinksBelongingTo(owner);
             if(linksAt == null) {
                 linksAt = new ArrayList<AncillaryPair>();
@@ -204,12 +204,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         public GridAction removeLink(AncillaryPair link) {
             Objects.requireNonNull(link);
             link.validateSelf();
-            GridAction result = removeLinkAsymmetric(GridComponentTracker.getSource(link.getStartNode()), link.getEndID());
-            removeLinkAsymmetric(GridComponentTracker.getSource(link.getEndNode()), link.getStartID());
+            GridAction result = removeLinkAsymmetric(GridTracking.getSource(link.getStartNode()), link.getEndID());
+            removeLinkAsymmetric(GridTracking.getSource(link.getEndNode()), link.getStartID());
             return result;
         }
 
-        private GridAction removeLinkAsymmetric(Griddable<?> source, ComponentUUID<?> endID) {
+        private GridAction removeLinkAsymmetric(Griddable<?> source, GridUUID<?> endID) {
             List<AncillaryPair> linksAt = getLinksBelongingTo(source);
             if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
             int toRemove = -1;
@@ -237,6 +237,17 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
                 return null;
             }
             return linksAt;
+        }
+
+        public @Nullable AncillaryPair getLink(Griddable<?> source, GridUUID<?> id) {
+            List<AncillaryPair> linksAt = links.get(source);
+            if(linksAt == null) return null;
+            for(int x = 0; x < linksAt.size(); x++) {
+                AncillaryPair link = linksAt.get(x);
+                if(link == null) continue;
+                if(link.getEndID().equals(id)) return link;
+            }
+            return null;
         }
 
         public int getLinkCount() {

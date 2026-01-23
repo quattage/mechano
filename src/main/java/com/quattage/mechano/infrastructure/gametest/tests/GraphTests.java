@@ -9,15 +9,15 @@ import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.ServerGrid.TopologyProcessQueue;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.topology.netlist.NodalCluster;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.topology.NodalCluster;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
@@ -285,7 +285,7 @@ public class GraphTests {
         ConnectorBlockEntity cbe = test.placeConnector(test.randomPos());
         GriddableTerminus terminus = test.getTerminus(cbe);
         terminus.forEach(expected -> {
-            ComponentUUID<?> address = GridComponentTracker.getAddress(cbe, expected);
+            GridUUID<?> address = GridTracking.getAddress(cbe, expected);
             CircuitComponent result = test.getComponentSafely(address);
             test.assertFalse(result == null, "Reachability check for '" + cbe.getComponent().getComponentID() 
                 + "' belonging to " + cbe.getClass().getSimpleName() + " failed while acquiring component at " + address);
@@ -306,14 +306,14 @@ public class GraphTests {
         ConnectorBlockEntity cbeA = test.placeConnector(test.randomPos());
         ConnectorBlockEntity cbeB = test.placeConnector(test.randomPos());
 
-        ComponentUUID<?> idA = cbeA.getUUIDSafe(), idB = cbeB.getUUIDSafe();
+        GridUUID<?> idA = cbeA.getUUIDSafe(), idB = cbeB.getUUIDSafe();
         AncillaryNode<?> startNode = cbeA.getDefaultAncillary();
         AncillaryNode<?> endNode = cbeB.getDefaultAncillary();
         test.failIfNull(startNode, "ConnectorBlockEntity A couldn't provide a default ancilllary");
         test.failIfNull(endNode, "ConnectorBlockEntity B couldn't provide a default ancilllary");
 
-        ComponentUUID<?> startID = GridComponentTracker.getAddress(cbeA, startNode);
-        ComponentUUID<?> endID = GridComponentTracker.getAddress(cbeB, endNode);
+        GridUUID<?> startID = GridTracking.getAddress(cbeA, startNode);
+        GridUUID<?> endID = GridTracking.getAddress(cbeB, endNode);
 
         test.assertTrue(startID != idA, "ConnectorBlockEntity A's uuid copy returned the same instance");
         test.assertTrue(endID != idB, "ConnectorBlockEntity B's uuid copy returned the same instance");

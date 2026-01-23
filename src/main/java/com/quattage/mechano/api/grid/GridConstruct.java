@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.component;
+package com.quattage.mechano.api.grid;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -8,13 +8,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.topology.Circuit;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
+import com.quattage.mechano.api.grid.component.Circuit;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.component.DiscreteComponent;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 import net.createmod.catnip.platform.CatnipServices;
 import net.minecraft.core.BlockPos;
@@ -27,7 +27,7 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * An object that participates in the {@link GridHierarchy}.
- * Subclasses must provide a {@link ComponentUUID} of a specific type and 
+ * Subclasses must provide a {@link GridUUID} of a specific type and 
  * lookup paradigm. {@link Griddable} so that they can be located by 
  * the {@link Grid} between logical sides. Most 
  * {@link CircuitComponent} implementations will implement this
@@ -68,7 +68,7 @@ public interface GridConstruct {
                 if(actual == expected) return;
                 throw new ComponentHierarchyInvalidException(actual, expected);
             }
-            case ComponentUUID<?> id -> {
+            case GridUUID<?> id -> {
                 if(id.getTargetType() == expected) return;
                 throw new ComponentHierarchyInvalidException(id.getTargetType(), expected);
             }
@@ -104,18 +104,18 @@ public interface GridConstruct {
 
 
     /**
-     * Modify the {@link ComponentUUID} bindings of <code>id</code>
+     * Modify the {@link GridUUID} bindings of <code>id</code>
      * to point towards this SourceIdentiifer.
      * @param id GridUUID to bind
-     * @return The provided {@link ComponentUUID}, modified as a result of this call.
+     * @return The provided {@link GridUUID}, modified as a result of this call.
      */
-    default <T extends ComponentUUID<T>> T bindUUID(T id) { 
+    default <T extends GridUUID<T>> T bindUUID(T id) { 
         return id.withBinding(getHierarchyIndex(), getHierarchyType());
     }
 
     /**
      * Search this GridConstruct's internal data to find a
-     * CircuitComponent using the provided {@link ComponentUUID}'s bindings
+     * CircuitComponent using the provided {@link GridUUID}'s bindings
      * @param binding {@link UUIDComposite} used to search this component for a sub-component. Defaults to {@link UUIDComposite#EMPTY}
      * @return a {@link CircuitComponent}, or <code>null</code>
      */
@@ -123,7 +123,7 @@ public interface GridConstruct {
 
     /**
      * Search this GridConstruct's internal data to find a
-     * CircuitComponent using the provided {@link ComponentUUID}'s bindings
+     * CircuitComponent using the provided {@link GridUUID}'s bindings
      * @param binding {@link UUIDComposite} used to search this component for a sub-component. Defaults to {@link UUIDComposite#EMPTY}
      * @return a {@link CircuitComponent}, or <code>null</code>
      */
@@ -174,7 +174,7 @@ public interface GridConstruct {
      * An object that refers in some way to one or more {@link GridConstruct} objects.
      * (e.g. a BlockEntity with a {@link Circuit})
      */
-    public interface GridReferent<T extends ComponentUUID<T>> {
+    public interface GridReferent<T extends GridUUID<T>> {
 
         static GridReferent<?> choosePrimary(GridReferent<?> a, GridReferent<?> b) {
             if(a.canMoveDynamically() && !b.canMoveDynamically()) return a;
@@ -183,7 +183,7 @@ public interface GridConstruct {
         }
 
         /**
-         * Provides a (new or pre-existing) {@link ComponentUUID} instance 
+         * Provides a (new or pre-existing) {@link GridUUID} instance 
          * that points towards this object. Can be used by the {@link Grid}
          * to look this object up. <p>
          * For API users: Use {@link #getUUIDSafe() the checked version} 
@@ -194,7 +194,7 @@ public interface GridConstruct {
         T getUUID();
 
         /**
-         * Provides a (new or pre-existing) {@link ComponentUUID} instance 
+         * Provides a (new or pre-existing) {@link GridUUID} instance 
          * that points towards this object. Can be used by the {@link Grid}
          * to look this object up. <p>
          * This method will throw exceptions for null or invalid returns.
@@ -208,7 +208,7 @@ public interface GridConstruct {
             return uuid;
         }
 
-        GridComponentTracker getTrackerScope();
+        GridTracking getTrackerScope();
 
         /**
          * Provides access to the instantiator/composer source object

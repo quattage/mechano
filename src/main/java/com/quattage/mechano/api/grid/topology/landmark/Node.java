@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.vertex;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,13 +11,13 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.foundation.Disposable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

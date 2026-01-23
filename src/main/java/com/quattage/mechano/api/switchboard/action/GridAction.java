@@ -15,10 +15,10 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
 import com.quattage.mechano.api.switchboard.task.ComponentCreateTask;
@@ -367,7 +367,7 @@ public enum GridAction implements StringRepresentable {
         @OnlyIn(Dist.CLIENT)
         public GridAction requestRun() {
             Object[] internalArgs = args;
-            List<ComponentUUID<?>> trackerIDs = new ArrayList<ComponentUUID<?>>(trackers.length);
+            List<GridUUID<?>> trackerIDs = new ArrayList<GridUUID<?>>(trackers.length);
             for(int x = 0; x < trackers.length; x++) {
                 GridReferent<?> obj = trackers[x];
                 if(!(obj instanceof Griddable<?> gobj))
@@ -395,7 +395,7 @@ public enum GridAction implements StringRepresentable {
             if(grid instanceof ServerGrid server) {
                 GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
                 if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-                return task.executeAsServer(server, args).broadcast(server, GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
+                return task.executeAsServer(server, args).broadcast(server, GridTracking.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
             }
             return GridAction.RESPONSE_FAIL_GENERIC;
         }
@@ -407,7 +407,7 @@ public enum GridAction implements StringRepresentable {
             if(!(grid instanceof ServerGrid server)) throw new IllegalArgumentException("what");
             GridTaskExecuteEvent<?> event = NeoForge.EVENT_BUS.post(new GridTaskExecuteEvent.Server(server, action));
             if(event.isCanceled()) return GridAction.RESPONSE_FAIL_CANCELLED;
-            return task.executeAsServer(server, args).broadcast(server, GridComponentTracker.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
+            return task.executeAsServer(server, args).broadcast(server, GridTracking.collectPlayersTracking((ServerLevel)grid.getWorld(), trackers), args);
         }
     }
 

@@ -7,8 +7,8 @@ import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;

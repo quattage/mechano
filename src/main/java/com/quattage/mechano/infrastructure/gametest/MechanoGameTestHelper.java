@@ -12,18 +12,18 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridComponentTracker;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.topology.netlist.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.vertex.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.NodeUnionSet;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
@@ -120,7 +120,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return output;
     }
 
-    public <T extends ComponentUUID<T>> T getAddressSafely(GridReferent<T> obj, GridConstruct component) {
+    public <T extends GridUUID<T>> T getAddressSafely(GridReferent<T> obj, GridConstruct component) {
         T id = obj.getUUIDSafe();
         component.forEachConstructInHierarchy(construct -> { 
             if(!(construct instanceof Griddable<?>)) 
@@ -130,10 +130,10 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return id;
     }
 
-    public CircuitComponent getComponentSafely(ComponentUUID<?> address) {
+    public CircuitComponent getComponentSafely(GridUUID<?> address) {
         failIfNull(address);
         CircuitComponent result = null;
-        try { result = GridComponentTracker.findOrThrow(getGrid(), address); } 
+        try { result = GridTracking.findOrThrow(getGrid(), address); } 
         catch (Exception e) { 
             e.printStackTrace(); 
             fail("Couldn't resolve component acquisition for " + address + " (see exception above)");
@@ -152,17 +152,17 @@ public class MechanoGameTestHelper extends GameTestHelper {
         if(!(be instanceof ConnectorBlockEntity cbe))
             throw new GameTestAssertException("Connector BlockEntity couldn't be acquired at " + pos);
         Grid grid = Grid.server(getLevel());
-        assertTrue(GridComponentTracker.isReachable(grid.getWorld(), cbe), "ConnectorBlockEntity couldn't be reached by active grid.");
+        assertTrue(GridTracking.isReachable(grid.getWorld(), cbe), "ConnectorBlockEntity couldn't be reached by active grid.");
         return cbe;
     }
 
-    public void checkUUID(ComponentUUID<?> expected) {
+    public void checkUUID(GridUUID<?> expected) {
         failIfNull(expected);
         ItemStack newStack = new ItemStack(MechanoItems.SPOOL_HOOKUP.get(), 1);
         newStack.set(MechanoData.UUID, expected);
         CompoundTag serialized = (CompoundTag)newStack.save(getLevel().registryAccess());
         serialized = serialized.getCompound("components").getCompound(MechanoData.UUID.getRegisteredName());
-        ComponentUUID<?> result = GridComponentTracker.read(serialized);
+        GridUUID<?> result = GridTracking.read(serialized);
         assertFalse(result == null, "Serialization returned a null UUID for type '" + expected.getClass().getSimpleName() + "'");
         assertFalse(result == expected, "what");
         assertValueEqual(expected, result, "serialization output");

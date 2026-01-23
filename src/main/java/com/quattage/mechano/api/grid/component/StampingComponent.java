@@ -6,12 +6,13 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
-import com.quattage.mechano.api.grid.solver.MNAIndexer;
-import com.quattage.mechano.api.grid.topology.vertex.Node;
-import com.quattage.mechano.api.grid.topology.vertex.Terminal;
+import com.quattage.mechano.api.grid.topology.MNAIndexer;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 /**
  * A {@link DiscreteComponent} which contains an array of connected {@link Terminal terminals}

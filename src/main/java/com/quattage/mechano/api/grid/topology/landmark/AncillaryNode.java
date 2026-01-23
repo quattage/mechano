@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.vertex;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -10,15 +10,15 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.api.grid.GridComponentTracker;
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.topology.CircuitFactory;
+import com.quattage.mechano.api.grid.component.CircuitFactory;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 
@@ -43,7 +43,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * {@link CircuitFactory} when creating circuits attached to {@link Griddable}
  * instances.
  */
-public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node, WorldlyObject, GridReferent<T> {
+public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, WorldlyObject, GridReferent<T> {
 
     public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
 
@@ -271,7 +271,7 @@ public abstract class AncillaryNode<T extends ComponentUUID<T>> implements Node,
     }
 
     @Override
-    public GridComponentTracker getTrackerScope() {
+    public GridTracking getTrackerScope() {
         assertAttached();
         return source.getTrackerScope();
     }

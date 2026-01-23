@@ -1,17 +1,17 @@
-package com.quattage.mechano.api.grid.topology.vertex;
+package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
 import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.api.grid.GridComponentTracker.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.component.ComponentUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
-import com.quattage.mechano.api.grid.component.GridConstruct;
-import com.quattage.mechano.api.grid.component.GridConstruct.TerminalProvider;
 import com.quattage.mechano.foundation.Disposable;
 
 public class Terminal implements CircuitComponent, GridConstruct, TerminalProvider, Disposable {

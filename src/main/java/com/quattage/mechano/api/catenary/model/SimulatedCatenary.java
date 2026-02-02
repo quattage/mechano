@@ -57,6 +57,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     }
 
     private void applyDisplacement(Vector3d start, Vector3d end) {
+        if(this.halfOffset == null) return;
         this.forces[4] = (float)start.x - (forces[1] + halfOffset.x);
         this.forces[5] = (float)start.y - (forces[2] + halfOffset.y);
         this.forces[6] = (float)start.z - (forces[3] + halfOffset.z);
@@ -103,15 +104,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             if(x > 0) sticks.add(new Stick(points.get(x - 1), newPoint));
         }
         return this;
-    }
-
-    public void flipSpan() {
-        assertHasOffset();
-        assertInitialized();
-        for(Point p : points) {
-            p.pos.mul(-1);
-            p.lastPos.mul(-1);
-        }
     }
 
     @Override

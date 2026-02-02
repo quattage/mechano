@@ -13,7 +13,6 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -37,17 +36,14 @@ public class GridDumpTask implements ActionTask {
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        ServerPlayer sp = grid.getServer().getPlayerList().getPlayer((UUID)args[0]);
-        if(sp == null) return GridAction.RESPONSE_FAIL_GENERIC;
-        MutableComponent message = Component.literal("-- Server-sided dump:\n" + grid.linksAsString() + "\n--").withStyle(ChatFormatting.GRAY);
-        sp.sendSystemMessage(message);
+        // ServerPlayer sp = grid.getServer().getPlayerList().getPlayer((UUID)args[0]);
         return GridAction.TASK_GRID_DUMP;
     }
 
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid.linksAsString() + "\n--").withStyle(ChatFormatting.GRAY);
+        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid.lookup() + "\n--").withStyle(ChatFormatting.GRAY);
         self().sendSystemMessage(message);
         return GridAction.RESPONSE_SUCCESS;
     }

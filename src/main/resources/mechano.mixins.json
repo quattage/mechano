@@ -13,7 +13,8 @@
         "client.accessor.RenderBuffersAccessor",
         "client.accessor.PlayerInfoAccessor",
         "client.ItemInHandRendererInvoker",
-        "client.ItemInHandRendererMixin"
+        "client.ItemInHandRendererMixin",
+        "client.KeyboardHandlerMixin"
     ],
     "injectors": {
         "defaultRequire": 1

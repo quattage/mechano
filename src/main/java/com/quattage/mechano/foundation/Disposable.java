@@ -6,7 +6,6 @@ public interface Disposable {
         if(obj instanceof Disposable dobj) dobj.dispose();
     }
 
-
     static boolean hasBeenDisposed(Object obj) {
         return obj instanceof Disposable dp ? dp.hasBeenDisposed() : false;
     }

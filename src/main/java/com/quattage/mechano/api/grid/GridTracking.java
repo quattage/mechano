@@ -5,7 +5,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -20,8 +19,8 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy.ComponentNotFoundException;
 import com.quattage.mechano.api.grid.GridUUID.EntityUUID;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
@@ -31,7 +30,6 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent.NodeStub;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
@@ -61,7 +59,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
  * are stored differently by the Level and have different needs.
  */
 public enum GridTracking {
-    
+
     VOXEL(VoxelUUID.class, BlockEntity.class),
     CHUNK(VoxelUUID.class, LevelChunk.class),
     CONTRAPTION(EntityUUID.class, AbstractContraptionEntity.class),
@@ -69,7 +67,7 @@ public enum GridTracking {
 
     private static final String PREFIX = "type";
 
-    public static final Codec<GridUUID<?>> CODEC = new Codec<>() {
+    public static final Codec<GridUUID<?>> UUID_CODEC = new Codec<>() {
         @Override public <T> DataResult<T> encode(GridUUID<?> input, DynamicOps<T> ops, T prefix) {
             GridTracking type = input.getTrackerScope();
             RecordBuilder<T> builder = ops.mapBuilder();
@@ -101,7 +99,7 @@ public enum GridTracking {
         }
     };
 
-    public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID<?>> STREAM_CODEC = new StreamCodec<>() {
+    public static final StreamCodec<? super RegistryFriendlyByteBuf, GridUUID<?>> UUID_STREAM_CODEC = new StreamCodec<>() {
         @Override public void encode(RegistryFriendlyByteBuf buffer, GridUUID<?> value) {
             buffer.writeInt(value.getTrackerScope().ordinal());
             value.write(buffer);
@@ -111,20 +109,20 @@ public enum GridTracking {
         }
     };
 
-    public static CircuitComponent find(WorldlyObject world, GridUUID<?> id) {
-        return GridTracking.find(world.getWorld(), id);
+    public static CircuitComponent getComponent(WorldlyObject world, GridUUID<?> id) {
+        return GridTracking.getComponent(world.getWorld(), id);
     }
 
-    public static CircuitComponent find(LevelReader world, GridUUID<?> id) {
-        try{ return GridTracking.findOrThrow(world, id); } catch (ComponentNotFoundException e) { return null; }
+    public static CircuitComponent getComponent(LevelReader world, GridUUID<?> id) {
+        try{ return GridTracking.getComponentOrThrow(world, id); } catch (ComponentNotFoundException e) { return null; }
     }
 
-    public static CircuitComponent findOrThrow(WorldlyObject world, GridUUID<?> id) {
-        return GridTracking.findOrThrow(world.getWorld(), id);
+    public static CircuitComponent getComponentOrThrow(WorldlyObject world, GridUUID<?> id) {
+        return GridTracking.getComponentOrThrow(world.getWorld(), id);
     }
 
-    public static CircuitComponent findOrThrow(LevelReader world, GridUUID<?> id) {
-        Griddable<?> source = id.getProviderSource(world);
+    public static CircuitComponent getComponentOrThrow(LevelReader world, GridUUID<?> id) {
+        Griddable<?> source = GridTracking.getSource(world, id);
         if(source == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
         if(!id.hasBindings()) throw new ComponentNotFoundException(id, "The provided ID has no bindings!");
 
@@ -202,33 +200,27 @@ public enum GridTracking {
         return obj.getUUIDSafe();
     }
 
-    public static @Nullable Griddable<?> getSource(Object obj) {
-        return GridTracking.getSource(null, obj);
+    public static @Nullable Griddable<?> getSource(SourceProvider prov) {
+        return GridTracking.getSource(null, prov);
     }
 
-    public static @Nullable Griddable<?> getSource(@Nullable LevelReader world, Object obj) {
-        if((obj instanceof GridReferent<?> gr)) gr.getProviderSource(world);
-        if(obj instanceof Node n) {
-            List<AncillaryNode<?>> ancillaries = n.getAncillaries();
-            if(ancillaries == null || ancillaries.isEmpty()) return null;
-            AncillaryNode<?> first = ancillaries.getFirst();
-            return first == null ? null : first.getProviderSource();
+    public static @Nullable Griddable<?> getSource(@Nullable LevelReader world, SourceProvider prov) {
+        Objects.requireNonNull(prov);
+        GridReferent<?> referent = world == null ? prov.getProviderSource() : prov.getProviderSource(world);
+        if(!(referent instanceof Griddable<?> source)) {
+            return null;
+            // throw new ComponentNotFoundException("Couldn't get griddable source for '" + prov.getClass().getSimpleName() + "' - This provider returned a referent of type '" 
+                // + (referent == null ? "null" : referent.getClass().getSimpleName()) + "', which isn't a valid griddable instance!");
         }
-        return null;
+        return source;
     }
 
-    public static List<AncillaryPair> getLinksBelongingTo(Griddable<?> source) {
-        Grid grid = Grid.getUnsided(source.getWorld());
-        return grid.getLinksBelongingTo(source);
-    }
-
-    // TODO make this use a stream instead because this could have really bad iteration performance in worst case scenarios
     public static Set<ServerPlayer> collectPlayersTracking(ServerLevel world, Collection<GridReferent<?>> objs) {
         Set<ServerPlayer> senders = new HashSet<>();
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
             for(GridReferent<?> referent : objs) {
                 if(!referent.isBeingTrackedBy(sp)) continue;
-                Griddable<?> source = referent.getProviderSource(world);
+                Griddable<?> source = GridTracking.getSource(world, referent);
                 if(source != null && source.isBeingTrackedBy(sp)) {
                     senders.add(sp);
                     break;
@@ -243,7 +235,7 @@ public enum GridTracking {
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
             for(GridReferent<?> referent : objs) {
                 if(referent.isBeingTrackedBy(sp)) {
-                    Griddable<?> source = referent.getProviderSource(world);
+                    Griddable<?> source = GridTracking.getSource(world, referent);
                     if(source == null) continue;
                     if(source.isBeingTrackedBy(sp)) {
                         senders.add(sp);
@@ -267,9 +259,12 @@ public enum GridTracking {
      * @param obj {@link GridIdentifiable} to address
      * @return <code>true</code> if <code>obj</code> is reachable.
      */
-    public static boolean isReachable(LevelReader world, GridReferent<?> obj) {
-        Griddable<?> source = obj.getUUIDSafe().getProviderSource(world);
-        return source != null && source.getComponent() != null;
+    public static boolean isReachable(LevelReader world, GridReferent<?> referent) {
+        Griddable<?> source = GridTracking.getSource(world, referent);
+        if(source == null || source.getComponent() == null) return false;
+        referent = GridTracking.getAddress(referent);
+        source = GridTracking.getSource(world, referent);
+        return source != null;
     }
 
     public static void forEachSourceType(Consumer<GridTracking> cons) {

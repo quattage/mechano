@@ -7,6 +7,9 @@ import org.joml.Vector3d;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
+import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
@@ -20,10 +23,10 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public class AncillaryPair {
+public class AncillaryPair implements SourceProvider {
 
     protected GridUUID<?> startID, endID;
-    protected AncillaryNode<?> startNode, endNode;
+    protected AncillaryNode<?> startAnc, endAnc;
 
     public AncillaryPair(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
         assignStart(startNode);
@@ -36,20 +39,20 @@ public class AncillaryPair {
     }
 
     public AncillaryPair flippedCopy() {
-        return new AncillaryPair(endNode, startNode);
+        return new AncillaryPair(endAnc, startAnc);
     }
 
-    public AncillaryPair assignStart(AncillaryNode<?> startNode) {
-        Objects.requireNonNull(startNode);
-        this.startNode = startNode;
-        this.startID = startNode.bindUUID(startNode.getProviderSource().getUUID());
+    public AncillaryPair assignStart(AncillaryNode<?> ancillary) {
+        Objects.requireNonNull(ancillary);
+        this.startAnc = ancillary;
+        this.startID = GridTracking.getAddress(GridTracking.getSource(ancillary), ancillary);
         return this;
     }
 
-    public AncillaryPair assignEnd(AncillaryNode<?> endNode) {
-        Objects.requireNonNull(endNode);
-        this.endNode = endNode;
-        this.endID = endNode.bindUUID(endNode.getProviderSource().getUUID());
+    public AncillaryPair assignEnd(AncillaryNode<?> ancillary) {
+        Objects.requireNonNull(ancillary);
+        this.endAnc = ancillary;
+        this.endID = GridTracking.getAddress(GridTracking.getSource(ancillary), ancillary);
         return this;
     }
 
@@ -58,7 +61,7 @@ public class AncillaryPair {
         GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(startNode);
         this.startID = startID;
-        this.startNode = startNode;
+        this.startAnc = startNode;
         return this;
     }
 
@@ -67,16 +70,86 @@ public class AncillaryPair {
         GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(endNode);
         this.endID = endID;
-        this.endNode = endNode;
+        this.endAnc = endNode;
         return this;
     }
 
     public void onAddedToGrid(Grid grid) {
-        
+        Griddable<?> source = GridTracking.getSource(grid.getWorld(), startAnc);
+        if(source != null) {
+            source.getTerminus().setHasConnections();
+            source.onAddedToGrid(grid);
+        }
+        source = GridTracking.getSource(grid.getWorld(), endAnc);
+        if(source != null) {
+            source.getTerminus().setHasConnections();
+            source.onAddedToGrid(grid);
+        }
     }
 
     public void onRemovedFromGrid(Grid grid) {
-        
+        Griddable<?> source = GridTracking.getSource(grid.getWorld(), startAnc);
+        if(source != null) {
+            source.getTerminus().setHasConnections(false);
+            source.onRemovedFromGrid(grid);
+        }
+        source = GridTracking.getSource(grid.getWorld(), endAnc);
+        if(source != null) {
+            source.getTerminus().setHasConnections(false);
+            source.onRemovedFromGrid(grid);
+        }
+    }
+
+    public boolean contains(Node node) {
+        return startsWith(node) || endsWith(node);
+    }
+
+    public boolean contains(GridUUID<?> id) {
+        return startsWith(id) || endsWith(id);
+    }
+
+    public boolean contains(Object obj) {
+        return startsWith(obj) || endsWith(obj);
+    }
+
+    public boolean startsWith(Node node) {
+        Objects.requireNonNull(node);
+        assertHasAncillaries();
+        return node instanceof AncillaryNode an ? getStartAncillary() == an : getStartNode() == node;
+    }
+
+    public boolean startsWith(GridUUID<?> id) {
+        Objects.requireNonNull(id);
+        assertHasIDs();
+        return startID.equals(id);
+    }
+
+    public boolean startsWith(Object obj) {
+        return switch (obj) {
+            case Node node -> startsWith(node);
+            case GridUUID<?> id -> startsWith(id);
+            case null, default -> false;
+        };
+    }
+
+    public boolean endsWith(Node node) {
+        Objects.requireNonNull(node);
+        assertHasAncillaries();
+        return node instanceof AncillaryNode an ? getEndAncillary() == an : getEndNode() == node;
+    }
+
+    public boolean endsWith(GridUUID<?> id) {
+        Objects.requireNonNull(id);
+        assertHasIDs();
+        return endID.equals(id);
+    }
+
+    public boolean endsWith(Object obj) {
+        return switch (obj) {
+            case Node node -> endsWith(node);
+            case GridUUID<?> id -> endsWith(id);
+            case null, default -> false;
+        };
     }
 
     public GridUUID<?> getStartID() {
@@ -84,7 +157,7 @@ public class AncillaryPair {
     }
     
     public AncillaryNode<?> getStartAncillary() {
-        return startNode;
+        return startAnc;
     }
 
     public Node getStartNode() {
@@ -96,7 +169,7 @@ public class AncillaryPair {
     }
 
     public AncillaryNode<?> getEndAncillary() {
-        return endNode;
+        return endAnc;
     }
 
     public Node getEndNode() {
@@ -105,13 +178,13 @@ public class AncillaryPair {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.startNode, this.endNode);
+        return Objects.hash(this.startAnc, this.endAnc);
     }
 
     @Override
     public boolean equals(Object obj) {
         if(!(obj instanceof AncillaryPair that)) return false;
-        return this.startNode == that.startNode && this.endNode == that.endNode;
+        return this.startAnc == that.startAnc && this.endAnc == that.endAnc;
     }
 
     @Override
@@ -120,13 +193,14 @@ public class AncillaryPair {
     }
 
     public NodePair asNodePair() {
+        assertHasAncillaries();
         return new NodePair(getStartNode(), getEndNode());
     }
 
     public Vec3 halfwayBetween() {
         assertHasAncillaries();
-        Vector3d startPos = startNode.getRealPosition();
-        Vector3d endPos = endNode.getRealPosition();
+        Vector3d startPos = startAnc.getRealPosition();
+        Vector3d endPos = endAnc.getRealPosition();
         return new Vec3(
             (startPos.x + endPos.x) / 2d,
             (startPos.y + endPos.y) / 2d,
@@ -136,8 +210,8 @@ public class AncillaryPair {
 
     public BlockPos getMiddlePos(LevelReader world) {
         assertHasAncillaries();
-        BlockPos startPos = startNode.getBlockPos(world);
-        BlockPos endPos = startNode.getBlockPos(world);
+        BlockPos startPos = startAnc.getBlockPos();
+        BlockPos endPos = startAnc.getBlockPos();
         return new BlockPos(
             (int)((startPos.getX() + endPos.getX()) / 2f),
             (int)((startPos.getY() + endPos.getY()) / 2f),
@@ -146,18 +220,24 @@ public class AncillaryPair {
     }
 
     public boolean isDynamic() {
-        Griddable<?> startSource = startNode.getProviderSource();
-        Griddable<?> endSource = endNode.getProviderSource();
+        assertHasAncillaries();
+        Griddable<?> startSource = GridTracking.getSource(startAnc);
+        Griddable<?> endSource = GridTracking.getSource(endAnc);
         return (startSource != null && startSource.canMoveDynamically()) || 
             (endSource != null && endSource.canMoveDynamically());
     }
 
+    @OnlyIn(Dist.CLIENT)
     public AncillaryPair getFlipped(LevelReader world) {
-        return Grid.getUnsided(world).getLink(endNode.getProviderSource(), startID);
+        return Grid.client(world).lookup().getLink(endID, startID);
     }
 
     @OnlyIn(Dist.CLIENT) 
     public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
+        
+    }
+
+    public void tick(LevelReader world) {
         
     }
 
@@ -169,6 +249,20 @@ public class AncillaryPair {
         return this;
     }
 
+    @Override
+    public GridReferent<?> getProviderSource() {
+        if(startAnc == null) {
+            throw new IllegalStateException("Couldn't get provider source for " + this 
+                + " - This ancillary pair hasn't located its ancillaries yet! (use the overload of this method that requires a world to avoid this error)");
+        }
+        return startAnc.getProviderSource();
+    }
+
+    @Override
+    public GridReferent<?> getProviderSource(LevelReader world) {
+        if(startAnc != null) return getProviderSource();
+        return startID.getProviderSource(world);
+    }
 
     private void assertHasIDs() {
         if(startID == null) {
@@ -182,22 +276,22 @@ public class AncillaryPair {
     }
 
     protected void assertHasAncillaries() {
-        if(startNode == null) {
+        if(startAnc == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
                 + " - The starting jack is null! (It was never assigned using assignStart())");
         }
-        if(endNode == null) {
+        if(endAnc == null) {
             throw new NullPointerException("An operation failed on ComponentLink " + this 
                 + " - The ending jack is null! (It was never assigned using assignEnd())");
         }
     }
 
     private void assertHasSources() {
-        if(startNode.getProviderSource() == null) {
+        if(startAnc.getProviderSource() == null) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The starting jack has no source! (This instance potentially leaked)");
         }
-        if(endNode.getProviderSource() == null) {
+        if(endAnc.getProviderSource() == null) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The ending jack has no source! (This instance potentially leaked)");
         }
@@ -208,7 +302,7 @@ public class AncillaryPair {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The starting and ending UUIDs are identical!");
         }
-        if(startNode == endNode) {
+        if(startAnc == endAnc) {
             throw new IllegalStateException("An operation failed on ComponentLink " + this 
                 + " - The starting and ending AncillaryNode<?> instances are identical!");
         }

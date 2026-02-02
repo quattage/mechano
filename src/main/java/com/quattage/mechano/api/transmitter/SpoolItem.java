@@ -102,13 +102,13 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode<?> initialTarget) {
         if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
             return InteractionResultHolder.fail(stack);
-        Griddable<?> source = initialTarget.getProviderSource();
+        Griddable<?> source = GridTracking.getSource(initialTarget);
         if(source == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
         }
         GridUUID<?> sourceID = GridTracking.getAddress(source, initialTarget);
-        CircuitComponent component = GridTracking.findOrThrow(grid, sourceID);
+        CircuitComponent component = GridTracking.getComponentOrThrow(grid, sourceID);
         if(component == null || (component != initialTarget))
             return InteractionResultHolder.fail(stack);
         stack.set(MechanoData.UUID, sourceID);
@@ -123,13 +123,13 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
         if(subsequentTarget == null) 
             return InteractionResultHolder.fail(stack);
         GridUUID<?> initialTargetID = stack.get(MechanoData.UUID);
-        AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridTracking.findOrThrow(grid, initialTargetID);
-        Griddable<?> initialSource = initialTarget.getProviderSource();
+        AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridTracking.getComponentOrThrow(grid, initialTargetID);
+        Griddable<?> initialSource = GridTracking.getSource(initialTarget);
         if(initialSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - The initial ancillary couldn't provide a non-null source!");
         }
-        Griddable<?> subsequentSource = subsequentTarget.getProviderSource();
+        Griddable<?> subsequentSource = GridTracking.getSource(subsequentTarget);
         if(subsequentSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");
@@ -138,7 +138,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             return InteractionResultHolder.fail(stack);
         GridUUID<?> subsequentTargetID = GridTracking.getAddress(subsequentSource, subsequentTarget);
         GridAction request = grid.initiateTask(GridAction.TASK_LINK_CREATE)
-            .from(initialSource, subsequentSource)
+            .targeting(initialSource, subsequentSource)
             .withArguments(initialTargetID, subsequentTargetID, getTransmitter(), player.getUUID())
             .requestRun();
         if(GridAction.VERBOSE_LOGS) grid.debug("Initiated link interaction from " + player);

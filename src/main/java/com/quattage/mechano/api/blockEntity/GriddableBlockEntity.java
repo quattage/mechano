@@ -14,9 +14,11 @@ import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 
 import net.minecraft.core.BlockPos;
@@ -32,8 +34,8 @@ import net.minecraft.world.phys.AABB;
 
 public abstract class GriddableBlockEntity extends SimpleBlockEntity implements Griddable<VoxelUUID>{
 
-    private @Nullable CircuitComponent circuit; // instantiated lazily
-    private final GriddableTerminus joints = new GriddableTerminus();
+    private @Nullable Circuit circuit; // instantiated lazily
+    private final GriddableTerminus terminus = new GriddableTerminus();
 
     public GriddableBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -49,10 +51,11 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     /**
-     * This method is invoked lazily when a call to {@link #getCircuit}
+     * This method is invoked lazily when a call to {@link #getComponent}
      * fails to provide a non-null value. Use this method and its 
      * {@link CircuitFactory factory} to define the initial configuration
      * of this GriddableBlockEntity's circuit.
+     * 
      * @param circuit A fresh CircuitFactory instance with no components
      */
     public abstract void constructCircuit(CircuitFactory circuit);
@@ -63,38 +66,35 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
     }
 
     @Override
-    public BlockPos getBlockPos(@Nullable LevelReader world) {
-        return getBlockPos();
-    }
-
-    @Override
     public void onBlockBroken(Level world, BlockPos pos, BlockState oldState, BlockState newState) {
         if(world.isClientSide || circuit == null) return;
         ServerGrid grid = Grid.server(world);
-        grid.removeComponent(circuit);
-        GriddableTerminus gt = provideTerminus();
-        if(gt != null) gt.invalidate();
-    }
+        grid.removeComponent(circuit, null);
+        grid.initiateTask(GridAction.TASK_COMPONENT_DESTROY)
+            .withArguments(circuit.bindUUID(getUUIDSafe()))
+            .executeImmediately();
+        if(terminus != null) terminus.invalidate();
+    }   
 
     @Override
     public void onRefresh(LevelReader world, BlockPos pos, BlockState oldState, BlockState newState) {
-        GriddableTerminus gt = getTerminus();
-        gt.updateOrientation(newState);
+        if(newState.isAir()) return;
+        getTerminus().updateOrientation(newState);
+        if(world.isClientSide()) return;
         Set<AncillaryPair> adjs = analyzeAdjacents();   
-        if(adjs == null || adjs.isEmpty()) return;
-        Grid grid = Grid.getUnsided(world);
+        ServerGrid grid = Grid.server(world);
         for(AncillaryPair pair : adjs) {
             pair.validateSelf();
-            grid.addLink(pair);
-            if(grid instanceof ServerGrid sg)
-                sg.netlist().union(pair.getStartNode(), pair.getEndNode());
+            grid.addLinkDeferred(pair, null);
         }
     }
 
     @Override
     public void tick() {
-        if(getLevel().isClientSide()) return;
-        Grid.server(getLevel());
+        if(!getLevel().isClientSide()) return;
+        forEachExternalLink(link -> {
+            link.tick(getWorld());
+        });
     }
 
     @Override
@@ -109,7 +109,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override 
     public GriddableTerminus provideTerminus() { 
-        return joints;
+        return terminus;
     }
 
     @Override 
@@ -151,7 +151,24 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override 
     public String toString() { 
-        return "GBE '" + getBlockState().getBlock().getName().getString() + "' ::\n" + circuit;     
+        return getBlockState().getBlock().getName().getString() + ":\n" + circuit;     
+    }
+
+    @Override
+    public AABB getRenderBoundingBox() {
+        if(getTerminus() != null && getTerminus().hasConnections()) 
+            return AABB.INFINITE;
+        return super.getRenderBoundingBox();
+    }
+
+    @Override
+    public void onAddedToGrid(Grid grid) {
+        invalidateRenderBoundingBox();
+    }
+
+    @Override
+    public void onRemovedFromGrid(Grid grid) {
+        invalidateRenderBoundingBox();
     }
 
     @Override

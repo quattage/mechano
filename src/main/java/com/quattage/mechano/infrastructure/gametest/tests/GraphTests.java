@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
@@ -102,6 +101,35 @@ public class GraphTests {
         test.assertValueEqual(uf.size(), 1, "thirdRootCount");
         test.succeed();
     }
+
+    @GameTest
+    public static void unionRootsCyclic(MechanoGameTestHelper test) {
+        NodeUnionSet uf = new NodeUnionSet();
+        test.populateUF(uf, "A", 6);
+        Node start = uf.getByComponentID("A0");
+        Node end = uf.getByComponentID("A5");
+        uf.union(start, end);
+        test.assertTrue(uf.hasConnections(start), "starting node had its adjacency corrupted");
+        test.assertTrue(uf.hasConnections(end), "ending node had its adjacency corrupted");
+        test.succeed();
+    }
+
+    @Repeat(iterations = 64)
+    @GameTest
+    public static void unionRootsChangeRapidlyEdgeCase(MechanoGameTestHelper test) {
+        NodeUnionSet uf = new NodeUnionSet();
+        MockNode a = new MockNode("A", false);
+        MockNode b = new MockNode("B", false);
+        MockNode c = new MockNode("C", false);
+        uf.add(a); uf.add(b); uf.add(c);
+        uf.union(a, b); uf.union(b, c);
+        // at some point this would occasionally cause a stackoverflow but it's not anymore and i don't know why
+        for(int x = 0; x < 64; x++) {
+            uf.remove(a);
+            uf.union(a, b);
+        }
+        test.succeed();
+    }
     
     @Repeat(iterations = 64)
     @GameTest
@@ -129,7 +157,7 @@ public class GraphTests {
         uf.union(a, b);
         uf.union(a, gnd);
         uf.add(c);
-        uf.assignIndices();
+        uf.finalizeTopology();
         test.assertValueEqual(gnd.getNodalIndex(), -1, "groundIndex");
         test.assertValueEqual(a.getNodalIndex(), -1, "aIndex");
         test.assertValueEqual(b.getNodalIndex(), -1, "bIndex");
@@ -251,11 +279,11 @@ public class GraphTests {
         NodeUnionSet uf = new NodeUnionSet();
         test.populateUF(uf, "T", 20);
         List<NodePair> pairs = new ArrayList<>();
-        pairs.add(new NodePair(uf.getByComponentID("T0"), uf.getByComponentID("T1")));
+        pairs.add(new NodePair(uf.getByComponentID("T0"), 
+        uf.getByComponentID("T1")));
         List<Node> singles = new ArrayList<>();
         singles.add(uf.getByComponentID("T10"));
         uf.massRemove(singles, pairs);
-        Mechano.LOGGER.error("OUTPUT: \n" + uf);
         test.assertValueEqual(uf.size(), 2, "set transitive size");
         test.assertValueEqual(uf.deepSize(), 18, "set deep size");
         test.succeed();
@@ -323,7 +351,7 @@ public class GraphTests {
         Player fakePlayer = test.makeMockPlayer(GameType.CREATIVE);
         try {
             test.doGridTask(GridAction.TASK_LINK_CREATE)
-                .from(startNode, endNode)
+                .targeting(startNode, endNode)
                 .withArguments(
                     startID, 
                     endID, 

@@ -1,9 +1,6 @@
     package com.quattage.mechano.api;
 
-    import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+    import java.util.Objects;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -12,17 +9,18 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.api.grid.GridTracking;
-import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.topology.NetlistLookup;
+import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
+import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.WorldlyObject;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.HolderLookup.Provider;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -33,6 +31,8 @@ import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
@@ -50,7 +50,25 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         // weakly referenced singletons are stored to skip hash capability lookups
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
-        protected final Object2ObjectOpenHashMap<Griddable<?>, List<AncillaryPair>> links = new Object2ObjectOpenHashMap<>();
+
+        public static final IAttachmentSerializer<CompoundTag, Grid> SERIALIZER = new IAttachmentSerializer<>() {
+            @Override
+            public Grid read(IAttachmentHolder holder, CompoundTag tag, Provider provider) {
+                if(!(holder instanceof Level world)) {
+                    throw new IllegalStateException("Attempted to de-serialize grid attachment from non-level source (" 
+                        + (holder == null ? "null" : holder.getClass().getSimpleName()) + ")");
+                }
+                Grid newGrid = Grid.getUnsided(world);
+                newGrid.read(world, tag, provider);
+                return newGrid;
+            }
+            @Override
+            public @Nullable CompoundTag write(Grid attachment, Provider provider) {
+                CompoundTag written = new CompoundTag();
+                attachment.write(attachment.getWorld(), written, provider);
+                return written;
+            }
+        };
 
         /**
          * To be called by internal registries to populate the world with an initial data attachment
@@ -82,10 +100,24 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             Grid.getUnsided(world).tick();
         }
 
+        @SubscribeEvent
+        public static void onChunkWatch(ChunkWatchEvent.Sent evt) {
+            Level world = evt.getLevel();
+            if(world.isClientSide) return;
+            ServerGrid grid = Grid.server(world);
+            grid.lookup().byChunk(evt.getPos()).forEach(pair -> {
+                TransmitterType trns = pair instanceof ComponentLink<?> link ? link.getTransmitter() : null;
+                GridAction.TASK_LINK_SYNC.broadcast(grid, new Object[] { pair.getStartID(), pair.getEndID(), trns });
+            });
+        }
+
         public static void unloadGrid(LevelEvent.Unload evt) {
             LevelAccessor world = evt.getLevel();
             Grid.getUnsided(world).unload();
         }
+
+        protected abstract void read(LevelReader world, CompoundTag contents, Provider provider);
+        protected abstract void write(LevelReader world, CompoundTag contents, Provider provider);
 
         public static @NotNull Grid getUnsided(LevelReader world) {
             if(world.isClientSide()) return Grid.client(world);
@@ -156,6 +188,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
         protected abstract void load();
         protected abstract void unload();
+        public abstract NetlistLookup<?> lookup();
         public abstract void tick();
 
         /**
@@ -169,103 +202,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return new ActionRunner(this, action);
         }
 
-        public GridAction addLink(AncillaryPair link) {
-            Objects.requireNonNull(link);
-            link.validateSelf();
-            AncillaryPair linkInverted = link.flippedCopy();
-            GridAction result = addLinkAsymmetric(link);
-            GridAction inverted = addLinkAsymmetric(linkInverted);
-            if(result.getActionType().indicatesFailure() || inverted.getActionType().indicatesFailure()) {
-                removeLinkAsymmetric(GridTracking.getSource(link.getStartNode()), link.getEndID());
-                removeLinkAsymmetric(GridTracking.getSource(linkInverted.getStartNode()), linkInverted.getEndID());
-                // always consume the failure case should one exist
-                if(!result.getActionType().indicatesFailure())
-                    result = inverted;
-            } else link.onAddedToGrid(this);
-            return result;
-        }
-
-        private GridAction addLinkAsymmetric(AncillaryPair link) {
-            Griddable<?> owner = GridTracking.getSource(link.getStartNode());
-            List<AncillaryPair> linksAt = getLinksBelongingTo(owner);
-            if(linksAt == null) {
-                linksAt = new ArrayList<AncillaryPair>();
-                linksAt.add(link);
-                links.put(owner, linksAt);
-                return GridAction.RESPONSE_SUCCESS;
-            }
-            if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
-            if(linksAt.size() >= AncillaryNode.MAX_SHARED_OCCUPANCY)
-                return GridAction.RESPONSE_FAIL_ELEMENT_FULL;
-            linksAt.add(link);
-            return GridAction.RESPONSE_SUCCESS;
-        }
-
-        public GridAction removeLink(AncillaryPair link) {
-            Objects.requireNonNull(link);
-            link.validateSelf();
-            GridAction result = removeLinkAsymmetric(GridTracking.getSource(link.getStartNode()), link.getEndID());
-            removeLinkAsymmetric(GridTracking.getSource(link.getEndNode()), link.getStartID());
-            return result;
-        }
-
-        private GridAction removeLinkAsymmetric(Griddable<?> source, GridUUID<?> endID) {
-            List<AncillaryPair> linksAt = getLinksBelongingTo(source);
-            if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
-            int toRemove = -1;
-            for(int x = 0; x < linksAt.size(); x++) {
-                AncillaryPair link = linksAt.get(x);
-                if(link.getEndID().equals(endID)) {
-                    toRemove = x;
-                    break;
-                }
-            }
-            if(toRemove < 0) return GridAction.RESPONSE_FAIL_END_MISSING;
-            linksAt.remove(toRemove);
-            if(linksAt.isEmpty()) {
-                links.remove(source);
-                links.trim();
-            }
-            return GridAction.RESPONSE_SUCCESS;
-        }
-
-        public @Nullable List<AncillaryPair> getLinksBelongingTo(Griddable<?> source) {
-            List<AncillaryPair> linksAt = links.get(source);
-            if(linksAt == null) return null;
-            if(linksAt.isEmpty()) {
-                links.remove(source);
-                return null;
-            }
-            return linksAt;
-        }
-
-        public @Nullable AncillaryPair getLink(Griddable<?> source, GridUUID<?> id) {
-            List<AncillaryPair> linksAt = links.get(source);
-            if(linksAt == null) return null;
-            for(int x = 0; x < linksAt.size(); x++) {
-                AncillaryPair link = linksAt.get(x);
-                if(link == null) continue;
-                if(link.getEndID().equals(id)) return link;
-            }
-            return null;
-        }
-
-        public int getLinkCount() {
-            return links.size();
-        }
-
-        public String linksAsString() {
-            if(links.isEmpty()) return "\n\tEmpty";
-            String out = "";
-            for(Map.Entry<Griddable<?>, List<AncillaryPair>> entry : links.entrySet()) {
-                Griddable<?> source = entry.getKey();
-                out += "\t- " + source.getClass().getSimpleName() + ":\n";
-                for(AncillaryPair link : entry.getValue())
-                    out += "\t\t* " + link + "\n";
-                out = out.substring(0, out.length() - 1);
-                out += "\n";
-            }
-            return out;
+        // TODO replace with onAddedToGrid
+        protected void markTerminus(@Nullable Griddable<?> source, boolean connections) {
+            if(source == null) return;
+            GriddableTerminus gt = source.getTerminus();
+            if(gt == null) return;
+            gt.setHasConnections(connections);
         }
 
         @Override

@@ -121,7 +121,7 @@ public abstract class SimpleBlockEntity extends CachedRenderBBBlockEntity implem
     public interface BERefreshable<B extends SimpleBlockEntity> extends IBE<B> {
 
         @Override
-        default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level p_153212_, BlockState p_153213_, BlockEntityType<S> p_153214_) {
+        default <S extends BlockEntity> BlockEntityTicker<S> getTicker(Level world, BlockState state, BlockEntityType<S> type) {
             return new SimpleBlockEntityTicker<>();
         }
 

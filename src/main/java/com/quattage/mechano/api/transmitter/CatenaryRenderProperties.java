@@ -5,6 +5,7 @@ import java.util.function.BiFunction;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.catenary.Catenaries;
 import com.quattage.mechano.api.catenary.Catenaries.RenderPipeline.Thickness;
 import com.quattage.mechano.api.catenary.MeshExtruder;
 
@@ -17,10 +18,10 @@ import net.neoforged.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class CatenaryRenderProperties {
 
-    protected TransmitterEntry entry;
+    protected TransmitterType trns;
     protected MeshExtruder extruder;
     protected Thickness thickness;
-    protected BiFunction<TransmitterEntry, Boolean, RenderType> materialGetter;
+    protected BiFunction<TransmitterType, Boolean, RenderType> materialGetter;
 
     protected @Nullable TextureAtlasSprite sprite = null;
     private @Nullable ResourceLocation atlasLocation;
@@ -29,6 +30,17 @@ public class CatenaryRenderProperties {
     protected CatenaryRenderProperties(ResourceLocation textureLocation) {
         Objects.requireNonNull(textureLocation);
         this.textureLocation = textureLocation;
+        this.materialGetter = Catenaries.renderPipeline().SOLID_MATERIAL;
+    }
+
+    public void configure(TransmitterType entry) {
+        this.trns = entry;
+    }
+
+    public void applyTextures(ResourceLocation atlasLocation, ResourceLocation textureLocation) {
+        this.atlasLocation = atlasLocation;
+        this.textureLocation = textureLocation;
+        this.sprite = null; // reacquire lazily
     }
 
     public CatenaryRenderProperties extruder(MeshExtruder extruder) {
@@ -48,7 +60,7 @@ public class CatenaryRenderProperties {
         return this;
     }
 
-    public CatenaryRenderProperties material(BiFunction<TransmitterEntry, Boolean, RenderType> materialGetter) {
+    public CatenaryRenderProperties material(BiFunction<TransmitterType, Boolean, RenderType> materialGetter) {
         Objects.requireNonNull(materialGetter);
         this.materialGetter = materialGetter;
         return this;
@@ -68,19 +80,23 @@ public class CatenaryRenderProperties {
         return atlasLocation;
     }
 
-    public BiFunction<TransmitterEntry, Boolean, RenderType> getMaterialGetter() {
+    public BiFunction<TransmitterType, Boolean, RenderType> getMaterialGetter() {
         assertConfigured();
         return materialGetter;
     }
 
     public RenderType getMaterialForDynamicMeshing() {
         assertConfigured();
-        return materialGetter.apply(entry, false);
+        if(trns.getRegistryID() == null) 
+            return RenderType.entityCutoutNoCull(textureLocation);
+        return materialGetter.apply(trns, false);
     }
 
     public RenderType getMaterialForSectionMeshing() {
         assertConfigured();
-        return materialGetter.apply(entry, true);
+        if(trns.getRegistryID() == null) 
+            return RenderType.cutout();
+        return materialGetter.apply(trns, true);
     }
 
     public MeshExtruder getExtruder() {
@@ -98,13 +114,13 @@ public class CatenaryRenderProperties {
     }
 
     private void assertConfigured() {
-        if(this.entry == null) throw new IllegalStateException("The render properties for a transmitter type have yet to be configured!");
+        if(this.trns == null) throw new IllegalStateException("The render properties for a transmitter type have yet to be configured!");
     }
 
     @Override
     public String toString() {
         return "TransmitterRenderProperties[Entry: " + 
-            (entry == null ? "unavailable" : entry.getKey().location()) 
+            (trns == null ? "unavailable" : trns.getName()) 
             + ", Extruder? " + (extruder != null) + ", Thickness: " 
             + (thickness == null ? "n/a" : thickness) 
             + ", Material? " + (materialGetter != null) + "]";

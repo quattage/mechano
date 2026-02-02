@@ -1,6 +1,8 @@
 package com.quattage.mechano;
 
+import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
+import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.foundation.LeftClickCapturable;
@@ -33,7 +35,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 @EventBusSubscriber(Dist.CLIENT)
 public class MechanoClientEvents {
 
-    // private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
+    private static final CatenaryModelProvider CATENARY_RESOURCES = new CatenaryModelProvider();
 
     public static boolean shouldRenderOverlay(Minecraft mc) {
         return !(mc == null || mc.options.hideGui || mc.gameMode.getPlayerMode() == GameType.SPECTATOR);
@@ -92,6 +94,9 @@ public class MechanoClientEvents {
                 .mechano$getRenderBuffers().bufferSource().getBuffer(RenderType.lines()),
                 evt.getPartialTick()
             );
+        ClientGrid.getDebugger().render(evt.getPoseStack(),
+            ((RenderBuffersAccessor)evt.getLevelRenderer()).mechano$getRenderBuffers().bufferSource(), 
+            evt.getCamera().getPosition().x,  evt.getCamera().getPosition().y,  evt.getCamera().getPosition().z);
     }
 
     /**
@@ -152,7 +157,7 @@ public class MechanoClientEvents {
     }
 
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent evt) {
-        // evt.registerReloadListener(MechanoClientEvents.CATENARY_RESOURCES);
+        evt.registerReloadListener(MechanoClientEvents.CATENARY_RESOURCES);
         ItemProperties.register(MechanoItems.SPOOL_HOOKUP.get(), MechanoItemProperties.FULLNESS, new SpoolFullnessProperty());
     }
 }

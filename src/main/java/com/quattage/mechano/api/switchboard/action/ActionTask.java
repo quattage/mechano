@@ -47,7 +47,7 @@ public interface ActionTask {
      * @return The arguments array. Most of the time, this will be the exact same instance, but some implementations may
      * modify this arguments array to replace references (e.g. correcting <code>nulls</code>).
      */
-    default Object[] validateArguments(@Nullable Object... args) {
+    default Object[] validateArguments(boolean allowNulls, @Nullable Object... args) {
         Class<?>[] template = getArgumentTemplate();
         if(template == null) template = new Class[0];
         if(args == null) args = new Object[0];
@@ -58,6 +58,7 @@ public interface ActionTask {
         for(int x = 0; x < template.length; x++) {
             Class<?> expected = template[x];
             Object arg = args[x];
+            if(allowNulls && arg == null) continue;
             if(expected.isInstance(arg)) continue;
             if(expected == UUID.class && arg == null) continue;
             throw new GridActionTaskArgumentParseException(this, "Bad argument type at position " + x + " - expected '" 
@@ -98,6 +99,13 @@ public interface ActionTask {
     GridAction executeAsClient(int attempt, ClientGrid grid, Object... args);
 
 
+    /**
+     * Always guaranteed to occur with the right timings to avoid
+     * concurrent modifications to the ServerGrid's topology.
+     * Any tasks that directly modify the indexer, netlist, vectors, 
+     * or component states must defer their implementations 
+     * to this method.
+     */
     default GridAction executeTopological(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints, Object[] args) {
         return GridAction.NONE;
     }
@@ -130,7 +138,10 @@ public interface ActionTask {
     default String collectArgsAsString(Object... args) {
         String summary = "Arguments:";
         if(args == null || args.length <= 0) return summary + "\n  none";
-        for(Object obj : args) summary += "\n  - " + obj.getClass().getSimpleName() + ":\n     " + obj.toString() + ", ";
+        for(Object obj : args) {
+            if(obj == null) summary += "  - null\n";
+            else summary += "\n  - " + obj.getClass().getSimpleName() + ":\n     " + obj.toString() + ", ";
+        }
         return summary.substring(0, summary.length() - 1);
     }
 

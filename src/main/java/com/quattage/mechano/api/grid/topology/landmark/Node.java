@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
@@ -22,7 +23,7 @@ import com.quattage.mechano.foundation.Disposable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-public interface Node extends CircuitComponent, Disposable, GridConstruct, TerminalProvider {
+public interface Node extends CircuitComponent, Disposable, GridConstruct, TerminalProvider, SourceProvider {
 
     /**
      * Gets the node that has the lower merge priority between
@@ -221,6 +222,16 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
         }
 
         @Override
+        public GridReferent<?> getProviderSource() {
+            if(hasAncillaries()) {
+                AncillaryNode<?> first = ancillaries.getFirst();
+                if(first != null) return first.getProviderSource();
+            }
+            GridConstruct superparent = getSuperparent();
+            return superparent instanceof GridReferent<?> gr ? gr : null;
+        }
+
+        @Override
         public void dispose() {
             this.parent = null;
             this.terminals = null;
@@ -323,6 +334,11 @@ public interface Node extends CircuitComponent, Disposable, GridConstruct, Termi
 
         @Override
         public @Nullable GridConstruct getParentConstruct() {
+            return null;
+        }
+
+        @Override
+        public GridReferent<?> getProviderSource() {
             return null;
         }
 

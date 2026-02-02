@@ -9,6 +9,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 public class TransmitterEntry extends RegistryEntry<TransmitterType, TransmitterType> { 
     public TransmitterEntry(AbstractRegistrate<?> owner, DeferredHolder<TransmitterType, TransmitterType> delegate) {
         super(owner, delegate);
+        // delegate.get().setRegistryID(getId());
     }
 }
 

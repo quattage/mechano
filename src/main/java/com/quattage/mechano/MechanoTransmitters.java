@@ -16,7 +16,8 @@ public class MechanoTransmitters {
             .feelsLike(Catenaries.PhysicalMaterial.ROPE)
             .renderer(() -> p -> p
                 .extruder(Catenaries.renderPipeline().SQUARE_EXTRUDER)
-                .thickness(Catenaries.RenderPipeline.Thickness.TRIPLE))
+                .thickness(Catenaries.RenderPipeline.Thickness.TRIPLE)
+                .material(Catenaries.renderPipeline().SOLID_MATERIAL))
             .register();
 
     public static void register(IEventBus modBus) {

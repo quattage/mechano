@@ -12,7 +12,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoSounds;
-import com.quattage.mechano.api.transmitter.TransmitterEntry;
+import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.AllSoundEvents.SoundEntry;
@@ -316,8 +316,6 @@ public class Catenaries {
         private float restitutionSpeed = 0.1f;
         private float restitutionEpsilon = 1e-8f;
         private int solverSteps = 64;
-        
-
 
         public boolean shouldApplyShadowClamping() {
             return clampShadows;
@@ -375,12 +373,12 @@ public class Catenaries {
         }
 
         // TODO switch to custom shader using more optimized vertex format
-        public final BiFunction<TransmitterEntry, Boolean, RenderType> SOLID_MATERIAL 
+        public final BiFunction<TransmitterType, Boolean, RenderType> SOLID_MATERIAL 
             = Util.memoize((trns, chunk) -> {
                 if(chunk) return RenderType.SOLID;
                 RenderType.CompositeState composite = RenderType.CompositeState.builder()
                     .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER)
-                    .setTextureState(new RenderStateShard.TextureStateShard(trns.get().getRenderProperties().getTextureLocation(), false, TEX_USE_MIPS))
+                    .setTextureState(new RenderStateShard.TextureStateShard(trns.getRenderProperties().getTextureLocation(), false, TEX_USE_MIPS))
                     .setOverlayState(RenderType.OVERLAY)
                     .setLightmapState(RenderType.LIGHTMAP)
                     .setTransparencyState(RenderStateShard.NO_TRANSPARENCY)
@@ -390,12 +388,12 @@ public class Catenaries {
                 return RenderType.create("catenary_solid", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 512, true, false, composite);
             });
 
-        public final BiFunction<TransmitterEntry, Boolean, RenderType> CUTOUT_MATERIAL 
+        public final BiFunction<TransmitterType, Boolean, RenderType> CUTOUT_MATERIAL 
             = Util.memoize((trns, chunk) -> {
                 if(chunk) return RenderType.CUTOUT;
                 RenderType.CompositeState composite = RenderType.CompositeState.builder()
                     .setShaderState(RenderStateShard.RENDERTYPE_ENTITY_CUTOUT_SHADER)
-                    .setTextureState(new RenderStateShard.TextureStateShard(trns.get().getRenderProperties().getTextureLocation(), false, TEX_USE_MIPS))
+                    .setTextureState(new RenderStateShard.TextureStateShard(trns.getRenderProperties().getTextureLocation(), false, TEX_USE_MIPS))
                     .setOverlayState(RenderType.OVERLAY)
                     .setLightmapState(RenderType.LIGHTMAP)
                     .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
@@ -411,8 +409,8 @@ public class Catenaries {
             if(previous == null) geo.computeMatrix(current.getFacing());
             else geo.computeMatrix(previous.getFacing(), cDir);
             if(recomputeNormals) {
-            geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
-                .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
+                geo.setNormalA(geo.rightX() + geo.upX(), geo.rightY() + geo.upY(), geo.rightZ() + geo.upZ())
+                    .setNormalB(geo.rightX() - geo.upX(), geo.rightY() - geo.upY(), geo.rightZ() - geo.upZ());
             }
             geo.place4Verts(current.start(pTicks), 0);
             if(next != null) geo.computeMatrix(cDir, next.getFacing());

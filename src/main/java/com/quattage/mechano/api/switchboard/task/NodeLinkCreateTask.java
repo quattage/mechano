@@ -11,6 +11,7 @@ import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
@@ -47,57 +48,61 @@ public class NodeLinkCreateTask implements ActionTask {
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         GridTracking.write((GridUUID<?>)args[0], buffer);
         GridTracking.write((GridUUID<?>)args[1], buffer);
-        buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType)args[2]));
+        if(args[2] == null)
+            buffer.writeInt(-1);
+        else buffer.writeInt(Mechano.REGISTRATE.getTransmitterRegistry().getId((TransmitterType)args[2]));
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
             buffer.writeBoolean(true);
             buffer.writeLong(uuid.getMostSignificantBits());
             buffer.writeLong(uuid.getLeastSignificantBits());
         } else buffer.writeBoolean(false);
-        buffer.writeInt(((GridAction)args[4]).ordinal());
-        return;
+        if(args[4] == null) buffer.writeInt(-1);
+        else buffer.writeInt(((GridAction)args[4]).ordinal());
     }
 
     @Override
     public Object[] dynamicDecode(ByteBuf buffer) {
+        GridUUID<?> start = GridTracking.read(buffer);
+        GridUUID<?> end = GridTracking.read(buffer);
+        int trnsid = buffer.readInt();
         return new Object[] {
-            GridTracking.read(buffer),
-            GridTracking.read(buffer),
-            Mechano.REGISTRATE.getTransmitterRegistry().byId(buffer.readInt()),
+            start, end,
+            trnsid < 0 ? null : Mechano.REGISTRATE.getTransmitterRegistry().byId(trnsid),
             buffer.readBoolean() ? new UUID(buffer.readLong(), buffer.readLong()) : null,
-            GridAction.values()[buffer.readInt()]
+            GridAction.ofOrdinal(buffer.readInt())
         };
     }
 
     @Override
-    public Object[] validateArguments(@Nullable Object... args) {
+    public Object[] validateArguments(boolean allowNulls, @Nullable Object... args) {
         // the response argument is allowed to be inferred with a default value here
         if(args.length == 4) {
             Object[] copy = new Object[args.length + 1];
             System.arraycopy(args, 0, copy, 0, args.length);
             copy[args.length] = GridAction.RESPONSE_SUCCESS;
-            return ActionTask.super.validateArguments(copy);
+            return ActionTask.super.validateArguments(true, copy);
         }
-        return ActionTask.super.validateArguments(args);
+        return ActionTask.super.validateArguments(true, args);
     }
-
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         GridUUID<?> startID = (GridUUID<?>)args[0];
         GridUUID<?> endID = (GridUUID<?>)args[1];
-        AncillaryNode<?> startNode = null, endNode = null; 
-        try { startNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, startID); } 
-        catch (Exception e) { return GridAction.RESPONSE_FAIL_START_MISSING; }
-        try { endNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, endID); } 
-        catch (Exception e) { return GridAction.RESPONSE_FAIL_END_MISSING; }
-        args[4] = grid.addLinkDeferred(new ComponentLink<>((TransmitterType)args[2], startID, startNode, endID, endNode));
-        Set<ServerPlayer> trackers = GridTracking.collectPlayersTracking((ServerLevel)grid.getWorld(), startID, endID);
-        if(args[3] != null) {
-            Entity caller = ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
-            if(caller instanceof ServerPlayer sp) trackers.add(sp);
-        }
-        GridAction.TASK_LINK_CREATE.broadcastBelligerent(grid, trackers, args);
+        AncillaryNode<?> startNode = (AncillaryNode<?>) GridTracking.getComponent(grid, startID);
+        AncillaryNode<?> endNode = (AncillaryNode<?>) GridTracking.getComponent(grid, endID);
+        GridAction acquireResult = GridAction.ofNullcheck(startNode, endNode);
+        if(acquireResult.getActionType().indicatesFailure()) return acquireResult;
+        TransmitterType trns = (TransmitterType) args[2];
+        AncillaryPair newLink = trns == null 
+            ? new AncillaryPair(startID, startNode, endID, endNode) 
+            : new ComponentLink<>(trns, startID, startNode, endID, endNode);
+        Entity caller = args[3] == null ? null : ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
+        args[4] = grid.addLinkDeferred(newLink, caller);
+        Set<ServerPlayer> trackers = GridTracking.collectPlayersTracking((ServerLevel) grid.getWorld(), startID, endID);
+        if(caller instanceof ServerPlayer sp) trackers.add(sp);
+        // GridAction.TASK_LINK_CREATE.broadcastBelligerent(grid, trackers, args);  
         return (GridAction)args[4];
     }
 
@@ -106,12 +111,15 @@ public class NodeLinkCreateTask implements ActionTask {
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
         GridUUID<?> startID = (GridUUID<?>) args[0];
         GridUUID<?> endID = (GridUUID<?>) args[1];
-        AncillaryNode<?> startNode = null, endNode = null; 
-        try { startNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, startID); } 
-        catch (Exception e) { return GridAction.RESPONSE_FAIL_START_MISSING; }
-        try { endNode = (AncillaryNode<?>) GridTracking.findOrThrow(grid, endID); } 
-        catch (Exception e) { return GridAction.RESPONSE_FAIL_END_MISSING; }
-        args[4] = grid.addLink(new ComponentLink<>((TransmitterType)args[2], startID, startNode, endID, endNode));
+        AncillaryNode<?> startNode = (AncillaryNode<?>) GridTracking.getComponent(grid, startID);
+        AncillaryNode<?> endNode = (AncillaryNode<?>) GridTracking.getComponent(grid, endID);
+        GridAction acquireResult = GridAction.ofNullcheck(startNode, endNode);
+        if(acquireResult.getActionType().indicatesFailure()) return acquireResult;
+        TransmitterType trns = (TransmitterType) args[2];
+        AncillaryPair newLink = trns == null 
+            ? new AncillaryPair(startID, startNode, endID, endNode) 
+            : new ComponentLink<>(trns, startID, startNode, endID, endNode);
+        args[4] = grid.lookup().add(grid, newLink);
         UUID uuid = (UUID)args[3];
         if(uuid != null) {
             LocalPlayer lp = self();
@@ -135,10 +143,23 @@ public class NodeLinkCreateTask implements ActionTask {
     @Override
     public GridAction executeTopological(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints, Object[] args) {
         AncillaryPair link = (AncillaryPair) args[0];
-        if(link instanceof ComponentLink<?> cl)
+        Griddable<?> startSource = GridTracking.getSource(link.getStartAncillary());
+        Griddable<?> endSource =  GridTracking.getSource(link.getEndAncillary());
+        if(link instanceof ComponentLink<?> cl) {
             cl.applyTo(grid);
-        else UnionFactory.perfectConductor(grid, link.getStartAncillary(), link.getEndAncillary());
-        grid.addLink(link);
+            // TODO register component with 
+            grid.initiateTask(GridAction.TASK_LINK_CREATE)
+                .targeting(startSource, endSource)
+                .withArguments(link.getStartID(), link.getEndID(), cl.getTransmitter(), args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
+                .executeOnClients();
+        } else {
+            UnionFactory.perfectConductor(grid, link.getStartAncillary(), link.getEndAncillary());
+            grid.initiateTask(GridAction.TASK_LINK_CREATE)
+                .targeting(startSource, endSource)
+                .withArguments(link.getStartID(), link.getEndID(), null, args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
+                .executeOnClients();
+        }
+        grid.lookup().add(grid, link);
         return GridAction.RESPONSE_SUCCESS;
     }
 }

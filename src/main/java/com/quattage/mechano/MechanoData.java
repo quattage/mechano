@@ -30,13 +30,14 @@ public class MechanoData {
         = MechanoData.ATTACHMENT_REGISTRY.register(
             Mechano.ID + "_grid", () -> AttachmentType
                 .builder(Grid::createNew)
+                .serialize(Grid.SERIALIZER)
                 .build()
     );
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GridUUID<?>>> UUID = 
         MechanoData.COMPONENT_REGISTRY.registerComponentType(
             "grid_identifier",
-            b -> b.persistent(GridTracking.CODEC).networkSynchronized(GridTracking.STREAM_CODEC)
+            b -> b.persistent(GridTracking.UUID_CODEC).networkSynchronized(GridTracking.UUID_STREAM_CODEC)
     );
 
 

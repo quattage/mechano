@@ -1,15 +1,18 @@
 package com.quattage.mechano.api.grid.topology;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.Griddable;
@@ -34,14 +37,47 @@ import net.minecraft.core.BlockPos;
  */
 public class NodeUnionSet {
 
-    protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> transitiveTree;  // union-find transitive access (semi-cyclic)
+    protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> transitiveTree;   // union-find transitive access (semi-cyclic)
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> adjacencyTree;    // adjacency matrix (undirected, non-cyclic)
     protected Object2ObjectOpenHashMap<Node, Node> relations;                           // union-find discoverability (cyclic)
 
     public NodeUnionSet() {
-        relations = new Object2ObjectOpenHashMap<>(8);
-        transitiveTree = new Object2ObjectOpenHashMap<>(32);
-        adjacencyTree = new Object2ObjectOpenHashMap<>(16);
+        this(32);
+    }
+
+    public NodeUnionSet(int size) {
+        relations = new Object2ObjectOpenHashMap<>(size);
+        transitiveTree = new Object2ObjectOpenHashMap<>(size);
+        adjacencyTree = new Object2ObjectOpenHashMap<>(size);
+    }
+
+    public void finalizeTopology() {
+        if(isEmpty()) return;
+        int index = -1;
+
+        final Set<Node> orphans = new HashSet<>(transitiveTree.size() / 2);
+        for(Map.Entry<Node, ObjectOpenHashSet<Node>> branch : transitiveTree.entrySet()) {
+            Node head = branch.getKey();
+            Set<Node> branchTopo = branch.getValue();
+            if(branchTopo == null || branchTopo.isEmpty()) {
+                orphans.add(head);
+                continue;
+            }
+            head.setNodalIndex(index++);
+            for(Node leaf : branchTopo) {
+                if(leaf == null) continue;
+                leaf.setNodalIndex(head.getNodalIndex());
+            }
+            // TODO collect and remove orphans
+        }
+        if(!orphans.isEmpty()) {
+            for(Node n : orphans) {
+                transitiveTree.remove(n);
+                adjacencyTree.remove(n);
+                relations.remove(n);
+            }
+        }
+        trim();
     }
 
     /**
@@ -59,9 +95,17 @@ public class NodeUnionSet {
      * @return The root node that owns <code>node</code>
      */
     public Node find(Node node) {
+        return find(node, 0);
+    }
+
+    private Node find(Node node, int iter) {
+        if(iter > 1024) {
+            Mechano.LOGGER.warn("overflow detected during path compression");
+            return node;
+        }
         Node p = relations.get(node);
         if(node == p) return node;
-        Node root = find(p);
+        Node root = find(p, iter + 1);
         if(relations.get(node) != root) {
             Set<Node> branch = transitiveTree.get(p);
             if(branch != null) branch.remove(node);
@@ -77,7 +121,6 @@ public class NodeUnionSet {
      * This method also adds these nodes if they
      * don't already exist within this NodeUnionSet.
      * <p>
-     * 
      * @param a node
      * @param b node
      */
@@ -85,13 +128,33 @@ public class NodeUnionSet {
         add(a); add(b);
         Node aP = find(a);
         Node bP = find(b);
-        if(aP == bP) return;
-        Node primary = Node.choosePrimary(aP, bP);
-        Node secondary = primary == aP ? bP : aP;
-        relations.put(secondary, primary);
-        transitiveJoin(primary, secondary);
+        if(aP != bP) {
+            Node primary = Node.choosePrimary(aP, bP);
+            Node secondary = primary == aP ? bP : aP;
+            relations.put(secondary, primary);
+            transitiveJoin(primary, secondary);
+        }
         adjacentJoin(a, b);
         adjacentJoin(b, a);
+    }
+
+    /**
+     * Joins <code>a</code> and <code>b</code>.
+     * This method doesn't do any transitivity joining
+     * or path compression. <p>
+     * 
+     * <strong>Calling this method will leave this NodeUnionSet in a broken state!</strong><p>
+     * This method is intended to be used when loading data from a serialized form. Path
+     * and serialization compression mean that the transitivity structure must be re-created
+     * from adjacency data on load. You must call {@link #patchAndTrim()} after this method 
+     * to fix the now outdated transitivity structure.
+     * @param a node 
+     * @param b node
+     */
+    public boolean loadUnion(Node a, Node b) {
+        relations.put(a, a);
+        adjacentJoin(a, b);
+        return true;
     }
 
     private void disjoin(Node a, Node b) {
@@ -152,6 +215,7 @@ public class NodeUnionSet {
      */
     public void massRemove(@Nullable Collection<Node> nodesToRemove, @Nullable Collection<NodePair> unionsToRemove) {
         final Map<Node, Pair<Node, Node[]>> affected = new HashMap<>();
+        
         if(nodesToRemove != null) {
             for(Node removed : nodesToRemove) {
                 if(removed == null) continue;
@@ -171,11 +235,16 @@ public class NodeUnionSet {
             Node removed = entry.getValue().getFirst();
             entry.setValue(Pair.of(removed, NodalCluster.getConstituents(this, entry.getKey())));
         }
-        if(nodesToRemove != null) for(Node toRemove : nodesToRemove) removeNode(toRemove);
-        if(unionsToRemove != null) for(NodePair pair : unionsToRemove) {
-            disjoin(pair.a, pair.b);
-            if(!hasConnections(pair.a)) remove(pair.a);
-            if(!hasConnections(pair.b)) remove(pair.b);
+        if(unionsToRemove != null) {
+            for(NodePair pair : unionsToRemove) {
+                disjoin(pair.a, pair.b);
+                if(!hasConnections(pair.a)) remove(pair.a);
+                if(!hasConnections(pair.b)) remove(pair.b);
+            }
+        }
+        if(nodesToRemove != null) for(Node toRemove : nodesToRemove) {
+            List<NodePair> removed = removeNodeAndGet(toRemove);
+            if(removed != null) unionsToRemove.addAll(removed);
         }
         for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet())
             NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofDiscontinuities(this, entry.getValue().getSecond()));
@@ -298,30 +367,21 @@ public class NodeUnionSet {
         }
     }
 
-    public void assignIndices() {
-        if(isEmpty()) return;
-        int index = -1;
-        final Iterator<Map.Entry<Node, ObjectOpenHashSet<Node>>> nodeIter = transitiveTree.entrySet().iterator();
-        while(nodeIter.hasNext()) {
-            Map.Entry<Node, ObjectOpenHashSet<Node>> branch = nodeIter.next();
-            Set<Node> branchTopo = branch.getValue();
-            Node head = branch.getKey();
-            if(head == null) {
-                nodeIter.remove();
-                continue;
+    private List<NodePair> removeNodeAndGet(Node node) {
+        relations.remove(node);
+        Set<Node> connected = adjacencyTree.remove(node);
+        if(connected == null) return null;
+        List<NodePair> removed = new ArrayList<>(connected.size());
+        for(Node adjNode : connected) {
+            removed.add(new NodePair(node, adjNode));
+            Set<Node> inverseConnected = adjacencyTree.get(adjNode);
+            if(inverseConnected != null) {
+                if(inverseConnected.remove(node))
+                    removed.add(new NodePair(adjNode, node));
             }
-            // remove orphans
-            if(branchTopo == null || branchTopo.isEmpty()) {
-                nodeIter.remove();
-                relations.remove(head);
-                continue;
-            }
-            head.setNodalIndex(index++);
-            for(Node leaf : branchTopo)
-                leaf.setNodalIndex(head.getNodalIndex());
+            else adjacencyTree.put(adjNode, null);
         }
-        relations.trim();
-        transitiveTree.trim();
+        return removed;
     }
 
     /**
@@ -391,9 +451,21 @@ public class NodeUnionSet {
      * will be available in this set.
      * @return An immutable view of this UnionSet's transitive keyset
      * @see #relations()
+     * @see #adjacency()
      */
-    public Set<Node> roots() {
+    public Set<Node> transitivity() {
         return Collections.unmodifiableSet(transitiveTree.keySet());
+    }
+
+    /**
+     * The adjacency map contains the data you'd expect
+     * to see in a standard undirected adjacency matrix. 
+     * @return An immutable view of this NodeUnionSet's adjacency map
+     * @see #transitivity()
+     * @see #relations()
+     */
+    public Map<Node, Set<Node>> adjacency() {
+        return Collections.unmodifiableMap(adjacencyTree);
     }
 
     /**
@@ -402,10 +474,17 @@ public class NodeUnionSet {
      * transitive lookups are fast, but adjacency information is lost in
      * the process.
      * @return An immutable view of this UnionSet's relations map
-     * @see #roots()
+     * @see #transitivity()
+     * @see #adjacency()
      */
     public Map<Node, Node> relations() {
         return Collections.unmodifiableMap(relations);
+    }
+
+    public Set<Node> connectedTo(Node node) {
+        Objects.requireNonNull(node);
+        Set<Node> output = adjacencyTree.get(node);
+        return output == null ? Collections.emptySet() : output;
     }
 
     /**
@@ -422,6 +501,37 @@ public class NodeUnionSet {
      */
     public int size() {
         return transitiveTree.size();
+    }
+
+    public int adjacencySize() {
+        return adjacencyTree.size();
+    }
+
+    
+
+    /**
+     * Trims internal hash tables to minimize memory footprint
+     */
+    public void trim() {
+        transitiveTree.trim();
+        adjacencyTree.trim();
+        relations.trim();
+    }
+
+    /**
+     * Finds all clusters in this NodeUnionSet and updates this object's
+     * internal transitivity structure to match what is currently present
+     * in the adjacency data. This method can be used when making sweeping
+     * changes to this NodeUnionSet. It's better to avoid constant rebuilding
+     * after each change in favour of one big rebuild at the end, so you can
+     * manually invoke that here.
+     * Use this method sparingly, since it can be computationally expensive.
+     */
+    public void patchAndTrim() {
+        Node[] nodesAsArray = relations.keySet().toArray(new Node[relations.size()]);
+        List<NodalCluster> clusters = NodalCluster.ofDiscontinuities(this, nodesAsArray);
+        NodalCluster.applyPatches(this, clusters);
+        trim();
     }
 
     public boolean isEmpty() {
@@ -456,6 +566,9 @@ public class NodeUnionSet {
         return out;
     }
 
+    public void ensureCapacity(int cap) {
+        adjacencyTree.ensureCapacity(cap);
+    }
 
     private String summarizeNode(Node node, boolean showRelative) {
         String out = "";
@@ -466,6 +579,7 @@ public class NodeUnionSet {
     }
 
     public String toFullString(ServerGrid grid) {
+        if(isEmpty()) return "\n  Empty";
         String out = "";
         Griddable<?> src = null;
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
@@ -479,7 +593,7 @@ public class NodeUnionSet {
             } else out += "\n    Owned by anonymous source";
             out += "\n    Parented to: " + summarizeNodeFull(relations.get(root));
             if(contents == null || contents.isEmpty()) {
-                out += "\n  !! Stub !!";
+                out += "\n    0 children [[!! Stub !!]]";
                 continue;
             }
             out += "\n    " + contents.size() + " children:";
@@ -507,6 +621,14 @@ public class NodeUnionSet {
             if(this == obj) return true;
             if(!(obj instanceof NodePair that)) return false;
             return (this.a == that.a && this.b == that.b) || (this.a == that.b && this.b == that.a);
+        }
+
+        public Griddable<?> aSource() {
+            return GridTracking.getSource(a);
+        }
+
+        public Griddable<?> bSource() {
+            return GridTracking.getSource(b);
         }
 
         @Override

@@ -57,7 +57,7 @@ public class WireJack<T extends GridUUID<T>> extends AncillaryNode<T> implements
     }
 
     @Override
-    void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack) {
+    public void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack) {
         matrixStack.translate(
             (0.5d + basis.x) - cameraPos.x, 
             (0.5d + basis.y) - cameraPos.y, 

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
@@ -28,7 +29,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * This class is especially useful in contexts (e.g. rendering) that need frequent access to 
  * node and link information. 
  */
-public class GriddableTerminus implements OrientationUpdatable {
+public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
 
     private @Nullable AncillaryNode<?>[] exposedJoints;
     private boolean hasConnections = false;
@@ -75,6 +76,7 @@ public class GriddableTerminus implements OrientationUpdatable {
 
     public void invalidate() {
         exposedJoints = null;
+        hasConnections = false;
     }
 
     /**
@@ -164,15 +166,21 @@ public class GriddableTerminus implements OrientationUpdatable {
         return hasConnections;
     }
 
+    @Override
     public @NotNull Griddable<?> getProviderSource() {
         if(isEmpty())
             throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
         for(int x = 0; x < exposedJoints.length; x++) {
             AncillaryNode<?> ancillary = exposedJoints[x];
             if(ancillary == null) continue;
-            Griddable<?> source = ancillary.getProviderSource();
+            Griddable<?> source = GridTracking.getSource(ancillary);
             if(source != null) return source;
         }
         throw new IllegalStateException("Failed while getting source griddable for terminus - This terminus couldn't provide a Griddable source from any of its ancillaries!");
+    }
+
+    @Override
+    public String toString() {
+        return "Terminus[connections? " + (hasConnections ? "yes" : "no") + ", " + size() + " member(s)]";
     }
 }

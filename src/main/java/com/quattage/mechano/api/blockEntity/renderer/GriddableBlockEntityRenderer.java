@@ -3,7 +3,9 @@ package com.quattage.mechano.api.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
+import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.switchboard.JackSelector;
 
 import net.minecraft.client.Minecraft;
@@ -11,7 +13,6 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider.Context;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -24,14 +25,13 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
             int packedLight, int packedOverlay) {
         LocalPlayer player = Minecraft.getInstance().player;
         if(player == null) return;
-        double reach = player.getAttributes().getValue(Attributes.ENTITY_INTERACTION_RANGE);
-        tickAnchors(player, be, reach);
-        // renderMovingWires(be, bufferSource, poseStack, partialTick);
+        tickAnchors(player, be);
+        renderMovingWires(be, bufferSource, poseStack, partialTick);
     }
 
     /**
      * This method continuously evaluates the visibility of 
-     * {@link AnchorPoint AnchorPoints} within this PGBE.
+     * {@link AncillaryNode} instances within the parent {@link Griddable}
      * <p>
      * This is done in the renderer for a few reasons:
      * <ul>
@@ -39,10 +39,11 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
      * <li>BERs have built-in frustum culling</li>
      * <li>This code is executed at the framerate of the game rather than a fixed rate</li>
      * </ul>
-     * The visibility and interaction status of each anchor is evaluated in the {@link AnchorSelector#INSTANCE Anchor Selector}
-     * @param be
+     * The visibility and interaction status of each anchor is evaluated in the {@link JackSelector jack selector}
+     * @param player the client player
+     * @param be the block entity that's responsible for providing ancillaries
      */
-    public void tickAnchors(LocalPlayer player, T be, double reach) {
+    public void tickAnchors(LocalPlayer player, T be) {
         be.provideTerminus().forEach(joint -> {
             JackSelector.getInstance().trackForThisFrame(player, be, joint);
         });
@@ -68,7 +69,7 @@ public class GriddableBlockEntityRenderer<T extends GriddableBlockEntity> implem
 
     @Override
     public boolean shouldRenderOffScreen(T be) {
-        GriddableTerminus gt = be.getTerminus();
-        return gt.hasConnections();
+        GriddableTerminus gt = be.provideTerminus();
+        return gt != null && gt.hasConnections();
     }
 }

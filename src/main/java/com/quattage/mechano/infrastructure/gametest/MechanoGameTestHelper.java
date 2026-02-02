@@ -133,7 +133,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
     public CircuitComponent getComponentSafely(GridUUID<?> address) {
         failIfNull(address);
         CircuitComponent result = null;
-        try { result = GridTracking.findOrThrow(getGrid(), address); } 
+        try { result = GridTracking.getComponentOrThrow(getGrid(), address); } 
         catch (Exception e) { 
             e.printStackTrace(); 
             fail("Couldn't resolve component acquisition for " + address + " (see exception above)");
@@ -271,9 +271,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
     }
 
-
-
-
     public static class MockNode implements Node {
 
         private final String id;
@@ -369,6 +366,11 @@ public class MechanoGameTestHelper extends GameTestHelper {
         @Override
         public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
             return this;
+        }
+
+        @Override
+        public GridReferent<?> getProviderSource() {
+            return null;
         }
     }
 }

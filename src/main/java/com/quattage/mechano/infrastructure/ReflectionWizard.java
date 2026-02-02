@@ -1,6 +1,5 @@
 package com.quattage.mechano.infrastructure;
 
-import java.io.File;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -8,8 +7,6 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
@@ -81,24 +78,6 @@ public class ReflectionWizard {
             && !clazz.getPackageName().contains("net.minecraft")
             && !clazz.getName().contains("$$Lambda") 
             && clazz.getAnnotation(DoNotAnalyze.class) == null;
-    }
-
-
-    private static Class<?> tryGetClass(String name) {
-        Class<?> clazz = null;
-        try { clazz = Class.forName(name); } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return clazz;
-    }
-
-    private static File tryGetFile(URL url) {
-        File out = null;
-        try { out = new File(url.toURI()); } catch (URISyntaxException e) {
-            e.printStackTrace();
-            throw new IllegalArgumentException("Couldn't get file url for " + url);
-        }
-        return out;
     }
 
     @Target( { ElementType.TYPE, ElementType.FIELD } )

@@ -42,6 +42,8 @@ public class MNAIndexer {
         }
     }
 
+    public MNAIndexer() {}
+
     public void allocate(CircuitComponent component) {
         MNAIndexer.asStamperDo(null, component, this::allocate);
     }

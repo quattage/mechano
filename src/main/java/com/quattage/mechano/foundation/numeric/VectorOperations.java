@@ -152,6 +152,20 @@ public class VectorOperations {
             .colored(color);
     }
 
+
+    /***
+     * Creates a new AABB at the given Vec3.
+     * @param pos Vec3 to use as a basis
+     * @param s Size of the AABB
+     * @return A new AABB at the given Vec3
+     */
+    public static AABB toAABB(float x, float y, float z, float s) {
+        return new AABB(
+            x - s, y - s, z - s,
+            x + s, y + s, z + s
+        );
+    }
+
     /***
      * Creates a new AABB at the given Vec3.
      * @param pos Vec3 to use as a basis

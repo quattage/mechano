@@ -53,8 +53,9 @@ public class BlockJack extends AncillaryNode<VoxelUUID> implements OrientationUp
             throw new IllegalStateException("Encountered an invalid blockentity traversal while getting opposing " 
                 + "ancillaries - BlockJack " + this + " refers to itself! (at " + getPos(basis) + ")");
         }
-        if(!(be instanceof Griddable gbe)) return null;
+        if(!(be instanceof Griddable<?> gbe)) return null;
         GriddableTerminus terminus = gbe.getTerminus();
+        if(terminus.isEmpty()) terminus.initializeFrom(gbe.getComponent());
         if(terminus.isEmpty()) return null;
         for(int x = 0; x < terminus.size(); x++) {
             AncillaryNode<?> other = terminus.getAncillary(x);
@@ -143,7 +144,7 @@ public class BlockJack extends AncillaryNode<VoxelUUID> implements OrientationUp
     }
 
     @Override
-    void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack) {
+    public void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack) {
         matrixStack.translate(
             basis.x - cameraPos.x, 
             basis.y - cameraPos.y, 

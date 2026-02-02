@@ -22,6 +22,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelReader;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
@@ -174,9 +175,12 @@ public interface GridConstruct {
      * An object that refers in some way to one or more {@link GridConstruct} objects.
      * (e.g. a BlockEntity with a {@link Circuit})
      */
-    public interface GridReferent<T extends GridUUID<T>> {
+    public interface GridReferent<T extends GridUUID<T>> extends SourceProvider {
 
         static GridReferent<?> choosePrimary(GridReferent<?> a, GridReferent<?> b) {
+            if(a == null && b != null) return b;
+            if(b == null && a != null) return a;
+            if(a == null && b == null) return null;
             if(a.canMoveDynamically() && !b.canMoveDynamically()) return a;
             if(b.canMoveDynamically() && !a.canMoveDynamically()) return b;
             return System.identityHashCode(a) > System.identityHashCode(b) ? a : b;
@@ -209,18 +213,6 @@ public interface GridConstruct {
         }
 
         GridTracking getTrackerScope();
-
-        /**
-         * Provides access to the instantiator/composer source object
-         * that created this GridAPI component. Allows grid-scoped
-         * code to access the {@link Griddable} (and, by extension, the world)
-         * at arbitrary moments in time. <p>
-         * Implementations may <code>null</code> to indicate that their source couldn't be found.
-         * @param world world to operate within. Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
-         * @return The {@link Griddable} that this object belongs to
-         */
-        @Nullable Griddable<?> getProviderSource(LevelReader world);
-
         boolean isBeingTrackedBy(ServerPlayer sp);
 
         default void sendToClientsTracking(ServerLevel world, CustomPacketPayload packet) {
@@ -233,11 +225,12 @@ public interface GridConstruct {
             }
         }
 
-        default BlockPos getBlockPos() {
-            return getBlockPos(null);
-        }
+        BlockPos getBlockPos();
 
-        BlockPos getBlockPos(@Nullable LevelReader world);
+        default ChunkPos getChunkPos() {
+            BlockPos bp = getBlockPos();
+            return bp == null ? null : new ChunkPos(bp);
+        }
 
         default boolean canMoveDynamically() {
             return canReceiveVelocity();
@@ -249,6 +242,39 @@ public interface GridConstruct {
 
         default int getApproximateMass() {
             return Integer.MAX_VALUE;
+        }
+    }
+
+    public interface SourceProvider {
+
+        default GridReferent<?> getProviderSourceOrThrow() {
+            GridReferent<?> source = getProviderSource();
+            if(source == null) throw new NullPointerException("Couldn't locate provider source for " + this + "!");
+            return source;
+        }
+
+        /**
+         * Provides access to the instantiator/composer source object
+         * that created this GridAPI component. Allows grid-scoped
+         * code to access the {@link Griddable} (and, by extension, the world)
+         * at arbitrary moments in time. <p>
+         * Implementations may <code>null</code> to indicate that their source couldn't be found.
+         * @param world world to operate within. (Optional, some providers require a reference to the world, but most don't) Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
+         * @return The {@link Griddable} that this object belongs to
+         */
+        GridReferent<?> getProviderSource();
+
+        /**
+         * Provides access to the instantiator/composer source object
+         * that created this GridAPI component. Allows grid-scoped
+         * code to access the {@link Griddable} (and, by extension, the world)
+         * at arbitrary moments in time. <p>
+         * Implementations may <code>null</code> to indicate that their source couldn't be found.
+         * @param world world to operate within. (Optional, some providers require a reference to the world, but most don't) Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
+         * @return The {@link Griddable} that this object belongs to
+         */
+        default GridReferent<?> getProviderSource(LevelReader world) {
+            return getProviderSource();
         }
     }
 

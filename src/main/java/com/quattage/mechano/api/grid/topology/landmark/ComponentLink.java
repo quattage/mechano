@@ -12,6 +12,7 @@ import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
 import com.quattage.mechano.api.catenary.model.SimulatedCatenary;
 import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
@@ -20,7 +21,6 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -57,7 +57,7 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     @Override
     public ComponentLink<T> flippedCopy() {
-        return new ComponentLink<T>(component, trns, endID, endNode, startID, startNode);
+        return new ComponentLink<T>(component, trns, endID, endAnc, startID, startAnc);
     }
 
     /**
@@ -88,13 +88,13 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
 
     @Override
     public void forEachNode(Consumer<Node> cons) {
-        if(startNode != null) startNode.forEachNode(cons);
-        if(endNode != null) endNode.forEachNode(cons);
+        if(startAnc != null) startAnc.forEachNode(cons);
+        if(endAnc != null) endAnc.forEachNode(cons);
     }
 
     @Override
     public boolean isGrounded() {
-        return (startNode != null && startNode.isGrounded()) || (endNode != null && endNode.isGrounded());
+        return (startAnc != null && startAnc.isGrounded()) || (endAnc != null && endAnc.isGrounded());
     }
 
     @Override
@@ -125,7 +125,7 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     @Override
     public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
         if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY)
-            return binding.get() == 0 ? startNode : endNode;
+            return binding.get() == 0 ? startAnc : endAnc;
         return component;
     }
 
@@ -134,39 +134,53 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         return null;
     }
 
+    public boolean isPrimary() {
+        Griddable<?> startSource = getStartAncillary().getProviderSource();
+        Griddable<?> endSource = getEndAncillary().getProviderSource();
+        GridReferent<?> primary = GridReferent.choosePrimary(startSource, endSource);
+        return startSource == primary;
+    }
+
     @OnlyIn(Dist.CLIENT)
     public CatenaryModel<?> getCatenary(LevelReader world) {
         if(catenary != null) return catenary;
+        if(isPrimary()) return initializeCatenary();
         AncillaryPair opposite = getFlipped(world);
         if(opposite instanceof ComponentLink<?> cl && cl.catenary != null) {
-            this.catenary = cl.catenary;
+            this.catenary = cl.getCatenary(world);
             return catenary;
         }
-        initializeCatenary();
-        if(opposite instanceof ComponentLink<?> cl) 
-            cl.catenary = this.catenary;
+        throw new IllegalStateException("Couldn't get catenary model from " + this 
+            + " - This link is not primary, but no opposing link could be located in the grid.");
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public CatenaryModel<?> initializeCatenary() {
+        catenary = new SimulatedCatenary();
+        catenary.setOffset(trns, startAnc.getRealPosition(), endAnc.getRealPosition())
+            .initializeSpan()
+            .calculateSegmentation(trns)
+            .pinEndpoints();
         return catenary;
     }
 
     @OnlyIn(Dist.CLIENT)
-    public void initializeCatenary() {
-        catenary = new SimulatedCatenary();
-        catenary.setOffset(trns, startNode.getRealPosition(), endNode.getRealPosition())
-            .initializeSpan()
-            .calculateSegmentation(trns)
-            .pinEndpoints();
-        catenary.update(trns);
+    public void saturateCatenary() {
+        if(catenary == null || !catenary.isInitialized())
+            initializeCatenary();
+        catenary.updateAhead(trns, 256);
     }
 
-    @OnlyIn(Dist.CLIENT) 
-    public void tickCatenary(ClientLevel world) {
+    @Override
+    public void tick(LevelReader world) {
         assertHasAncillaries();
-        Griddable<?> startSource = startNode.getProviderSource();
-        Griddable<?> endSource = startNode.getProviderSource();
-        if(GridReferent.choosePrimary(startSource, endSource) != startSource) return;
-        Vector3d startPos = startNode.getRealPosition();
-        Vector3d endPos = endNode.getRealPosition();
-        catenary.setOffset(trns, startPos, endPos);
+        Griddable<?> startSource = GridTracking.getSource(startAnc);
+        Griddable<?> endSource = GridTracking.getSource(endAnc);
+        if(startSource == null || endSource == null) return;
+        Vector3d startPos = startAnc.getRealPosition();
+        Vector3d endPos =  endAnc.getRealPosition();
+        getCatenary(world).setOffset(trns, startPos, endPos);
+        getCatenary(world).update(trns);
     }
 
     @Override
@@ -174,7 +188,9 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     public void render(BlockEntity owner, MultiBufferSource buffers, PoseStack matrixStack, float pTicks) {
         Vec3 worldMid = halfwayBetween();
         CatenaryMeshBuffer.REUSABLE 
-            .bindTo(trns).at(worldMid).in(owner.getLevel())
+            .in(owner.getLevel())
+            .at(worldMid)
+            .bindTo(trns)
             .render(buffers, matrixStack, getCatenary(owner.getLevel()), worldMid.subtract(Vec3.atLowerCornerOf(owner.getBlockPos())), pTicks);
         CatenaryMeshBuffer.REUSABLE.reset();
     }

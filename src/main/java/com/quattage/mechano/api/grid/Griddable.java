@@ -13,6 +13,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
@@ -89,7 +90,12 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
     GriddableTerminus provideTerminus();
 
     @Override
-    default Griddable<?> getProviderSource(LevelReader world) {
+    default GridReferent<?> getProviderSource() {
+        return this;
+    }
+
+    @Override
+    default GridReferent<?> getProviderSource(LevelReader world) {
         return this;
     }
 
@@ -122,10 +128,13 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
      * @return A set of {@link AncillaryPair pairs}
      */
     default Set<AncillaryPair> analyzeAdjacents() {
-        ObjectOpenHashSet<AncillaryPair> output = new ObjectOpenHashSet<>(4);
+        final ObjectOpenHashSet<AncillaryPair> output = new ObjectOpenHashSet<>(4);
         GriddableTerminus thisTerminus = getTerminus();
-        final BlockPos pos = getBlockPos(null);
-        if(thisTerminus.isEmpty()) return Collections.emptySet();
+        BlockPos pos = getBlockPos();
+        if(thisTerminus.isEmpty()) {
+            thisTerminus.invalidate();
+            return Collections.emptySet();
+        }
         thisTerminus.forEach(ancillary -> {
             if(!(ancillary instanceof BlockJack bj)) return;
             BlockJack opposite = bj.getOpposing(getWorld(), pos);
@@ -145,8 +154,10 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
         Objects.requireNonNull(thatPos);
         if(thisPos == thatPos || thisPos.distManhattan(thatPos) > 1) 
             return false;
-        for(AncillaryPair ancs : analyzeAdjacents())
-            if(ancs.getEndAncillary().getProviderSource() == other) return true;
+        for(AncillaryPair ancs : analyzeAdjacents()) {
+            Griddable<?> source = GridTracking.getSource(ancs.getEndAncillary());
+            if(source == other) return true;
+        }
         return false;
     }
 
@@ -181,13 +192,17 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
         return getSourcePos().add(local);
     }
 
+    @OnlyIn(Dist.CLIENT)
     default void forEachExternalLink(Consumer<AncillaryPair> cons) {
-        Grid grid = Grid.getUnsided(getWorld());
-        List<AncillaryPair> links = grid.getLinksBelongingTo(this);
+        ClientGrid grid = Grid.client(getWorld());
+        List<AncillaryPair> links = grid.lookup().getLinksBelongingTo(getUUID());
         if(links == null || links.isEmpty()) return;
         for(int x = 0; x < links.size(); x++) {
             AncillaryPair link = links.get(x);
             if(link == null) continue;
+            GridReferent<?> primary = GridReferent.choosePrimary(this, GridTracking.getSource(link.getEndAncillary().getProviderSource()));
+            if(primary == null || primary != this)
+                continue;
             cons.accept(link);
         }
     }
@@ -206,4 +221,7 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
     default @Nullable GridConstruct getParentConstruct() {
         return null;
     }
+
+    default void onAddedToGrid(Grid grid) {}
+    default void onRemovedFromGrid(Grid grid) {}
 }

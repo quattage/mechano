@@ -5,10 +5,10 @@ import java.util.Objects;
 import org.apache.commons.lang3.function.TriFunction;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.Catenaries.PhysicalMaterial;
 import com.quattage.mechano.api.catenary.Catenaries.Soundscape;
+import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
 import com.quattage.mechano.api.grid.GridConstruct;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
@@ -21,43 +21,37 @@ import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 public class TransmitterType {
-    
-    private final String name;
+
+    private ResourceLocation registryID;
     private final UnionFactory factory;
     private final NonNullSupplier<CatenaryRenderProperties> renderProperties;
     private final PhysicalMaterial phys;
     private final Soundscape sounds;
     private final int maxSpan;
 
-    /**
-     * Retrieves a {@link TransmitterType} from its associated {@link TransmitterEntry} 
-     * contained within the {@link BuiltInRegistries#REGISTRY static registry}.
-     * This method will throw if no transmitter at <code>name</code> could be found.
-     * @param name The ResourceLocation of the desired TransmitterType
-     * @return The TransmitterType at <code>name</code>
-     */
-    public static TransmitterType getByName(ResourceLocation name) {
-        TransmitterType trns = Mechano.REGISTRATE.getTransmitterRegistry().get(name); 
-        if(trns == null) throw new IllegalArgumentException("Couldn't find TransmitterType entry at " + name);
-        return trns;
-    }
-
-    public TransmitterType(@Nullable String name, UnionFactory factory, NonNullSupplier<CatenaryRenderProperties> renderProperties, PhysicalMaterial phys, Soundscape sounds, int maxSpan) {
+    public TransmitterType(ResourceLocation registryID, @Nullable String name, UnionFactory factory, NonNullSupplier<CatenaryRenderProperties> renderProperties, PhysicalMaterial phys, Soundscape sounds, int maxSpan) {
         Objects.requireNonNull(factory);
         if(name == null || name.isBlank()) name = "unnamed";
         else name = name.toLowerCase();
+        this.registryID = ResourceLocation.fromNamespaceAndPath(registryID.getNamespace(), name);
         this.factory = factory;
-        this.name = name;
         this.renderProperties = renderProperties;
         this.phys = phys == null ? PhysicalMaterial.AIR : phys;
         this.sounds = sounds == null ? Soundscape.AIR : sounds;
         this.maxSpan = maxSpan;
+    }
+
+    protected void setRegistryID(ResourceLocation registryID) {
+        this.registryID = registryID;
+    }
+
+    public ResourceLocation getRegistryID() {
+        return registryID;
     }
 
     public UnionFactory getFactory() {
@@ -66,7 +60,9 @@ public class TransmitterType {
 
     @OnlyIn(Dist.CLIENT)
     public CatenaryRenderProperties getRenderProperties() {
-        return renderProperties.get();
+        CatenaryRenderProperties rp = renderProperties.get();
+        rp.configure(this);
+        return rp;
     }
 
     public PhysicalMaterial getPhysicalProperties() {
@@ -82,12 +78,18 @@ public class TransmitterType {
     }
 
     public String getName() {
-        return name;
+        return registryID.getNamespace();
     }
 
     @Override
     public String toString() {
-        return "TransmitterType[" + name + "]";
+        return "TransmitterType[" + registryID + "]";
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void applyResourceReloadResult(@Nullable CatenaryModelProvider.ModelDefinition model) {
+        if(model == null) this.renderProperties.get().applyTextures(null, null);
+        else this.renderProperties.get().applyTextures(model.getAtlas(), model.getTexture());
     }
 
     public static class GridUnionException extends RuntimeException {

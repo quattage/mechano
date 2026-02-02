@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
@@ -72,6 +73,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
     }
 
     public abstract T copy();
+    public abstract T copyAndClearBindings();
 
     public void write(CompoundTag tag) {
         tag.putByte("bndc", (byte) bindings.length);
@@ -98,6 +100,12 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         System.arraycopy(bindings, 0, copy, 1, bindings.length);
         copy[0] = new UUIDComposite(value, target);
         this.bindings = copy;
+        return (T) this;
+    }
+    
+    @SuppressWarnings("unchecked")
+    public T withoutBindings() {
+        this.bindings = null;
         return (T) this;
     }
 
@@ -194,7 +202,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
 
         @Override
         public VoxelUUID copy() {
-            VoxelUUID out = new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ()));
+            VoxelUUID out = copyAndClearBindings();
             out.bindings = new UUIDComposite[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
                 out.bindings[x] = this.bindings[x].copy();
@@ -202,10 +210,21 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
+        public VoxelUUID copyAndClearBindings() {
+            return new VoxelUUID(new BlockPos(pos.getX(), pos.getY(), pos.getZ()));
+        }
+
+        @Override
         @SuppressWarnings("unchecked")
         public @Nullable Griddable<VoxelUUID> getProviderSource(LevelReader world) {
             BlockEntity be = world.getBlockEntity(pos);
             return be instanceof Griddable<?> gbe ? (Griddable<VoxelUUID>) gbe : null;
+        }
+
+        @Override
+        public GridReferent<?> getProviderSource() {
+            Mechano.LOGGER.warn("Attempted to get a provider source from a UUID without a reference to the world. This call will not do anything and immediatley return null.");
+            return null;
         }
 
         @Override
@@ -257,7 +276,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
-        public BlockPos getBlockPos(@Nullable LevelReader world) {
+        public BlockPos getBlockPos() {
             return pos;
         }
     }
@@ -304,7 +323,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
 
         @Override
         public EntityUUID copy() {
-            EntityUUID out = new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
+            EntityUUID out = copyAndClearBindings();
             out.bindings = new UUIDComposite[this.bindings.length];
             for(int x = 0; x < bindings.length; x++)
                 out.bindings[x] = this.bindings[x].copy();
@@ -312,12 +331,23 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
-        public @Nullable Griddable<?> getProviderSource(LevelReader world) {
+        public EntityUUID copyAndClearBindings() {
+            return new EntityUUID(new UUID(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits()));
+        }
+
+        @Override
+        public @Nullable GridReferent<?> getProviderSource(LevelReader world) {
             Entity e = world.isClientSide() 
                 // accessible via the access transformer
                 ? ((ClientLevel) world).entityStorage.getEntityGetter().get(uuid) 
                 : ((ServerLevel) world).getEntity(uuid);
             return e instanceof Griddable<?> ge ? ge : null;
+        }
+
+        @Override
+        public GridReferent<?> getProviderSource() {
+            Mechano.LOGGER.warn("Attempted to get a provider source from a UUID without a reference to the world. This call will not do anything and immediatley return null.");
+            return null;
         }
 
         @Override
@@ -377,9 +407,8 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
-        public BlockPos getBlockPos(@Nullable LevelReader world) {
-            Griddable<?> source = getProviderSource(world);
-            return source.getBlockPos(world);
+        public BlockPos getBlockPos() {
+            return null;
         }
     }
 
@@ -404,8 +433,8 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         private UUIDComposite(int idx, CompoundTag tag) {
-            this.value = tag.getShort("cbv" + idx);
-            this.type = ComponentHierarchy.values()[tag.getByte("cbt" + idx)];
+            this.value = tag.getShort("v" + idx);
+            this.type = ComponentHierarchy.values()[tag.getByte("t" + idx)];
         }
 
         private UUIDComposite(int idx, ByteBuf buffer) {
@@ -414,8 +443,8 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         private UUIDComposite(int idx, Dynamic<?> dyn) {
-            this.value = dyn.get("cbv" + idx).asShort((short) 0);
-            this.type = ComponentHierarchy.values()[dyn.get("cbt" + idx).asByte((byte)(ComponentHierarchy.values().length - 1))];
+            this.value = dyn.get("v" + idx).asShort((short) 0);
+            this.type = ComponentHierarchy.values()[dyn.get("t" + idx).asByte((byte)(ComponentHierarchy.values().length - 1))];
         }
 
         private UUIDComposite(RandomSource random) {
@@ -424,8 +453,8 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         protected void write(int idx, CompoundTag tag) {
-            tag.putShort("cbv" + idx, value);
-            tag.putByte("cbt" + idx, (byte) type.ordinal());
+            tag.putShort("v" + idx, value);
+            tag.putByte("t" + idx, (byte) type.ordinal());
         }
 
         protected void write(int idx, ByteBuf buffer) {
@@ -434,18 +463,12 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         protected void write(int idx, RecordBuilder<?> builder) {
-            builder.add("cbv" + idx, value, Codec.SHORT);
-            builder.add("cbt" + idx, (byte) type.ordinal(), Codec.BYTE);
+            builder.add("v" + idx, value, Codec.SHORT);
+            builder.add("t" + idx, (byte) type.ordinal(), Codec.BYTE);
         }
 
         public UUIDComposite copy() {
             return new UUIDComposite(this.value, this.type);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if(!(obj instanceof UUIDComposite that)) return false;
-            return this.value == that.value;
         }
 
         public boolean isValid() { return value >= 0 && type != null && type != ComponentHierarchy.STRANGER; }
@@ -453,7 +476,13 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         public int get() { return (int) value; }
         public ComponentHierarchy getHierarchyType() { return type; }
 
-        @Override public int hashCode() { return value; }
+        @Override
+        public boolean equals(Object obj) {
+            if(!(obj instanceof UUIDComposite that)) return false;
+            return this.value == that.value && this.type == that.type;
+        }
+
+        @Override public int hashCode() { return Objects.hash(value, type); }
         @Override public String toString() { return "(" + type + ": " + value + ")"; }
     }
 }

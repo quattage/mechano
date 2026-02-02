@@ -10,6 +10,7 @@ import org.joml.Vector3d;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.quattage.mechano.MechanoClientEvents;
+import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.WireJack;
@@ -89,13 +90,12 @@ public class JackSelector {
         nearbyJoints.clear();
     }
 
-
     private void updateSelection(ClientLevel world, VectorOperations.Ray ray, TransmitterProvider prov, DeltaTracker deltas) { 
         lookedThisFrame = false;
         while(!nearbyJoints.isEmpty()) {
             final TargetAncillary sel = nearbyJoints.poll();
             if(sel == null || !sel.isVisible()) continue;
-            if(!sel.get().isIntersecting(sel.target.getProviderSource().getSourcePos(), ray)) continue;
+            if(!sel.get().isIntersecting(GridTracking.getSource(sel.target).getSourcePos(), ray)) continue;
             lookedThisFrame = true;
             if(prov == null) sel.updateResponse(GridAction.NONE);
             else sel.updateResponse(prov.evaluateTarget(world, sel.get()));
@@ -105,7 +105,7 @@ public class JackSelector {
         if(!lookedThisFrame) {
             if(selected.exists() && hoverTicks > 0) {
                 hoverTicks -= deltas.getGameTimeDeltaTicks() * 0.5;
-                selected.get().drawToOutliner(selected.target.getProviderSource().getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
+                selected.get().drawToOutliner(GridTracking.getSource(selected.target).getSourcePos(), selected.getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
             } else reset();
         }
     }
@@ -329,8 +329,8 @@ public class JackSelector {
         }
 
         public Color getColor() {
-            if(target == null || target.getProviderSource() == null) return response.getActionType().getColor();
-            return response.getActionType().getColor(target.getProviderSource().getBlockPos());
+            if(target == null || GridTracking.getSource(target) == null) return response.getActionType().getColor();
+            return response.getActionType().getColor(GridTracking.getSource(target).getBlockPos());
         }
 
         public @Nullable AncillaryNode<?> get() {
@@ -365,7 +365,7 @@ public class JackSelector {
      * @see #drawSelectedToBuffer
      */
     public void drawToOutliner(float hoverTicks, DeltaTracker deltas) {
-        target.drawToOutliner(target.getProviderSource().getSourcePos(), getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
+        target.drawToOutliner(GridTracking.getSource(target).getSourcePos(), getColor(), hoverTicks, deltas.getGameTimeDeltaPartialTick(false));
     }
 
     /**
@@ -375,7 +375,7 @@ public class JackSelector {
      * @see #drawSelectedToOutliner
      */
     public void drawToBuffer(Camera camera, PoseStack matrixStack, VertexConsumer buffer, DeltaTracker deltas) {
-        target.drawToBuffer(target.getProviderSource().getSourcePos(), camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
+        target.drawToBuffer(GridTracking.getSource(target).getSourcePos(), camera.getPosition(), matrixStack, buffer, deltas.getGameTimeDeltaPartialTick(false));
     }
     }
 

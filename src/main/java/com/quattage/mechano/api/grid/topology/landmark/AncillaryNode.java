@@ -30,7 +30,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -45,7 +44,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  */
 public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, WorldlyObject, GridReferent<T> {
 
-    public static final byte MAX_SHARED_OCCUPANCY = (byte)8;
+    public static final byte MAX_SHARED_OCCUPANCY = (byte)16;
 
     private String componentID;
     private @Nullable Griddable<T> source;
@@ -140,13 +139,19 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
         return centered.rotate(rotation);
     }
 
+    public Vector3f getRotatedOffset() {
+        return getRotatedOffset(GridTracking.getSource(this).getSourceRotation());
+    }
+
     public Vector3d getRealPosition(Vector3d basePos, Quaternionf baseRot, Vector3d workingVector) {
         Vector3f off = getRotatedOffset(baseRot);
         return basePos.add(off, workingVector);
     }
 
     public Vector3d getRealPosition() {
-        return getProviderSource().getPositionOf(this);
+        Griddable<?> source = GridTracking.getSource(this);
+        if(source == null) return new Vector3d();
+        return source.getSourcePos().add(0.5, 0.5, 0.5).add(getXO(), getYO(), getZO());
     }
 
     public boolean isVisible() { 
@@ -174,7 +179,7 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
         action.consume(px, ny, nz, px, py, nz);
     }
 
-    abstract void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack);
+    public abstract void translateStack(Vector3d basis, Vec3 cameraPos, PoseStack matrixStack);
 
     @OnlyIn(Dist.CLIENT)
     public boolean drawToBuffer(Vector3d basis, Vec3 cameraPos, PoseStack matrix, VertexConsumer buffer, float pTicks) {
@@ -277,19 +282,14 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
-    public @Nullable Griddable<?> getProviderSource(LevelReader world) {
-        assertAttached();
-        return source;
-    }
-
     public @Nullable Griddable<?> getProviderSource() {
         assertAttached();
         return source;
     }
 
     @Override
-    public BlockPos getBlockPos(@Nullable LevelReader world) {
-        return source.getBlockPos(world);
+    public BlockPos getBlockPos() {
+        return source.getBlockPos();
     }
 
     @Override
@@ -350,7 +350,7 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
 
     @Override
     public String toString() {
-        return getComponentID();
+        return "AncillaryNode[" + getComponentID() + " @" + System.identityHashCode(this) + "]";
     }
 
     @Override

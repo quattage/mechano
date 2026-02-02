@@ -122,7 +122,7 @@ public class NodalCluster implements Disposable {
     }
 
     /**
-     * Runs {@link #patchOnto} for every cluster in the provied collection. 
+     * Runs {@link #patch} for every cluster in the provied collection. 
      * Also cleans the old root that will contain redundant data after this call.
      * @param target The NodeUnionSet to apply patches to
      * @param oldRoot (Optional) The original transitive root node that will be 
@@ -132,7 +132,6 @@ public class NodalCluster implements Disposable {
     public static void applyPatches(NodeUnionSet target, @Nullable Node oldRoot, Collection<NodalCluster> clusters) {
         Objects.requireNonNull(clusters);
         Objects.requireNonNull(target);
-        if(target.isEmpty()) return;
         if(clusters.isEmpty()) return;
         boolean keepOldRoot = false;
         for(NodalCluster cluster : clusters) {

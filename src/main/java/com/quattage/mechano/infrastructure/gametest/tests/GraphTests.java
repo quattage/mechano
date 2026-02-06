@@ -157,11 +157,12 @@ public class GraphTests {
         uf.union(a, b);
         uf.union(a, gnd);
         uf.add(c);
-        uf.finalizeTopology();
-        test.assertValueEqual(gnd.getNodalIndex(), -1, "groundIndex");
-        test.assertValueEqual(a.getNodalIndex(), -1, "aIndex");
-        test.assertValueEqual(b.getNodalIndex(), -1, "bIndex");
-        test.assertValueEqual(c.getNodalIndex(), -2, "cIndex");
+        ServerGrid grid = test.getGrid();
+        uf.finalizeTopology(grid.indexer());
+        test.assertValueEqual(grid.indexer().indexOf(gnd), -1, "groundIndex");
+        test.assertValueEqual(grid.indexer().indexOf(a), -1, "aIndex");
+        test.assertValueEqual(grid.indexer().indexOf(b), -1, "bIndex");
+        test.assertValueEqual(grid.indexer().indexOf(c), -2, "cIndex");
         test.succeed();
     }
 
@@ -317,13 +318,8 @@ public class GraphTests {
             CircuitComponent result = test.getComponentSafely(address);
             test.assertFalse(result == null, "Reachability check for '" + cbe.getComponent().getComponentID() 
                 + "' belonging to " + cbe.getClass().getSimpleName() + " failed while acquiring component at " + address);
-            if(result != expected) {
-                if(result.getHierarchyType() == expected.getHierarchyType()) {
-                    test.fail("Reachability check for " + expected + " returned a mismatched instance - expected (" 
-                        + expected.hashCode() + "), got (" + result.hashCode() + ")");
-                }
-                else test.fail("Reachability check failed for " + address + " - expected " + expected + ", got " + result);
-            }
+            if(result != expected)
+                test.fail("Reachability check failed for " + address + " - expected " + expected + ", got " + result);
         });
         test.succeed();
     }

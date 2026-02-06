@@ -48,7 +48,7 @@ public interface VoltageDecay {
         @Override public double apply(double soc) { return voltage; }
         @Override public double nominal() { return voltage; }
         @Override public double minimal() { return voltage; }
-        @Override public double cutoff() { return voltage - 0.1d; }
+        @Override public double cutoff() { return voltage - 0.01d; }
 
         @Override 
         public DataPoint[] getTable() { 

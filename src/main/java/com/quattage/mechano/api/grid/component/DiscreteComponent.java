@@ -4,10 +4,11 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
 
@@ -15,10 +16,10 @@ import com.quattage.mechano.foundation.Disposable;
  * A {@link CircuitComponent} with a singular function that can be
  * parented to another CircuitComponent.
  */
-public abstract class DiscreteComponent implements CircuitComponent, GridConstruct, Disposable {
+public abstract class DiscreteComponent implements CircuitComponent, HierarchicalConstruct, Disposable {
 
     private String componentID;
-    private GridConstruct parent;
+    private HierarchicalConstruct parent;
 
     public DiscreteComponent(String componentID) {
         CircuitComponent.assertValidID(componentID);
@@ -41,7 +42,7 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
+    public void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
         this.parent = parent;
     }
 
@@ -51,7 +52,7 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
     }
 
     @Override
-    public @Nullable GridConstruct getParentConstruct() {
+    public @Nullable HierarchicalConstruct getParentConstruct() {
         return parent;
     }
 
@@ -82,7 +83,7 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
         }
 
         @Override
-        public int indexOfChild(GridConstruct child) {
+        public int indexOfChild(HierarchicalConstruct child) {
             return child == node ? 0 : -1;
         }
 
@@ -90,13 +91,24 @@ public abstract class DiscreteComponent implements CircuitComponent, GridConstru
         public @Nullable CircuitComponent getComponent(UUIDComposite id) {
             return (id.getHierarchyType() == ComponentHierarchy.NODE && id.get() == 0) ? node : null;
         }
+
         @Override
         public ComponentHierarchy getHierarchyType() {
             return ComponentHierarchy.STUB;
         }
 
         @Override
-        public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
+        public void MNAAllocate(ServerGrid grid) {
+            
+        }
+
+        @Override
+        public void MNADeallocate(ServerGrid grid) {
+            
+        }
+
+        @Override
+        public void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
             super.updateOwnership(source, parent);
             node.updateOwnership(source, this);
         }

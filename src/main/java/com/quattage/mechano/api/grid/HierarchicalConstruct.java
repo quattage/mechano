@@ -35,22 +35,22 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * interface.
  * @see DiscreteComponent
  */
-public interface GridConstruct {
+public interface HierarchicalConstruct {
 
     /**
      * Throws exceptions if component <code>child</code> cannot be parented to 
      * <code>parent</code> This method is useful for gametests or after 
      * serialization/deserialization to prevent cascading bugs
-     * @param child object - Must be a valid {@link GridConstruct} and must be ownable by <code>parent</code>
-     * @param parent object - Must be a valid {@link GridConstruct}
+     * @param child object - Must be a valid {@link HierarchicalConstruct} and must be ownable by <code>parent</code>
+     * @param parent object - Must be a valid {@link HierarchicalConstruct}
      * @see #assertHierarchyIs
      */
     static void assertValidOwnership(Object child, Object parent) {
         if(child == null) throw new NullPointerException("child component is null!");
         if(parent == null) throw new NullPointerException("parent component is null!");
         if(child == parent) throw new ComponentHierarchyInvalidException(child);
-        if(!(child instanceof GridConstruct cup)) throw new IllegalArgumentException("Child object (" + child.getClass().getSimpleName() + ") is not a parentable object!");
-        if(!(parent instanceof GridConstruct pup)) throw new IllegalArgumentException("Parent object (" + parent.getClass().getSimpleName() + ") is not a parentable object!");
+        if(!(child instanceof HierarchicalConstruct cup)) throw new IllegalArgumentException("Child object (" + child.getClass().getSimpleName() + ") is not a parentable object!");
+        if(!(parent instanceof HierarchicalConstruct pup)) throw new IllegalArgumentException("Parent object (" + parent.getClass().getSimpleName() + ") is not a parentable object!");
         if(!cup.getHierarchyType().canBeOwnedBy(pup.getHierarchyType())) throw new ComponentHierarchyInvalidException(cup, pup);
     }
 
@@ -73,7 +73,7 @@ public interface GridConstruct {
                 if(id.getTargetType() == expected) return;
                 throw new ComponentHierarchyInvalidException(id.getTargetType(), expected);
             }
-            case GridConstruct gc -> {
+            case HierarchicalConstruct gc -> {
                 if(gc.getHierarchyType() == expected) return;
                 throw new ComponentHierarchyInvalidException(obj, expected);
             }
@@ -83,17 +83,17 @@ public interface GridConstruct {
         }
     }
 
-    default void updateOwnership(GridConstruct parent) { updateOwnership(null, parent); }
-    default void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
+    default void updateOwnership(HierarchicalConstruct parent) { updateOwnership(null, parent); }
+    default void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
         Mechano.LOGGER.warn("Cannot update ownership of construct '" + this.getClass().getSimpleName() + "'");
     }
 
     default int getHierarchyIndex() {
-        GridConstruct parent = getParentConstruct();
+        HierarchicalConstruct parent = getParentConstruct();
         return parent == null ? -1 : parent.indexOfChild(this);
     }
 
-    default int indexOfChild(GridConstruct child) {
+    default int indexOfChild(HierarchicalConstruct child) {
         return -1;
     }
 
@@ -138,7 +138,7 @@ public interface GridConstruct {
      * @return The CircuitComponent instance that currently owns this one, 
      * or <code>null</code> if this component has no parent.
      */
-    @Nullable GridConstruct getParentConstruct();
+    @Nullable HierarchicalConstruct getParentConstruct();
 
     /**
      * Gets the parent of this CircuitComponent, traversing
@@ -147,11 +147,11 @@ public interface GridConstruct {
      * @return The superparent, or <code>null</code> if this construct was found 
      * to have a hierarchy deeper than 255 objects.
      */
-    default @Nullable GridConstruct getSuperparent() {
-        GridConstruct parent = getParentConstruct();
+    default @Nullable HierarchicalConstruct getSuperparent() {
+        HierarchicalConstruct parent = getParentConstruct();
         for(int x = 0; x < 255; x++) {
-            if(!(parent instanceof GridConstruct hp)) return parent;
-            GridConstruct candidate = hp.getParentConstruct();
+            if(!(parent instanceof HierarchicalConstruct hp)) return parent;
+            HierarchicalConstruct candidate = hp.getParentConstruct();
             if(candidate == null || candidate == parent) return parent;
             parent = candidate;
         }
@@ -159,20 +159,20 @@ public interface GridConstruct {
         return null;
     }
 
-    default void forEachConstructInHierarchy(Consumer<GridConstruct> cons) {
+    default void forEachConstructInHierarchy(Consumer<HierarchicalConstruct> cons) {
         cons.accept(this);
-        GridConstruct parent = getParentConstruct();
+        HierarchicalConstruct parent = getParentConstruct();
         for(int x = 0; x < 255; x++) {
-            if(!(parent instanceof GridConstruct hp)) return;
+            if(!(parent instanceof HierarchicalConstruct hp)) return;
             cons.accept(parent);
-            GridConstruct candidate = hp.getParentConstruct();
+            HierarchicalConstruct candidate = hp.getParentConstruct();
             if(candidate == null || candidate == parent) return;
             parent = candidate;
         }
     }
 
     /**
-     * An object that refers in some way to one or more {@link GridConstruct} objects.
+     * An object that refers in some way to one or more {@link HierarchicalConstruct} objects.
      * (e.g. a BlockEntity with a {@link Circuit})
      */
     public interface GridReferent<T extends GridUUID<T>> extends SourceProvider {
@@ -360,10 +360,10 @@ public interface GridConstruct {
         public ComponentHierarchyInvalidException(ComponentHierarchy actual, ComponentHierarchy expected) {
             super("An operation got '" + actual + ",' but required '" + expected + "'!");
         }
-        public ComponentHierarchyInvalidException(GridConstruct child, GridConstruct parent) {
+        public ComponentHierarchyInvalidException(HierarchicalConstruct child, HierarchicalConstruct parent) {
             super("Component of type '" + child.getClass().getSimpleName() + "' cannot be owned by '" + parent.getClass().getSimpleName() + "'");
         }
-        public ComponentHierarchyInvalidException(GridConstruct child, GridConstruct parent, String message) {
+        public ComponentHierarchyInvalidException(HierarchicalConstruct child, HierarchicalConstruct parent, String message) {
             super("Component of type '" + child.getClass().getSimpleName() + "' cannot be owned by '" + parent.getClass().getSimpleName() + "' - (" + message + ")");
         }
     }

@@ -146,7 +146,7 @@ public class NodeLinkCreateTask implements ActionTask {
         Griddable<?> startSource = GridTracking.getSource(link.getStartAncillary());
         Griddable<?> endSource =  GridTracking.getSource(link.getEndAncillary());
         if(link instanceof ComponentLink<?> cl) {
-            cl.applyTo(grid);
+            cl.applyUnions(grid);
             // TODO register component with 
             grid.initiateTask(GridAction.TASK_LINK_CREATE)
                 .targeting(startSource, endSource)
@@ -159,6 +159,7 @@ public class NodeLinkCreateTask implements ActionTask {
                 .withArguments(link.getStartID(), link.getEndID(), null, args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
                 .executeOnClients();
         }
+        link.MNAAllocate(grid);
         grid.lookup().add(grid, link);
         return GridAction.RESPONSE_SUCCESS;
     }

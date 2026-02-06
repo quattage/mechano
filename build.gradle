@@ -112,19 +112,17 @@ dependencies {
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
     runtimeOnly("me.lucko:spark-common:${spark_version}")
 
-    implementation("org.ejml:ejml-core:${ejml_version}")
-    additionalRuntimeClasspath("org.ejml:ejml-core:${ejml_version}")
-    implementation("org.ejml:ejml-simple:${ejml_version}")
-    additionalRuntimeClasspath("org.ejml:ejml-simple:${ejml_version}")
-    implementation("org.ejml:ejml-dsparse:${ejml_version}")
-    additionalRuntimeClasspath("org.ejml:ejml-dsparse:${ejml_version}")
-    implementation("org.ejml:ejml-ddense:${ejml_version}")
-    additionalRuntimeClasspath("org.ejml:ejml-ddense:${ejml_version}")
-    
+    def ejmlModules = [ "core", "ddense", "dsparse" ]
+    ejmlModules.each {
+        implementation("org.ejml:ejml-${it}:${ejml_version}")
+        additionalRuntimeClasspath("org.ejml:ejml-${it}:${ejml_version}")
+        jarJar("org.ejml:ejml-${it}:${ejml_version}")
+    }
+
     implementation("org.openjdk.jol:jol-core:${jol_version}")
     additionalRuntimeClasspath("org.openjdk.jol:jol-core:${jol_version}")
+    jarJar("org.openjdk.jol:jol-core:${jol_version}")
 }
-
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [

@@ -10,8 +10,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.foundation.numeric.EsoMath;
 

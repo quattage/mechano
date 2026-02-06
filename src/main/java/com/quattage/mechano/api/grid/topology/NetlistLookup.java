@@ -61,6 +61,27 @@ public abstract class NetlistLookup<T> {
         return GridAction.RESPONSE_FAIL_MISSING;
     }
 
+    public @Nullable AncillaryPair popAsymmetric(@Nullable Grid grid, T start, T end) {
+        List<AncillaryPair> linksAt = getLinksBelongingTo(start);
+        if(linksAt == null) return null;
+        int toRemove = -1;
+        for(int x = 0; x < linksAt.size(); x++) {
+            AncillaryPair link = linksAt.get(x);
+            if(link != null && link.endsWith(end)) {
+                toRemove = x;
+                break;
+            }
+        }
+        if(toRemove < 0) return null;
+        AncillaryPair removed = linksAt.remove(toRemove);
+        if(removed != null) {
+            if(linksAt.isEmpty()) links.remove(start);
+            if(grid != null) removed.onRemovedFromGrid(grid);
+            return removed;
+        }
+        return null;
+    }
+
     protected GridAction addAsymmetric(@Nullable Grid grid, T hash, AncillaryPair link, boolean limit) {
         List<AncillaryPair> linksAt = getLinksBelongingTo(hash);
         if(linksAt == null) {
@@ -150,6 +171,14 @@ public abstract class NetlistLookup<T> {
             super.removeAsymmetric(grid, link.getEndAncillary(), link.getStartAncillary());
             tryUnmark(link.getStartAncillary());
             tryUnmark(link.getEndAncillary());
+            return output;
+        }
+
+        public AncillaryPair pop(Grid grid, AncillaryNode<?> start, AncillaryNode<?> end) {
+            AncillaryPair output = super.popAsymmetric(grid, start, end);
+            super.removeAsymmetric(grid, end, start);
+            tryUnmark(start);
+            tryUnmark(end);
             return output;
         }
 

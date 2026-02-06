@@ -1,18 +1,21 @@
 package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.joml.Vector3d;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridConstruct;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.SourceProvider;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
 
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -23,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public class AncillaryPair implements SourceProvider {
+public class AncillaryPair implements SourceProvider, CircuitComponent {
 
     protected GridUUID<?> startID, endID;
     protected AncillaryNode<?> startAnc, endAnc;
@@ -58,7 +61,7 @@ public class AncillaryPair implements SourceProvider {
 
     public AncillaryPair assignStart(GridUUID<?> startID, AncillaryNode<?> startNode) {
         Objects.requireNonNull(startID);
-        GridConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY);
+        HierarchicalConstruct.assertHierarchyIs(startID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(startNode);
         this.startID = startID;
         this.startAnc = startNode;
@@ -67,7 +70,7 @@ public class AncillaryPair implements SourceProvider {
 
     public AncillaryPair assignEnd(GridUUID<?> endID, AncillaryNode<?> endNode) {
         Objects.requireNonNull(endID);
-        GridConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY);
+        HierarchicalConstruct.assertHierarchyIs(endID, ComponentHierarchy.ANCILLARY);
         Objects.requireNonNull(endNode);
         this.endID = endID;
         this.endAnc = endNode;
@@ -100,6 +103,46 @@ public class AncillaryPair implements SourceProvider {
         }
     }
 
+    @Override
+    public void forEachNode(Consumer<Node> cons) {
+        assertHasAncillaries();
+        getStartAncillary().forEachNode(cons);
+        getEndAncillary().forEachNode(cons);
+    }
+
+    @Override
+    public boolean isGrounded() {
+        return (startAnc != null && startAnc.isGrounded()) || (endAnc != null && endAnc.isGrounded());
+    }
+
+    @Override
+    public void saturate() {
+        if(startAnc != null) startAnc.saturate();
+        if(endAnc != null) endAnc.saturate();
+    }
+
+    @Override
+    public void reset() {
+        if(startAnc != null) startAnc.reset();
+        if(endAnc != null) endAnc.reset();
+    }
+
+    @Override
+    public void MNAAllocate(ServerGrid grid) {
+        assertHasAncillaries();
+        getStartAncillary().MNAAllocate(grid);
+        getEndAncillary().MNAAllocate(grid);
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid) {
+        assertHasAncillaries();
+        if(!grid.netlist().hasConnections(getStartNode()))
+            getStartAncillary().MNADeallocate(grid);
+        if(!grid.netlist().hasConnections(getEndNode()))
+            getEndAncillary().MNADeallocate(grid);
+    }
+    
     public boolean contains(Node node) {
         return startsWith(node) || endsWith(node);
     }

@@ -15,9 +15,9 @@ import org.joml.Vector3f;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
@@ -31,6 +31,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.api.distmarker.Dist;
@@ -49,7 +50,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * in the same object. Methods that can't be called on the server are marked with the cooresponding
  * <code>@OnlyIn</code> annotation.
  */
-public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridReferent<T>, GridConstruct {
+public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridReferent<T>, HierarchicalConstruct {
 
     /**
      * Gets the blocks at <code>pos</code> and <code>adjacentPos</code>
@@ -194,7 +195,9 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
 
     @OnlyIn(Dist.CLIENT)
     default void forEachExternalLink(Consumer<AncillaryPair> cons) {
-        ClientGrid grid = Grid.client(getWorld());
+        Level world = getWorld();
+        if(world == null) return;
+        ClientGrid grid = Grid.client(world);
         List<AncillaryPair> links = grid.lookup().getLinksBelongingTo(getUUID());
         if(links == null || links.isEmpty()) return;
         for(int x = 0; x < links.size(); x++) {
@@ -213,12 +216,12 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
     }
 
     @Override
-    default int indexOfChild(GridConstruct child) {
+    default int indexOfChild(HierarchicalConstruct child) {
         return child == getComponent() ? 0 : -1;
     }
 
     @Override
-    default @Nullable GridConstruct getParentConstruct() {
+    default @Nullable HierarchicalConstruct getParentConstruct() {
         return null;
     }
 

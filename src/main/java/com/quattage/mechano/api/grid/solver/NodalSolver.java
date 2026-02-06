@@ -6,7 +6,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
@@ -57,9 +59,11 @@ public interface NodalSolver {
         ABORTED_PROBLEMATIC_DATA(false),
         ABORTED_GENERIC_ERROR(false),
         REFRESHING_TOPOLOGY(false),
+        LOADING(false),
         COMPUTING_SOLUTION(false),
         IDLE(false),
-        UNLOADED(false);
+        UNLOADED(false),
+        NONE(false);
 
         private final boolean success;
 
@@ -82,15 +86,27 @@ public interface NodalSolver {
 
     public class ConvergenceStatusHolder implements NonNullSupplier<ConvergenceStatus> {
         
-        private AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.UNLOADED);
+        private AtomicReference<ConvergenceStatus> status = new AtomicReference<>(ConvergenceStatus.NONE);
         private AtomicLong lastUpdateTime = new AtomicLong(System.currentTimeMillis());
         
         public ConvergenceStatusHolder set(ConvergenceStatus newStatus) {
+            return set(null, newStatus);
+        }
+
+        public ConvergenceStatusHolder set(@Nullable Grid caller, ConvergenceStatus newStatus) {
             Objects.requireNonNull(status);
             if(status.get() == newStatus) return this;
             this.status.set(newStatus);
             lastUpdateTime.set(System.currentTimeMillis());
+            if(caller != null) 
+                caller.debug("" + caller + " set status to " + newStatus);
             return this;
+        }
+
+        public boolean isUnloaded() {
+            if(status == null) return true;
+            ConvergenceStatus get = status.get();
+            return get == null || get == ConvergenceStatus.UNLOADED;
         }
 
         @Override

@@ -1,17 +1,11 @@
 package com.quattage.mechano.api.grid.component;
 
-import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
-import org.jetbrains.annotations.Nullable;
-
-import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
+import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
-
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public interface CircuitComponent {
 
@@ -39,10 +33,6 @@ public interface CircuitComponent {
     }
 
     void forEachNode(Consumer<Node> cons);
-
-    default ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.CIRCUIT;
-    }
 
     /**
      * The arbitrary identifier for this component. This identifier 
@@ -74,25 +64,39 @@ public interface CircuitComponent {
     void reset();
 
     /**
+     * Allocates space in the {@link MNAIndexer} belonging to the
+     * given {@link ServerGrid} to store this component and/or any 
+     * sub-components, so long as this object or its compositional 
+     * children inherit from the {@link StampingComponent}
+     * interface. Implementations must make at least one call to 
+     * {@link MNAIndexer#add}. If this object does not push any 
+     * changes to the grid as a result of this call, a warning will 
+     * be printed to the console.
+     * @param grid to pull the {@link MNAIndexer indexer} from
+     * @see #MNADeallocate
+     */
+    default void MNAAllocate(ServerGrid grid) {
+        grid.warn("Attempted to allocate " + this + " but this component doesn't have any allocation implementation.");
+    }
+
+    /**
+     * Removes any existing mappings (to this component and/or any 
+     * sub-components) from the given {@link ServerGrid}'s 
+     * {@link MNAIndexer}.
+     * If this object does not push any 
+     * changes to the grid as a result of this call, a warning will 
+     * be printed to the console.
+     * @param grid to pull the {@link MNAIndexer indexer} from
+     * @see #MNAAllocate
+     */
+    default void MNADeallocate(ServerGrid grid) {
+        grid.warn("Attempted to de-allocate " + this + " but this component doesn't have any allocation implementation.");
+    }
+
+    /**
      * Gets the charge that this component is currently storing, if applicable.
      * Otherwise, this method returns <code>BifrucatedLong.ZERO</code>
      * @return amp-hours currently contained within this energy store
      */
     default Bifrucated64 getStoredCharge() { return Bifrucated64.ZERO.mutableCopy(); }
-
-    /**
-     * Collects all Joints associated with this CircuitComponent that match
-     * the given filter. 
-     * @param filter
-     * @return A list containing all relevent joints.
-     */
-    @Nullable default List<Node> getAllJointsMatching(Predicate<Node> filter) {
-        Objects.requireNonNull(filter);
-        List<Node> collected = new ObjectArrayList<>();
-        this.forEachNode(joint -> {
-            if(!filter.test(joint)) return;
-            collected.add(joint);
-        });
-        return collected;
-    }
 }

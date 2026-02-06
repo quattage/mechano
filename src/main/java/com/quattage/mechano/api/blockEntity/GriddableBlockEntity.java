@@ -8,12 +8,12 @@ import org.joml.Vector3d;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
@@ -173,6 +173,6 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public int getMergePriority() {
-        return circuit instanceof GridConstruct gc ? gc.getMergePriority() : 5;
+        return circuit instanceof HierarchicalConstruct gc ? gc.getMergePriority() : 5;
     }
 }

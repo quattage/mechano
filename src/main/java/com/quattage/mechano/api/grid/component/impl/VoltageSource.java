@@ -13,7 +13,6 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
 
     protected final VoltageDecay decayFunction;
     private final @Nullable CurrentChangeCallback cc;
-    private int cIndex = -1;
     private double current;
 
     public VoltageSource(String name, VoltageDecay decayFunction) { this(name, decayFunction, null); }
@@ -36,7 +35,7 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
     public abstract double getStateOfCharge();
 
     /**
-     * This method uses this VoltageSource's internal {@link #decayFunction decay function}
+     * This method uses this VoltageSource's internal {@link Voltage decay function}
      * to determine the voltage that exists between its two terminals at the current
      * {@link #getStateOfCharge() state of charge}.
      * @return Volts, how much voltage this battery will stamp into the system at the time of invocation.
@@ -54,35 +53,27 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
         return 1;
     }
 
-    public int getNodalIndex() {
-        return cIndex;
-    }
-
     @Override
     public void stamp(ServerGrid grid) {
-        int pI = terminals[0].getAttachedNode().getNodalIndex();
-        int nI = terminals[1].getAttachedNode().getNodalIndex();
-        cIndex = grid.indexer().get(this);
-        if(pI >= 0) {
-            grid.stampA(pI, cIndex, 1);
-            grid.stampA(cIndex, pI, 1);
-        }
-        if(nI >= 0) {
-            grid.stampA(nI, cIndex, -1);
-            grid.stampA(cIndex, nI, -1);
-        }
+        int a = indexOf(grid, terminals[0]);
+        int b = indexOf(grid, terminals[1]);
+        int i = grid.indexer().get(this);
+        grid.stampA(a, i, 1);
+        grid.stampA(i, a, 1);
+        grid.stampA(b, i, -1);
+        grid.stampA(i, b, -1);
     }
 
     @Override
     public void stampDynamic(ServerGrid grid) {
-        grid.stampB(cIndex, getVolts());
+        grid.stampB(grid.indexer().get(this), getVolts());
     }
 
     @Override
     public void postProcess(ServerGrid grid) {
-        // double newCurrent = grid.getSolution().get(cIndex, 0);
-        // if(cc != null) cc.onCurrentUpdated(grid, this.current, newCurrent);
-        // this.current = newCurrent;
+        double newCurrent = grid.getSolution().get(grid.indexer().get(this), 0);
+        if(cc != null) cc.onCurrentUpdated(grid, this.current, newCurrent);
+        this.current = newCurrent;
     }
 
     @Override

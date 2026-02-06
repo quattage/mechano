@@ -5,10 +5,10 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
@@ -38,7 +38,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  * processed and solved off-thread. <strong>You cannot modify the voltage, 
  * current, or charge of any circuit elements from this class.</strong>
  */
-public class Circuit implements CircuitComponent, GridConstruct, Disposable {
+public class Circuit implements CircuitComponent, HierarchicalConstruct, Disposable {
     
     public static final double DELTA = 0.05d;
     public static final double DELTA_AH = Circuit.DELTA / 3600d;
@@ -55,10 +55,10 @@ public class Circuit implements CircuitComponent, GridConstruct, Disposable {
     protected Circuit() {}
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
+    public void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
         this.owner = source;
         forEachComponent(component -> {
-            if(component instanceof GridConstruct gc)
+            if(component instanceof HierarchicalConstruct gc)
                 gc.updateOwnership(source, parent); 
         });
     }
@@ -79,14 +79,31 @@ public class Circuit implements CircuitComponent, GridConstruct, Disposable {
 
     @Override
     public boolean isGrounded() {
-        try { forEachComponent(component -> { 
+        try { forEachComponent(component -> {  // lol
             if(component.isGrounded()) throw new BreakoutException(); 
         }); } catch (BreakoutException e) { return true; };
         return false;
     }
 
-    @Override public void saturate() { forEachComponent(CircuitComponent::saturate); }
-    @Override public void reset() { forEachComponent(CircuitComponent::reset); }
+    @Override 
+    public void saturate() { 
+        forEachComponent(CircuitComponent::saturate); 
+    }
+
+    @Override 
+    public void reset() { 
+        forEachComponent(CircuitComponent::reset); 
+    }
+
+    @Override
+    public void MNAAllocate(ServerGrid grid) {
+        forEachComponent(component -> component.MNAAllocate(grid));
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid) {
+        forEachComponent(component -> component.MNADeallocate(grid));
+    }
 
     @Override
     public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
@@ -94,12 +111,12 @@ public class Circuit implements CircuitComponent, GridConstruct, Disposable {
     }
 
     @Override
-    public @Nullable GridConstruct getParentConstruct() {
+    public @Nullable HierarchicalConstruct getParentConstruct() {
         return owner;
     }
 
     @Override
-    public int indexOfChild(GridConstruct child) {
+    public int indexOfChild(HierarchicalConstruct child) {
         if(!child.getHierarchyType().canBeOwnedBy(getHierarchyType())) return -1;
         return components.indexOf(child);
     }

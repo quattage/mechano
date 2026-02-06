@@ -9,9 +9,9 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 

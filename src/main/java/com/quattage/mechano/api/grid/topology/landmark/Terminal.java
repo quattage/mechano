@@ -5,16 +5,16 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
-import com.quattage.mechano.api.grid.GridConstruct;
-import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.foundation.Disposable;
 
-public class Terminal implements CircuitComponent, GridConstruct, TerminalProvider, Disposable {
+public class Terminal implements CircuitComponent, HierarchicalConstruct, TerminalProvider, Disposable {
     
     private DiscreteComponent instantiator;
     private Node connected;
@@ -77,8 +77,8 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
     }
 
     @Override
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
-        GridConstruct.assertValidOwnership(this, parent);
+    public void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
+        HierarchicalConstruct.assertValidOwnership(this, parent);
         if(parent instanceof Node node) this.connected = node;
     }
 
@@ -89,7 +89,7 @@ public class Terminal implements CircuitComponent, GridConstruct, TerminalProvid
     }
 
     @Override
-    public @Nullable GridConstruct getParentConstruct() {
+    public @Nullable HierarchicalConstruct getParentConstruct() {
         return instantiator;
     }
 

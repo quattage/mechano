@@ -47,7 +47,10 @@ public interface WorldlyObject {
      * Non-null values returned from this method will always be valid, loaded, and
      * reachable.
      * @return The level this object belongs to, or <code>null</code> if this
-     * object failed to provide a level for whatever reason.
+     * object failed to provide a level for whatever reason. You're likely
+     * to encounter null values here if you're trying to get the world
+     * from rendering code for the brief period after an entity or block
+     * entity has been removed from the world.
      */
     @Nullable Level getWorld();
 

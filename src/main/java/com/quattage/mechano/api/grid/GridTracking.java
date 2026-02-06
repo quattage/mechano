@@ -19,12 +19,12 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.RecordBuilder;
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
-import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy.ComponentNotFoundException;
 import com.quattage.mechano.api.grid.GridUUID.EntityUUID;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
@@ -126,7 +126,7 @@ public enum GridTracking {
         if(source == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
         if(!id.hasBindings()) throw new ComponentNotFoundException(id, "The provided ID has no bindings!");
 
-        GridConstruct previous = source;
+        HierarchicalConstruct previous = source;
         for(int x = 0; x < id.getBindingCount(); x++) {
             UUIDComposite binding = id.getBinding(x);
             if(binding == null) throw new NullPointerException("Encountered a null binding while traversing UUID");
@@ -139,7 +139,7 @@ public enum GridTracking {
             }
             if(sub == previous && x < (id.getBindingCount() - 1))
                 throw new ComponentNotFoundException(id, "Component getter in '" + previous.getClass().getSimpleName() + "' returned itself!");
-            if(sub instanceof GridConstruct gc) {
+            if(sub instanceof HierarchicalConstruct gc) {
                 if(gc.getHierarchyType() != binding.getHierarchyType()) {
                     throw new ComponentNotFoundException(id, "Returned component instance didn't conform to the expected type!"
                         + " (expected " + binding.getHierarchyType() + ", got " + gc.getHierarchyType() + ") at index " + x);
@@ -168,9 +168,9 @@ public enum GridTracking {
      * @return A (newly instantiated or cachced) ComponentUUID instance. 
      * While modification is allowed, it is not reccomended.
      * @see {@link Griddable#getAddress()}
-     * @see {@link GridConstruct#bindUUID}
+     * @see {@link HierarchicalConstruct#bindUUID}
      */
-    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj, GridConstruct component) {
+    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj, HierarchicalConstruct component) {
         Objects.requireNonNull(obj);
         Objects.requireNonNull(component);
         T id = obj.getUUIDSafe();
@@ -193,7 +193,7 @@ public enum GridTracking {
      * @return A (newly instantiated or cachced) ComponentUUID instance. 
      * While modification is allowed, it is not reccomended.
      * @see {@link Griddable#getAddress()}
-     * @see {@link GridConstruct#bindUUID}
+     * @see {@link HierarchicalConstruct#bindUUID}
      */
     public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj) {
         Objects.requireNonNull(obj);
@@ -474,7 +474,7 @@ public enum GridTracking {
         }
 
         public static class UnexpectedReferentException extends RuntimeException {
-            public UnexpectedReferentException(GridConstruct referent, ComponentHierarchy expected) {
+            public UnexpectedReferentException(HierarchicalConstruct referent, ComponentHierarchy expected) {
                 super("Got '" + referent.getClass().getSimpleName() + "' of type '" + referent.getHierarchyType() + "', but operation expected the referent '" + expected + "'");
             }
         }

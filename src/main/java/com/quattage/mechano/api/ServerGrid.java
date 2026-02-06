@@ -66,7 +66,6 @@ public final class ServerGrid extends Grid {
 
     protected ServerGrid(Level world) {
         super(world);
-        status.set(ConvergenceStatus.UNLOADED);
     }
 
     @Override
@@ -113,6 +112,7 @@ public final class ServerGrid extends Grid {
     }
 
     private void readLinks(ListTag tag) {
+        this.status.set(ConvergenceStatus.LOADING);
         netlist.reset();
         netlist.ensureCapacity(tag.size());
         lookup.reset();
@@ -135,14 +135,18 @@ public final class ServerGrid extends Grid {
                 int trnsType = endLabel.getInt("trns");
                 CircuitComponent endComp = GridTracking.getComponent(this, endID);
                 if(!(endComp instanceof AncillaryNode end)) continue;
+                AncillaryPair addedLink = null;
                 if(netlist.loadUnion(start.getAssociatedNode(), end.getAssociatedNode())) {
-                    if(trnsType > -1)
-                        lookup.add(this, new ComponentLink<>(Mechano.REGISTRATE.getTransmitterRegistry().byId(trnsType), startID, start, endID, end));
-                    else lookup.add(this, new AncillaryPair(start, end));
+                    addedLink = trnsType > -1 
+                        ? new ComponentLink<>(Mechano.REGISTRATE.getTransmitterRegistry().byId(trnsType), startID, start, endID, end)
+                        : new AncillaryPair(start, end);
                 }
+                lookup.add(this, addedLink);
+                addedLink.MNAAllocate(this);
             }
         }
         netlist.patchAndTrim();
+        preProcess();
     }
 
     @Override
@@ -152,65 +156,65 @@ public final class ServerGrid extends Grid {
 
     @Override
     public void unload() {
-        status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
+        status.set(this, ConvergenceStatus.REFRESHING_TOPOLOGY);
         clearAll();
         solver.reset();
         lookup.reset();
         netlist.reset();
         indexer.clear();
         processQueue.clear();
-        status.set(ConvergenceStatus.UNLOADED);
+        status.set(this, ConvergenceStatus.UNLOADED);
     }
 
     @Override
     public void tick() {
         tickManifest();
+        if(status.isUnloaded()) return;
         if(processQueue.hasChanges())
             preProcess();
-        if(shouldSolve()) {
-            runSolver();
-            postProcess();
-        }
+        if(indexer.hasStampers()) {
+            if(matrixX != null) {
+                runSolver();
+                postProcess();
+            }
+        } else setIdle();
     }
 
     private void preProcess() {
-        status.set(ConvergenceStatus.REFRESHING_TOPOLOGY);
+        status.set(this, ConvergenceStatus.REFRESHING_TOPOLOGY);
         processQueue.applyTo(this);
-        if(netlist.isEmpty()) return;
-        int size = (netlist.size() - 1) + indexer.size();
-        matrixA = new DMatrixSparseCSC(size, size, 10 * netlist.size());
-        matrixX = createWorkingVector();
-        matrixB = createWorkingVector();
-        solver.initialize(this);
+        netlist.finalizeTopology(indexer);
+        setMatrices();
         matrixA.sortIndices(null);
-        netlist.finalizeTopology();
+        solver.initialize(this);
     }
 
-    private boolean shouldSolve() {
-        if(!indexer.hasStampers()) {
-            this.status.set(ConvergenceStatus.IDLE);
-            matrixA = null; matrixX = null; matrixB = null;
-            indexer.clear();
-            return false;
-        }
-        return true;
+    private void setMatrices() {
+        int size = indexer.size();
+        matrixA = new DMatrixSparseCSC(size, size);
+        matrixX = new DMatrixRMaj(size, 1);
+        matrixB = new DMatrixRMaj(size, 1);
+    }
+
+    private void setIdle() {
+        this.status.set(this, ConvergenceStatus.IDLE);
+        matrixA = null; matrixX = null; matrixB = null;
+        indexer.clear();
     }
 
     private void runSolver() {
-        // this.status.set(ConvergenceStatus.COMPUTING);
-        // ConvergenceStatus newStatus = solver.run(this);
-        // if(newStatus == null || newStatus == ConvergenceStatus.UNLOADED) {
-        //     warn("Failed to retrieve status for tick, solver run returned no status!");
-        //     newStatus = ConvergenceStatus.UNLOADED;
-        // }
-        // this.status.set(newStatus);
+        this.status.set(this, ConvergenceStatus.COMPUTING_SOLUTION);
+        ConvergenceStatus newStatus = solver.run(this);
+        if(newStatus == null || newStatus == ConvergenceStatus.UNLOADED) {
+            warn("Failed to retrieve status for tick, solver run returned no status!");
+            newStatus = ConvergenceStatus.UNLOADED;
+        }
+        this.status.set(this, newStatus);
     }
 
     private void postProcess() {
-        for(StampingComponent sc : indexer.getStampers()) {
-            if(!(sc instanceof NeedsPostProcessing pp)) continue;
-            pp.postProcess(this);
-        }
+        for(StampingComponent sc : indexer.getStampers())
+            if(sc instanceof NeedsPostProcessing pp) pp.postProcess(this);
     }
 
     public GridAction removeLinkDeferred(AncillaryPair link, @Nullable Entity modifier) {
@@ -222,12 +226,6 @@ public final class ServerGrid extends Grid {
     public GridAction removeComponent(CircuitComponent component, @Nullable Entity modifier) {
         Objects.requireNonNull(component);
             processQueue.add(this, GridAction.TASK_COMPONENT_DESTROY, component, modifier);
-        return GridAction.RESPONSE_SUCCESS;
-    }
-
-    public GridAction addComponent(CircuitComponent component, @Nullable Entity modifier) {
-        Objects.requireNonNull(component);
-        processQueue.add(this, GridAction.TASK_COMPONENT_CREATE, component, modifier);
         return GridAction.RESPONSE_SUCCESS;
     }
 
@@ -305,7 +303,7 @@ public final class ServerGrid extends Grid {
      * index.
      * @return <code>b (Vector[n])</code>
      */
-    public DMatrixRMaj getVoltages() {
+    public DMatrixRMaj getTerms() {
         return matrixB;
     }
 
@@ -340,7 +338,7 @@ public final class ServerGrid extends Grid {
      * @return A {@link DMAtrixRMaj vector} whose length is the number of rows in the current matrix.
      */
     public DMatrixRMaj createWorkingVector() {
-        return new DMatrixRMaj(matrixA.getNumRows());
+        return new DMatrixRMaj(matrixA.getNumRows(), 1);
     }
 
     /**
@@ -390,6 +388,7 @@ public final class ServerGrid extends Grid {
 
         private @Nullable PriorityQueue<TaskWrapper> queue;
         private boolean hasUnsavedChanges = false;
+        private boolean justLoaded = false;
 
         public void applyTo(ServerGrid grid) {
             if(!hasChanges()) return;
@@ -420,6 +419,15 @@ public final class ServerGrid extends Grid {
             ActionRunner runner = grid.initiateTask(GridAction.TASK_LINK_DESTROY);
             for(NodePair pair : disjoints)
                 handleRemoval(grid, runner, pair);
+            for(Node node : removedNodes) {
+                Griddable<?> source = GridTracking.getSource(node);
+                if(source == null) continue;
+                CircuitComponent component = source.getComponent();
+                if(component == null) continue;
+                component.MNADeallocate(grid);
+                if(component instanceof Disposable dp)
+                    dp.dispose();
+            }
         }
 
         private void handleRemoval(ServerGrid grid, ActionRunner runner, NodePair pair) {
@@ -436,7 +444,11 @@ public final class ServerGrid extends Grid {
                     runner.targeting(aSource, bSource)
                         .withArguments(aID, bID)
                         .executeOnClients();
-                    grid.lookup.remove(grid, an, bn);
+                    AncillaryPair removed = grid.lookup.pop(grid, an, bn);
+                    if(removed == null) continue;
+                    removed.MNADeallocate(grid);
+                    if(removed instanceof Disposable dp)
+                        dp.dispose();
                 }
             }
         }
@@ -536,7 +548,7 @@ public final class ServerGrid extends Grid {
         }
 
         public boolean creates() {
-            return action == GridAction.TASK_LINK_CREATE || action == GridAction.TASK_COMPONENT_CREATE;
+            return action == GridAction.TASK_LINK_CREATE;
         }
 
         private int getPriority() {

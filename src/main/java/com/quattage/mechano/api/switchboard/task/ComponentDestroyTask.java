@@ -27,7 +27,7 @@ public class ComponentDestroyTask extends DummyTask {
         toDestroy.forEachNode(node -> {
             node.forEachTerminal(term -> {
                 if(term.getParentConstruct() instanceof StampingComponent sc) {
-                    grid.indexer().forget(sc);
+                    grid.indexer().remove(sc);
                     sc.dispose();
                 }
                 term.dispose();

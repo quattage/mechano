@@ -9,7 +9,7 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.Catenaries.PhysicalMaterial;
 import com.quattage.mechano.api.catenary.Catenaries.Soundscape;
 import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
-import com.quattage.mechano.api.grid.GridConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
@@ -103,8 +103,8 @@ public class TransmitterType {
 
     public static @Nullable CircuitComponent applyUnion(ServerGrid grid, UnionFactory factory, @Nullable Object src, AncillaryNode<?> start, AncillaryNode<?> end) {
         if(grid == null) throw new GridUnionException(src, "Couldn't run factory on null grid!");
-        if(start == null) throw new GridUnionException(src, "start is null!");
-        if(end == null) throw new GridUnionException(src, "end is null!");
+        if(start == null) throw new GridUnionException(src, "start is null! (this method may have been called by an AncillaryPair that hasn't been initialized)");
+        if(end == null) throw new GridUnionException(src, "end is null! (this method may have been called by an AncillaryPair that hasn't been initialized)");
         CircuitComponent output = null;
         try { output = factory.apply(grid, start, end); }
         catch (RuntimeException e) { 
@@ -112,7 +112,7 @@ public class TransmitterType {
             e.printStackTrace();
             throw new GridUnionException(src, "Encountered an error while applying factory! (See exception above)");
         }
-        if(output != null && src instanceof GridConstruct parent && output instanceof GridConstruct child) 
+        if(output != null && src instanceof HierarchicalConstruct parent && output instanceof HierarchicalConstruct child) 
             child.updateOwnership(parent);
         return output;
     }

@@ -111,6 +111,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             });
         }
 
+        @SubscribeEvent
         public static void unloadGrid(LevelEvent.Unload evt) {
             LevelAccessor world = evt.getLevel();
             Grid.getUnsided(world).unload();

@@ -15,13 +15,12 @@ import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
-import com.quattage.mechano.api.switchboard.task.ComponentCreateTask;
 import com.quattage.mechano.api.switchboard.task.ComponentDestroyTask;
 import com.quattage.mechano.api.switchboard.task.GridDumpTask;
 import com.quattage.mechano.api.switchboard.task.GridPeekTask;
@@ -48,7 +47,6 @@ public enum GridAction implements StringRepresentable {
     // do not reorder
     TASK_LINK_DESTROY                     ( ActionType.TASK_GENERIC, NodeLinkDestroyTask.class ),
     TASK_COMPONENT_DESTROY                ( ActionType.TASK_GENERIC, ComponentDestroyTask.class),
-    TASK_COMPONENT_CREATE                 ( ActionType.TASK_GENERIC, ComponentCreateTask.class),
     TASK_LINK_CREATE                      ( ActionType.TASK_GENERIC, NodeLinkCreateTask.class ),
     TASK_LINK_SYNC                        ( ActionType.TASK_GENERIC, NodeLinkSyncTask.class),
     
@@ -73,7 +71,7 @@ public enum GridAction implements StringRepresentable {
 
     NONE                                  ( ActionType.NONE, null );
 
-    public static final boolean VERBOSE_LOGS = true;
+    public static final boolean VERBOSE_LOGS = false;
 
     public static void logUnhandled(@Nullable GridAction action, @Nullable Object o) {
         Mechano.LOGGER.error(("Response type '" + action + "' is not ") 

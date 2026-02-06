@@ -17,8 +17,8 @@ import com.quattage.mechano.api.ServerGrid;
  */
 public class StabilizedBiconjucateSolver implements NodalSolver {
 
-    private DMatrixRMaj r, rHat, p, v, s, t, h, temp;
-    private double rho, rhoOld, alpha, beta, omega, d, normS, normR;
+    protected DMatrixRMaj r, rHat, p, v, s, t, h, ax;
+    protected double rho, rhoOld, alpha, beta, omega, d, normS, normR;
 
     public StabilizedBiconjucateSolver() {}
 
@@ -36,14 +36,14 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
         s = grid.createWorkingVector();
         t = grid.createWorkingVector();
         h = grid.createWorkingVector();
-        temp = grid.createWorkingVector();
+        ax = grid.createWorkingVector();
     }
 
     @Override
     public ConvergenceStatus run(ServerGrid grid) {
 
-        CommonOps_DSCC.mult(grid.getMatrix(), grid.getSolution(), temp);
-        CommonOps_DDRM.subtract(grid.getVoltages(), temp, r);
+        CommonOps_DSCC.mult(grid.getMatrix(), grid.getSolution(), ax);
+        CommonOps_DDRM.subtract(grid.getTerms(), ax, r);
         rHat.setTo(r);
         rho = VectorVectorMult_DDRM.innerProd(rHat, r);
         rhoOld = 1; alpha = 1; omega = 1;
@@ -79,8 +79,8 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
 
             beta = (rho / rhoOld) * (alpha / omega);
 
-            CommonOps_DDRM.add(-omega, v, 1d, p, temp);
-            CommonOps_DDRM.add(beta, temp, 1d, r, p);
+            CommonOps_DDRM.add(-omega, v, 1d, p, ax);
+            CommonOps_DDRM.add(beta, ax, 1d, r, p);
         }
 
         return ConvergenceStatus.FINISHED_LIMIT_REACHED;
@@ -89,6 +89,6 @@ public class StabilizedBiconjucateSolver implements NodalSolver {
     @Override
     public void reset() {
         rho = 0; rhoOld = 0; alpha = 0; beta = 0; omega = 0; d = 0; normS = 0; normR = 0; 
-        r= null; rHat = null; p = null; v = null; s = null; t = null; h = null; temp = null;
+        r= null; rHat = null; p = null; v = null; s = null; t = null; h = null; ax = null;
     }
 }

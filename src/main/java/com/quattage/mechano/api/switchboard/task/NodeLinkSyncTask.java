@@ -28,6 +28,11 @@ public class NodeLinkSyncTask implements ActionTask {
     }
 
     @Override
+    public Object[] validateArguments(boolean allowNulls, @Nullable Object... args) {
+        return ActionTask.super.validateArguments(true, args);
+    }
+
+    @Override
     public void dynamicEncode(Object[] args, ByteBuf buffer) {
         GridTracking.write((GridUUID<?>)args[0], buffer);
         GridTracking.write((GridUUID<?>)args[1], buffer);

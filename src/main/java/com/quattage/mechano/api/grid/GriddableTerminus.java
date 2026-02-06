@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.grid.GridConstruct.SourceProvider;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.SourceProvider;
 import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;

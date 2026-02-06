@@ -10,7 +10,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.topology.NetlistLookup.ClientNetlistLookup;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.foundation.numeric.VectorOperations;

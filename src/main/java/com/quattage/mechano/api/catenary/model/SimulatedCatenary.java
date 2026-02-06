@@ -41,9 +41,8 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
     @Override
     public SimulatedCatenary setOffset(TransmitterType trns, Vector3d start, Vector3d end) {
         if(start == null || end == null) return this;
+        if(this.halfOffset == null) this.halfOffset = new Vector3f();
         applyDisplacement(start, end);
-        if(this.halfOffset == null)
-            this.halfOffset = new Vector3f();
         this.halfOffset.set(    
             (float)(start.x - forces[1]),
             (float)(start.y - forces[2]),
@@ -58,20 +57,27 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
 
     private void applyDisplacement(Vector3d start, Vector3d end) {
         if(this.halfOffset == null) return;
+        this.forces[1] = (float)((start.x + end.x) / 2f);
+        this.forces[2] = (float)((start.y + end.y) / 2f);
+        this.forces[3] = (float)((start.z + end.z) / 2f);
         this.forces[4] = (float)start.x - (forces[1] + halfOffset.x);
         this.forces[5] = (float)start.y - (forces[2] + halfOffset.y);
         this.forces[6] = (float)start.z - (forces[3] + halfOffset.z);
         this.forces[7] = (float)end.x - (forces[1] - halfOffset.x);
         this.forces[8] = (float)end.y - (forces[2] - halfOffset.y);
         this.forces[9] = (float)end.z - (forces[3] - halfOffset.z);
-        this.forces[1] = (float)((start.x + end.x) / 2f);
-        this.forces[2] = (float)((start.y + end.y) / 2f);
-        this.forces[3] = (float)((start.z + end.z) / 2f);
     }
 
+    /**
+     * Usable as an alternative to {@link #setOffset} in situations where
+     * you're updating the endpoint locations at the framerate of the game
+     * rather than on a fixed update cycle. This method is especially
+     * useful for reducing jitter in catenaries with moving start/endpoints.
+     * @return this catenary for chaining
+     */
     public SimulatedCatenary setOffsetContinuous(LevelReader world, Vec3 startPos, Vec3 endPos, Vec3 worldMid) {
         if(startPos == null || endPos == null) return this;
-        if(this.halfOffset == null) this.halfOffset = new Vector3f();
+        if(this.halfOffset == null) this.halfOffset = new Vector3f(0);
         this.halfOffset.set(startPos.x - worldMid.x, startPos.y - worldMid.y, startPos.z - worldMid.z);
         updateEndpoints();
         return this;
@@ -237,7 +243,6 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
             );
             point.lastPos.set(point.pos);
             point.pos.add(vel);
-
             tracker.apply(vel);
         }
     }
@@ -337,7 +342,7 @@ public class SimulatedCatenary extends CatenaryModel<SimulatedCatenary> {
         debugVelocities();
     }
 
-    private void debugVelocities() {
+    public void debugVelocities() {
         Vec3 center = new Vec3(forces[1], forces[2], forces[3]);
         Vec3 start = new Vec3(forces[1] + halfOffset.x, forces[2] + halfOffset.y, forces[3] + halfOffset.z);
         Vec3 end = new Vec3(forces[1] - halfOffset.x, forces[2] - halfOffset.y, forces[3] - halfOffset.z);

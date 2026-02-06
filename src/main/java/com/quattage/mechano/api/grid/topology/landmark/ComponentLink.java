@@ -1,7 +1,6 @@
 package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.Objects;
-import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -11,12 +10,10 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
 import com.quattage.mechano.api.catenary.model.SimulatedCatenary;
-import com.quattage.mechano.api.grid.GridConstruct;
 import com.quattage.mechano.api.grid.GridTracking;
-import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID;
-import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
@@ -32,7 +29,7 @@ import net.neoforged.api.distmarker.OnlyIn;
  * A link that connects two {@link AncillaryNode ancillaries}
  * together, like a wire.
  */
-public class ComponentLink<T extends CircuitComponent> extends AncillaryPair implements CircuitComponent, GridConstruct {
+public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
 
     private @Nullable CatenaryModel<?> catenary;
     private final TransmitterType trns;
@@ -72,14 +69,9 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
         return component;
     }
 
-    public @Nullable CircuitComponent applyTo(ServerGrid grid) {
+    public @Nullable CircuitComponent applyUnions(ServerGrid grid) {
         this.component = TransmitterType.applyUnion(grid, trns.getFactory(), this, getStartAncillary(), getEndAncillary());
         return this.component;
-    }
-
-    public void invalidate() {
-        this.component.reset();
-        this.component = null;
     }
 
     public TransmitterType getTransmitter() {
@@ -87,24 +79,27 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     }
 
     @Override
-    public void forEachNode(Consumer<Node> cons) {
-        if(startAnc != null) startAnc.forEachNode(cons);
-        if(endAnc != null) endAnc.forEachNode(cons);
-    }
-
-    @Override
-    public boolean isGrounded() {
-        return (startAnc != null && startAnc.isGrounded()) || (endAnc != null && endAnc.isGrounded());
-    }
-
-    @Override
     public void saturate() {
+        super.saturate();
         if(component != null) component.saturate();
     }
 
     @Override
     public void reset() {
+        super.reset();
         if(component != null) component.reset();
+    }
+
+    @Override
+    public void MNAAllocate(ServerGrid grid) {
+        super.MNAAllocate(grid);
+        if(component != null) component.MNAAllocate(grid);
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid) {
+        super.MNADeallocate(grid);
+        if(component != null) component.MNADeallocate(grid);
     }
 
     @Override
@@ -115,23 +110,6 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair imp
     @Override
     public String toString() {
         return getComponentID() + "[" + startID + " -> " + endID + "]";
-    }
-
-    @Override
-    public ComponentHierarchy getHierarchyType() {
-        return ComponentHierarchy.LINK;
-    }
-
-    @Override
-    public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
-        if(binding.getHierarchyType() == ComponentHierarchy.ANCILLARY)
-            return binding.get() == 0 ? startAnc : endAnc;
-        return component;
-    }
-
-    @Override
-    public @Nullable GridConstruct getParentConstruct() {
-        return null;
     }
 
     public boolean isPrimary() {

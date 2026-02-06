@@ -10,13 +10,14 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.api.grid.GridConstruct;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
 import com.quattage.mechano.foundation.WorldlyObject;
@@ -101,8 +102,8 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
      */
     @Override
     @SuppressWarnings("unchecked")
-    public void updateOwnership(@Nullable Griddable<?> source, GridConstruct parent) {
-        GridConstruct.assertValidOwnership(this, parent);
+    public void updateOwnership(@Nullable Griddable<?> source, HierarchicalConstruct parent) {
+        HierarchicalConstruct.assertValidOwnership(this, parent);
         this.source = (@Nullable Griddable<T>) source; 
         this.parent = (Node) parent;
     }
@@ -228,18 +229,6 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
-    public int getNodalIndex() {
-        assertAttached();
-        return parent.getNodalIndex();
-    }
-
-    @Override
-    public void setNodalIndex(int nodalIndex) {
-        assertAttached();
-        parent.setNodalIndex(nodalIndex);
-    }
-
-    @Override
     public int indexOf(AncillaryNode<?> jack) {
         if(jack == this) return parent.indexOf(jack);
         throw new UnsupportedOperationException("Failed while getting the index of a jack from itself - The supplied Jack instance didn't match this one (" 
@@ -271,7 +260,23 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
-    public @Nullable GridConstruct getParentConstruct() {
+    public void MNAAllocate(ServerGrid grid) {
+        if(source == null) throw new NullPointerException("Failed to allocate " + this + " - This node's source is null!");
+        CircuitComponent component = source.getComponent();
+        if(component == null) throw new NullPointerException("Failed to allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
+        component.MNAAllocate(grid);
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid) {
+        if(source == null) throw new NullPointerException("Failed to de-allocate " + this + " - This node's source is null!");
+        CircuitComponent component = source.getComponent();
+        if(component == null) throw new NullPointerException("Failed to de-allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
+        component.MNADeallocate(grid);
+    }
+
+    @Override
+    public @Nullable HierarchicalConstruct getParentConstruct() {
         return parent;
     }
 

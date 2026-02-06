@@ -1,15 +1,16 @@
 package com.quattage.mechano.api.grid.component;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct;
-import com.quattage.mechano.api.grid.GridConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
@@ -50,6 +51,44 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
 
     protected abstract Terminal[] defineTerminals();
 
+    /**
+     * A helper method used to get the index of the provided terminal's
+     * attached node from the active indexer attached to the provided grid
+     * @param grid to operate within
+     * @param terminal to get the index of
+     * @return int, -1 if the node is grounded or unindexed.
+     */
+    public int indexOf(ServerGrid grid, Terminal terminal) {
+        Objects.requireNonNull(grid);
+        Objects.requireNonNull(terminal);
+        Node n = terminal.getAttachedNode();
+        if(n == null || n.isGrounded()) return -1;
+        return grid.indexer().indexOf(n);
+    }
+
+    /**
+     * A helper method to quickly get the voltage present at a terminal's
+     * attached node. This method is not guaranteed to be accurate
+     * or up-to-date, you must be aware of the timings of the grid's
+     * update cycle in order for this method to be relevent.
+     * This method is intended to be used during 
+     * {@link StampsDynamically#stampDynamic dynamic stamping} 
+     * to update time-varied values in individual components.
+     * @param grid
+     * @param terminal
+     * @return double value representing voltage 
+     */
+    public double voltageOf(ServerGrid grid, Terminal terminal) {
+        Objects.requireNonNull(grid);
+        Objects.requireNonNull(terminal);
+        Node n = terminal.getAttachedNode();
+        if(n == null) {
+        }
+        
+        // TODO impl
+        return 0d;
+    }
+
     @Override
     public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
         return terminals[binding.get()];
@@ -72,7 +111,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
     }
 
     @Override
-    public void updateOwnership(Griddable<?> source, GridConstruct parent) {
+    public void updateOwnership(Griddable<?> source, HierarchicalConstruct parent) {
         super.updateOwnership(source, parent);
         for(int x = 0; x < terminals.length; x++) {
             Terminal t = terminals[x];
@@ -93,7 +132,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
     }
 
     @Override
-    public int indexOfChild(GridConstruct child) {
+    public int indexOfChild(HierarchicalConstruct child) {
         if(!(child instanceof Terminal) || terminals == null || terminals.length <= 0) 
             return -1;
         for(int x = 0; x < terminals.length; x++)
@@ -110,6 +149,16 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
      * implement {@link StampsDynamically this interface}
      */
     public abstract void stamp(ServerGrid grid);
+
+    @Override
+    public void MNAAllocate(ServerGrid grid) {
+        grid.indexer().add(this);
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid) {
+        grid.indexer().remove(this);
+    }
 
     /**
      * A helper method specific to some functional components to quickly

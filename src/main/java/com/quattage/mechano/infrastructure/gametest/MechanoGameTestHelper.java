@@ -12,13 +12,13 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridConstruct;
-import com.quattage.mechano.api.grid.GridConstruct.GridReferent;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
@@ -120,7 +120,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return output;
     }
 
-    public <T extends GridUUID<T>> T getAddressSafely(GridReferent<T> obj, GridConstruct component) {
+    public <T extends GridUUID<T>> T getAddressSafely(GridReferent<T> obj, HierarchicalConstruct component) {
         T id = obj.getUUIDSafe();
         component.forEachConstructInHierarchy(construct -> { 
             if(!(construct instanceof Griddable<?>)) 
@@ -276,7 +276,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
         private final String id;
         private final boolean isGrounded;
         private boolean isMP = false;
-        private int index = -2;
 
         public MockNode(String id, boolean isGrounded) {
             this.id = id;
@@ -284,7 +283,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
 
         @Override
-        public @Nullable GridConstruct getParentConstruct() {
+        public @Nullable HierarchicalConstruct getParentConstruct() {
             return null;
         }
 
@@ -329,28 +328,11 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
 
         @Override
-        public int getNodalIndex() {
-            return isGrounded ? -1 : index;
-        }
-
-        @Override
-        public void setNodalIndex(int index) {
-            this.index = index;
-        }
-
-        @Override
-        public int getHierarchyIndex() {
-            return index;
-        }
-
-        @Override
-        public void dispose() {
-            this.index = -4;
-        }
+        public void dispose() {}
 
         @Override
         public boolean hasBeenDisposed() {
-            return index == -4;
+            return false;
         }
 
         @Override

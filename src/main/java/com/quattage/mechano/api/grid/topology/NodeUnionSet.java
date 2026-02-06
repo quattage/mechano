@@ -40,6 +40,7 @@ public class NodeUnionSet {
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> transitiveTree;   // union-find transitive access (semi-cyclic)
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> adjacencyTree;    // adjacency matrix (undirected, non-cyclic)
     protected Object2ObjectOpenHashMap<Node, Node> relations;                           // union-find discoverability (cyclic)
+    private boolean includesGround = false;
 
     public NodeUnionSet() {
         this(32);
@@ -51,24 +52,24 @@ public class NodeUnionSet {
         adjacencyTree = new Object2ObjectOpenHashMap<>(size);
     }
 
-    public void finalizeTopology() {
+    public void finalizeTopology(MNAIndexer indexer) {
         if(isEmpty()) return;
-        int index = -1;
-
+        int index = 0;
         final Set<Node> orphans = new HashSet<>(transitiveTree.size() / 2);
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> branch : transitiveTree.entrySet()) {
             Node head = branch.getKey();
             Set<Node> branchTopo = branch.getValue();
             if(branchTopo == null || branchTopo.isEmpty()) {
                 orphans.add(head);
+                indexer.remove(head);
                 continue;
             }
-            head.setNodalIndex(index++);
+            indexer.add(head, index);
             for(Node leaf : branchTopo) {
                 if(leaf == null) continue;
-                leaf.setNodalIndex(head.getNodalIndex());
+                indexer.add(leaf, head.isGrounded() ? -1 : index);
             }
-            // TODO collect and remove orphans
+            index++;
         }
         if(!orphans.isEmpty()) {
             for(Node n : orphans) {
@@ -152,6 +153,8 @@ public class NodeUnionSet {
      * @param b node
      */
     public boolean loadUnion(Node a, Node b) {
+        if(a.isGrounded() || b.isGrounded()) 
+            includesGround = true;
         relations.put(a, a);
         adjacentJoin(a, b);
         return true;
@@ -412,6 +415,7 @@ public class NodeUnionSet {
         relations.put(node, node);
         transitiveTree.put(node, null);
         adjacencyTree.put(node, null);
+        if(node.isGrounded()) includesGround = true;
         return true;
     }
 
@@ -500,14 +504,8 @@ public class NodeUnionSet {
      * @see #deepSize
      */
     public int size() {
-        return transitiveTree.size();
+        return Math.max(0, transitiveTree.size() - (includesGround ? 1 : 0));
     }
-
-    public int adjacencySize() {
-        return adjacencyTree.size();
-    }
-
-    
 
     /**
      * Trims internal hash tables to minimize memory footprint
@@ -544,38 +542,8 @@ public class NodeUnionSet {
         adjacencyTree = new Object2ObjectOpenHashMap<>();
     }
 
-    @Override
-    public String toString() {
-        String out = "Transitivity:\n" + asString(transitiveTree, true) + "\n";
-        out += "Adjacency:\n" + asString(adjacencyTree, false) + "\n";
-        return out.substring(0, out.length() - 1);
-    }
-
-    private String asString(Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> tree, boolean showRelative) {
-        String out = "";
-        for(Map.Entry<Node, ObjectOpenHashSet<Node>> branch : tree.entrySet()) {
-            out += "-- " + summarizeNode(branch.getKey(), showRelative);
-            Set<Node> branchTopo = branch.getValue();
-            if(branchTopo == null || branchTopo.isEmpty()) {
-                out += "   [Stub]\n";
-                continue;
-            }
-            for(Node leaf : branchTopo)
-                out += "   * " + summarizeNode(leaf, showRelative);
-        }
-        return out;
-    }
-
     public void ensureCapacity(int cap) {
         adjacencyTree.ensureCapacity(cap);
-    }
-
-    private String summarizeNode(Node node, boolean showRelative) {
-        String out = "";
-        Node relativeRoot = showRelative ? relations.get(node) : null;
-            out += node.getComponentID() + " (" + node.getNodalIndex() 
-                + (relativeRoot != null ? ", " + relativeRoot.getComponentID() : "") + ")\n";
-        return out;
     }
 
     public String toFullString(ServerGrid grid) {
@@ -585,33 +553,33 @@ public class NodeUnionSet {
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
-            out += "\n  ▸" + summarizeNodeFull(root);
+            out += "\n  ▸" + summarizeNode(root, grid.indexer());
             src = GridTracking.getSource(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
                 out += "\n    Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
             } else out += "\n    Owned by anonymous source";
-            out += "\n    Parented to: " + summarizeNodeFull(relations.get(root));
+            out += "\n    Parented to: " + summarizeNode(relations.get(root), grid.indexer());
             if(contents == null || contents.isEmpty()) {
                 out += "\n    0 children [[!! Stub !!]]";
                 continue;
             }
             out += "\n    " + contents.size() + " children:";
             for(Node child : contents) {
-                out += "\n      " + summarizeNodeFull(child);
+                out += "\n      " + summarizeNode(child, grid.indexer());
                 src = GridTracking.getSource(grid.getWorld(), child);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
                     out += "\n        Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
                 } else out += "\n        Owned by anonymous source";
-                out += "\n        Parented to: " + summarizeNodeFull(relations.get(child));
+                out += "\n        Parented to: " + summarizeNode(relations.get(child), grid.indexer());
             }
         }
         return out;
     }
 
-    private String summarizeNodeFull(@Nullable Node node) {
-        return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + node.getNodalIndex() + ",  #" + node.hashCode() + ")";
+    private String summarizeNode(@Nullable Node node, MNAIndexer indexer) {
+        return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + indexer.indexOf(node) + ",  #" + node.hashCode() + ")";
     }
 
     public static record NodePair(Node a, Node b) {

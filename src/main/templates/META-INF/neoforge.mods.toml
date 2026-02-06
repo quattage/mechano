@@ -11,6 +11,7 @@ displayName="${mod_name}"
 
 displayURL="https://github.com/quattage/mechano"
 logoFile="logo.png"
+logoBlur=false
 credits=""
 authors="${mod_authors}"
 description='''${mod_description}'''

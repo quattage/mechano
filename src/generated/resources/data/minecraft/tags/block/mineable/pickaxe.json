@@ -1,6 +1,7 @@
 {
   "values": [
     "mechano:connector_single",
-    "mechano:creative_voltaplast"
+    "mechano:creative_voltaplast",
+    "mechano:creative_sink"
   ]
 }

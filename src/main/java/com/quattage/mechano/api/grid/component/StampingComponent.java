@@ -1,5 +1,6 @@
 package com.quattage.mechano.api.grid.component;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -11,6 +12,8 @@ import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.TerminalProvider;
+import com.quattage.mechano.api.grid.solver.NodalSolver;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
@@ -58,12 +61,12 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
      * @param terminal to get the index of
      * @return int, -1 if the node is grounded or unindexed.
      */
-    public int indexOf(ServerGrid grid, Terminal terminal) {
-        Objects.requireNonNull(grid);
+    public int indexOf(GridDomain domain, Terminal terminal) {
+        Objects.requireNonNull(domain);
         Objects.requireNonNull(terminal);
         Node n = terminal.getAttachedNode();
         if(n == null || n.isGrounded()) return -1;
-        return grid.indexer().indexOf(n);
+        return domain.indexer().indexOf(n);
     }
 
     /**
@@ -78,15 +81,29 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
      * @param terminal
      * @return double value representing voltage 
      */
-    public double voltageOf(ServerGrid grid, Terminal terminal) {
-        Objects.requireNonNull(grid);
+    public double voltageOf(GridDomain domain, Terminal terminal) {
+        Objects.requireNonNull(domain);
         Objects.requireNonNull(terminal);
-        Node n = terminal.getAttachedNode();
-        if(n == null) {
-        }
-        
-        // TODO impl
-        return 0d;
+        Node node = terminal.getAttachedNode();
+        return voltageOf(domain, node);
+    }
+
+    /**
+     * A helper method to quickly get the voltage present at a terminal's
+     * attached node. This method is not guaranteed to be accurate
+     * or up-to-date, you must be aware of the timings of the grid's
+     * update cycle in order for this method to be relevent.
+     * This method is intended to be used during 
+     * {@link StampsDynamically#stampDynamic dynamic stamping} 
+     * to update time-varied values in individual components.
+     * @param grid
+     * @param node node to pull from
+     * @return double value representing voltage 
+     */
+    public double voltageOf(GridDomain domain, @Nullable Node node) {
+        Objects.requireNonNull(domain);
+        if(node == null) return 0d;
+        return domain.indexer().indexOf(node);
     }
 
     @Override
@@ -108,6 +125,11 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
     @Override
     public boolean isGrounded() {
         return hasGroundedTerminal();
+    }
+
+    @Override
+    public int getDomainIndex() {
+        return terminals[0].getDomainIndex();
     }
 
     @Override
@@ -148,16 +170,16 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
      * <p> If your particular component requires a continuously ticking update,
      * implement {@link StampsDynamically this interface}
      */
-    public abstract void stamp(ServerGrid grid);
+    public abstract void stamp(ServerGrid grid, GridDomain domain);
 
     @Override
-    public void MNAAllocate(ServerGrid grid) {
-        grid.indexer().add(this);
+    public void MNAAllocate(ServerGrid grid, GridDomain domain) {
+        domain.indexer().add(this);
     }
 
     @Override
-    public void MNADeallocate(ServerGrid grid) {
-        grid.indexer().remove(this);
+    public void MNADeallocate(ServerGrid grid, GridDomain domain) {
+        domain.indexer().remove(this);
     }
 
     /**
@@ -280,7 +302,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
          * once per server tick.
          * @see #stamp
          */
-        void stampDynamic(ServerGrid grid);
+        void stampDynamic(ServerGrid grid, GridDomain domain);
     }
 
     /**
@@ -294,9 +316,10 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
          * has been resolved for this tick. At the time of invocation,
          * all other stampers have settled, so this is where you
          * @param grid The grid to operate within
+         * @param domain The domain this component belongs to
          * @param current The current (in amps) that exists at this component
          */
-        void postProcess(ServerGrid grid);
+        void postProcess(ServerGrid grid, GridDomain domain);
     }
 
     @FunctionalInterface
@@ -307,6 +330,87 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
          * @param ampsThen The current (in amps) that this source used to have
          * @param ampsNow The current (in amps) that this source has now
          */
-        void onCurrentUpdated(ServerGrid grid, double ampsThen, double ampsNow);
+        void onCurrentUpdated(ServerGrid grid, PowerState then, PowerState now);
+    }
+
+    public static class PowerState {
+
+        private final double[] values = new double[2];
+
+        public PowerState() {}
+
+        private PowerState(double[] values) {
+            for(int x = 0; x < values.length; x++)
+                this.values[x] = values[x];
+        }
+
+        public PowerState(double volts, double amps) {
+            this.values[0] = volts;
+            this.values[1] = amps;
+        }
+
+        public double volts(double value) {
+            this.values[0] = value;
+            return value;
+        }
+
+        public double volts() {
+            return this.values[0];
+        }
+
+        public double amps(double value) {
+            this.values[1] = value;
+            return value;
+        }
+
+        public double amps() {
+            return this.values[1];
+        }
+
+        public double joules() {
+            return watts() * NodalSolver.DELTA;
+        }
+
+        public double watts() {
+            return this.values[0] * this.values[1];
+        }
+
+        public double ampHours() {
+            return amps() * NodalSolver.DELTA / 3600d;
+        }
+
+        public boolean isCurrentEqual(PowerState other) {
+            return Math.abs(other.amps() - this.amps()) < NodalSolver.EPSILON;
+        }
+
+        public boolean isVoltageEqual(PowerState other) {
+            return Math.abs(other.volts() - this.volts()) < NodalSolver.EPSILON;
+        }
+
+        public PowerState copy() {
+            return new PowerState(this.values);
+        }
+
+        public void clear() {
+            for(int x = 0; x < values.length; x++)
+                values[x] = 0;
+        }
+
+        @Override
+        public String toString() {
+            return "PowerState:\n  " + volts() + "v\n  " + amps() + "A\n  " + watts() + "W";
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if(this == obj) return true;
+            if(!(obj instanceof PowerState that)) return false;
+            return this.isCurrentEqual(that) && this.isVoltageEqual(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(values);
+        }
     }
 }

@@ -5,6 +5,9 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.api.blockEntity.SimpleBlockEntity;
 import com.quattage.mechano.api.blockEntity.SimpleBlockEntity.BERefreshable;
+import com.quattage.mechano.api.grid.GriddableTerminus;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
+import com.quattage.mechano.api.grid.topology.landmark.BlockJack;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
@@ -96,6 +99,16 @@ public abstract class BlockWithConnections<T extends GriddableBlockEntity> exten
     @Override
     public boolean isConnectorAllowed(LevelReader world, BlockPos connectorPos, BlockState connectorState,
             BlockPos thisPos, BlockState thisState) {
+        GriddableBlockEntity gbe = getBlockEntity(world, thisPos);
+        if(gbe == null) return false;
+        GriddableTerminus terminus = gbe.getTerminus();
+        if(terminus.isEmpty()) return false;
+        for(AncillaryNode<?> ancillary : terminus.getAncillaries()) {
+            if(!(ancillary instanceof BlockJack bj)) continue;
+            if(!bj.getPos(thisPos).equals(connectorPos)) continue;
+            Direction connectorDir = connectorState.getValue(CombinedOrientedBlock.ORIENTATION).getLocalUp();
+            if(connectorDir == bj.getFacing()) return true;
+        }
         return false;
     }
 

@@ -20,6 +20,7 @@ import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 
@@ -92,6 +93,18 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     public Terminal[] getTerminals() {
         assertAttached();
         return parent.getTerminals();
+    }
+
+    @Override
+    public int getDomainIndex() {
+        assertAttached();
+        return parent.getDomainIndex();
+    }
+
+    @Override
+    public void setDomainIndex(int domainIndex) {
+        assertAttached();
+        parent.setDomainIndex(domainIndex);
     }
 
     /**
@@ -248,6 +261,12 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
+    public void markGrounded(boolean isGrounded) {
+        assertAttached();
+        parent.markGrounded();
+    }
+
+    @Override
     public void saturate() {
         assertAttached();
         parent.saturate();
@@ -260,19 +279,19 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
-    public void MNAAllocate(ServerGrid grid) {
+    public void MNAAllocate(ServerGrid grid, GridDomain domain) {
         if(source == null) throw new NullPointerException("Failed to allocate " + this + " - This node's source is null!");
         CircuitComponent component = source.getComponent();
         if(component == null) throw new NullPointerException("Failed to allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
-        component.MNAAllocate(grid);
+        component.MNAAllocate(grid, domain);
     }
 
     @Override
-    public void MNADeallocate(ServerGrid grid) {
+    public void MNADeallocate(ServerGrid grid, GridDomain domain) {
         if(source == null) throw new NullPointerException("Failed to de-allocate " + this + " - This node's source is null!");
         CircuitComponent component = source.getComponent();
         if(component == null) throw new NullPointerException("Failed to de-allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
-        component.MNADeallocate(grid);
+        component.MNADeallocate(grid, domain);
     }
 
     @Override

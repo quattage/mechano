@@ -1,8 +1,8 @@
 package com.quattage.mechano.api.transmitter;
 
 import java.util.Objects;
+import java.util.function.BiFunction;
 
-import org.apache.commons.lang3.function.TriFunction;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
@@ -11,10 +11,12 @@ import com.quattage.mechano.api.catenary.Catenaries.Soundscape;
 import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
@@ -101,12 +103,11 @@ public class TransmitterType {
         }
     }
 
-    public static @Nullable CircuitComponent applyUnion(ServerGrid grid, UnionFactory factory, @Nullable Object src, AncillaryNode<?> start, AncillaryNode<?> end) {
-        if(grid == null) throw new GridUnionException(src, "Couldn't run factory on null grid!");
-        if(start == null) throw new GridUnionException(src, "start is null! (this method may have been called by an AncillaryPair that hasn't been initialized)");
-        if(end == null) throw new GridUnionException(src, "end is null! (this method may have been called by an AncillaryPair that hasn't been initialized)");
+    public static @Nullable CircuitComponent applyUnion(GridDomain domain, UnionFactory factory, @Nullable Object src, AncillaryPair link) {
+        if(domain == null) throw new GridUnionException(src, "domain is null!");
+        if(link == null) throw new GridUnionException(src, "link is null!");
         CircuitComponent output = null;
-        try { output = factory.apply(grid, start, end); }
+        try { output = factory.apply(domain, link); }
         catch (RuntimeException e) { 
             if(e instanceof GridUnionException gue) throw gue;
             e.printStackTrace();
@@ -118,18 +119,17 @@ public class TransmitterType {
     }
 
     @FunctionalInterface
-    public interface UnionFactory extends TriFunction<ServerGrid, AncillaryNode<?>, AncillaryNode<?>, CircuitComponent>{
+    public interface UnionFactory extends BiFunction<GridDomain, AncillaryPair, CircuitComponent>{
 
         /**
          * A shorthanded {@link UnionFactory} substitute for unions that represent
          * perfect conductors. (e.g. a wire with no resistence.)
-         * @param grid Grid to operate within
-         * @param startAncillary {@link AncillaryNode} starting point
-         * @param endAncillary {@link AncillaryNode} ending point
+         * @param domain Domain to append the link to
+         * @param link The link to union
          * @return <code>null,</code> since a perfect union doesn't have a component associated with it.
          */
-        static CircuitComponent perfectConductor(ServerGrid grid, AncillaryNode<?> startAncillary, AncillaryNode<?> endAncillary) {
-            grid.netlist().union(startAncillary.getAssociatedNode(), endAncillary.getAssociatedNode());
+        static CircuitComponent perfectConductor(GridDomain domain, AncillaryPair link) {
+            domain.netlist().union(link.getStartNode(), link.getEndNode());
             return null;
         }
 
@@ -142,14 +142,13 @@ public class TransmitterType {
          * <h3>with great power comes great oh no i broke it</h3>
          * There are no guardrails here; you have direct access to the grid's topology! Be careful
          * not to perform destructive operations that destabilize the grid.
-         * @param grid {@link ServerGrid} which provides access to common ground, the netlist, and the solver
-         * @param startAncillary The starting point of the union that is being created
-         * @param endAncillary The ending point of the union that is being created
+         * @param domain {@link GridDomain} which provides access to,the netlist to be modified
+         * @param link the link which contains the start and end points
          * @return Any {@link CircuitComponent} instance, or <code>null</code> if this union did not result 
          * in the creation of a discrete component.
          */
         @Override 
-        @Nullable CircuitComponent apply(ServerGrid grid, AncillaryNode<?> startAncillary, AncillaryNode<?> endAncillary);
+        @Nullable CircuitComponent apply(GridDomain domain, AncillaryPair link);
     }
 
     public interface TransmitterProvider {

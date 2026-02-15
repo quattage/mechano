@@ -1,7 +1,6 @@
 package com.quattage.mechano.api.switchboard.action;
 
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -10,8 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.switchboard.TopologyProcessQueue.RemovalCache;
 import com.quattage.mechano.api.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;
@@ -100,13 +98,18 @@ public interface ActionTask {
 
 
     /**
-     * Always guaranteed to occur with the right timings to avoid
-     * concurrent modifications to the ServerGrid's topology.
-     * Any tasks that directly modify the indexer, netlist, vectors, 
-     * or component states must defer their implementations 
-     * to this method.
+     * This method is guaranteed to be called at the right time 
+     * to avoid concurrent modifications to the ServerGrid's 
+     * topology. Any tasks that directly modify the indexer, 
+     * netlist, vectors, or component states must defer their 
+     * implementations to this method, rather than directly in
+     * {@link #executeAsServer}
+     * @param grid to operate within
+     * @param removals A container to mark nodes and links for removal - The grid will handle removing them for you
+     * @param args Any number of wrapped arguments
+     * @return A {@link GridAction action} to indicate the success/failure of this execution
      */
-    default GridAction executeTopological(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints, Object[] args) {
+    default GridAction executeTopological(ServerGrid grid, RemovalCache removals, Object[] args) {
         return GridAction.NONE;
     }
 

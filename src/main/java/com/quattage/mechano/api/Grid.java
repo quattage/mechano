@@ -12,7 +12,7 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.topology.NetlistLookup;
-import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
+import com.quattage.mechano.api.grid.topology.landmark.link.ComponentLink;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.api.transmitter.TransmitterType;

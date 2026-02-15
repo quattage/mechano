@@ -1,0 +1,90 @@
+package com.quattage.mechano.api.grid.topology.landmark.link;
+
+import java.util.Objects;
+
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.api.grid.HierarchicalConstruct.SourceProvider;
+import com.quattage.mechano.api.grid.topology.landmark.Node;
+
+public class NodePair implements SourceProvider {
+    
+    protected Node a;
+    protected Node b;
+
+    public NodePair() {}
+
+    public NodePair(Node a, Node b) {
+        this.a = a;
+        this.b = b;
+    }
+
+    public Node getNodeA() {
+        return a;
+    }
+
+    public Node getNodeB() {
+        return b;
+    }
+
+    public Griddable<?> getSourceA() {
+        return GridTracking.getSource(a);
+    }
+
+    public Griddable<?> getSourceB() {
+        return GridTracking.getSource(b);
+    }
+
+    @Override
+    public GridReferent<?> getProviderSource() {
+        return getSourceA();
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        if(this == obj) return true;
+        if(!(obj instanceof NodePair that)) return false;
+        return (this.a == that.a && this.b == that.b) || (this.a == that.b && this.b == that.a);
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hash(a, b);
+    }
+
+
+    protected void assertHasSources() {
+        if(a.getProviderSource() == null) {
+            throw new IllegalStateException("An operation failed on " + this 
+                + " - The starting jack has no source! (This instance potentially leaked)");
+        }
+        if(b.getProviderSource() == null) {
+            throw new IllegalStateException("An operation failed on " + this 
+                + " - The ending jack has no source! (This instance potentially leaked)");
+        }
+    }
+
+    protected void assertNonConflict() {
+        if(a == b) {
+            throw new IllegalStateException("An operation failed on " + this 
+                + " - The starting and ending AncillaryNode<?> instances are identical!");
+        }
+    }
+
+    protected void assertHasNodes() {
+        if(a == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - The starting jack is null! (It was never assigned using assignStart())");
+        }
+        if(b == null) {
+            throw new NullPointerException("An operation failed on ComponentLink " + this 
+                + " - The ending jack is null! (It was never assigned using assignEnd())");
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "NodePair[ " + a + "  ->  " + b + " ]";
+    }
+}

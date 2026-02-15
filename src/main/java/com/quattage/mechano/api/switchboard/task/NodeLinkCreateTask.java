@@ -12,11 +12,11 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.link.ComponentLink;
+import com.quattage.mechano.api.switchboard.TopologyProcessQueue.RemovalCache;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.transmitter.SpoolItem;
@@ -141,26 +141,40 @@ public class NodeLinkCreateTask implements ActionTask {
     }
 
     @Override
-    public GridAction executeTopological(ServerGrid grid, Set<Node> removedNodes, Set<NodePair> disjoints, Object[] args) {
+    public GridAction executeTopological(ServerGrid grid, RemovalCache removals, Object[] args) {
+
         AncillaryPair link = (AncillaryPair) args[0];
         Griddable<?> startSource = GridTracking.getSource(link.getStartAncillary());
         Griddable<?> endSource =  GridTracking.getSource(link.getEndAncillary());
+        GridDomain domain = getDomain(grid, link.getStartNode().getDomainIndex(), link.getEndNode().getDomainIndex());
+
         if(link instanceof ComponentLink<?> cl) {
-            cl.applyUnions(grid);
-            // TODO register component with 
+            cl.applyUnions(domain);
             grid.initiateTask(GridAction.TASK_LINK_CREATE)
                 .targeting(startSource, endSource)
                 .withArguments(link.getStartID(), link.getEndID(), cl.getTransmitter(), args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
                 .executeOnClients();
         } else {
-            UnionFactory.perfectConductor(grid, link.getStartAncillary(), link.getEndAncillary());
+            UnionFactory.perfectConductor(domain, link);
             grid.initiateTask(GridAction.TASK_LINK_CREATE)
                 .targeting(startSource, endSource)
                 .withArguments(link.getStartID(), link.getEndID(), null, args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
                 .executeOnClients();
         }
-        link.MNAAllocate(grid);
+        link.MNAAllocate(grid, domain);
         grid.lookup().add(grid, link);
+        domain.markDirty();
         return GridAction.RESPONSE_SUCCESS;
+    }
+
+    private GridDomain getDomain(ServerGrid grid, int a, int b) {
+        if(a < 0 && b >= 0) return grid.domains().get(b);
+        if(b < 0 && a >= 0) return grid.domains().get(a);
+        if(b < 0 && a < 0) return grid.makeFreshDomain();
+        if(a == b) return grid.domains().get(a);
+        GridDomain aD = grid.domains().get(a);
+        GridDomain bD = grid.domains().remove(b);
+        aD.mergeWith(bD, b);
+        return aD;
     }
 }

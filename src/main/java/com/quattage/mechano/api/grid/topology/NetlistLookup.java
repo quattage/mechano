@@ -18,8 +18,8 @@ import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;

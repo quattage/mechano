@@ -20,8 +20,8 @@ import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.landmark.BlockJack;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.switchboard.JackSelector;
 import com.quattage.mechano.foundation.WorldlyObject;
 

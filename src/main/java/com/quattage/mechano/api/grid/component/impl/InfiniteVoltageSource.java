@@ -4,8 +4,8 @@ import com.quattage.mechano.api.grid.VoltageDecay;
 
 public class InfiniteVoltageSource extends VoltageSource {
 
-    public InfiniteVoltageSource(String name, float defaultVolts) {
-        super(name, new VoltageDecay.Constant(defaultVolts));
+    public InfiniteVoltageSource(float defaultVolts) {
+        super("InfiniteVoltageSource", new VoltageDecay.Constant(defaultVolts));
     }
 
     public void setVolts(float volts) {

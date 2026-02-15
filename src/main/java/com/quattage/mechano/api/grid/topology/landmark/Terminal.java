@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import javax.annotation.Nullable;
 
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
@@ -12,6 +13,7 @@ import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.foundation.Disposable;
 
 public class Terminal implements CircuitComponent, HierarchicalConstruct, TerminalProvider, Disposable {
@@ -72,6 +74,12 @@ public class Terminal implements CircuitComponent, HierarchicalConstruct, Termin
     }
 
     @Override
+    public int getDomainIndex() {
+        assertNotDisposed();
+        return connected.getDomainIndex();
+    }
+
+    @Override
     public String toString() {
         return instantiator == null ? "No owner" : instantiator.getComponentID() + "'s '" + getComponentID() + "'";
     }
@@ -99,6 +107,18 @@ public class Terminal implements CircuitComponent, HierarchicalConstruct, Termin
     }
 
     @Override
+    public void MNAAllocate(ServerGrid grid, GridDomain domain) {
+        assertNotDisposed();
+        instantiator.MNAAllocate(grid, domain);
+    }
+
+    @Override
+    public void MNADeallocate(ServerGrid grid, GridDomain domain) {
+        assertNotDisposed();
+        instantiator.MNADeallocate(grid, domain);
+    }
+
+    @Override
     public Terminal[] getTerminals() {
         return new Terminal[] { this };
     }
@@ -114,6 +134,6 @@ public class Terminal implements CircuitComponent, HierarchicalConstruct, Termin
 
     @Override
     public boolean hasBeenDisposed() {
-        return componentID.endsWith("(disposed)");
+        return instantiator == null;
     }
 }

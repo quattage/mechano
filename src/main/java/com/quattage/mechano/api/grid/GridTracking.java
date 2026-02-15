@@ -30,9 +30,9 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent;
 import com.quattage.mechano.api.grid.component.DiscreteComponent.NodeStub;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.ComponentLink;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.link.ComponentLink;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 

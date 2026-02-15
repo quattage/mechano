@@ -4,28 +4,28 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
-import com.quattage.mechano.api.grid.solver.NodalSolver;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 public class HeatingElement extends Resistor implements NeedsPostProcessing {
 
     private final @Nullable CurrentChangeCallback cc;
-    private double current;
+    private @Nullable PowerState previous;
+    private final PowerState state = new PowerState();
 
     public HeatingElement(float ohms) { this(ohms, null); }
     public HeatingElement(float ohms, CurrentChangeCallback cc) {
-        super(ohms);
+        super("HeatingElement", ohms);
         this.cc = cc;
     }
 
     @Override
-    public void postProcess(ServerGrid grid) {
-        double r = (double)getResistance();
-        double i = (voltageOf(grid, pinA()) - voltageOf(grid, pinB())) / r;
-        double newCurrent = i * i * r;
-        if(cc != null && Math.abs(this.current - newCurrent) < NodalSolver.EPSILON)
-            cc.onCurrentUpdated(grid, newCurrent, newCurrent);
-        this.current = newCurrent;
+    public void postProcess(ServerGrid grid, GridDomain domain) {
+        previous = state.copy();
+        state.volts(voltageOf(domain, pinA()) - voltageOf(domain, pinB()));
+        state.amps(state.volts() / (double)getResistance());
+        if(cc != null && !state.equals(previous))
+            cc.onCurrentUpdated(grid, previous, state);
     }
 
     @Override
@@ -36,5 +36,9 @@ public class HeatingElement extends Resistor implements NeedsPostProcessing {
     @Override
     public @Nullable Terminal pinB() {
         return terminals[1];
+    }
+
+    public PowerState getPowerState() {
+        return state;
     }
 }

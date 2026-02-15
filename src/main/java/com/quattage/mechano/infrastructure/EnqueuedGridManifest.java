@@ -13,6 +13,8 @@ import org.apache.commons.lang3.time.StopWatch;
 import com.quattage.mechano.MechanoBuildParameters;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.topology.GridDomain;
+import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.infrastructure.ReflectionWizard.DoNotAnalyze;
 
 import net.minecraft.ChatFormatting;
@@ -25,7 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 @DoNotAnalyze
-public class EnqueuedGridManifest {
+public class EnqueuedGridManifest implements Disposable {
 
     private static final String FILE = "dumps\\grid_manifest.log";
 
@@ -68,7 +70,7 @@ public class EnqueuedGridManifest {
     public static String getImmediately(ServerGrid grid) {
         EnqueuedGridManifest result = new EnqueuedGridManifest(grid);
         String output = result.resultString;
-        result.consume();
+        result.dispose();
         return output;
     }
 
@@ -88,12 +90,14 @@ public class EnqueuedGridManifest {
                 + "requested at [" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()) + "]"
                 + " by '" + (requester == null ? "n/a" : requester.getName().getString()) + "' in " + grid.getDimensionName() + "\n"
                 + "solver method: " + grid.getSolver().describeSelf() + "\n"
-                + "lifecycle status: " + grid.getStatusHolder() + "\n"
-                + "unsaved changes for this session? " + (grid.getProcessQueue().hasUnsavedChanges() ? "yes" : "no") + "\n"
-                + "ground: " + (grid.getCommonGround() == null ? "not yet instantiated" : grid.getCommonGround().hashCode()) + "\n"
-                + "memory footprint analysis: " + ReflectionWizard.estimateFootprint(grid) + "\n--\n\n"
-                + "indexer: " + grid.indexer().toString() + "\n\n"
-                + "netlist:" + grid.netlist().toFullString(grid) + "\n\n"
+                + "lifecycle status: " + grid.statusHolder() + "\n"
+                + "--\n";
+            if(grid.domains().isEmpty()) out += "empty\n\n";
+            else {
+                for(GridDomain domain : grid.domains())
+                    out += writeDomain(domain);
+            }
+            out += "::::\n\n"
                 + "links:" + grid.lookup().toString() + "\n\n"
                 + "--\n"
                 + "  ♨ github.com/quattage/mechano\n"
@@ -102,11 +106,19 @@ public class EnqueuedGridManifest {
         return out += "\n▛▞▖▖\t\t\t\t       Manifest generated in " + DurationFormatUtils.formatDuration(timer.getTime(), "ss.SSS") + "s    \t\t\t\t▗▗▚▜ \n";
     }
 
+    private String writeDomain(GridDomain domain) {
+        int idx = grid.domains().indexOf(domain);
+        String out = "::::\ndomain " + idx + "\n";
+        out += "indexer: " + domain.indexer().toString() + "\n"
+            + "netlist:" + domain.netlist().toFullString(grid, domain) + "\n";
+        return out;
+    }
+
     public void tick() {
         if(isConsumed()) return;
         if(hasResult() || manifestFuture.isDone() || manifestFuture.isCancelled()) {
             save();
-            consume();
+            dispose();
             return;
         }
         if(requester instanceof ServerPlayer sp)
@@ -144,13 +156,21 @@ public class EnqueuedGridManifest {
         return abspath.substring(0, abspath.length() - 1) + EnqueuedGridManifest.FILE;
     }
 
-    public void consume() {
+    @Override
+    public void dispose() {
+        if(manifestFuture != null)
+            manifestFuture.cancel(true);
         this.throbber = null;
         this.requester = null;
         this.grid = null;
         this.manifestFuture = null;
         this.resultString = null;
         tickTime = 0;
+    }
+
+    @Override
+    public boolean hasBeenDisposed() {
+        return requester == null;
     }
 
     private void promptPlayer(ServerPlayer sp) {

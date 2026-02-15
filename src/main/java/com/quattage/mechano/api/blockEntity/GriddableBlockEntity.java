@@ -17,7 +17,7 @@ import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.Circuit;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryPair;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
 

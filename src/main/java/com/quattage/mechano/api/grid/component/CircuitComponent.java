@@ -3,6 +3,7 @@ package com.quattage.mechano.api.grid.component;
 import java.util.function.Consumer;
 
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.MNAIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
@@ -44,12 +45,14 @@ public interface CircuitComponent {
     }
 
     /**
-     * Used to determine wether or not this component is near a grounding node and as
-     * such should be treated specially when merging/simulating
+     * Used to determine whether or not this component connected to or directly represents
+     * a reference node and as such should be treated specially when merging/simulating
      * @return <code>true</code> if this component represents or is directly attached to
-     * a ground source
+     * a ground/reference source
      */
     boolean isGrounded();
+
+    int getDomainIndex();
 
     /**
      * Fills this component with energy, if this 
@@ -75,7 +78,7 @@ public interface CircuitComponent {
      * @param grid to pull the {@link MNAIndexer indexer} from
      * @see #MNADeallocate
      */
-    default void MNAAllocate(ServerGrid grid) {
+    default void MNAAllocate(ServerGrid grid, GridDomain domain) {
         grid.warn("Attempted to allocate " + this + " but this component doesn't have any allocation implementation.");
     }
 
@@ -89,7 +92,7 @@ public interface CircuitComponent {
      * @param grid to pull the {@link MNAIndexer indexer} from
      * @see #MNAAllocate
      */
-    default void MNADeallocate(ServerGrid grid) {
+    default void MNADeallocate(ServerGrid grid, GridDomain domain) {
         grid.warn("Attempted to de-allocate " + this + " but this component doesn't have any allocation implementation.");
     }
 

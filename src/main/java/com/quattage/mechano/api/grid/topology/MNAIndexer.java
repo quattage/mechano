@@ -4,6 +4,7 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
@@ -17,12 +18,36 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * analysis (MNA) as {@link StampingComponent} instances allocate their own space in 
  * the B vector.
  */
-public class MNAIndexer {
+public class MNAIndexer implements StampsDynamically {
     
     private @Nullable Set<StampingComponent> allStampers;
     private @Nullable Object2IntOpenHashMap<StampsDynamically> sourceIndices;
     private @Nullable Object2IntOpenHashMap<Node> nodeIndices;
     private int cursor;
+
+    public static MNAIndexer concatenate(MNAIndexer a, MNAIndexer b) {
+        if(a.allStampers.size() > b.allStampers.size()) {
+            a.allStampers.addAll(b.allStampers);
+            if(b.sourceIndices != null) {
+                a.getSourceIndices().ensureCapacity(a.sourceIndices.size() + b.sourceIndices.size());
+                for(StampsDynamically sd : b.sourceIndices.keySet())
+                    a.add(sd);
+
+            }
+            a.nodeIndices = null;
+            b.clear();
+            return a;
+        }
+        b.allStampers.addAll(a.allStampers);
+        if(a.sourceIndices != null) {
+        b.getSourceIndices().ensureCapacity(a.sourceIndices.size() + b.sourceIndices.size());
+            for(StampsDynamically sd : a.sourceIndices.keySet())
+                b.add(sd);
+        }
+        b.nodeIndices = null;
+        a.clear();
+        return b;
+    }
 
     public MNAIndexer() {}
 
@@ -33,6 +58,12 @@ public class MNAIndexer {
         if(size == 0) return;
         if(size < 0) throw new IllegalArgumentException("Attempted to allocate a negative number for " + component + "!");
         getSourceIndices().put(sd, cursor);
+        cursor += (size - 1);
+    }
+
+    private void add(StampsDynamically sd) {
+        int size = sd.getAllocations();
+        sourceIndices.put(sd, cursor);
         cursor += (size - 1);
     }
 
@@ -48,12 +79,7 @@ public class MNAIndexer {
             throw new IllegalStateException("Couldn't get source index for stamper " 
                 + component + " - This indexer doesn't contain any allocations!");
         }
-        int output = sourceIndices.getOrDefault(component, -1);
-        if(output < 0) {
-            throw new IllegalArgumentException("Couldn't get stamping index for stamper" 
-                + component + " - This component hasn't been allocated in this indexer!");
-        }
-        return output;
+        return sourceIndices.getOrDefault(component, -1);
     }
 
     public boolean add(Node node, int index) {
@@ -88,16 +114,26 @@ public class MNAIndexer {
         return allStampers;
     }
 
+    public void stamp(ServerGrid grid, GridDomain domain) {
+        if(!hasStampers()) return;
+        for(StampingComponent component : allStampers)
+            component.stamp(grid, domain);
+    }
+
+    @Override
+    public void stampDynamic(ServerGrid grid, GridDomain domain) {
+        if(sourceIndices == null || sourceIndices.isEmpty()) return;
+        for(StampsDynamically dyn : sourceIndices.keySet())
+            dyn.stampDynamic(grid, domain);
+    }
+
+    @Override
+    public int getAllocations() {
+        return cursor;
+    }
+
     public int sourceCount() {
         return sourceIndices == null ? 0 : sourceIndices.size();
-    }
-
-    public int nodeCount() {
-        return nodeIndices == null ? 0 : nodeIndices.size();
-    }
-
-    public int size() {
-        return sourceCount() + nodeCount();
     }
 
     public boolean hasStampers() {
@@ -114,7 +150,7 @@ public class MNAIndexer {
             HierarchicalConstruct parent = component.getParentConstruct();
             out += "    type: " + component.getHierarchyType() + ", owned by " + (parent == null ? " n/a" : parent.getClass().getSimpleName()) + "\n";
             if(!(component instanceof StampsDynamically sd)) {
-                out += "     [no dynamic allocations]";
+                out += "    [no dynamic allocations]\n";
                 continue;
             }
             int allocs = sd.getAllocations();

@@ -327,8 +327,6 @@ public class CatenaryMeshBuffer implements WorldlyObject {
         return this;
     }
 
-    
-
     private float fastinvsqrt(float x) {
         float xh = 0.5f * x;
         int xi = 0x5f3759df - (Float.floatToIntBits(x) >> 1);

@@ -18,8 +18,12 @@ import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.NodePair;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.createmod.catnip.data.Pair;
 import net.minecraft.core.BlockPos;
@@ -40,7 +44,6 @@ public class NodeUnionSet {
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> transitiveTree;   // union-find transitive access (semi-cyclic)
     protected Object2ObjectOpenHashMap<Node, ObjectOpenHashSet<Node>> adjacencyTree;    // adjacency matrix (undirected, non-cyclic)
     protected Object2ObjectOpenHashMap<Node, Node> relations;                           // union-find discoverability (cyclic)
-    private boolean includesGround = false;
 
     public NodeUnionSet() {
         this(32);
@@ -52,7 +55,30 @@ public class NodeUnionSet {
         adjacencyTree = new Object2ObjectOpenHashMap<>(size);
     }
 
-    public void finalizeTopology(MNAIndexer indexer) {
+    public static NodeUnionSet concatenate(NodeUnionSet a, NodeUnionSet b, int idx) {
+        Objects.requireNonNull(a);
+        Objects.requireNonNull(b);
+        a.adjacencyTree.putAll(b.adjacencyTree);
+        a.transitiveTree.putAll(b.transitiveTree);
+        a.mergeAndFix(b.relations, idx);
+        return a;
+    }
+
+    private void mergeAndFix(Object2ObjectOpenHashMap<Node, Node> otherRelations, int idx) {
+        ObjectIterator<Object2ObjectMap.Entry<Node, Node>> iter = 
+            Object2ObjectMaps.fastIterator((Object2ObjectMap<Node, Node>)otherRelations);
+        this.relations.ensureCapacity(this.relations.size() + otherRelations.size());
+        while(iter.hasNext()) {
+            final Object2ObjectMap.Entry<Node, Node> entry = iter.next();
+            Node key = entry.getKey();
+            Node value = entry.getValue();
+            key.setDomainIndex(idx);
+            value.setDomainIndex(idx);
+            this.relations.put(key, value);
+        }
+    }
+
+    public void finalizeTopology(GridDomain domain, int domainIndex) {
         if(isEmpty()) return;
         int index = 0;
         final Set<Node> orphans = new HashSet<>(transitiveTree.size() / 2);
@@ -61,13 +87,15 @@ public class NodeUnionSet {
             Set<Node> branchTopo = branch.getValue();
             if(branchTopo == null || branchTopo.isEmpty()) {
                 orphans.add(head);
-                indexer.remove(head);
+                domain.indexer().remove(head);
                 continue;
             }
-            indexer.add(head, index);
+            domain.indexer().add(head, index);
+            head.setDomainIndex(domainIndex);
             for(Node leaf : branchTopo) {
                 if(leaf == null) continue;
-                indexer.add(leaf, head.isGrounded() ? -1 : index);
+                domain.indexer().add(leaf, head.isGrounded() ? -1 : index);
+                leaf.setDomainIndex(domainIndex);
             }
             index++;
         }
@@ -153,8 +181,6 @@ public class NodeUnionSet {
      * @param b node
      */
     public boolean loadUnion(Node a, Node b) {
-        if(a.isGrounded() || b.isGrounded()) 
-            includesGround = true;
         relations.put(a, a);
         adjacentJoin(a, b);
         return true;
@@ -216,10 +242,9 @@ public class NodeUnionSet {
      * @param nodes A collection of {@link NodePair} objects representing unions to remove.
      * @see #removeAll
      */
-    public void massRemove(@Nullable Collection<Node> nodesToRemove, @Nullable Collection<NodePair> unionsToRemove) {
+    public void massRemove(ServerGrid grid, @Nullable Collection<Node> nodesToRemove, @Nullable Collection<NodePair> unionsToRemove) {
         final Map<Node, Pair<Node, Node[]>> affected = new HashMap<>();
-        
-        if(nodesToRemove != null) {
+        if(nodesToRemove != null && !nodesToRemove.isEmpty()) {
             for(Node removed : nodesToRemove) {
                 if(removed == null) continue;
                 Node root = find(removed);
@@ -227,9 +252,9 @@ public class NodeUnionSet {
                 affected.put(root, Pair.of(removed, null));
             }
         }
-        if(unionsToRemove != null) {
+        if(unionsToRemove != null && !unionsToRemove.isEmpty()) {
             for(NodePair pair : unionsToRemove) {
-                Node root = find(pair.a);
+                Node root = find(pair.getNodeA());
                 if(root == null) continue;
                 affected.put(root, Pair.of(root, null));
             }
@@ -240,13 +265,13 @@ public class NodeUnionSet {
         }
         if(unionsToRemove != null) {
             for(NodePair pair : unionsToRemove) {
-                disjoin(pair.a, pair.b);
-                if(!hasConnections(pair.a)) remove(pair.a);
-                if(!hasConnections(pair.b)) remove(pair.b);
+                disjoin(pair.getNodeA(), pair.getNodeB());
+                if(!hasConnections(pair.getNodeB())) remove(pair.getNodeA());
+                if(!hasConnections(pair.getNodeA())) remove(pair.getNodeB());
             }
         }
         if(nodesToRemove != null) for(Node toRemove : nodesToRemove) {
-            List<NodePair> removed = removeNodeAndGet(toRemove);
+            List<NodePair> removed = removeNodeAndGet(grid, toRemove);
             if(removed != null) unionsToRemove.addAll(removed);
         }
         for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet())
@@ -370,7 +395,7 @@ public class NodeUnionSet {
         }
     }
 
-    private List<NodePair> removeNodeAndGet(Node node) {
+    private List<NodePair> removeNodeAndGet(ServerGrid grid, Node node) {
         relations.remove(node);
         Set<Node> connected = adjacencyTree.remove(node);
         if(connected == null) return null;
@@ -415,7 +440,6 @@ public class NodeUnionSet {
         relations.put(node, node);
         transitiveTree.put(node, null);
         adjacencyTree.put(node, null);
-        if(node.isGrounded()) includesGround = true;
         return true;
     }
 
@@ -504,7 +528,7 @@ public class NodeUnionSet {
      * @see #deepSize
      */
     public int size() {
-        return Math.max(0, transitiveTree.size() - (includesGround ? 1 : 0));
+        return transitiveTree.size();
     }
 
     /**
@@ -546,62 +570,50 @@ public class NodeUnionSet {
         adjacencyTree.ensureCapacity(cap);
     }
 
-    public String toFullString(ServerGrid grid) {
+    public String toFullString(ServerGrid grid, GridDomain domain) {
         if(isEmpty()) return "\n  Empty";
         String out = "";
         Griddable<?> src = null;
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
-            out += "\n  ▸" + summarizeNode(root, grid.indexer());
+            out += "\n  ▸" + summarizeNode(root, domain.indexer());
             src = GridTracking.getSource(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
                 out += "\n    Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
             } else out += "\n    Owned by anonymous source";
-            out += "\n    Parented to: " + summarizeNode(relations.get(root), grid.indexer());
+            out += "\n    Parented to: " + summarizeNode(relations.get(root), domain.indexer());
             if(contents == null || contents.isEmpty()) {
                 out += "\n    0 children [[!! Stub !!]]";
                 continue;
             }
             out += "\n    " + contents.size() + " children:";
             for(Node child : contents) {
-                out += "\n      " + summarizeNode(child, grid.indexer());
+                out += "\n      " + summarizeNode(child, domain.indexer());
                 src = GridTracking.getSource(grid.getWorld(), child);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
                     out += "\n        Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
                 } else out += "\n        Owned by anonymous source";
-                out += "\n        Parented to: " + summarizeNode(relations.get(child), grid.indexer());
+                out += "\n        Parented to: " + summarizeNode(relations.get(child), domain.indexer());
             }
+        }
+        return out;
+    }
+
+    @Override
+    public String toString() {
+        String out = "";
+        for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
+            out += ">> " + entry.getKey().getComponentID() + "\n";
+            for(Node node : entry.getValue())
+                out += "   - " + node.getComponentID() + "\n";
         }
         return out;
     }
 
     private String summarizeNode(@Nullable Node node, MNAIndexer indexer) {
         return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + indexer.indexOf(node) + ",  #" + node.hashCode() + ")";
-    }
-
-    public static record NodePair(Node a, Node b) {
-
-        @Override
-        public final boolean equals(Object obj) {
-            if(this == obj) return true;
-            if(!(obj instanceof NodePair that)) return false;
-            return (this.a == that.a && this.b == that.b) || (this.a == that.b && this.b == that.a);
-        }
-
-        public Griddable<?> aSource() {
-            return GridTracking.getSource(a);
-        }
-
-        public Griddable<?> bSource() {
-            return GridTracking.getSource(b);
-        }
-
-        @Override
-        public final int hashCode() {
-            return a.hashCode() & b.hashCode();
-        }
     }
 }

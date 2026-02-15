@@ -1,6 +1,7 @@
 package com.quattage.mechano;
 
 import com.quattage.mechano.content.connector.SingleConnectorBlock;
+import com.quattage.mechano.content.creative.CreativeSinkBlock;
 import com.quattage.mechano.content.creative.CreativeVoltaplastBlock;
 import com.quattage.mechano.infrastructure.datagen.DynamicStateGenerator;
 import com.simibubi.create.foundation.data.ModelGen;
@@ -36,6 +37,15 @@ public class MechanoBlocks {
             .item()
             .transform(ModelGen.customItemModel("creative_voltaplast", "base"))
             .register();
+    public static final BlockEntry<CreativeSinkBlock> CREATIVE_SINK = 
+        Mechano.REGISTRATE.block("creative_sink", CreativeSinkBlock::new)
+            .initialProperties(() -> Blocks.NETHERITE_BLOCK)
+            .transform(TagGen.pickaxeOnly())
+            .blockstate(new DynamicStateGenerator()::generate)
+            .item()
+            .transform(ModelGen.customItemModel("creative_sink", "base"))
+            .register();
+
 
     public static void register(IEventBus modBus) {
         Mechano.LOGGER.debug("registering blocks");

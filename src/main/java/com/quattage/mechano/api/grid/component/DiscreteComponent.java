@@ -9,6 +9,7 @@ import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
 
@@ -62,7 +63,6 @@ public abstract class DiscreteComponent implements CircuitComponent, Hierarchica
         parent = null;
     }
 
-
     public static class NodeStub extends DiscreteComponent {
 
         private Node node;
@@ -98,13 +98,19 @@ public abstract class DiscreteComponent implements CircuitComponent, Hierarchica
         }
 
         @Override
-        public void MNAAllocate(ServerGrid grid) {
-            
+        public void MNAAllocate(ServerGrid grid, GridDomain domain) {
+            // ignored safely
         }
 
         @Override
-        public void MNADeallocate(ServerGrid grid) {
-            
+        public void MNADeallocate(ServerGrid grid, GridDomain domain) {
+            // ignored safely
+        }
+
+        @Override
+        public int getDomainIndex() {
+            assertNotDisposed();
+            return node.getDomainIndex();
         }
 
         @Override

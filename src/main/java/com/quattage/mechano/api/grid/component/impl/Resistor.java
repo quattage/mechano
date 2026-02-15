@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.component.StampingComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 public class Resistor extends StampingComponent {
@@ -12,6 +13,11 @@ public class Resistor extends StampingComponent {
 
     public Resistor(float ohms) {
         super("Resistor");
+        this.ohms = ohms;
+    }
+
+    protected Resistor(String name, float ohms) {
+        super(name);
         this.ohms = ohms;
     }
 
@@ -28,15 +34,15 @@ public class Resistor extends StampingComponent {
     }
 
     @Override
-    public void stamp(ServerGrid grid) {
+    public void stamp(ServerGrid grid, GridDomain domain) {
         double g = 1d / (double)ohms;
-        int aI = indexOf(grid, pinA());
-        int bI = indexOf(grid, pinB());
-        if(aI >= 0) grid.stampA(aI, aI, g);
-        if(bI >= 0) grid.stampA(bI, bI, g);
+        int aI = indexOf(domain, pinA());
+        int bI = indexOf(domain, pinB());
+        if(aI >= 0) domain.stampA(aI, aI, g);
+        if(bI >= 0) domain.stampA(bI, bI, g);
         if(aI >= 0 && bI >= 0) {
-            grid.stampA(aI, bI, -g);
-            grid.stampA(bI, aI, -g);
+            domain.stampA(aI, bI, -g);
+            domain.stampA(bI, aI, -g);
         }
     }
 

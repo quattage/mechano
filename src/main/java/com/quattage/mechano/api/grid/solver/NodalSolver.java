@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
 import net.minecraft.util.StringRepresentable;
@@ -20,8 +21,10 @@ import net.minecraft.util.StringRepresentable;
  */
 public interface NodalSolver {
 
+    double DELTA = 0.05d;
     double EPSILON = 0.001d;
     int STEP_LIMIT = 255;
+    double G_MIN = 1e-12d;
 
     /** 
      * @return A string describing the method used for this solver
@@ -34,7 +37,7 @@ public interface NodalSolver {
      * but is not called every tick.
      * @param grid
      */
-    void initialize(ServerGrid grid);
+    void initialize(ServerGrid grid, GridDomain domain);
 
     /**
      * Runs this solver until completeion, either
@@ -44,7 +47,7 @@ public interface NodalSolver {
      * @param snapshot
      * @return <code>SOLVED</code> if convergence was reached
      */
-    ConvergenceStatus run(ServerGrid grid);
+    ConvergenceStatus run(ServerGrid grid, GridDomain domain);
 
     /**
      * Used when a world is unloaded to ensure that the footprint of this solver is minimized.
@@ -53,14 +56,14 @@ public interface NodalSolver {
 
     public enum ConvergenceStatus implements StringRepresentable {
 
-        FINISHED_SOLVED_EARLY(true),
+        FINISHED_SOLVED(true),
         FINISHED_SOLVED_LATE(true),
         FINISHED_LIMIT_REACHED(false),
         ABORTED_PROBLEMATIC_DATA(false),
         ABORTED_GENERIC_ERROR(false),
         REFRESHING_TOPOLOGY(false),
         LOADING(false),
-        COMPUTING_SOLUTION(false),
+        LIVE(false),
         IDLE(false),
         UNLOADED(false),
         NONE(false);

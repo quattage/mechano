@@ -1,4 +1,4 @@
-package com.quattage.mechano.api.grid.topology.landmark;
+package com.quattage.mechano.api.grid.topology.landmark.link;
 
 import java.util.Objects;
 
@@ -10,11 +10,12 @@ import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.catenary.CatenaryMeshBuffer;
 import com.quattage.mechano.api.catenary.model.CatenaryModel;
 import com.quattage.mechano.api.catenary.model.SimulatedCatenary;
-import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
+import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.transmitter.TransmitterType;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 
@@ -54,7 +55,7 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
 
     @Override
     public ComponentLink<T> flippedCopy() {
-        return new ComponentLink<T>(component, trns, endID, endAnc, startID, startAnc);
+        return new ComponentLink<T>(component, trns, endID, (AncillaryNode<?>) b, startID, (AncillaryNode<?>) a);
     }
 
     /**
@@ -69,8 +70,8 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
         return component;
     }
 
-    public @Nullable CircuitComponent applyUnions(ServerGrid grid) {
-        this.component = TransmitterType.applyUnion(grid, trns.getFactory(), this, getStartAncillary(), getEndAncillary());
+    public @Nullable CircuitComponent applyUnions(GridDomain domain) {
+        this.component = TransmitterType.applyUnion(domain, trns.getFactory(), this, this);
         return this.component;
     }
 
@@ -91,15 +92,15 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
     }
 
     @Override
-    public void MNAAllocate(ServerGrid grid) {
-        super.MNAAllocate(grid);
-        if(component != null) component.MNAAllocate(grid);
+    public void MNAAllocate(ServerGrid grid, GridDomain domain) {
+        super.MNAAllocate(grid, domain);
+        if(component != null) component.MNAAllocate(grid, domain);
     }
 
     @Override
-    public void MNADeallocate(ServerGrid grid) {
-        super.MNADeallocate(grid);
-        if(component != null) component.MNADeallocate(grid);
+    public void MNADeallocate(ServerGrid grid, GridDomain domain) {
+        super.MNADeallocate(grid, domain);
+        if(component != null) component.MNADeallocate(grid, domain);
     }
 
     @Override
@@ -135,7 +136,7 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
     @OnlyIn(Dist.CLIENT)
     public CatenaryModel<?> initializeCatenary() {
         catenary = new SimulatedCatenary();
-        catenary.setOffset(trns, startAnc.getRealPosition(), endAnc.getRealPosition())
+        catenary.setOffset(trns, getStartAncillary().getRealPosition(), getEndAncillary().getRealPosition())
             .initializeSpan()
             .calculateSegmentation(trns)
             .pinEndpoints();
@@ -151,12 +152,12 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
 
     @Override
     public void tick(LevelReader world) {
-        assertHasAncillaries();
-        Griddable<?> startSource = GridTracking.getSource(startAnc);
-        Griddable<?> endSource = GridTracking.getSource(endAnc);
+        assertHasNodes();
+        Griddable<?> startSource = getSourceA();
+        Griddable<?> endSource = getSourceB();
         if(startSource == null || endSource == null) return;
-        Vector3d startPos = startAnc.getRealPosition();
-        Vector3d endPos =  endAnc.getRealPosition();
+        Vector3d startPos = getStartAncillary().getRealPosition();
+        Vector3d endPos =  getEndAncillary().getRealPosition();
         getCatenary(world).setOffset(trns, startPos, endPos);
         getCatenary(world).update(trns);
     }

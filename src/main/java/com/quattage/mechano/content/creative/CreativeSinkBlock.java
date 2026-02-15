@@ -11,9 +11,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-public class CreativeVoltaplastBlock extends BlockWithConnections<CreativeVoltaplastBlockEntity> {
+public class CreativeSinkBlock extends BlockWithConnections<CreativeSinkBlockEntity> {
 
-    public CreativeVoltaplastBlock(Properties pProperties) {
+    public CreativeSinkBlock(Properties pProperties) {
         super(pProperties);
     }
 
@@ -24,18 +24,18 @@ public class CreativeVoltaplastBlock extends BlockWithConnections<CreativeVoltap
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return MechanoHitboxes.CREATIVE_VOLTAPLAST.get(state);
+        return MechanoHitboxes.CREATIVE_SINK.get(state);
     }
 
     @Override
-    public Class<CreativeVoltaplastBlockEntity> getBlockEntityClass() {
-        return CreativeVoltaplastBlockEntity.class;
+    public Class<CreativeSinkBlockEntity> getBlockEntityClass() {
+        return CreativeSinkBlockEntity.class;
     }
 
     @Override
-    public BlockEntityType<? extends CreativeVoltaplastBlockEntity> getBlockEntityType() {
-        return MechanoBlockEntities.CREATIVE_VOLTAPLAST.get();
+    public BlockEntityType<? extends CreativeSinkBlockEntity> getBlockEntityType() {
+        return MechanoBlockEntities.CREATIVE_SINK.get();
     }
 
-
+    
 }

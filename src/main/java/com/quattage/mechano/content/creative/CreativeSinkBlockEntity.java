@@ -1,8 +1,11 @@
 package com.quattage.mechano.content.creative;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.quattage.mechano.Mechano;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.api.grid.component.CircuitFactory;
-import com.quattage.mechano.api.grid.component.impl.InfiniteVoltageSource;
+import com.quattage.mechano.api.grid.component.impl.HeatingElement;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.block.orientation.Relative;
 
@@ -10,19 +13,28 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class CreativeVoltaplastBlockEntity extends GriddableBlockEntity {
+public class CreativeSinkBlockEntity extends GriddableBlockEntity {
 
-    public CreativeVoltaplastBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    private @Nullable HeatingElement heater;
+
+    public CreativeSinkBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if(getWorld().isClientSide) return;
+        Mechano.LOGGER.warn("" + heater.getPowerState());
     }
 
     @Override
     public void constructCircuit(CircuitFactory circuit) {
         Node positive = circuit.newNode("positive");
         Node negative = circuit.newNode("negative");
-        InfiniteVoltageSource battery = circuit.supply(new InfiniteVoltageSource(12f));
-        circuit.solder(positive, battery.positive());
-        circuit.solder(negative, battery.negative());
+        heater = circuit.supply(new HeatingElement(2));
+        circuit.solder(positive, heater.positive());
+        circuit.solder(negative, heater.negative());
         circuit.blockJack("positive")
             .attachedTo(positive)
             .face(Relative.BACK)
@@ -34,4 +46,13 @@ public class CreativeVoltaplastBlockEntity extends GriddableBlockEntity {
             .visibleByDefault()
             .make();
     }
+
+
+    /**
+     * -1.5 0.5 0.0 
+        0.5 0.5 0.0 
+        0.0 0.0 0.0 
+
+        12.0 0.0 0.0
+     */
 }

@@ -35,13 +35,23 @@ public class MechanoHitboxes {
 		.optimize().make()
 	);
 
+	public static final LazyRotatableHitbox CREATIVE_SINK = new LazyRotatableHitbox(
+		VoxelShapeBuilder
+		.start(0.0, 0.0, 0.0, 16.0, 6.0, 16.0)
+		.addBox(2.0, 6.0, 0.0, 14.0, 14.0, 16.0)
+		.addBox(2.0, 14.0, 2.0, 14.0, 16.0, 14.0)
+		.addBox(4.0, 14.0, 12.0, 12.0, 16.0, 12.0)
+		.addBox(4.0, 14.0, 4.0, 4.0, 16.0, 12.0)
+		.addBox(4.0, 14.0, 4.0, 12.0, 16.0, 4.0)
+		.addBox(12.0, 14.0, 4.0, 12.0, 16.0, 12.0)
+		.optimize().make()
+	);
+
 	public static final LazyRotatableHitbox CREATIVE_VOLTAPLAST = new LazyRotatableHitbox(
 		VoxelShapeBuilder
 		.start(0.0, 0.0, 0.0, 16.0, 6.0, 16.0)
 		.addBox(2.0, 6.0, 0.0, 14.0, 14.0, 16.0)
-		.addBox(0.0, 6.0, 6.0, 16.0, 16.0, 10.0)
-		.addBox(4.0, 14.0, 10.0, 12.0, 16.0, 12.0)
-		.addBox(4.0, 14.0, 4.0, 12.0, 16.0, 6.0)
+		.addBox(5.0, 14.0, 5.0, 11.0, 16.0, 11.0)
 		.optimize().make()
 	);
 

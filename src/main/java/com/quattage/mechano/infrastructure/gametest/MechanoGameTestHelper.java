@@ -20,6 +20,7 @@ import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
@@ -108,6 +109,13 @@ public class MechanoGameTestHelper extends GameTestHelper {
 
     public ActionRunner doGridTask(GridAction action) {
         return getGrid().initiateTask(action);
+    }
+
+    public GridDomain getTestDomain() {
+        List<GridDomain> domains = getGrid().domains();
+        if(domains.isEmpty())
+            return getGrid().makeFreshDomain();
+        return domains.getFirst();
     }
 
     public GriddableTerminus getTerminus(Griddable<?> source) {
@@ -276,6 +284,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         private final String id;
         private final boolean isGrounded;
         private boolean isMP = false;
+        private int domainIndex = -2;
 
         public MockNode(String id, boolean isGrounded) {
             this.id = id;
@@ -328,7 +337,9 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
 
         @Override
-        public void dispose() {}
+        public void dispose() {
+            domainIndex = -2;
+        }
 
         @Override
         public boolean hasBeenDisposed() {
@@ -338,6 +349,11 @@ public class MechanoGameTestHelper extends GameTestHelper {
         @Override
         public boolean isGrounded() {
             return isGrounded;
+        }
+
+        @Override
+        public void markGrounded(boolean isGrounded) {
+            isGrounded = true;
         }
 
         @Override
@@ -353,6 +369,16 @@ public class MechanoGameTestHelper extends GameTestHelper {
         @Override
         public GridReferent<?> getProviderSource() {
             return null;
+        }
+
+        @Override
+        public int getDomainIndex() {
+            return domainIndex;
+        }
+
+        @Override
+        public void setDomainIndex(int domainIndex) {
+            this.domainIndex = domainIndex;
         }
     }
 }

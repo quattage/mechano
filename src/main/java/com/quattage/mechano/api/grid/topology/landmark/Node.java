@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.api.grid.topology.landmark;
 
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         if(a == null && b == null) return null;
         if(a != null && b == null) return a;
         if(b != null && a == null) return b;
+        if(a.isGrounded() && !b.isGrounded()) return a;
+        if(b.isGrounded() && !a.isGrounded()) return b;
         int amp = a.getMergePriority();
         int bmp = b.getMergePriority();
         if(amp < bmp) return a;
@@ -42,6 +45,12 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
     boolean localAttach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
     boolean localDetach(Terminal pin);
     boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
+
+    void setDomainIndex(int domainIndex);
+    void markGrounded(boolean isGrounded);
+    default void markGrounded() {
+        markGrounded(true);
+    }
 
     List<AncillaryNode<?>> getAncillaries();
 
@@ -71,11 +80,6 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
     }
 
     @Override
-    default boolean isGrounded() {
-        return hasGroundedTerminal();
-    }
-
-    @Override
     default void forEachNode(Consumer<Node> cons) {
         cons.accept(this);
     }
@@ -84,6 +88,7 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
     default ComponentHierarchy getHierarchyType() {
         return ComponentHierarchy.NODE;
     }
+
 
     @Override
     default int getMergePriority() {
@@ -106,6 +111,8 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         private HierarchicalConstruct parent;
         protected @Nullable ObjectArrayList<Terminal> terminals;
         protected @Nullable List<AncillaryNode<?>> ancillaries;
+        private int domainIndex = -2;
+        private boolean isGrounded = false;
 
         public JointNode(HierarchicalConstruct parent) {
             this.parent = parent;
@@ -163,6 +170,21 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
 		}
 
         @Override
+        public void setDomainIndex(int domainIndex) {
+            this.domainIndex = domainIndex;
+        }
+
+        @Override
+        public boolean isGrounded() {
+            return isGrounded;
+        }
+
+        @Override
+        public void markGrounded(boolean isGrounded) {
+            this.isGrounded = isGrounded;
+        }
+
+        @Override
         public List<AncillaryNode<?>> getAncillaries() {
             if(ancillaries == null) return Collections.emptyList();
             return ancillaries;
@@ -172,6 +194,11 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         public Terminal[] getTerminals() {
             if(terminals == null) return new Terminal[0];
             return terminals.toArray(new Terminal[terminals.size()]);
+        }
+
+        @Override
+        public int getDomainIndex() {
+            return domainIndex;
         }
 
         @Override
@@ -226,93 +253,6 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
                 if(!hasAncillaries()) return null;
                 return ancillaries.get(binding.get());
             }
-            return terminals.get(binding.get());
-        }
-    }
-
-    public static class GroundNode implements Node {
-
-        protected @Nullable ObjectArrayList<Terminal> terminals;
-
-        public GroundNode() {}
-
-        @Override
-        public boolean localAttach(Terminal pin) {
-            Objects.requireNonNull(pin);
-            if(this == pin.getAttachedNode()) 
-                return false;
-            pin.updateOwnership(this);
-            if(terminals == null) terminals = new ObjectArrayList<>();
-            terminals.add(pin);
-            return true;
-        }
-
-        @Override
-		public boolean localAttach(Griddable<?> source, AncillaryNode<?> jack) {
-			return false;
-		}
-
-        @Override
-        public boolean localDetach(Terminal pin) {
-            Objects.requireNonNull(pin);
-            if(terminals == null) return false;
-            if(terminals.remove(pin)) {  
-                pin.updateOwnership(null);
-                return true;
-            }
-            if(terminals.isEmpty()) terminals = null;
-            return false;
-        }
-
-        @Override
-		public boolean localDetach(Griddable<?> source, AncillaryNode<?> jack) {
-			return false;
-		}
-
-        @Override
-        public List<AncillaryNode<?>> getAncillaries() {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public Terminal[] getTerminals() {
-            if(terminals == null) return new Terminal[0];
-            return terminals.toArray(new Terminal[terminals.size()]);
-        }
-
-        @Override
-        public @Nullable HierarchicalConstruct getParentConstruct() {
-            return null;
-        }
-
-        @Override
-        public GridReferent<?> getProviderSource() {
-            return null;
-        }
-
-        @Override
-        public ComponentHierarchy getHierarchyType() {
-            return ComponentHierarchy.STRANGER;
-        }
-
-        @Override
-        public void dispose() {}
-
-        @Override
-        public boolean hasBeenDisposed() { return false; }
-
-        @Override
-        public String getComponentID() {
-            return "ground";
-        }
-
-        @Override
-        public String toString() {
-            return getComponentID();
-        }
-
-        @Override
-        public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
             return terminals.get(binding.get());
         }
     }

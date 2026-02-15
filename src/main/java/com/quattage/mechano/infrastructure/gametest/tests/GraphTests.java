@@ -5,18 +5,16 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.quattage.mechano.MechanoTransmitters;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.ServerGrid.TopologyProcessQueue;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.NodalCluster;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet.NodePair;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.NodePair;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
@@ -86,7 +84,7 @@ public class GraphTests {
     }
 
     @GameTest
-    public static void unionRootsChange(MechanoGameTestHelper test) {
+    public static void unionMergeChangesRoots(MechanoGameTestHelper test) {
         NodeUnionSet uf = new NodeUnionSet();
         MockNode a = new MockNode("A", false);
         MockNode b = new MockNode("B", false);
@@ -103,7 +101,7 @@ public class GraphTests {
     }
 
     @GameTest
-    public static void unionRootsCyclic(MechanoGameTestHelper test) {
+    public static void unionAdjacencyIsCyclic(MechanoGameTestHelper test) {
         NodeUnionSet uf = new NodeUnionSet();
         test.populateUF(uf, "A", 6);
         Node start = uf.getByComponentID("A0");
@@ -157,24 +155,12 @@ public class GraphTests {
         uf.union(a, b);
         uf.union(a, gnd);
         uf.add(c);
-        ServerGrid grid = test.getGrid();
-        uf.finalizeTopology(grid.indexer());
-        test.assertValueEqual(grid.indexer().indexOf(gnd), -1, "groundIndex");
-        test.assertValueEqual(grid.indexer().indexOf(a), -1, "aIndex");
-        test.assertValueEqual(grid.indexer().indexOf(b), -1, "bIndex");
-        test.assertValueEqual(grid.indexer().indexOf(c), -2, "cIndex");
-        test.succeed();
-    }
-
-    @GameTest
-    public static void unionsMaintanBranches(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        MockNode aLast = test.populateUF(uf, "A", 6);
-        MockNode bLast = test.populateUF(uf, "B", 8);
-        Node[] aBranch = NodalCluster.getConstituents(uf, aLast);
-        Node[] bBranch = NodalCluster.getConstituents(uf, bLast);
-        test.assertValueEqual(aBranch.length, 6, "Branch size A");
-        test.assertValueEqual(bBranch.length, 8, "Branch size B");
+        GridDomain domain = test.getTestDomain();
+        uf.finalizeTopology(domain, 0);
+        test.assertValueEqual(domain.indexer().indexOf(gnd), -1, "groundIndex");
+        test.assertValueEqual(domain.indexer().indexOf(a), -1, "aIndex");
+        test.assertValueEqual(domain.indexer().indexOf(b), -1, "bIndex");
+        test.assertValueEqual(domain.indexer().indexOf(c), -2, "cIndex");
         test.succeed();
     }
 
@@ -192,6 +178,18 @@ public class GraphTests {
         test.assertValueEqual(clusters.size(), 2, "amount of clusters");
         test.assertValueEqual(clusters.get(0).size(), 10, "cluster size A");
         test.assertValueEqual(clusters.get(1).size(), 10, "cluster size B");
+        test.succeed();
+    }
+
+    @GameTest
+    public static void unionsMaintanBranches(MechanoGameTestHelper test) {
+        NodeUnionSet uf = new NodeUnionSet();
+        MockNode aLast = test.populateUF(uf, "A", 6);
+        MockNode bLast = test.populateUF(uf, "B", 8);
+        Node[] aBranch = NodalCluster.getConstituents(uf, aLast);
+        Node[] bBranch = NodalCluster.getConstituents(uf, bLast);
+        test.assertValueEqual(aBranch.length, 6, "Branch size A");
+        test.assertValueEqual(bBranch.length, 8, "Branch size B");
         test.succeed();
     }
 
@@ -258,8 +256,22 @@ public class GraphTests {
         Node b = uf.getByComponentID("T6");
         List<NodePair> pairs = new ArrayList<>();
         pairs.add(new NodePair(a, b));
-        uf.massRemove(null, pairs);
+        uf.massRemove(test.getGrid(), null, pairs);
         test.assertValueEqual(uf.size(), 2, "set transitive size");
+        test.succeed();
+    }
+
+    @GameTest
+    public static void unionMergeUpdatesTransitivity(MechanoGameTestHelper test) {
+        NodeUnionSet uf0 = new NodeUnionSet();
+        test.populateUF(uf0, "A", 11);
+        NodeUnionSet uf1 = new NodeUnionSet();
+        test.populateUF(uf1, "B", 9);
+        NodeUnionSet combine = NodeUnionSet.concatenate(uf0, uf1, 0);
+        combine.union(combine.getByComponentID("A5"), combine.getByComponentID("B5"));
+        test.assertTrue(combine == uf0, "UF concat didn't respect size");
+        test.assertValueEqual(combine.size(), 1, "UF concat transitive size");
+        test.assertValueEqual(combine.deepSize(), 20, "UF concat deep size");
         test.succeed();
     }
 
@@ -270,7 +282,7 @@ public class GraphTests {
         test.populateUF(uf, "T", 10);
         List<NodePair> pairs = new ArrayList<>();
         pairs.add(new NodePair(uf.getByComponentID("T0"), uf.getByComponentID("T1")));
-        uf.massRemove(null, pairs);
+        uf.massRemove(test.getGrid(), null, pairs);
         test.assertValueEqual(uf.size(), 1, "set transitive size");
         test.succeed();
     }
@@ -284,19 +296,9 @@ public class GraphTests {
         uf.getByComponentID("T1")));
         List<Node> singles = new ArrayList<>();
         singles.add(uf.getByComponentID("T10"));
-        uf.massRemove(singles, pairs);
+        uf.massRemove(test.getGrid(), singles, pairs);
         test.assertValueEqual(uf.size(), 2, "set transitive size");
         test.assertValueEqual(uf.deepSize(), 18, "set deep size");
-        test.succeed();
-    }
-
-    @Repeat(iterations = 2)
-    @GameTest
-    public static void unionMemoryStressTest(MechanoGameTestHelper test) {
-        ServerGrid grid = Grid.server(test.getLevel());
-        test.populateUF(grid.netlist(), "StressTestNode", 200);
-        grid.tick();
-        test.dumpGrid(false);
         test.succeed();
     }
 
@@ -358,25 +360,10 @@ public class GraphTests {
             e.printStackTrace();
             test.fail("Failed while performing linking task [ " + startID + " -> " + endID + "] (See stacktrace above)");
         }
+        test.getGrid().load();
         test.tickGrid();
-        test.dumpGrid("voxelGriddableCanBeLinked");
+        test.dumpGrid("vgcbl");
         test.succeed();
-    }
-
-    @GameTest
-    public static void gridQueueIsOrdered(MechanoGameTestHelper test) {
-        test.tryOrFailVerbosely(() -> {
-            ServerGrid grid = test.getGrid();
-            TopologyProcessQueue queue = grid.getProcessQueue();
-            for(int x = 0; x < 32; x++)
-                queue.addRandom(grid, test.getLevel().random);
-            String logOutput = queue.toString();
-            test.assertFalse(logOutput == null || logOutput.isBlank(), "Queue produced no string!");
-            // observe the natural ordering in the console - no assertions here since it would just be re-implementing the same code in the queue itself
-            // grid.warn(":: \n" + logOutput);
-            test.assertTrue(queue.size() == 32, "Queue size was altered by toString()");
-            test.succeed();
-        }, "??");
     }
 }
 

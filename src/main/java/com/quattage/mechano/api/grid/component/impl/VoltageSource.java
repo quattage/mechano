@@ -7,13 +7,15 @@ import com.quattage.mechano.api.grid.VoltageDecay;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.NeedsPostProcessing;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
 public abstract class VoltageSource extends StampingComponent implements StampsDynamically, NeedsPostProcessing {
 
     protected final VoltageDecay decayFunction;
     private final @Nullable CurrentChangeCallback cc;
-    private double current;
+    private @Nullable PowerState previous;
+    private final PowerState state = new PowerState();
 
     public VoltageSource(String name, VoltageDecay decayFunction) { this(name, decayFunction, null); }
     public VoltageSource(String name, VoltageDecay decayFunction, @Nullable CurrentChangeCallback cc) {
@@ -44,36 +46,38 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
         return decayFunction.apply(getStateOfCharge());
     }
 
-    public double getCurrent() {
-        return current;
-    }
-
     @Override
     public int getAllocations() {
         return 1;
     }
 
     @Override
-    public void stamp(ServerGrid grid) {
-        int a = indexOf(grid, terminals[0]);
-        int b = indexOf(grid, terminals[1]);
-        int i = grid.indexer().get(this);
-        grid.stampA(a, i, 1);
-        grid.stampA(i, a, 1);
-        grid.stampA(b, i, -1);
-        grid.stampA(i, b, -1);
+    public void stamp(ServerGrid grid, GridDomain domain) {
+        int a = indexOf(domain, terminals[0]);
+        int b = indexOf(domain, terminals[1]);
+        int i = domain.indexer().get(this);
+        domain.stampA(a, i, 1);
+        domain.stampA(i, a, 1);
+        domain.stampA(b, i, -1);
+        domain.stampA(i, b, -1);
     }
 
     @Override
-    public void stampDynamic(ServerGrid grid) {
-        grid.stampB(grid.indexer().get(this), getVolts());
+    public void stampDynamic(ServerGrid grid, GridDomain domain) {
+        domain.stampB(domain.indexer().get(this), getVolts());
     }
 
     @Override
-    public void postProcess(ServerGrid grid) {
-        double newCurrent = grid.getSolution().get(grid.indexer().get(this), 0);
-        if(cc != null) cc.onCurrentUpdated(grid, this.current, newCurrent);
-        this.current = newCurrent;
+    public void postProcess(ServerGrid grid, GridDomain domain) {
+        int idx = domain.indexer().get(this);
+        if(idx < 0) {
+            grid.warn("Skipped post-process step for " + this);
+            return;
+        }
+        previous = state.copy();
+        state.volts(getVolts());
+        state.amps(domain.solution().get(idx, 0));
+        if(cc != null) cc.onCurrentUpdated(grid, previous, state);
     }
 
     @Override
@@ -104,5 +108,9 @@ public abstract class VoltageSource extends StampingComponent implements StampsD
     @Override
     public @Nullable Terminal pinB() {
         return negative();
+    }
+
+    public PowerState getPowerState() {
+        return state;
     }
 }

@@ -9,6 +9,7 @@ import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
+import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
@@ -27,7 +28,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  * <p> Circuits are constructed fluently using the {@link CircuitBuilder}.
  * It is not reccomended to invoke this class's constructor manually
  * unless you intend to populate it yourself.
- * <h3>A node on graph access:</h3>
+ * <h3>A note on graph access:</h3>
  * The Circuit cannot provide direct access to the adjacency
  * status of itself or its constituents. The data contained within
  * this class is not assembled in any sort of legible graph
@@ -39,18 +40,10 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  * current, or charge of any circuit elements from this class.</strong>
  */
 public class Circuit implements CircuitComponent, HierarchicalConstruct, Disposable {
-    
-    public static final double DELTA = 0.05d;
-    public static final double DELTA_AH = Circuit.DELTA / 3600d;
-    public static final double EPSILON = 0.01d;
 
     protected Griddable<?> owner;
-    
-    // despite not being initialized here the circuit graph is never null
     protected ObjectArrayList<DiscreteComponent> components;
-
     private boolean disposed;
-
 
     protected Circuit() {}
 
@@ -68,13 +61,21 @@ public class Circuit implements CircuitComponent, HierarchicalConstruct, Disposa
     }
 
     public void forEachComponent(Consumer<CircuitComponent> cons) {
+        if(hasBeenDisposed()) return;
         for(CircuitComponent comp : components)
             cons.accept(comp);
     }
 
     @Override
     public void forEachNode(Consumer<Node> cons) {
+        if(hasBeenDisposed()) return;
         forEachComponent(component -> component.forEachNode(cons));
+    }
+
+    @Override
+    public int getDomainIndex() {
+        assertNotDisposed();
+        return components.getFirst().getDomainIndex();
     }
 
     @Override
@@ -96,13 +97,13 @@ public class Circuit implements CircuitComponent, HierarchicalConstruct, Disposa
     }
 
     @Override
-    public void MNAAllocate(ServerGrid grid) {
-        forEachComponent(component -> component.MNAAllocate(grid));
+    public void MNAAllocate(ServerGrid grid, GridDomain domain) {
+        forEachComponent(component -> component.MNAAllocate(grid, domain));
     }
 
     @Override
-    public void MNADeallocate(ServerGrid grid) {
-        forEachComponent(component -> component.MNADeallocate(grid));
+    public void MNADeallocate(ServerGrid grid, GridDomain domain) {
+        forEachComponent(component -> component.MNADeallocate(grid, domain));
     }
 
     @Override
@@ -128,6 +129,7 @@ public class Circuit implements CircuitComponent, HierarchicalConstruct, Disposa
 
     @Override
     public void dispose() {
+        if(hasBeenDisposed()) return;
         for(DiscreteComponent component : components)
             component.dispose();
         disposed = true;

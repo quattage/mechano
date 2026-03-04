@@ -44,12 +44,12 @@ import net.neoforged.api.distmarker.OnlyIn;
  * {@link CircuitFactory} when creating circuits attached to {@link Griddable}
  * instances.
  */
-public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, WorldlyObject, GridReferent<T> {
+public abstract class AncillaryNode<T extends GridUUID<T>> extends Node implements WorldlyObject, GridReferent<T> {
 
     public static final byte MAX_SHARED_OCCUPANCY = (byte)16;
 
     private String componentID;
-    private @Nullable Griddable<T> source;
+    protected @Nullable Griddable<T> source;
     protected @Nullable Node parent;
     private boolean isVisible = true;
 
@@ -154,7 +154,7 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     public Vector3f getRotatedOffset() {
-        return getRotatedOffset(GridTracking.getSource(this).getSourceRotation());
+        return getRotatedOffset(GridTracking.getReferentOrThrow(this).getSourceRotation());
     }
 
     public Vector3d getRealPosition(Vector3d basePos, Quaternionf baseRot, Vector3d workingVector) {
@@ -163,7 +163,7 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     public Vector3d getRealPosition() {
-        Griddable<?> source = GridTracking.getSource(this);
+        Griddable<?> source = GridTracking.getReferentOrThrow(this);
         if(source == null) return new Vector3d();
         return source.getSourcePos().add(0.5, 0.5, 0.5).add(getXO(), getYO(), getZO());
     }
@@ -306,9 +306,16 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
     }
 
     @Override
-    public @Nullable Griddable<?> getProviderSource() {
+    public @Nullable Griddable<?> getReferent() {
         assertAttached();
         return source;
+    }
+
+    @Override
+    public int getMergePriority() {
+        if(source != null) return source.getMergePriority();
+        if(parent != null) return parent.getMergePriority();
+        return super.getMergePriority();
     }
 
     @Override
@@ -323,7 +330,8 @@ public abstract class AncillaryNode<T extends GridUUID<T>> implements Node, Worl
 
     @Override
     public T getUUID() {
-        throw new UnsupportedOperationException("AncillaryNodes cannot be queried for UUIDs - Use bindUUID() instead");
+        assertAttached();
+        return source.getUUID();
     }
 
     public Node getAssociatedNode() {

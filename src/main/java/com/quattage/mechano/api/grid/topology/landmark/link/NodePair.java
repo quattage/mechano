@@ -29,15 +29,15 @@ public class NodePair implements SourceProvider {
     }
 
     public Griddable<?> getSourceA() {
-        return GridTracking.getSource(a);
+        return GridTracking.getReferentOrThrow(a);
     }
 
     public Griddable<?> getSourceB() {
-        return GridTracking.getSource(b);
+        return GridTracking.getReferentOrThrow(b);
     }
 
     @Override
-    public GridReferent<?> getProviderSource() {
+    public GridReferent<?> getReferent() {
         return getSourceA();
     }
 
@@ -55,11 +55,11 @@ public class NodePair implements SourceProvider {
 
 
     protected void assertHasSources() {
-        if(a.getProviderSource() == null) {
+        if(a.getReferent() == null) {
             throw new IllegalStateException("An operation failed on " + this 
                 + " - The starting jack has no source! (This instance potentially leaked)");
         }
-        if(b.getProviderSource() == null) {
+        if(b.getReferent() == null) {
             throw new IllegalStateException("An operation failed on " + this 
                 + " - The ending jack has no source! (This instance potentially leaked)");
         }

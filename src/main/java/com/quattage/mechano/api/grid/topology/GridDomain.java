@@ -1,5 +1,6 @@
 package com.quattage.mechano.api.grid.topology;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -17,6 +18,7 @@ import com.quattage.mechano.api.grid.topology.landmark.Node;
 
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.LevelReader;
 
 public class GridDomain {
 
@@ -26,11 +28,48 @@ public class GridDomain {
 
     private @Nullable DMatrixSparseCSC matrixA;
     private @Nullable DMatrixRMaj matrixX, matrixB;
-    private boolean hasTopologyChanged = false;
+    private boolean isDirty = false;
 
     public GridDomain() {}
 
-    public void updateOnTopologyChange(ServerGrid grid, int idx) {
+    public void mergeWith(GridDomain other, int idx) {
+        Objects.requireNonNull(other);
+        if(this == other) return;
+        this.netlist = NodeUnionSet.concatenate(this.netlist, other.netlist);
+        this.indexer = MNAIndexer.concatenate(this.indexer, other.indexer);
+        this.referenceNode = null;
+        other.clear();
+        markDirty();
+    }
+
+    /**
+     * Creates a list of fresh GridDomain instances that contain the contents
+     * of this one, but split 
+     * @param world
+     * @return
+     */
+    public List<GridDomain> deriveFromSplits(LevelReader world) {
+        if(netlist.isEmpty()) return Collections.emptyList();
+        netlist.trim();
+        List<NodalCluster> clusters = NodalCluster.ofDiscontinuities(world, netlist);
+        if(clusters.isEmpty()) return Collections.emptyList();
+        List<GridDomain> outputDomains = new ArrayList<>(clusters.size());
+        for(NodalCluster cluster : clusters) {
+            GridDomain newDomain = cluster.spawnFrom(this);
+            outputDomains.add(newDomain);
+        }
+        return outputDomains;
+    }
+
+    /**
+     * Updates this domain's matrix dimensions and 
+     * finalizes the netlist's indices for each node.
+     * This method only needs to be called when the 
+     * shape of this domain changes.
+     * @param grid {@link ServerGrid} that this domain belongs to
+     * @param idx
+     */
+    public void preSolve(ServerGrid grid, int idx) {
         netlist.finalizeTopology(this, idx);
         int size = indexer.sourceCount() + netlist.size();
         if(referenceNode != null) size--;
@@ -38,26 +77,17 @@ public class GridDomain {
         matrixX = new DMatrixRMaj(size, 1);
         matrixB = new DMatrixRMaj(size, 1);
         indexer.stamp(grid, this);
-        hasTopologyChanged = false;
+        isDirty = false;
     }
 
-    public void mergeWith(GridDomain other, int idx) {
-        Objects.requireNonNull(other);
-        if(this == other) return;
-        this.netlist = NodeUnionSet.concatenate(this.netlist, other.netlist, idx);
-        this.indexer = MNAIndexer.concatenate(this.indexer, other.indexer);
-        this.referenceNode = null;
-        other.clear();
-    }
-
-    public List<GridDomain> splitDiscontinuities() {
-        if(netlist.isEmpty()) return Collections.emptyList();
-        netlist.trim();
-        // TODO impl
-        return Collections.emptyList();
-    }
-
-    public void solveWith(ServerGrid grid, NodalSolver solver) {
+    /**
+     * Solves this domain for voltages at every node.
+     * Updates the matrices within this grid to
+     * reflect the current status.
+     * @param grid {@link ServerGrid} that this domain belongs to
+     * @param solver {@link NodalSolver solver method} to use
+     */
+    public void solve(ServerGrid grid, NodalSolver solver) {
         ConvergenceStatus newStatus = solver.run(grid, this);
         if(newStatus == null || newStatus == ConvergenceStatus.UNLOADED) {
             grid.warn("Failed to retrieve status for tick, solver run returned no status!");
@@ -65,7 +95,14 @@ public class GridDomain {
         }
     }
 
-    public void postProcess(ServerGrid grid) {
+    /**
+     * Handle components within this domain that require
+     * {@link NeedsPostProcessing post processing}. This 
+     * method is intended to be run after a call to 
+     * {@link #solve}.
+     * @param grid {@link ServerGrid} that this domain belongs to
+     */
+    public void postSolve(ServerGrid grid) {
         for(StampingComponent sc : indexer.getStampers())
             if(sc instanceof NeedsPostProcessing pp) pp.postProcess(grid, this);
     }
@@ -80,7 +117,7 @@ public class GridDomain {
 
     /**
      * Used by {@link NodalSolver solvers} to quickly create 
-     * and return a one-dimensional array 
+     * and return a one-dimensional array pre-configured to the correct size.
      * @return A {@link DMAtrixRMaj vector} whose length is the number of rows in the current matrix.
      */
     public DMatrixRMaj createWorkingVector() {
@@ -89,7 +126,7 @@ public class GridDomain {
     }
 
     /**
-     * <code>Ax=b</code><p>
+     * <code>Ax = b, n = indexer length + netlist length</code><p>
      * @return <code>A (Matrix[n][n])</code>
      */
     public DMatrixSparseCSC matrix() {
@@ -97,16 +134,16 @@ public class GridDomain {
     }
 
     /**
-     * <code>Ax=b</code><p>
-     * @return <code>x (Vector[n])</code>
+     * <code>Ax = b, n = indexer length + netlist length</code><p>
+     * @return <code>x (Vector[n][1])</code>
      */
     public DMatrixRMaj solution() {
         return matrixX;
     }
 
     /**
-     * <code>Ax=b</code><p>
-     * @return <code>b (Vector[n])</code>
+     * <code>Ax = b, n = indexer length + netlist length</code><p>
+     * @return <code>b (Vector[n][1])</code>
      */
     public DMatrixRMaj terms() {
         return matrixB;
@@ -120,12 +157,12 @@ public class GridDomain {
         markDirty(true);
     }
 
-    public void markDirty(boolean dirty) {
-        this.hasTopologyChanged = dirty;
+    public void markDirty(boolean isDirty) {
+        this.isDirty = isDirty;
     }
 
-    public boolean needsProcessing() {
-        return this.hasTopologyChanged;
+    public boolean isTopologyOutdated() {
+        return this.isDirty;
     }
 
     /**
@@ -195,12 +232,12 @@ public class GridDomain {
     public void clear() {
         idle();
         referenceNode = null;
+        indexer.clear();
         netlist.reset();
     }
 
     public void idle() {
         matrixA = null; matrixX = null; matrixB = null;
-        indexer.clear();
     }
 
     public CompoundTag write(ServerGrid instantiator, Provider provider) {
@@ -241,4 +278,10 @@ public class GridDomain {
     //     }
     //     return output;
     // }
+
+    public static String getIndexInfo(GridDomain domain, Node node) {
+        int nodalIndex = domain.indexer().get(node);
+        int domainIndex = node.getDomainIndex();
+        return "[node #" + System.identityHashCode(node) + ", NI: " + nodalIndex + " DI: " + domainIndex + "]";
+    }
 }

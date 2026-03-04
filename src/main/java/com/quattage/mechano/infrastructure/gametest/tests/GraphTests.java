@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridUUID;
 import com.quattage.mechano.api.grid.GriddableTerminus;
@@ -12,19 +11,18 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.NodalCluster;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.grid.topology.landmark.link.NodePair;
-import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper.MockNode;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.MechanoTestHolder;
+import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.PrintGridAfter;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.Repeat;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.GameType;
 
 @MechanoTestHolder
 public class GraphTests {
@@ -157,10 +155,10 @@ public class GraphTests {
         uf.add(c);
         GridDomain domain = test.getTestDomain();
         uf.finalizeTopology(domain, 0);
-        test.assertValueEqual(domain.indexer().indexOf(gnd), -1, "groundIndex");
-        test.assertValueEqual(domain.indexer().indexOf(a), -1, "aIndex");
-        test.assertValueEqual(domain.indexer().indexOf(b), -1, "bIndex");
-        test.assertValueEqual(domain.indexer().indexOf(c), -2, "cIndex");
+        test.assertValueEqual(domain.indexer().get(gnd), -1, "groundIndex");
+        test.assertValueEqual(domain.indexer().get(a), -1, "aIndex");
+        test.assertValueEqual(domain.indexer().get(b), -1, "bIndex");
+        test.assertValueEqual(domain.indexer().get(c), -2, "cIndex");
         test.succeed();
     }
 
@@ -174,7 +172,7 @@ public class GraphTests {
         test.assertValueEqual(splitBranch.length, 21, "branch size");
         uf.remove(split, false);
         test.assertValueEqual(uf.deepSize(), 20, "set size after removal");
-        List<NodalCluster> clusters = NodalCluster.ofDiscontinuities(uf, splitBranch);
+        List<NodalCluster> clusters = NodalCluster.ofClusters(uf, splitBranch);
         test.assertValueEqual(clusters.size(), 2, "amount of clusters");
         test.assertValueEqual(clusters.get(0).size(), 10, "cluster size A");
         test.assertValueEqual(clusters.get(1).size(), 10, "cluster size B");
@@ -267,7 +265,7 @@ public class GraphTests {
         test.populateUF(uf0, "A", 11);
         NodeUnionSet uf1 = new NodeUnionSet();
         test.populateUF(uf1, "B", 9);
-        NodeUnionSet combine = NodeUnionSet.concatenate(uf0, uf1, 0);
+        NodeUnionSet combine = NodeUnionSet.concatenate(uf0, uf1);
         combine.union(combine.getByComponentID("A5"), combine.getByComponentID("B5"));
         test.assertTrue(combine == uf0, "UF concat didn't respect size");
         test.assertValueEqual(combine.size(), 1, "UF concat transitive size");
@@ -327,43 +325,47 @@ public class GraphTests {
     }
 
     @GameTest
-    public static void voxelGriddableCanBeLinked(MechanoGameTestHelper test) {
+    @PrintGridAfter
+    public static void fullConnectionTest(MechanoGameTestHelper test) {
 
-        ConnectorBlockEntity cbeA = test.placeConnector(test.randomPos());
-        ConnectorBlockEntity cbeB = test.placeConnector(test.randomPos());
-
-        GridUUID<?> idA = cbeA.getUUIDSafe(), idB = cbeB.getUUIDSafe();
-        AncillaryNode<?> startNode = cbeA.getDefaultAncillary();
-        AncillaryNode<?> endNode = cbeB.getDefaultAncillary();
-        test.failIfNull(startNode, "ConnectorBlockEntity A couldn't provide a default ancilllary");
-        test.failIfNull(endNode, "ConnectorBlockEntity B couldn't provide a default ancilllary");
-
-        GridUUID<?> startID = GridTracking.getAddress(cbeA, startNode);
-        GridUUID<?> endID = GridTracking.getAddress(cbeB, endNode);
-
-        test.assertTrue(startID != idA, "ConnectorBlockEntity A's uuid copy returned the same instance");
-        test.assertTrue(endID != idB, "ConnectorBlockEntity B's uuid copy returned the same instance");
-        test.assertTrue(!idA.equals(startID), "The starting node didn't alter the binding of ConnectorBlockEntity A's uuid");
-        test.assertTrue(!idB.equals(endID), "The starting node didn't alter the binding of ConnectorBlockEntity A's uuid");
-
-        Player fakePlayer = test.makeMockPlayer(GameType.CREATIVE);
-        try {
-            test.doGridTask(GridAction.TASK_LINK_CREATE)
-                .targeting(startNode, endNode)
-                .withArguments(
-                    startID, 
-                    endID, 
-                    MechanoTransmitters.HOOKUP.get(), 
-                    fakePlayer.getUUID()
-                ).executeImmediately();
-        } catch (Exception e) {
-            e.printStackTrace();
-            test.fail("Failed while performing linking task [ " + startID + " -> " + endID + "] (See stacktrace above)");
-        }
         test.getGrid().load();
-        test.tickGrid();
-        test.dumpGrid("vgcbl");
+        BlockPos bp = test.randomPos();
+        AncillaryPair linkA = test.generateUnion(bp);
+        AncillaryPair linkB = test.generateUnion(bp.offset(0, 0, 4));
+        AncillaryPair linkC = test.generateUnion(bp.offset(0, 0, 8));
+
+        test.assertValueEqual(test.getGrid().domains().size(), 3, "domain count");
+        for(int x = 0; x < test.getGrid().domains().size(); x++) {
+            GridDomain domain = test.getGrid().domains().get(x);
+            String didx = "domain " + x;
+            test.assertValueEqual(domain.netlist().size(), 1, didx + " transitive size");
+            test.assertValueEqual(domain.netlist().deepSize(), 2, didx + " deep size");
+            test.assertValueEqual(domain.indexer().sourceCount(), 0, didx + " indexer source count");
+            test.assertValueEqual(domain.indexer().nodeCount(), 2, didx + " indexer node count");
+            GraphTests.assertDomainValid(test, domain, x);
+        }
+
+        
+
+        test.assertValueEqual(test.getGrid().lookup().size(), 6, "lookup size");
         test.succeed();
+    }
+
+    private static void assertDomainValid(MechanoGameTestHelper test, GridDomain domain, int index) {
+        try {
+            domain.netlist().forEachTransitive((head, branch) -> {
+                test.assertValueEqual(head.getDomainIndex(), index, " domain index @ node #" + System.identityHashCode(head));
+                int headIndex = domain.indexer().get(head);
+                test.assertValueEqual(headIndex, 0, " nodal index @ node #" + System.identityHashCode(head));
+                branch.forEach(leaf -> {
+                    test.assertValueEqual(leaf.getDomainIndex(), index, " domain index @ node #" + System.identityHashCode(leaf));
+                    test.assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ node #" + System.identityHashCode(leaf));
+                });
+            });
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            test.fail("Encountered exception while traversing " + index + "'s netlist (See stacktrace above)");
+        }
     }
 }
 

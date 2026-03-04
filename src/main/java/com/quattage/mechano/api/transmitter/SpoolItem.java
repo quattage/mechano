@@ -102,7 +102,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
     private InteractionResultHolder<ItemStack> handleFirstRightClick(ClientGrid grid, Player player, ItemStack stack, @Nullable AncillaryNode<?> initialTarget) {
         if(SpoolItem.hasAwaiting(player) || initialTarget == null) 
             return InteractionResultHolder.fail(stack);
-        Griddable<?> source = GridTracking.getSource(initialTarget);
+        Griddable<?> source = GridTracking.getReferentOrThrow(initialTarget);
         if(source == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - This ancillary couldn't provide a non-null source!");
@@ -124,12 +124,12 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
             return InteractionResultHolder.fail(stack);
         GridUUID<?> initialTargetID = stack.get(MechanoData.UUID);
         AncillaryNode<?> initialTarget = (AncillaryNode<?>) GridTracking.getComponentOrThrow(grid, initialTargetID);
-        Griddable<?> initialSource = GridTracking.getSource(initialTarget);
+        Griddable<?> initialSource = GridTracking.getReferentOrThrow(initialTarget);
         if(initialSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + initialTarget + " - The initial ancillary couldn't provide a non-null source!");
         }
-        Griddable<?> subsequentSource = GridTracking.getSource(subsequentTarget);
+        Griddable<?> subsequentSource = GridTracking.getReferentOrThrow(subsequentTarget);
         if(subsequentSource == null) {
             throw new NullPointerException("Failed while handling interaction with " 
                 + subsequentTarget + " - The subsequent ancillary couldn't provide a non-null source!");

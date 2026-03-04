@@ -317,61 +317,6 @@ public class Catenaries {
         private float restitutionEpsilon = 1e-8f;
         private int solverSteps = 64;
 
-        public boolean shouldApplyShadowClamping() {
-            return clampShadows;
-        }
-
-        public float getRestitutionSpeed() {
-            return restitutionSpeed;
-        }
-
-        public float getRestitutionEpsilon() {
-            return restitutionEpsilon;
-        }
-
-        public int getSolverSteps() {
-            return solverSteps;
-        }
-
-        /**
-         * The amount of segments that a catenary should contain for a given span,
-         * adjusted for resolution and clamping given the current scalability settings.
-         * @param spannedLength The actual length in meters between the start and endpoints of 
-         * the catenary (not to be confused with its arclength, which, for simulated catenaries, 
-         * is not known until simulation is resolved.)
-         * @return An int value representing the amount of segments that a catenary should contain
-         * @see #getPointCount(float)
-         */
-        public int getSegmentCount(float spannedLength) {
-            return Math.max(minimumSegments, Math.min(maximumSegments, (int)(spannedLength * catenaryResolution)));
-        }
-
-        /**
-         * The amount of points that a catenary should contain for a given span,
-         * adjusted for resolution and clamping given the current scalability settings.
-         * @param spannedLength The actual length in meters between the start and endpoints of 
-         * the catenary (not to be confused with its arclength, which, for simulated catenaries, 
-         * is not known until simulation is resolved.)
-         * @return An int value representing the amount of points that a catenary should contain
-         * @see #getSegmentCount(float)
-         */
-        public int getPointCount(float spannedLength) {
-            return getPointCount(spannedLength) + 1;
-        }
-
-        /**
-         * Returns a gravity vector whose strength is scaled
-         * appropriately for a given number of discrete mass points.
-         * This helper method is designed to be used in verlet integrations,
-         * and the velocity vector returned here is normalized against
-         * a fixed 20-tick update cycle.
-         * @param points The number of individual points in the catenary
-         * @return A gravity vector
-         */
-        public Vector3f getGravity(int points) {
-            return SIM_UP.mul((Point.MASS / (float)points) * 0.3f, new Vector3f());
-        }
-
         // TODO switch to custom shader using more optimized vertex format
         public final BiFunction<TransmitterType, Boolean, RenderType> SOLID_MATERIAL 
             = Util.memoize((trns, chunk) -> {
@@ -447,6 +392,65 @@ public class Catenaries {
             geo.emitQuad(buffer, pose, -geo.normBX(), -geo.normBY(), -geo.normBZ(), 1, 5, 7, 3);
             geo.unshiftUVs();
         };
+
+        public final MeshExtruder INVISIBLE_EXTRUDER = (VertexConsumer buffer, Pose pose, CatenaryMeshBuffer geo, @Nullable Stick previous, Stick current, @Nullable Stick next, float loftLength, boolean recomputeNormals, float pTicks) -> {};
+
+        public boolean shouldApplyShadowClamping() {
+            return clampShadows;
+        }
+
+        public float getRestitutionSpeed() {
+            return restitutionSpeed;
+        }
+
+        public float getRestitutionEpsilon() {
+            return restitutionEpsilon;
+        }
+
+        public int getSolverSteps() {
+            return solverSteps;
+        }
+
+        /**
+         * The amount of segments that a catenary should contain for a given span,
+         * adjusted for resolution and clamping given the current scalability settings.
+         * @param spannedLength The actual length in meters between the start and endpoints of 
+         * the catenary (not to be confused with its arclength, which, for simulated catenaries, 
+         * is not known until simulation is resolved.)
+         * @return An int value representing the amount of segments that a catenary should contain
+         * @see #getPointCount(float)
+         */
+        public int getSegmentCount(float spannedLength) {
+            return Math.max(minimumSegments, Math.min(maximumSegments, (int)(spannedLength * catenaryResolution)));
+        }
+
+        /**
+         * The amount of points that a catenary should contain for a given span,
+         * adjusted for resolution and clamping given the current scalability settings.
+         * @param spannedLength The actual length in meters between the start and endpoints of 
+         * the catenary (not to be confused with its arclength, which, for simulated catenaries, 
+         * is not known until simulation is resolved.)
+         * @return An int value representing the amount of points that a catenary should contain
+         * @see #getSegmentCount(float)
+         */
+        public int getPointCount(float spannedLength) {
+            return getPointCount(spannedLength) + 1;
+        }
+
+        /**
+         * Returns a gravity vector whose strength is scaled
+         * appropriately for a given number of discrete mass points.
+         * This helper method is designed to be used in verlet integrations,
+         * and the velocity vector returned here is normalized against
+         * a fixed 20-tick update cycle.
+         * @param points The number of individual points in the catenary
+         * @return A gravity vector
+         */
+        public Vector3f getGravity(int points) {
+            return SIM_UP.mul((Point.MASS / (float)points) * 0.3f, new Vector3f());
+        }
+
+        
 
         /**
          * Pixel-unit thickness of a catenary's profile when it is constructed as a mesh.

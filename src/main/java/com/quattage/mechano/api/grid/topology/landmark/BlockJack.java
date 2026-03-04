@@ -49,7 +49,7 @@ public class BlockJack extends AncillaryNode<VoxelUUID> implements OrientationUp
         Objects.requireNonNull(world);
         Objects.requireNonNull(basis);
         BlockEntity be = world.getBlockEntity((BlockPos)getPos(basis));
-        if(be == parent) {
+        if(be == source) {
             throw new IllegalStateException("Encountered an invalid blockentity traversal while getting opposing " 
                 + "ancillaries - BlockJack " + this + " refers to itself! (at " + getPos(basis) + ")");
         }

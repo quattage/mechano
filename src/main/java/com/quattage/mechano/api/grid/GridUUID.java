@@ -3,6 +3,7 @@ package com.quattage.mechano.api.grid;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -159,6 +160,14 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         return getTrackerScope() + "_UUID: " + describeData() + ", " + describeBindings();
     }
 
+    public void forEachBinding(Consumer<UUIDComposite> cons) {
+        if(!hasBindings()) return;
+        for(int x = 0; x < bindings.length; x++) {
+            UUIDComposite composite = bindings[x];
+            cons.accept(composite);
+        }
+    }
+
     /**
      * A {@link GridUUID} whose primary coordinate is a 
      * {@link BlockPos} for targeting voxels in the Minecraft level.
@@ -216,13 +225,13 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
 
         @Override
         @SuppressWarnings("unchecked")
-        public @Nullable Griddable<VoxelUUID> getProviderSource(LevelReader world) {
+        public @Nullable Griddable<VoxelUUID> getReferent(LevelReader world) {
             BlockEntity be = world.getBlockEntity(pos);
             return be instanceof Griddable<?> gbe ? (Griddable<VoxelUUID>) gbe : null;
         }
 
         @Override
-        public GridReferent<?> getProviderSource() {
+        public GridReferent<?> getReferent() {
             Mechano.LOGGER.warn("Attempted to get a provider source from a UUID without a reference to the world. This call will not do anything and immediatley return null.");
             return null;
         }
@@ -336,7 +345,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
-        public @Nullable GridReferent<?> getProviderSource(LevelReader world) {
+        public @Nullable GridReferent<?> getReferent(LevelReader world) {
             Entity e = world.isClientSide() 
                 // accessible via the access transformer
                 ? ((ClientLevel) world).entityStorage.getEntityGetter().get(uuid) 
@@ -345,9 +354,8 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         }
 
         @Override
-        public GridReferent<?> getProviderSource() {
-            Mechano.LOGGER.warn("Attempted to get a provider source from a UUID without a reference to the world. This call will not do anything and immediatley return null.");
-            return null;
+        public GridReferent<?> getReferent() {
+            throw new UnsupportedOperationException("Querying EntityUUIDs for their source requires a level instance!");
         }
 
         @Override
@@ -426,6 +434,23 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
         private final ComponentHierarchy type;
 
         public static final UUIDComposite EMPTY = new UUIDComposite(-1, ComponentHierarchy.STRANGER);
+
+        public static void promptIfUnused(@Nullable UUIDComposite binding, @Nullable Object obj) {
+            if(binding == null) return;
+            if(binding.isValid()) {
+                Mechano.LOGGER.warn("Ignored unused composite " + binding 
+                    + " while traversing" + (obj == null ? "" : " from " + obj.getClass().getSimpleName()));
+            }
+        }
+
+        public static void promptIfUnused(@Nullable ComponentHierarchy expected, @Nullable UUIDComposite binding, @Nullable Object obj) {
+            if(binding == null) return;
+            if(binding.isValid()) {
+                if(expected != null && expected == binding.getHierarchyType()) return;
+                Mechano.LOGGER.warn("Ignored unused composite " + binding 
+                    + " while traversing" + (obj == null ? "" : " from " + obj.getClass().getSimpleName()));
+            }
+        }
 
         private UUIDComposite(int value, ComponentHierarchy target) {
             this.value = EsoMath.toShortClamped(value);

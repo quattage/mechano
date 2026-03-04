@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.infrastructure.gametest;
 
 import java.lang.annotation.ElementType;
@@ -9,13 +10,15 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
+import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
+import com.quattage.mechano.infrastructure.ReflectionWizard;
 
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestGenerator;
@@ -24,13 +27,15 @@ import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.world.level.block.Rotation;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
-import net.neoforged.neoforgespi.language.IModInfo;
-import net.neoforged.neoforgespi.language.ModFileScanData;
 
+/**
+ * A GameTest provider that automatically finds all test methods 
+ * in <code>mechano/infrastructure/gametest/tests</code>
+ * and runs them with additional provisions for handling/reseting
+ * the {@link ServerGrid} between test runs.
+ */
 @EventBusSubscriber
 public class MechanoGameTests {
 
@@ -44,34 +49,12 @@ public class MechanoGameTests {
 
     @GameTestGenerator
     public static Collection<TestFunction> collectTests() {
-        Stream<Class<?>> gameTestClasses = MechanoGameTests.getTestClasses(MechanoGameTests.class.getPackageName());
+        Stream<Class<?>> gameTestClasses = ReflectionWizard.getClasses(MechanoGameTests.class.getPackageName(), MechanoTestHolder.class);
         return gameTestClasses.map(Class::getDeclaredMethods)
             .flatMap(Stream::of)
             .map(MechanoGameTests::makeTest)
             .filter(Objects::nonNull)
             .toList();
-    }
-
-    private static Stream<Class<?>> getTestClasses(String dirName) {
-        Optional<? extends ModContainer> mechano = ModList.get().getModContainerById(Mechano.ID);
-        String path = dirName.replace(".", "/");
-        if(!mechano.isPresent()) return Stream.empty();
-        IModInfo info = mechano.get().getModInfo();
-        ModFileScanData scan = info.getOwningFile().getFile().getScanResult();
-        return scan.getClasses().stream()
-            .map(cd -> cd.clazz().getInternalName())
-            .filter(className -> className.startsWith(path))
-            .map(className -> className.replace("/", "."))
-            .<Class<?>>map(className -> {
-                try { return Class.forName(className); } 
-                catch (ClassNotFoundException e) { 
-                    e.printStackTrace(); 
-                    Mechano.LOGGER.error("Couldn't find gametest class '" + className + "'"); 
-                    return null; 
-                }
-            })
-            .filter(Objects::nonNull)
-            .filter(clazz -> clazz.isAnnotationPresent(MechanoTestHolder.class));
     }
 
     private static @Nullable TestFunction makeTest(Method method) {
@@ -92,6 +75,8 @@ public class MechanoGameTests {
         Repeat repeat = method.getAnnotation(Repeat.class);
         int repeats = repeat == null ? 1 : Math.max(0, repeat.iterations());
 
+        PrintGridAfter dump = method.getAnnotation(PrintGridAfter.class);
+
         String templateName = gt.template();
         if(templateName == null || templateName.isBlank()) templateName = "empty";
         String structureName = gth.namespace() + ":gametest/" + templateName;
@@ -105,23 +90,25 @@ public class MechanoGameTests {
             gt.required(), gt.manualOnly(),
             gt.requiredSuccesses(), gt.attempts(),
             gt.skyAccess(), 
-            (Consumer<GameTestHelper>)MechanoGameTests.encapsulate(method, repeats)
+            (Consumer<GameTestHelper>)MechanoGameTests.encapsulate(method, repeats, dump)
         );
         // Mechano.LOGGER.debug("Registered test " + result.testName() + " to batch '" + result.batchName() + "' using template '" + result.structureName() + "' (" + repeats + " repeats)");
         return result;
     }
 
-    private static Consumer<GameTestHelper> encapsulate(Method method, int repeats) {
+    private static Consumer<GameTestHelper> encapsulate(Method method, int repeats, @Nullable PrintGridAfter dump) {
         return gth -> {
             MechanoGameTestHelper mgth = gth instanceof MechanoGameTestHelper mgthh ? mgthh : MechanoGameTestHelper.of(gth);
             for(int x = 0; x < repeats; x++) {
                 try { 
                     mgth.getGrid().load();
-                    method.invoke(null, mgth); 
+                    method.invoke(null, mgth);
+                    if(dump != null && (!dump.requireSuccess() || mgth.testInfo.hasSucceeded()))
+                        mgth.dumpGrid(method.getName());
                     mgth.getGrid().unload();
                 }
                 catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException(e);
+                    throw new RuntimeException("Something went wrong while invoking " + method.getName() + " from the game tester", e);
                 } 
             }
         };
@@ -138,5 +125,17 @@ public class MechanoGameTests {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface Repeat {
         int iterations() default 1;
+    }
+
+    /**
+     * {@link GameTest} methods flagged with 
+     * this annotation will write a {@link EnqueuedGridManifest grid manifest}
+     * to the console after they've completed as long as they're run through
+     * the {@link MechanoGameTests mechano game test provider}
+     */
+    @Target({ElementType.METHOD})
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface PrintGridAfter {
+        boolean requireSuccess() default false;
     }
 }

@@ -91,19 +91,19 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
     GriddableTerminus provideTerminus();
 
     @Override
-    default GridReferent<?> getProviderSource() {
+    default GridReferent<?> getReferent() {
         return this;
     }
 
     @Override
-    default GridReferent<?> getProviderSource(LevelReader world) {
+    default GridReferent<?> getReferent(LevelReader world) {
         return this;
     }
 
     default void forEachNeighbor(Consumer<Griddable<T>> cons) {}
 
     /**
-     * Allows grid-sided access to this Griddable's {@link GriddableTerminus terminus},
+     * Allows user-facing access to this Griddable's {@link GriddableTerminus terminus},
      * which contains a bakeable acceleration structure for getting all
      * {@link AncillaryNode ancillaries} involving this Griddable's 
      * {@link #getComponent internal component}. This method contains validity checks 
@@ -146,6 +146,18 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
         return output;
     }
 
+    /**
+     * Returns <code>true</code> if this {@link Griddable}
+     * and <code>other</code> both share adjacent
+     * {@link BlockJack block jacks} facing each other.
+     * This is used to determine whether or not two blocks 
+     * that are touching each other are in the proper 
+     * orientation to form an electrical conneciton.
+     * @param other
+     * @return <code>true</code> if this griddable has a BlockJack
+     * currently facing the opposite direction as any BlockJack
+     * in <code>other</code>
+     */
     default boolean isInteractingWith(Griddable<?> other) {
         Objects.requireNonNull(other);
         if(this == other) return false;
@@ -156,20 +168,22 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
         if(thisPos == thatPos || thisPos.distManhattan(thatPos) > 1) 
             return false;
         for(AncillaryPair ancs : analyzeAdjacents()) {
-            Griddable<?> source = GridTracking.getSource(ancs.getEndAncillary());
+            Griddable<?> source = GridTracking.getReferentOrThrow(ancs.getEndAncillary());
             if(source == other) return true;
         }
         return false;
     }
 
     /**
-     * Gets the default {@link AncillaryNode} for instances     * where the {@link JackSelector} is not accessible (like
-     * in gametests)
+     * Gets the default {@link AncillaryNode} for this Griddable.
+     * Returned when the {@link JackSelector} is inaccessible or 
+     * cannot discern a selection when requested.
+     * <h5>* at the moment this is only used in gametests</h5>
      * @return The first reachable ancillary in this griddable's {@link #getTerminus() terminus}
      */
     default AncillaryNode<?> getDefaultAncillary() {
         GriddableTerminus acc = getTerminus();
-        return acc.getFirstAncillary();
+        return acc.getAncillary();
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -203,7 +217,7 @@ public interface Griddable<T extends GridUUID<T>> extends WorldlyObject, GridRef
         for(int x = 0; x < links.size(); x++) {
             AncillaryPair link = links.get(x);
             if(link == null) continue;
-            GridReferent<?> primary = GridReferent.choosePrimary(this, GridTracking.getSource(link.getEndAncillary().getProviderSource()));
+            GridReferent<?> primary = GridReferent.choosePrimary(this, GridTracking.getReferentOrThrow(link.getEndAncillary()));
             if(primary == null || primary != this)
                 continue;
             cons.accept(link);

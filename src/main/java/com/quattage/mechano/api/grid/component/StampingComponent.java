@@ -66,7 +66,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
         Objects.requireNonNull(terminal);
         Node n = terminal.getAttachedNode();
         if(n == null || n.isGrounded()) return -1;
-        return domain.indexer().indexOf(n);
+        return domain.indexer().get(n);
     }
 
     /**
@@ -103,7 +103,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
     public double voltageOf(GridDomain domain, @Nullable Node node) {
         Objects.requireNonNull(domain);
         if(node == null) return 0d;
-        return domain.indexer().indexOf(node);
+        return domain.indexer().get(node);
     }
 
     @Override

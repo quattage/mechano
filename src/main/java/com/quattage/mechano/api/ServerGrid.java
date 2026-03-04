@@ -105,8 +105,8 @@ public final class ServerGrid extends Grid {
         for(GridDomain domain : domains) {
             if(domain.indexer().hasStampers()) {
                 domain.indexer().stampDynamic(this, domain);
-                domain.solveWith(this, solver);
-                domain.postProcess(this);
+                domain.solve(this, solver);
+                domain.postSolve(this);
             } else domain.idle();
         }
     }
@@ -114,8 +114,8 @@ public final class ServerGrid extends Grid {
     private void preProcessDomains() {
         for(int x = 0; x < domains.size(); x++) {
             GridDomain domain = domains.get(x);
-            if(!domain.needsProcessing()) continue;
-            domain.updateOnTopologyChange(this, x);
+            if(!domain.isTopologyOutdated()) continue;
+            domain.preSolve(this, x);
         }
     }
 

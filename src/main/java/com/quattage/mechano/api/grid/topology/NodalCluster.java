@@ -11,11 +11,15 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.Griddable;
+import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.Disposable;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import net.minecraft.world.level.LevelReader;
 
 public class NodalCluster implements Disposable {
 
@@ -59,7 +63,7 @@ public class NodalCluster implements Disposable {
      * @return A new {@link NodalCluster} instnace.
      * @see #getConstituents
      */
-    public NodalCluster ofBranch(NodeUnionSet origin, Node root) {
+    public static NodalCluster ofBranch(NodeUnionSet origin, Node root) {
         if(origin.isEmpty() || origin.relations.containsKey(root)) 
             return NodalCluster.ofEmpty(root);
         root = origin.find(root);
@@ -69,7 +73,6 @@ public class NodalCluster implements Disposable {
         return new NodalCluster(root, branch);
     }
 
-
     /**
      * Given a root node and its origin set, this method returns a list of new
      * NodalCluster instances which each contain a section of the root branch.
@@ -77,10 +80,10 @@ public class NodalCluster implements Disposable {
      * @param root The root node to start with
      * @param exclusions Any number of nodes to exclude when searching
      * @return A new list of NodalClusters
-     * @see #ofDiscontinuities(NodeUnionSet, Node[], Node...)
+     * @see #ofClusters(NodeUnionSet, Node[], Node...)
      */
-    public static List<NodalCluster> ofDiscontinuities(NodeUnionSet origin, Node root, Node... exclusions) {
-        return NodalCluster.ofDiscontinuities(origin, NodalCluster.getConstituents(origin, root), exclusions);
+    public static List<NodalCluster> ofClusters(NodeUnionSet origin, Node root, Node... exclusions) {
+        return NodalCluster.ofClusters(origin, NodalCluster.getConstituents(origin, root), exclusions);
     }
 
     /**
@@ -92,9 +95,9 @@ public class NodalCluster implements Disposable {
      * @param exclusions (Optional) any number of nodes to exclude when searching. These nodes 
      * will function as boundaries that prevent the search from proceeding in that direction.
      * @return A new list of NodalClusters
-     * @see #ofDiscontinuities(NodeUnionSet, Node, Node...)
+     * @see #ofClusters(NodeUnionSet, Node, Node...)
      */
-    public static List<NodalCluster> ofDiscontinuities(NodeUnionSet origin, Node[] branch, Node... exclusions) {
+    public static List<NodalCluster> ofClusters(NodeUnionSet origin, Node[] branch, Node... exclusions) {
         if(branch.length <= 0) return Collections.emptyList();
         final Set<Node> visited = new HashSet<>(branch.length + (exclusions == null ? 0 : (exclusions.length * 2)));
         if(exclusions != null) {
@@ -109,6 +112,30 @@ public class NodalCluster implements Disposable {
             if(visited.contains(node)) continue;
             NodalCluster cluster = new NodalCluster(branch.length);
             cluster.ffr(origin, node, visited);
+            if(!cluster.isStub()) {
+                cluster.trim();
+                output.add(cluster);
+            }
+        }
+        return output;
+    }
+
+    /**
+     * Given a single union set, this method will return a list of
+     * NodalCluster instances which each contain a section of the
+     * origin branch. In the DFS performed by this method,
+     * continuity is maintained through components, so this method
+     * is useful for splitting by domain, rather than by cluster
+     * @param origin The NodeUnionSet to acquire adjacency from
+     * @return A new list of NodalClusters
+     */
+    public static List<NodalCluster> ofDiscontinuities(LevelReader world, NodeUnionSet origin) {
+        final Set<Node> visited = new HashSet<>(origin.deepSize());
+        final List<NodalCluster> output = new ArrayList<>(3);
+        for(Node node : origin.adjacencyTree.keySet()) {
+            if(visited.contains(node)) continue;
+            NodalCluster cluster = new NodalCluster(origin.deepSize());
+            cluster.complexFFR(world, origin, node, visited);
             if(!cluster.isStub()) {
                 cluster.trim();
                 output.add(cluster);
@@ -182,6 +209,27 @@ public class NodalCluster implements Disposable {
         }
     }
 
+    // like normal ffr but also considers connections through circuit components
+    private void complexFFR(LevelReader world, NodeUnionSet origin, Node iteration, Set<Node> visited) {
+        visited.add(iteration);
+        this.head = Node.choosePrimary(head, iteration);
+        ObjectOpenHashSet<Node> adjacents = origin.adjacencyTree.get(iteration);
+        Griddable<?> source = GridTracking.getReferentOrThrow(world, iteration);
+        if(source != null) {
+            CircuitComponent component = source.getComponent();
+            if(component == null) throw new NullPointerException(source.getClass().getSimpleName() + " failed to provide a CircuitComponent instance!");
+            // all nodes belonging to the component are considered connected to the initial node
+            // TODO use ancillaries instead of all nodes
+            component.forEachNode(node -> adjacents.add(node));
+        }
+        if(adjacents == null || adjacents.isEmpty()) return;
+        this.contents.add(iteration);
+        for(Node adjacent : adjacents) {
+            if(!visited.contains(adjacent))
+                complexFFR(world, origin, adjacent, visited);
+        }
+    }
+
     /**
      * Applies the contents if this cluster to the provided
      * NodeUnionSet. This method will patch <code>target</code>'s
@@ -196,10 +244,25 @@ public class NodalCluster implements Disposable {
         assertNotDisposed();
         if(head == null)
             throw new IllegalStateException("Couldn't patch union transitives from a NodalCluster with no head node!");
-        forEach(node -> { target.relations.put(node, head); });
+        forEach(node -> {
+            target.relations.put(node, head); 
+        });
         target.relations.put(head, head);
         target.transitiveTree.put(head, contents);
         dispose();
+    }
+
+    public GridDomain spawnFrom(@Nullable GridDomain parent) {
+        GridDomain fresh = new GridDomain();
+        fresh.markDirty();
+        forEach(node -> {
+            fresh.netlist().relations.put(node, head);
+            if(parent != null)
+                parent.indexer().remove(node);
+        });
+        fresh.netlist().relations.put(head, head);
+        fresh.netlist().transitiveTree.put(head, contents);
+        return fresh;
     }
 
     public boolean contains(Node n) {

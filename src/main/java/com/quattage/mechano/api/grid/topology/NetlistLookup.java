@@ -141,6 +141,14 @@ public abstract class NetlistLookup<T> {
         }
     }
 
+    public int size() {
+        return links == null ? 0 : links.size();
+    }
+
+    public boolean isEmpty() {
+        return size() <= 0;
+    }
+
 
 
     /**
@@ -203,7 +211,7 @@ public abstract class NetlistLookup<T> {
         }
 
         private void markChunkly(@Nullable Grid grid, AncillaryNode<?> node) {
-            Griddable<?> source = GridTracking.getSource(node);
+            Griddable<?> source = GridTracking.getReferentOrThrow(node);
             if(source == null && grid != null) {
                 grid.warn("Skipped marking " + node + " because its source couldn't be found.");
                 return;
@@ -220,7 +228,7 @@ public abstract class NetlistLookup<T> {
         }
 
         private void unmarkChunkly(Node node) {
-            Griddable<?> source = GridTracking.getSource(node);
+            Griddable<?> source = GridTracking.getReferentOrThrow(node);
             if(source == null || source.canMoveDynamically()) return;
             ChunkPos cp = source.getChunkPos();
             if(cp == null) return;

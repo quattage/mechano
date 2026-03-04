@@ -32,9 +32,9 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  * The Circuit cannot provide direct access to the adjacency
  * status of itself or its constituents. The data contained within
  * this class is not assembled in any sort of legible graph
- * system. (that's what the {@link ServerGrid} is for) When connections 
+ * system. (that's what the {@link GridDomain} is for) When connections 
  * are made, The {@link Node nodes} belonging to this circuit are flushed 
- * into the {@link NodeUnionSet} belonging to the active {@link ServerGrid}. 
+ * into the {@link NodeUnionSet} belonging to the active {@link GridDomain}. 
  * This data is collected and captured as a snapshot by the grid, which is 
  * processed and solved off-thread. <strong>You cannot modify the voltage, 
  * current, or charge of any circuit elements from this class.</strong>

@@ -50,14 +50,14 @@ public class AncillaryPair extends NodePair implements CircuitComponent {
     public AncillaryPair assignStart(AncillaryNode<?> ancillary) {
         Objects.requireNonNull(ancillary);
         this.a = ancillary;
-        this.startID = GridTracking.getAddress(GridTracking.getSource(ancillary), ancillary);
+        this.startID = GridTracking.getAddress(GridTracking.getReferentOrThrow(ancillary), ancillary);
         return this;
     }
 
     public AncillaryPair assignEnd(AncillaryNode<?> ancillary) {
         Objects.requireNonNull(ancillary);
         this.b = ancillary;
-        this.endID = GridTracking.getAddress(GridTracking.getSource(ancillary), ancillary);
+        this.endID = GridTracking.getAddress(GridTracking.getReferentOrThrow(ancillary), ancillary);
         return this;
     }
 
@@ -80,12 +80,12 @@ public class AncillaryPair extends NodePair implements CircuitComponent {
     }
 
     public void onAddedToGrid(Grid grid) {
-        Griddable<?> source = GridTracking.getSource(grid.getWorld(), a);
+        Griddable<?> source = GridTracking.getReferentOrThrow(grid.getWorld(), a);
         if(source != null) {
             source.getTerminus().setHasConnections();
             source.onAddedToGrid(grid);
         }
-        source = GridTracking.getSource(grid.getWorld(), b);
+        source = GridTracking.getReferentOrThrow(grid.getWorld(), b);
         if(source != null) {
             source.getTerminus().setHasConnections();
             source.onAddedToGrid(grid);
@@ -93,12 +93,12 @@ public class AncillaryPair extends NodePair implements CircuitComponent {
     }
 
     public void onRemovedFromGrid(Grid grid) {
-        Griddable<?> source = GridTracking.getSource(grid.getWorld(), a);
+        Griddable<?> source = GridTracking.getReferentOrThrow(grid.getWorld(), a);
         if(source != null) {
             source.getTerminus().setHasConnections(false);
             source.onRemovedFromGrid(grid);
         }
-        source = GridTracking.getSource(grid.getWorld(), b);
+        source = GridTracking.getReferentOrThrow(grid.getWorld(), b);
         if(source != null) {
             source.getTerminus().setHasConnections(false);
             source.onRemovedFromGrid(grid);
@@ -256,8 +256,8 @@ public class AncillaryPair extends NodePair implements CircuitComponent {
 
     public boolean isDynamic() {
         assertHasNodes();
-        Griddable<?> startSource = GridTracking.getSource(a);
-        Griddable<?> endSource = GridTracking.getSource(b);
+        Griddable<?> startSource = GridTracking.getReferentOrThrow(a);
+        Griddable<?> endSource = GridTracking.getReferentOrThrow(b);
         return (startSource != null && startSource.canMoveDynamically()) || 
             (endSource != null && endSource.canMoveDynamically());
     }
@@ -285,18 +285,18 @@ public class AncillaryPair extends NodePair implements CircuitComponent {
     }
 
     @Override
-    public GridReferent<?> getProviderSource() {
+    public GridReferent<?> getReferent() {
         if(a == null) {
             throw new IllegalStateException("Couldn't get provider source for " + this 
                 + " - This ancillary pair hasn't located its ancillaries yet! (use the overload of this method that requires a world to avoid this error)");
         }
-        return a.getProviderSource();
+        return a.getReferent();
     }
 
     @Override
-    public GridReferent<?> getProviderSource(LevelReader world) {
-        if(a != null) return getProviderSource();
-        return startID.getProviderSource(world);
+    public GridReferent<?> getReferent(LevelReader world) {
+        if(a != null) return getReferent();
+        return startID.getReferent(world);
     }
 
     protected void assertHasIDs() {

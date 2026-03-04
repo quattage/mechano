@@ -3,7 +3,6 @@ package com.quattage.mechano.api.grid;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
@@ -140,25 +139,6 @@ public interface HierarchicalConstruct {
      */
     @Nullable HierarchicalConstruct getParentConstruct();
 
-    /**
-     * Gets the parent of this CircuitComponent, traversing
-     * the parent/child hierarchy upwards until it finds the highest
-     * level parent.
-     * @return The superparent, or <code>null</code> if this construct was found 
-     * to have a hierarchy deeper than 255 objects.
-     */
-    default @Nullable HierarchicalConstruct getSuperparent() {
-        HierarchicalConstruct parent = getParentConstruct();
-        for(int x = 0; x < 255; x++) {
-            if(!(parent instanceof HierarchicalConstruct hp)) return parent;
-            HierarchicalConstruct candidate = hp.getParentConstruct();
-            if(candidate == null || candidate == parent) return parent;
-            parent = candidate;
-        }
-        Mechano.LOGGER.warn("Component hierarchy traversal for " + this + " failed to identify a superparent.");
-        return null;
-    }
-
     default void forEachConstructInHierarchy(Consumer<HierarchicalConstruct> cons) {
         cons.accept(this);
         HierarchicalConstruct parent = getParentConstruct();
@@ -187,30 +167,14 @@ public interface HierarchicalConstruct {
         }
 
         /**
-         * Provides a (new or pre-existing) {@link GridUUID} instance 
+         * Provides a new {@link GridUUID} instance 
          * that points towards this object. Can be used by the {@link Grid}
          * to look this object up. <p>
-         * For API users: Use {@link #getUUIDSafe() the checked version} 
-         * of this method instead.
+         * For API users: Use {@link GridTracking#getAddress} instead.
          * @return The UUID associated with this identifiable object.
-         * @see #getUUIDSafe()
+         * @see GridTracking#getAddress
          */
         T getUUID();
-
-        /**
-         * Provides a (new or pre-existing) {@link GridUUID} instance 
-         * that points towards this object. Can be used by the {@link Grid}
-         * to look this object up. <p>
-         * This method will throw exceptions for null or invalid returns.
-         * @return The UUID associated with this identifiable object. Will never be <code>null</code>
-         */
-        @ApiStatus.NonExtendable
-        default T getUUIDSafe() {
-            T uuid = getUUID();
-            if(uuid == null) 
-                throw new NullPointerException("GridIdentifiable '" + this.getClass().getSimpleName() + " failed to provide a vlaid UUID! (got " + uuid + ")");
-            return uuid;
-        }
 
         GridTracking getTrackerScope();
         boolean isBeingTrackedBy(ServerPlayer sp);
@@ -247,11 +211,16 @@ public interface HierarchicalConstruct {
 
     public interface SourceProvider {
 
-        default GridReferent<?> getProviderSourceOrThrow() {
-            GridReferent<?> source = getProviderSource();
-            if(source == null) throw new NullPointerException("Couldn't locate provider source for " + this + "!");
-            return source;
-        }
+        /**
+         * Provides access to the instantiator/composer source object
+         * that created this GridAPI component. Allows grid-scoped
+         * code to access the {@link Griddable} (and, by extension, the world)
+         * at arbitrary moments in time. <p>
+         * Implementations may <code>null</code> to indicate that their source couldn't be found.
+         * @param world world to operate within. (Optional, some providers require a reference to the world, but most don't) Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
+         * @return The {@link Griddable} that this object belongs to
+         */
+        GridReferent<?> getReferent();
 
         /**
          * Provides access to the instantiator/composer source object
@@ -262,19 +231,8 @@ public interface HierarchicalConstruct {
          * @param world world to operate within. (Optional, some providers require a reference to the world, but most don't) Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
          * @return The {@link Griddable} that this object belongs to
          */
-        GridReferent<?> getProviderSource();
-
-        /**
-         * Provides access to the instantiator/composer source object
-         * that created this GridAPI component. Allows grid-scoped
-         * code to access the {@link Griddable} (and, by extension, the world)
-         * at arbitrary moments in time. <p>
-         * Implementations may <code>null</code> to indicate that their source couldn't be found.
-         * @param world world to operate within. (Optional, some providers require a reference to the world, but most don't) Use this world instance for performing BlockEntity, LevelChunk, or Entity lookups.
-         * @return The {@link Griddable} that this object belongs to
-         */
-        default GridReferent<?> getProviderSource(LevelReader world) {
-            return getProviderSource();
+        default GridReferent<?> getReferent(LevelReader world) {
+            return getReferent();
         }
     }
 

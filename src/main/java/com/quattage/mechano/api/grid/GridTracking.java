@@ -53,7 +53,7 @@ import net.neoforged.neoforge.attachment.IAttachmentHolder;
 /**
  * A central class for managing the serialization and representation of various data sources.
  * Simultaneously represents a discriminator for {@link GridUUID} serialization, as well
- * as a loosely defined set of {@link Griddable} source types. Griddables can be attached to
+ * as a loosely defined set of {@link Griddable} owner types. Griddables can be attached to
  * {@link Entity entities}, {@link BlockEntity block entities}, or even the {@link LevelReader level}
  * (theoretically), and these all need ways to distinguish between one another, since these objects
  * are stored differently by the Level and have different needs.
@@ -122,11 +122,11 @@ public enum GridTracking {
     }
 
     public static CircuitComponent getComponentOrThrow(LevelReader world, GridUUID<?> id) {
-        Griddable<?> source = GridTracking.getSource(world, id);
-        if(source == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
+        Griddable<?> owner = GridTracking.getReferentOrThrow(world, id);
+        if(owner == null) throw new ComponentNotFoundException(id, "No griddable could be located at this ID's primary coordinate!");
         if(!id.hasBindings()) throw new ComponentNotFoundException(id, "The provided ID has no bindings!");
 
-        HierarchicalConstruct previous = source;
+        HierarchicalConstruct previous = owner;
         for(int x = 0; x < id.getBindingCount(); x++) {
             UUIDComposite binding = id.getBinding(x);
             if(binding == null) throw new NullPointerException("Encountered a null binding while traversing UUID");
@@ -157,71 +157,195 @@ public enum GridTracking {
     }
 
     /**
-     * Acquires a {@link GridUUID} instance pointing to <code>source</code>
+     * Acquires a {@link GridUUID} instance pointing to <code>owner</code>
      * and bound to the supplied {@link CircuitComponent} <code>component</code>.
-     * <h3>There is no error checking to ensure that the supplied <code>component</code>
-     * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
-     * you need to garantee this yourself.</h3>
-     * @param source The {@link Griddable} to pull a UUID instance from
-     * @param component The particular {@link CircuitComponent} that the returned UUID will be bound to, 
-     * provided it belongs to <code>source</code>
+     * There is no error checking to ensure that the supplied <code>component</code>
+     * belongs to some construct attached to <code>owner</code>. For the UUID to be useful,
+     * you need to garantee this yourself.
+     * @param owner The {@link Griddable} to pull a UUID instance from
+     * @param obj The particular {@link CircuitComponent} that the returned UUID will be bound to, 
+     * provided it belongs to <code>owner</code>
      * @return A (newly instantiated or cachced) ComponentUUID instance. 
      * While modification is allowed, it is not reccomended.
      * @see {@link Griddable#getAddress()}
      * @see {@link HierarchicalConstruct#bindUUID}
+     * @throws NullPointerException if <code>owner</code> is null, <code>obj</code> is null or can't provide a valid UUID for whatever reason
      */
-    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj, HierarchicalConstruct component) {
+    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> owner, HierarchicalConstruct obj) {
+        Objects.requireNonNull(owner);
         Objects.requireNonNull(obj);
-        Objects.requireNonNull(component);
-        T id = obj.getUUIDSafe();
-        component.forEachConstructInHierarchy(construct -> { 
+        T addr = GridTracking.getAddress(owner);
+        obj.forEachConstructInHierarchy(construct -> { 
             if(!(construct instanceof Griddable<?>)) 
-                construct.bindUUID(id); 
+                construct.bindUUID(addr); 
         });
-        return id;
+        return addr;
     }
 
     /**
-     * Acquires a {@link GridUUID} instance pointing to <code>source</code>
+     * Returns a {@link GridUUID} which points to <code>component</code>.
+     * This is useful for describing this component's physical location 
+     * in a serializable format. <p>
+     * This method automatically traverses the hierarcy structure of
+     * <code>component</code> upwards until it finds a valid parent
+     * {@link Griddable}. This griddable instance is used as the
+     * basis for the new GridUUID.
+     * This call can be rather expensive and should be avoided
+     * in favour of {@link #getAddress(GridReferent, HierarchicalConstruct) 
+     * the overload} that takes a manually-supplied parent object.
+     * @param obj The component to get a bound UUID for
+     * @param world Optional, but you should provide it if you have one. This 
+     * is used when necessary to look up {@link GridReferent} data attached to
+     * or existing within the level. These lookups are usually skipped, but
+     * may be necessary depending on the type of referent that <code>component</code>
+     * belongs to.
+     * @return a new {@link GridUUID} instance that points to <code>component</code>
+     * @throws ComponentNotFoundException if <code>obj</code> has no valid {@link GridReferent} in its parental hierarchy
+     * @throws NullPointerException if <code>obj</code> is null or grid referent that owns <code>obj</code> failed to provide a valid UUID
+     * @throws UnsupportedOperationException if a traversed component or griddable requires the world to proceed and no world was given
+     */
+    public static GridUUID<?> getAddress(HierarchicalConstruct obj) {
+        Objects.requireNonNull(obj);
+        GridUUID<?> rawID;
+        if(obj instanceof GridReferent gr) {
+            rawID = GridTracking.getAddress(gr);
+            obj.bindUUID(rawID);
+            return rawID;
+        }
+        LevelReader world = obj instanceof WorldlyObject wrl ? wrl.getWorld() : null;
+        Griddable<?> owner = GridTracking.getReferentOrThrow(world, obj);
+        return GridTracking.getAddress(owner, obj);
+    }
+
+    /**
+     * Returns a {@link GridUUID} pointing to <code>obj</code>
+     * <p>
+     * This method exists for consistency's sake, to pad out the {@link #getAddress} 
+     * series of overloads. It is functionally identical to calling {@link GridReferent#getUUID}
+     * but with a built-in nullcheck.
+     * @param obj The component to get a bound UUID for
+     * @return a new {@link GridUUID} as described in {@link GridReferent#getUUID()}
+     * @throws NullPointerException if <code>obj</code> is null or failed to provide a valid UUID
+     */
+    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj) {
+        Objects.requireNonNull(obj);
+        T addr = obj.getUUID();
+        if(addr == null)
+            throw new NullPointerException("GridReferent '" + obj.getClass().getSimpleName() + " failed to provide a non-null UUID!");
+        return addr;
+    }
+
+    /**
+     * Acquires a {@link GridUUID} instance pointing to <code>owner</code>
      * and bound to the supplied {@link CircuitComponent} <code>component</code>.
-     * <h3>There is no error checking to ensure that the supplied <code>component</code>
-     * belongs to some construct attached to <code>source</code>. For the UUID to be useful,
-     * you need to garantee this yourself.</h3>
-     * @param source The {@link Griddable} to pull a UUID instance from
-     * @param component The particular {@link CircuitComponent} that the returned UUID will be bound to, 
-     * provided it belongs to <code>source</code>
+     * There is no error checking to ensure that the supplied <code>component</code>
+     * belongs to some construct attached to <code>owner</code>. For the UUID to be useful,
+     * you need to garantee this yourself.
+     * @param component The particular {@link CircuitComponent} that the returned UUID will be bound to.
+     * The owner will be automatically found for you.
      * @return A (newly instantiated or cachced) ComponentUUID instance. 
      * While modification is allowed, it is not reccomended.
      * @see {@link Griddable#getAddress()}
      * @see {@link HierarchicalConstruct#bindUUID}
+     * @throws ComponentNotFoundException if <code>obj</code> has no valid {@link GridReferent} in its parental hierarchy
+     * @throws NullPointerException if <code>obj</code> is null or grid referent that owns <code>obj</code> failed to provide a valid UUID
+     * @throws UnsupportedOperationException if a traversed component or griddable requires the world to proceed and no world was given
      */
-    public static <T extends GridUUID<T>> T getAddress(GridReferent<T> obj) {
-        Objects.requireNonNull(obj);
-        return obj.getUUIDSafe();
-    }
-
-    public static @Nullable Griddable<?> getSource(SourceProvider prov) {
-        return GridTracking.getSource(null, prov);
-    }
-
-    public static @Nullable Griddable<?> getSource(@Nullable LevelReader world, SourceProvider prov) {
-        Objects.requireNonNull(prov);
-        GridReferent<?> referent = world == null ? prov.getProviderSource() : prov.getProviderSource(world);
-        if(!(referent instanceof Griddable<?> source)) {
-            return null;
-            // throw new ComponentNotFoundException("Couldn't get griddable source for '" + prov.getClass().getSimpleName() + "' - This provider returned a referent of type '" 
-                // + (referent == null ? "null" : referent.getClass().getSimpleName()) + "', which isn't a valid griddable instance!");
+    @SuppressWarnings("unchecked")
+    public static GridUUID<?> getAddress(@Nullable LevelReader world, HierarchicalConstruct component) {
+        Objects.requireNonNull(component);
+        GridUUID<?> rawID;
+        if(component instanceof GridReferent gr) {
+            rawID = GridTracking.getAddress(gr);
+            component.bindUUID(rawID);
+            return rawID;
         }
-        return source;
+        if(world == null && component instanceof WorldlyObject wrl)
+            world = wrl.getWorld(); 
+        Griddable<?> owner = GridTracking.getReferentOrThrow(world, component);
+        return GridTracking.getAddress(owner, component);
+    }
+
+    public static Griddable<?> getReferentOrThrow(GridReferent<?> obj) {
+        return GridTracking.getReferentOrThrow(null, obj);
+    }
+
+    public static Griddable<?> getReferentOrThrow(HierarchicalConstruct hc) {
+        return GridTracking.getReferentOrThrow(null, hc);
+    }
+
+    public static Griddable<?> getReferentOrThrow(AncillaryNode<?> anc) {
+        Objects.requireNonNull(anc);
+        return GridTracking.getReferentOrThrow(anc.getWorld(), (GridReferent<?>)anc.getReferent());
+    }
+
+    public static Griddable<?> getReferentOrThrow(@Nullable LevelReader world, HierarchicalConstruct hc) {
+        return switch (hc) {
+            case null -> throw new ComponentNotFoundException("Can't locate owner for a null object!");
+            case Griddable<?> owner -> owner;
+            case GridReferent<?> gr -> GridTracking.getReferentOrThrow(world, gr);
+            case SourceProvider sp -> {
+                GridReferent<?> tryGet = sp.getReferent();
+                if(tryGet instanceof Griddable<?> owner) yield owner;
+                if(tryGet != null) tryGet = world == null ? tryGet.getReferent() : tryGet.getReferent(world);
+                yield GridTracking.find(world, hc) ;
+            } default -> GridTracking.find(world, hc);
+        };
+    }
+
+    public static Griddable<?> getReferentOrThrow(@Nullable LevelReader world, GridReferent<?> obj) {
+        if(obj == null)
+            throw new ComponentNotFoundException("Can't locate owner for a null object!");
+        if(obj instanceof Griddable<?> owner) return owner;
+        GridReferent<?> tryGet = world == null ? obj.getReferent() : obj.getReferent(world);
+        if(tryGet instanceof Griddable<?> owner) return owner;
+        if(obj instanceof HierarchicalConstruct hc)
+            return GridTracking.find(world, hc);
+        throw new ComponentNotFoundException("Object " + obj.getClass().getSimpleName() 
+            + " couldn't fall back on a hierarchical search to locate its parent owner because this object is not a hierarchical type!");
+    }
+
+    private static Griddable<?> find(LevelReader world, HierarchicalConstruct hc) {
+        GridReferent<?> tryGet = GridTracking.findReferent(hc);
+        if(tryGet instanceof Griddable<?> owner) return owner;
+        if(tryGet != null) tryGet = world == null ? tryGet.getReferent() : tryGet.getReferent(world);
+        if(tryGet instanceof Griddable<?> owner) return owner;
+        throw new ComponentNotFoundException("Object " + hc.getClass().getSimpleName() 
+            + " couuldn't locate a griddable owner within its parental hierarchy!");
+    }
+
+    private static @Nullable GridReferent<?> findReferent(HierarchicalConstruct hc) {
+        HierarchicalConstruct current = hc;
+        HierarchicalConstruct next = hc;
+        for(int x = 0; x < 255; x++) {
+            if(current instanceof GridReferent<?> source) return source;
+            if(current == null || next == null || next == current)
+                return null;
+            next = current.getParentConstruct();
+            current = next;
+        }
+        return null;
+    }
+
+    public static @Nullable HierarchicalConstruct findSuperparent(HierarchicalConstruct obj) {
+        obj = obj.getParentConstruct();
+        for(int x = 0; x < 255; x++) {
+            if(obj == null) return null;
+            HierarchicalConstruct next = obj.getParentConstruct();
+            if(next == null || next == obj) return obj;
+            obj = next;
+        }
+        Mechano.LOGGER.warn("Component hierarchy traversal for " + obj + " failed to identify a superparent.");
+        return null;
     }
 
     public static Set<ServerPlayer> collectPlayersTracking(ServerLevel world, Collection<GridReferent<?>> objs) {
         Set<ServerPlayer> senders = new HashSet<>();
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
-            for(GridReferent<?> referent : objs) {
-                if(!referent.isBeingTrackedBy(sp)) continue;
-                Griddable<?> source = GridTracking.getSource(world, referent);
-                if(source != null && source.isBeingTrackedBy(sp)) {
+            for(GridReferent<?> obj : objs) {
+                if(!obj.isBeingTrackedBy(sp)) continue;
+                Griddable<?> owner = GridTracking.getReferentOrThrow(obj);
+                if(owner != null && owner.isBeingTrackedBy(sp)) {
                     senders.add(sp);
                     break;
                 }
@@ -233,11 +357,11 @@ public enum GridTracking {
     public static Set<ServerPlayer> collectPlayersTracking(ServerLevel world, GridReferent<?>... objs) {
         Set<ServerPlayer> senders = new HashSet<>();
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
-            for(GridReferent<?> referent : objs) {
-                if(referent.isBeingTrackedBy(sp)) {
-                    Griddable<?> source = GridTracking.getSource(world, referent);
-                    if(source == null) continue;
-                    if(source.isBeingTrackedBy(sp)) {
+            for(GridReferent<?> obj : objs) {
+                if(obj.isBeingTrackedBy(sp)) {
+                    Griddable<?> owner = GridTracking.getReferentOrThrow(world, obj);
+                    if(owner == null) continue;
+                    if(owner.isBeingTrackedBy(sp)) {
                         senders.add(sp);
                         break;
                     }
@@ -259,13 +383,15 @@ public enum GridTracking {
      * @param obj {@link GridIdentifiable} to address
      * @return <code>true</code> if <code>obj</code> is reachable.
      */
-    public static boolean isReachable(LevelReader world, GridReferent<?> referent) {
-        Griddable<?> source = GridTracking.getSource(world, referent);
-        if(source == null || source.getComponent() == null) return false;
-        referent = GridTracking.getAddress(referent);
-        source = GridTracking.getSource(world, referent);
-        return source != null;
+    public static boolean isReachable(LevelReader world, GridReferent<?> obj) {
+        Griddable<?> owner = GridTracking.getReferentOrThrow(world, obj);
+        if(owner == null || owner.getComponent() == null) return false;
+        obj = GridTracking.getAddress(obj);
+        owner = GridTracking.getReferentOrThrow(world, obj);
+        return owner != null;
     }
+
+    
 
     public static void forEachSourceType(Consumer<GridTracking> cons) {
         for(int x = 0; x < GridTracking.values().length; x++) {
@@ -333,14 +459,14 @@ public enum GridTracking {
     }
 
     private final Class<? extends GridUUID<?>> clazz; 
-    private final Class<? extends IAttachmentHolder> referent;
+    private final Class<? extends IAttachmentHolder> obj;
     private WeakReference<Constructor<? extends GridUUID<?>>> tagCtor = new WeakReference<>(null);;
     private WeakReference<Constructor<? extends GridUUID<?>>> byteBufCtor = new WeakReference<>(null);
     private WeakReference<Constructor<? extends GridUUID<?>>> dynamicCtor = new WeakReference<>(null);;
 
-    <T extends GridUUID<T>> GridTracking(Class<T> clazz, Class<? extends IAttachmentHolder> referent) {
+    <T extends GridUUID<T>> GridTracking(Class<T> clazz, Class<? extends IAttachmentHolder> obj) {
         this.clazz = clazz;
-        this.referent = referent;
+        this.obj = obj;
     }
 
     public Class<? extends GridUUID<?>> getUUIDClass() {
@@ -348,7 +474,7 @@ public enum GridTracking {
     }
 
     public boolean permits(IAttachmentHolder holder) {
-        return referent.isAssignableFrom(holder.getClass());
+        return obj.isAssignableFrom(holder.getClass());
     }
 
     protected void clear() {
@@ -474,8 +600,8 @@ public enum GridTracking {
         }
 
         public static class UnexpectedReferentException extends RuntimeException {
-            public UnexpectedReferentException(HierarchicalConstruct referent, ComponentHierarchy expected) {
-                super("Got '" + referent.getClass().getSimpleName() + "' of type '" + referent.getHierarchyType() + "', but operation expected the referent '" + expected + "'");
+            public UnexpectedReferentException(HierarchicalConstruct obj, ComponentHierarchy expected) {
+                super("Got '" + obj.getClass().getSimpleName() + "' of type '" + obj.getHierarchyType() + "', but operation expected the obj '" + expected + "'");
             }
         }
     }

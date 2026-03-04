@@ -114,8 +114,8 @@ public class ComponentLink<T extends CircuitComponent> extends AncillaryPair {
     }
 
     public boolean isPrimary() {
-        Griddable<?> startSource = getStartAncillary().getProviderSource();
-        Griddable<?> endSource = getEndAncillary().getProviderSource();
+        Griddable<?> startSource = getStartAncillary().getReferent();
+        Griddable<?> endSource = getEndAncillary().getReferent();
         GridReferent<?> primary = GridReferent.choosePrimary(startSource, endSource);
         return startSource == primary;
     }

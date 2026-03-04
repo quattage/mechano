@@ -27,11 +27,11 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * belonging to a parent {@link Griddable}. 
  * <p>
  * This class is especially useful in contexts (e.g. rendering) that need frequent access to 
- * node and link information. 
+ * ancillary information without iterating over the entire circuit.
  */
 public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
 
-    private @Nullable AncillaryNode<?>[] exposedJoints;
+    private @Nullable AncillaryNode<?>[] ancillaries;
     private boolean hasConnections = false;
 
     public GriddableTerminus() {}
@@ -40,9 +40,9 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
         initializeFrom(source);
     }
 
-    public GriddableTerminus(AncillaryNode<?>[] exposedJoints) {
-        if((exposedJoints != null && exposedJoints.length > 0))
-            this.exposedJoints = exposedJoints;
+    public GriddableTerminus(AncillaryNode<?>[] ancillaries) {
+        if((ancillaries != null && ancillaries.length > 0))
+            this.ancillaries = ancillaries;
     }
 
     public GriddableTerminus initializeFrom(Griddable<?> source) {
@@ -54,7 +54,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
 
     public GriddableTerminus initializeFrom(CircuitComponent component) {
         Objects.requireNonNull(component);
-        if((exposedJoints != null && exposedJoints.length > 0) || component == null) 
+        if((ancillaries != null && ancillaries.length > 0) || component == null) 
             return this;
         if(component instanceof Circuit) {
             Set<AncillaryNode<?>> found = new ObjectOpenHashSet<>();
@@ -62,12 +62,12 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
                 if(joint == null) throw new NullPointerException("Encountered a null ancillary while initializing terminus!");
                 found.addAll(joint.getAncillaries());
             });
-            exposedJoints = found.isEmpty() ? null : found.toArray(new AncillaryNode[found.size()]);
+            ancillaries = found.isEmpty() ? null : found.toArray(new AncillaryNode[found.size()]);
             return this;
         }
         if(component instanceof Node n) {
             Collection<AncillaryNode<?>> jacks = n.getAncillaries(); 
-            exposedJoints = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryNode[jacks.size()]);
+            ancillaries = jacks == null || jacks.isEmpty() ? null : jacks.toArray(new AncillaryNode[jacks.size()]);
             return this;
         }
         Mechano.LOGGER.warn("Skipped attempt update ancillaries from an irrelevent source '" + component.getClass().getSimpleName() + "'");
@@ -75,7 +75,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
     }
 
     public void invalidate() {
-        exposedJoints = null;
+        ancillaries = null;
         hasConnections = false;
     }
 
@@ -109,8 +109,8 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
      */
     public void forEach(Consumer<AncillaryNode<?>> cons) {
         if(isEmpty()) return;
-        for(int x = 0; x < exposedJoints.length; x++) {
-            AncillaryNode<?> j = exposedJoints[x];
+        for(int x = 0; x < ancillaries.length; x++) {
+            AncillaryNode<?> j = ancillaries[x];
             if(j != null) cons.accept(j);
         }
     }
@@ -121,13 +121,14 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
      * yet been {@link #initializeFrom() initialized}, this method
      * will always return <code>null</code>
      */
-    public @Nullable AncillaryNode<?> getFirstAncillary() {
+    public @Nullable AncillaryNode<?> getAncillary() {
         if(isEmpty()) return null;
-        for(int x = 0; x < exposedJoints.length; x++) {
-            AncillaryNode<?> node = exposedJoints[x];
+        for(int x = 0; x < ancillaries.length; x++) {
+            AncillaryNode<?> node = ancillaries[x];
+            // prioritize the first wirejack encountered
             if(node instanceof WireJack) return node;
         }
-        return exposedJoints[0];
+        return ancillaries[0];
     }
 
     /**
@@ -138,12 +139,12 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
      */
     public @Nullable AncillaryNode<?> getAncillary(int index) {
         if(isEmpty()) return null;
-        if(index >= exposedJoints.length || index < 0) return null;
-        return exposedJoints[index];
+        if(index >= ancillaries.length || index < 0) return null;
+        return ancillaries[index];
     }
 
     public AncillaryNode<?>[] getAncillaries() {
-        return exposedJoints;
+        return ancillaries;
     }
 
     public boolean isEmpty() {
@@ -151,7 +152,7 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
     }
 
     public int size() {
-        return exposedJoints == null ? 0 : exposedJoints.length;
+        return ancillaries == null ? 0 : ancillaries.length;
     }
 
     public void setHasConnections() {
@@ -167,13 +168,13 @@ public class GriddableTerminus implements OrientationUpdatable, SourceProvider {
     }
 
     @Override
-    public @NotNull Griddable<?> getProviderSource() {
+    public @NotNull Griddable<?> getReferent() {
         if(isEmpty())
             throw new IllegalStateException("Failed while getting source griddable for a terminus which hasn't been loaded!");
-        for(int x = 0; x < exposedJoints.length; x++) {
-            AncillaryNode<?> ancillary = exposedJoints[x];
+        for(int x = 0; x < ancillaries.length; x++) {
+            AncillaryNode<?> ancillary = ancillaries[x];
             if(ancillary == null) continue;
-            Griddable<?> source = GridTracking.getSource(ancillary);
+            Griddable<?> source = GridTracking.getReferentOrThrow(ancillary);
             if(source != null) return source;
         }
         throw new IllegalStateException("Failed while getting source griddable for terminus - This terminus couldn't provide a Griddable source from any of its ancillaries!");

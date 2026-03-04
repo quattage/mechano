@@ -9,6 +9,7 @@ import org.joml.Vector3d;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
+import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.GridUUID.VoxelUUID;
 import com.quattage.mechano.api.grid.Griddable;
@@ -43,6 +44,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
 
     @Override
     public @Nullable CircuitComponent getComponent(UUIDComposite binding) {
+        UUIDComposite.promptIfUnused(ComponentHierarchy.CIRCUIT, binding, this); 
         if(circuit != null) return circuit;
         CircuitFactory builder = new CircuitFactory();
         constructCircuit(builder);
@@ -71,7 +73,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
         ServerGrid grid = Grid.server(world);
         grid.removeComponent(circuit, null);
         grid.initiateTask(GridAction.TASK_COMPONENT_DESTROY)
-            .withArguments(circuit.bindUUID(getUUIDSafe()))
+            .withArguments(GridTracking.getAddress(this, circuit))
             .executeImmediately();
         if(terminus != null) terminus.invalidate();
     }   

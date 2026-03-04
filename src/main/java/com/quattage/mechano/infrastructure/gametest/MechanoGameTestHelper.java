@@ -4,12 +4,12 @@ import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.MechanoBlocks;
-import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.MechanoItems;
+import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.Grid;
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.GridTracking;
@@ -18,13 +18,13 @@ import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
 import com.quattage.mechano.api.grid.GriddableTerminus;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
-import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
+import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
 import com.quattage.mechano.api.switchboard.action.ActionTask;
 import com.quattage.mechano.api.switchboard.action.GridAction;
 import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
@@ -38,9 +38,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestInfo;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class MechanoGameTestHelper extends GameTestHelper {
@@ -96,7 +95,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         try { output = EnqueuedGridManifest.getImmediately(getGrid()); }
         catch (Exception e) {
             e.printStackTrace();
-            fail("Grid manifest acquisition failed (See stacktrace above)");
+            fail("Grid manifest acquisition failed to resolve (See stacktrace above)");
         }
         if(log)
             getGrid().warn(clarify + " dumped test manifest:\n" + output);
@@ -107,8 +106,19 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return Grid.server(getLevel());
     }
 
-    public ActionRunner doGridTask(GridAction action) {
-        return getGrid().initiateTask(action);
+    public void runTaskOrFail(GridAction action, Consumer<ActionRunner> runnerCons) {
+        failIfNull(action, "Failed while running grid task - The provided action is null!");
+        assertTrue(action.isTask(), "Failed while running grid task - The provided action is not a task!");
+        failIfNull(runnerCons, "Failed while running grid task - The provided runner consumer is null!");
+        ActionRunner runner = getGrid().initiateTask(action);
+        failIfNull(runner, "Failed while running grid task - The action '" + action + "' couldn't provide an action runner!");
+        runnerCons.accept(runner);
+        getGrid().debug("Running grid task " + action);
+        try { runner.executeImmediately(); } 
+        catch(Exception e) {
+            e.printStackTrace();
+            fail("Failed while running grid task '" + action + "' (See stacktrace above)");
+        }
     }
 
     public GridDomain getTestDomain() {
@@ -126,16 +136,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
         failIfNull(output, "Couldn't find terminus at " + source);
         return output;
-    }
-
-    public <T extends GridUUID<T>> T getAddressSafely(GridReferent<T> obj, HierarchicalConstruct component) {
-        T id = obj.getUUIDSafe();
-        component.forEachConstructInHierarchy(construct -> { 
-            if(!(construct instanceof Griddable<?>)) 
-                construct.bindUUID(id); 
-        });
-        failIfNull(id, "Couldn't get address for " + component + " at " + obj);
-        return id;
     }
 
     public CircuitComponent getComponentSafely(GridUUID<?> address) {
@@ -164,18 +164,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return cbe;
     }
 
-    public void checkUUID(GridUUID<?> expected) {
-        failIfNull(expected);
-        ItemStack newStack = new ItemStack(MechanoItems.SPOOL_HOOKUP.get(), 1);
-        newStack.set(MechanoData.UUID, expected);
-        CompoundTag serialized = (CompoundTag)newStack.save(getLevel().registryAccess());
-        serialized = serialized.getCompound("components").getCompound(MechanoData.UUID.getRegisteredName());
-        GridUUID<?> result = GridTracking.read(serialized);
-        assertFalse(result == null, "Serialization returned a null UUID for type '" + expected.getClass().getSimpleName() + "'");
-        assertFalse(result == expected, "what");
-        assertValueEqual(expected, result, "serialization output");
-    }
-
     public void checkNumeric(BiFunction<BigDecimal, BigDecimal, BigDecimal> stimulus, BiFunction<Bifrucated64, Bifrucated64, Bifrucated64> response) {
         BigDecimal a = new BigDecimal(random()), b = new BigDecimal(random()), parsedValue;
         Bifrucated64 testA = new Bifrucated64(a.toPlainString());
@@ -198,7 +186,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
     }
 
-    public boolean checkTask(GridAction action, ActionTask task) {
+    public boolean verifyArgumentTemplateFor(GridAction action, ActionTask task) {
         Class<?>[] template;
         if(action.getTask() == null) {
             fail("Task for action '" + action + "' returned null, despite being a task type!");
@@ -219,6 +207,76 @@ public class MechanoGameTestHelper extends GameTestHelper {
             }
         }
         return false;
+    }
+
+    /**
+     * Places two connectors and attaches them together using
+     * {@link MechanoTransmitters#PERFECT_CONDUCTOR}
+     * @param bp
+     * @return
+     */
+    public AncillaryPair generateUnion(BlockPos bp) {
+
+        ConnectorBlockEntity cbeA = placeConnector(bp);
+        ConnectorBlockEntity cbeB = placeConnector(bp.offset(0, 0, 2));
+
+        GridUUID<?> idA = cbeA.getUUID();
+        GridUUID<?> idB = cbeB.getUUID();
+        failIfNull(idA, "ConnectorBlockEntity A couldn't provide a UUID");
+        failIfNull(idB, "ConnectorBlockEntity B couldn't provide a UUID");
+        AncillaryNode<?> startNode = cbeA.getDefaultAncillary();
+        AncillaryNode<?> endNode = cbeB.getDefaultAncillary();
+        failIfNull(startNode, "ConnectorBlockEntity A couldn't provide a default ancilllary");
+        failIfNull(endNode, "ConnectorBlockEntity B couldn't provide a default ancilllary");
+
+        GridUUID<?> startID = GridTracking.getAddress(cbeA, startNode);
+        GridUUID<?> endID = GridTracking.getAddress(cbeB, endNode);
+
+        assertTrue(startID != idA, "ConnectorBlockEntity A's uuid copy returned the same instance");
+        assertTrue(endID != idB, "ConnectorBlockEntity B's uuid copy returned the same instance");
+        assertTrue(!idA.equals(startID), "The starting node didn't alter the binding of ConnectorBlockEntity A's uuid");
+        assertTrue(!idB.equals(endID), "The starting node didn't alter the binding of ConnectorBlockEntity A's uuid");
+
+        runTaskOrFail(GridAction.TASK_LINK_CREATE, 
+            runner -> {
+                runner.targeting(startNode, endNode);
+                runner.withArguments(  
+                    startID, 
+                    endID, 
+                    MechanoTransmitters.PERFECT_CONDUCTOR.get(), 
+                    makeMockPlayer(GameType.CREATIVE).getUUID()
+                );
+            }
+        );
+
+        tickGrid();
+        AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
+        failIfNull(link, "Couldn't re-aquire newly created link");
+        return link;
+    }
+
+    public AncillaryPair createUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
+        
+        failIfNull(startNode, "No start node was provided");
+        failIfNull(endNode, "No end node was provided");
+        GridUUID<?> startID = GridTracking.getAddress((HierarchicalConstruct)startNode);
+        GridUUID<?> endID = GridTracking.getAddress((HierarchicalConstruct)endNode);
+
+        runTaskOrFail(GridAction.TASK_LINK_CREATE, 
+            runner -> {
+                runner.targeting(startNode, endNode);
+                runner.withArguments(  
+                    startID, 
+                    endID, 
+                    MechanoTransmitters.HOOKUP.get(), 
+                    makeMockPlayer(GameType.CREATIVE).getUUID()
+                );
+            }
+        );
+
+        AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
+        failIfNull(link, "Couldn't re-aquire newly created link");
+        return link;
     }
 
     /**
@@ -279,7 +337,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
     }
 
-    public static class MockNode implements Node {
+    public static class MockNode extends Node {
 
         private final String id;
         private final boolean isGrounded;
@@ -367,7 +425,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
 
         @Override
-        public GridReferent<?> getProviderSource() {
+        public GridReferent<?> getReferent() {
             return null;
         }
 

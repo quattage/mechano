@@ -79,15 +79,17 @@ public class MNAIndexer implements StampsDynamically {
             throw new IllegalStateException("Couldn't get source index for stamper " 
                 + component + " - This indexer doesn't contain any allocations!");
         }
-        return sourceIndices.getOrDefault(component, -1);
+        return sourceIndices.getOrDefault(component, -2);
     }
 
     public boolean add(Node node, int index) {
         if(node.isGrounded()) return false;
-        if(nodeIndices == null) {
-            nodeIndices = new Object2IntOpenHashMap<>();
-            nodeIndices.defaultReturnValue(-2);
+        if(index < -1) {
+            throw new IllegalArgumentException("Failed while indexing a node - The index '" 
+                + index + "' is not allowed! Only values > -2 are permissible.");
         }
+        if(nodeIndices == null)
+            nodeIndices = new Object2IntOpenHashMap<>();
         nodeIndices.put(node, index);
         return true;
     }
@@ -98,10 +100,10 @@ public class MNAIndexer implements StampsDynamically {
         return nodeIndices.removeInt(node);
     }
 
-    public int indexOf(Node node) {
+    public int get(Node node) {
         if(nodeIndices == null)  return -2;
         if(node.isGrounded()) return -1;
-        return nodeIndices.getInt(node);
+        return nodeIndices.getOrDefault(node, -2);
     }
 
     public Object2IntOpenHashMap<StampsDynamically> getSourceIndices() {
@@ -136,6 +138,10 @@ public class MNAIndexer implements StampsDynamically {
         return sourceIndices == null ? 0 : sourceIndices.size();
     }
 
+    public int nodeCount() {
+        return nodeIndices == null ? 0 : nodeIndices.size();
+    }
+
     public boolean hasStampers() {
         return !(allStampers == null || allStampers.isEmpty());
     }
@@ -144,7 +150,7 @@ public class MNAIndexer implements StampsDynamically {
     public String toString() {
         String out = "\n";
         if(!hasStampers())
-            return out + "  Empty";
+            return out + "  Empty (" + (nodeIndices == null ? "0" : nodeIndices.size()) + " allocated nodes)";
         for(StampingComponent component : allStampers) {
             out += "  '" + component.getComponentID() + "'\n";
             HierarchicalConstruct parent = component.getParentConstruct();

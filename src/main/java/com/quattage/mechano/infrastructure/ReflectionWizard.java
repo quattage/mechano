@@ -1,5 +1,6 @@
 package com.quattage.mechano.infrastructure;
 
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -9,8 +10,18 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.openjdk.jol.info.ClassLayout;
+
+import com.quattage.mechano.Mechano;
+
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforgespi.language.IModInfo;
+import net.neoforged.neoforgespi.language.ModFileScanData;
 
 public class ReflectionWizard {
 
@@ -60,6 +71,29 @@ public class ReflectionWizard {
         return size;
     }
 
+    public static Stream<Class<?>> getClasses(String dir, Class<? extends Annotation> annotation) {
+        Optional<? extends ModContainer> mechano = ModList.get().getModContainerById(Mechano.ID);
+        String path = dir.replace(".", "/");
+        if(!mechano.isPresent()) return Stream.empty();
+        IModInfo info = mechano.get().getModInfo();
+        ModFileScanData scan = info.getOwningFile().getFile().getScanResult();
+        // life is short, write dumb shit
+        return scan.getClasses().stream()
+            .map(cd -> cd.clazz().getInternalName())
+            .filter(className -> className.startsWith(path))
+            .map(className -> className.replace("/", "."))
+            .<Class<?>>map(className -> {
+                try { return Class.forName(className); } 
+                catch (ClassNotFoundException e) { 
+                    e.printStackTrace(); 
+                    Mechano.LOGGER.error("Couldn't find gametest class '" + className + "'"); 
+                    return null; 
+                }
+            })
+            .filter(Objects::nonNull)
+            .filter(clazz -> clazz.isAnnotationPresent(annotation));
+    }
+
     public static boolean isAnalyzable(Field field) {
         return field != null && !field.getType().isPrimitive() 
             && !Modifier.isStatic(field.getModifiers()) 
@@ -80,11 +114,13 @@ public class ReflectionWizard {
             && clazz.getAnnotation(DoNotAnalyze.class) == null;
     }
 
+    /**
+     * Classes or fields that have this annotation attached will be skipped 
+     * during {@link ReflectionWizard#estimateFootprint memory analysis}.
+     */
     @Target( { ElementType.TYPE, ElementType.FIELD } )
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface DoNotAnalyze {
-        
-    }
+    public @interface DoNotAnalyze {}
 
     // we're not gonna need the stackwalker where we're going
     public static void whatCalledMe() {

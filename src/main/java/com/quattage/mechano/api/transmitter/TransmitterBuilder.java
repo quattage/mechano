@@ -48,7 +48,7 @@ public class TransmitterBuilder<T extends CircuitComponent, P> extends AbstractB
      * @param factory The factory that this transmitter will run whenever connections are made
      * @return This builder for chaining
      */
-    public TransmitterBuilder<T, P> functionsAs(UnionFactory factory) {
+    public TransmitterBuilder<T, P> whenCreated(UnionFactory factory) {
         this.factory = factory;
         return this;
     }

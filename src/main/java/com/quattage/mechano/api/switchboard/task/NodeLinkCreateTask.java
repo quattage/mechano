@@ -142,10 +142,9 @@ public class NodeLinkCreateTask implements ActionTask {
 
     @Override
     public GridAction executeTopological(ServerGrid grid, RemovalCache removals, Object[] args) {
-
         AncillaryPair link = (AncillaryPair) args[0];
-        Griddable<?> startSource = GridTracking.getSource(link.getStartAncillary());
-        Griddable<?> endSource =  GridTracking.getSource(link.getEndAncillary());
+        Griddable<?> startSource = GridTracking.getReferentOrThrow(link.getStartAncillary());
+        Griddable<?> endSource =  GridTracking.getReferentOrThrow(link.getEndAncillary());
         GridDomain domain = getDomain(grid, link.getStartNode().getDomainIndex(), link.getEndNode().getDomainIndex());
 
         if(link instanceof ComponentLink<?> cl) {
@@ -174,6 +173,8 @@ public class NodeLinkCreateTask implements ActionTask {
         if(a == b) return grid.domains().get(a);
         GridDomain aD = grid.domains().get(a);
         GridDomain bD = grid.domains().remove(b);
+        for(int x = b; b < grid.domains().size(); x++)
+            grid.domains().get(x).markDirty();
         aD.mergeWith(bD, b);
         return aD;
     }

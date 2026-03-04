@@ -1,3 +1,4 @@
+
 package com.quattage.mechano.api.grid.topology;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -20,24 +22,35 @@ import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.link.NodePair;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.createmod.catnip.data.Pair;
 import net.minecraft.core.BlockPos;
 
 /**
- * A strange amalgam of a union-find and an adjacency matrix stored as a
- * pair of tree maps. This class is statically typed to store {@link Node}
- * instances (using natural ordering) in a domain-aware connectivity cache 
- * that allows for the kind of flood-fill and pathfinding optimizations 
- * you'd normally see in an adjacency matrix. <p>
- * With the {@link #find} method, you may also access transitive roots
- * like a traditional disjoint set with path compression. Unlike a normal
- * disjoint set, however, this class supports a proper {@link #remove} 
- * operation without having to rebuild the entire data structure.
+ * This class is, at its core, a union-find / disjoint set, augmented
+ * with the addition of an undirected adjacency matrix to allow for the 
+ * lowest possible locality on operations that would otherwise be 
+ * expensive. In no particular order, this class is:
+ * <ul>
+ * <li>
+ * statically typed to store {@link Node node} instances 
+ * (using natural ordering) in a subdomain-aware connectivity cache
+ * </li>
+ * <li>
+ * capable of {@link #remove removing} individual nodes without having 
+ * to rebuild the entire transitive/relational acceleration structure
+ * </li>
+ * <li>
+ * optimized for traditional adjacency operations like depth-first-search and 
+ * A* using the {@link NodalCluster}
+ * </li>
+ * <li>
+ * ideal for multi-nodal analysis, since nodes are 
+ * {@link #finalizeTopology indexed} per transitive root, rather than per node. 
+ * This dramatically reduces the size of the solver matrices. 
+ * </li>
+ * </ul>
  */
 public class NodeUnionSet {
 
@@ -55,58 +68,68 @@ public class NodeUnionSet {
         adjacencyTree = new Object2ObjectOpenHashMap<>(size);
     }
 
-    public static NodeUnionSet concatenate(NodeUnionSet a, NodeUnionSet b, int idx) {
+    /**
+     * Returns the combined result of <code>a</code> and <code>b</code>.
+     * Does not guarantee continuity between the nodes in these two sets.
+     * If you call this method, you must manually create at least one
+     * link between a node in <code>a</code> and a node in <code>b</code>,
+     * or this set's acceleration structure will fail to compress properly
+     * and you'll run into performance issues. <p>
+     * This method leaves <code>b</code> intact, but after concatenation 
+     * it will share node references with <code>a</code>. If you don't need
+     * it anymore, be sure to {@link #reset} <code>b</code> after this method 
+     * call to prevent bad access later.
+     * @param a The first NodeUnionSet
+     * @param b The second NodeUnionSet
+     * @return <code>a</code> with all of the contents of <code>b</code>
+     * added to it
+     */
+    public static NodeUnionSet concatenate(NodeUnionSet a, NodeUnionSet b) {
         Objects.requireNonNull(a);
         Objects.requireNonNull(b);
         a.adjacencyTree.putAll(b.adjacencyTree);
         a.transitiveTree.putAll(b.transitiveTree);
-        a.mergeAndFix(b.relations, idx);
+        a.relations.putAll(b.relations);
         return a;
-    }
-
-    private void mergeAndFix(Object2ObjectOpenHashMap<Node, Node> otherRelations, int idx) {
-        ObjectIterator<Object2ObjectMap.Entry<Node, Node>> iter = 
-            Object2ObjectMaps.fastIterator((Object2ObjectMap<Node, Node>)otherRelations);
-        this.relations.ensureCapacity(this.relations.size() + otherRelations.size());
-        while(iter.hasNext()) {
-            final Object2ObjectMap.Entry<Node, Node> entry = iter.next();
-            Node key = entry.getKey();
-            Node value = entry.getValue();
-            key.setDomainIndex(idx);
-            value.setDomainIndex(idx);
-            this.relations.put(key, value);
-        }
     }
 
     public void finalizeTopology(GridDomain domain, int domainIndex) {
         if(isEmpty()) return;
-        int index = 0;
-        final Set<Node> orphans = new HashSet<>(transitiveTree.size() / 2);
+        int nodalIndex = 0;
+        final Set<Node> orphans = new HashSet<>(Math.max(2, transitiveTree.size() / 4));
         for(Map.Entry<Node, ObjectOpenHashSet<Node>> branch : transitiveTree.entrySet()) {
             Node head = branch.getKey();
             Set<Node> branchTopo = branch.getValue();
             if(branchTopo == null || branchTopo.isEmpty()) {
                 orphans.add(head);
-                domain.indexer().remove(head);
                 continue;
             }
-            domain.indexer().add(head, index);
             head.setDomainIndex(domainIndex);
-            for(Node leaf : branchTopo) {
-                if(leaf == null) continue;
-                domain.indexer().add(leaf, head.isGrounded() ? -1 : index);
-                leaf.setDomainIndex(domainIndex);
+            if(head.isGrounded()) {
+                if(nodalIndex > 0) {
+                    throw new IllegalStateException("Encountered illegal topology while finalizing a NodeUnionSet " 
+                        + " - This set contained a redundant ground node at root index " + nodalIndex + "!");
+                }
+                index(domain, branchTopo, -1, domainIndex);
+                continue;
             }
-            index++;
+            index(domain, branchTopo, nodalIndex, domainIndex);
+            domain.indexer().add(head, nodalIndex);
+            nodalIndex++;
         }
-        if(!orphans.isEmpty()) {
-            for(Node n : orphans) {
-                transitiveTree.remove(n);
-                adjacencyTree.remove(n);
-                relations.remove(n);
+        stripAndTrim(orphans, domain);
+    }
+
+    // assigns indices for a single branch
+    private void index(GridDomain domain, Set<Node> branchTopo, int nodalIndex, int domainIndex) {
+        for(Node leaf : branchTopo) {
+            if(leaf == null) {
+                throw new NullPointerException("Encountered illegal topology while finalizing a NodeUnionSet " 
+                    + " - This set contained a null mapping!");
             }
+            leaf.setDomainIndex(domainIndex);
+            domain.indexer().add(leaf, nodalIndex);
         }
-        trim();
     }
 
     /**
@@ -186,13 +209,6 @@ public class NodeUnionSet {
         return true;
     }
 
-    private void disjoin(Node a, Node b) {
-        Set<Node> branchA = adjacencyTree.get(a);
-        if(branchA != null) branchA.remove(b);
-        Set<Node> branchB = adjacencyTree.get(b);
-        if(branchB != null) branchB.remove(a);
-    }
-
     /**
      * A somewhat expensive method that manually
      * compresses all transitive paths in this NodeUnionSet.
@@ -236,8 +252,19 @@ public class NodeUnionSet {
     }
 
     /**
+     * the opposite of adjacentJoin
+     */
+    private void adjacentDisjoin(Node a, Node b) {
+        Set<Node> branchA = adjacencyTree.get(a);
+        if(branchA != null) branchA.remove(b);
+        Set<Node> branchB = adjacencyTree.get(b);
+        if(branchB != null) branchB.remove(a);
+    }
+
+    /**
      * An optimized removal method that allows the removal of singular nodes as well as 
-     * the ability to sever connections between node pairs.
+     * the ability to sever connections between node pairs. Bulk removal is performed all
+     * at once to avoid extraneous DFS runs.
      * @param nodes A collection of nodes to remove.
      * @param nodes A collection of {@link NodePair} objects representing unions to remove.
      * @see #removeAll
@@ -263,19 +290,22 @@ public class NodeUnionSet {
             Node removed = entry.getValue().getFirst();
             entry.setValue(Pair.of(removed, NodalCluster.getConstituents(this, entry.getKey())));
         }
-        if(unionsToRemove != null) {
+        if(unionsToRemove != null && !unionsToRemove.isEmpty()) {
             for(NodePair pair : unionsToRemove) {
-                disjoin(pair.getNodeA(), pair.getNodeB());
+                adjacentDisjoin(pair.getNodeA(), pair.getNodeB());
                 if(!hasConnections(pair.getNodeB())) remove(pair.getNodeA());
                 if(!hasConnections(pair.getNodeA())) remove(pair.getNodeB());
             }
         }
-        if(nodesToRemove != null) for(Node toRemove : nodesToRemove) {
-            List<NodePair> removed = removeNodeAndGet(grid, toRemove);
-            if(removed != null) unionsToRemove.addAll(removed);
+        if(nodesToRemove != null && !nodesToRemove.isEmpty()) {
+            for(Node toRemove : nodesToRemove) {
+                List<NodePair> removed = removeNodeAndGet(grid, toRemove);
+                if(removed != null) unionsToRemove.addAll(removed);
+            }
         }
         for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet())
-            NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofDiscontinuities(this, entry.getValue().getSecond()));
+            NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofClusters(this, entry.getValue().getSecond()));
+        // i totally forgot what this does or why it exists but the tests fail if i remove it
         for(Node rerooted : affected.keySet()) {
             Node cyclicRoot = relations.get(rerooted);
             if(cyclicRoot == null || rerooted != cyclicRoot)
@@ -335,7 +365,7 @@ public class NodeUnionSet {
         for(Node toRemove : nodes) removeNode(toRemove);
         if(!patch) return;
         for(Map.Entry<Node, Pair<Node, Node[]>> entry : affected.entrySet())
-            NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofDiscontinuities(this, entry.getValue().getSecond()));
+            NodalCluster.applyPatches(this, entry.getValue().getFirst(), NodalCluster.ofClusters(this, entry.getValue().getSecond()));
         for(Node rerooted : affected.keySet()) {
             Node cyclicRoot = relations.get(rerooted);
             if(cyclicRoot == null || rerooted != cyclicRoot)
@@ -376,7 +406,7 @@ public class NodeUnionSet {
         Node[] splitBranch = NodalCluster.getConstituents(this, node);
         removeNode(node);
         if(!patch) return;
-        NodalCluster.applyPatches(this, root, NodalCluster.ofDiscontinuities(this, splitBranch));
+        NodalCluster.applyPatches(this, root, NodalCluster.ofClusters(this, splitBranch));
     }
 
     /**
@@ -533,11 +563,28 @@ public class NodeUnionSet {
 
     /**
      * Trims internal hash tables to minimize memory footprint
+     * @param toRemove Optional set of nodes that will be iteratively stripped from this
+     * set as a result of this call
      */
     public void trim() {
         transitiveTree.trim();
         adjacencyTree.trim();
         relations.trim();
+    }
+
+    // used by finalizeTopology() to remove orphans 
+    private void stripAndTrim(Set<Node> toRemove, @Nullable GridDomain domain) {
+        if(!toRemove.isEmpty()) {
+            for(Node n : toRemove) {
+                transitiveTree.remove(n);
+                adjacencyTree.remove(n);
+                relations.remove(n);
+                if(domain != null) 
+                    domain.indexer().remove(n);
+                n.setDomainIndex(-2);
+            }
+        }
+        trim(); 
     }
 
     /**
@@ -551,7 +598,7 @@ public class NodeUnionSet {
      */
     public void patchAndTrim() {
         Node[] nodesAsArray = relations.keySet().toArray(new Node[relations.size()]);
-        List<NodalCluster> clusters = NodalCluster.ofDiscontinuities(this, nodesAsArray);
+        List<NodalCluster> clusters = NodalCluster.ofClusters(this, nodesAsArray);
         NodalCluster.applyPatches(this, clusters);
         trim();
     }
@@ -578,7 +625,7 @@ public class NodeUnionSet {
             Node root = entry.getKey();
             Set<Node> contents = entry.getValue();
             out += "\n  ▸" + summarizeNode(root, domain.indexer());
-            src = GridTracking.getSource(grid.getWorld(), root);
+            src = GridTracking.getReferentOrThrow(grid.getWorld(), root);
             if(src != null) {
                 BlockPos bp = src.getBlockPos();
                 out += "\n    Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
@@ -591,7 +638,7 @@ public class NodeUnionSet {
             out += "\n    " + contents.size() + " children:";
             for(Node child : contents) {
                 out += "\n      " + summarizeNode(child, domain.indexer());
-                src = GridTracking.getSource(grid.getWorld(), child);
+                src = GridTracking.getReferentOrThrow(grid.getWorld(), child);
                 if(src != null) {
                     BlockPos bp = src.getBlockPos();
                     out += "\n        Owned by " + src.getClass().getSimpleName() + " at [" + bp.getX() + ", " + bp.getY() + ", " + bp.getZ() + "]";
@@ -600,6 +647,17 @@ public class NodeUnionSet {
             }
         }
         return out;
+    }
+    
+    public void forEachTransitive(BiConsumer<Node, Set<Node>> branchCons) {
+        for(Map.Entry<Node, ObjectOpenHashSet<Node>> entry : transitiveTree.entrySet()) {
+            Node head = entry.getKey();
+            Set<Node> branch = entry.getValue();
+            if(head == null) throw new IllegalStateException("Encountered bad topology while traversing transitive branch - The branch returned a null head!");
+            if(branch == null) throw new IllegalStateException("Encountered bad topology while traversing transitive branch at " + head + " - This branch's contents set is null!");
+            if(branch.isEmpty()) throw new IllegalStateException("Encountered bad topology while traversing transitive branch at " + head + " - This branch has no contents!");
+            branchCons.accept(head, branch);
+        }
     }
 
     @Override
@@ -614,6 +672,6 @@ public class NodeUnionSet {
     }
 
     private String summarizeNode(@Nullable Node node, MNAIndexer indexer) {
-        return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + indexer.indexOf(node) + ",  #" + node.hashCode() + ")";
+        return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + indexer.get(node) + ",  #" + node.hashCode() + ")";
     }
 }

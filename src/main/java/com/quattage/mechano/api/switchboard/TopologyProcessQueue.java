@@ -96,7 +96,6 @@ public class TopologyProcessQueue {
     }
 
     public boolean containsChanges() {
-        Mechano.LOGGER.warn("CONTAINS CHANGES? " + !(queue == null || queue.isEmpty()));
         return !(queue == null || queue.isEmpty());
     }
 
@@ -215,7 +214,7 @@ public class TopologyProcessQueue {
                 GridDomain domain = grid.getDomain(entry.getKey());
                 Removal removal = entry.getValue();
                 if(removal.isEmpty()) continue;
-                boolean wasReduced = batchRemoveNodes(grid, domain, removal.nodes, removal.links);
+                boolean wasReduced = removeBatch(grid, domain, removal.nodes, removal.links);
                 if(!wasReduced) continue;
                 domain.markDirty();
                 toReduce.put((int)entry.getKey(), domain);
@@ -225,7 +224,7 @@ public class TopologyProcessQueue {
             dispose();
         }
 
-        private boolean batchRemoveNodes(ServerGrid grid, GridDomain domain, @Nullable Set<Node> removedNodes, @Nullable Set<NodePair> removedLinks) {
+        private boolean removeBatch(ServerGrid grid, GridDomain domain, @Nullable Set<Node> removedNodes, @Nullable Set<NodePair> removedLinks) {
             int preSize = domain.netlist().size();
             domain.netlist().massRemove(grid, removedNodes, removedLinks);
             ActionRunner runner = grid.initiateTask(GridAction.TASK_LINK_DESTROY);
@@ -238,24 +237,40 @@ public class TopologyProcessQueue {
         }
 
         private void deleteLink(ServerGrid grid, GridDomain domain, ActionRunner runner, NodePair pair) {
+            // if the pair is a link it is deleted straight away
+            if(pair instanceof AncillaryPair link) {
+                grid.lookup().remove(grid, link);
+                link.MNADeallocate(grid, domain);
+                AncillaryNode<?> start = link.getStartAncillary(), end = link.getEndAncillary();
+                Griddable<?> ss = GridTracking.getReferentOrThrow(start), es = GridTracking.getReferentOrThrow(end);
+                runner.targeting(ss, es)
+                    .withArguments(
+                        GridTracking.getAddress(ss, start), 
+                        GridTracking.getAddress(es, end)
+                    ).executeOnClients();
+                if(link instanceof Disposable dp)
+                    dp.dispose();
+                return;
+            }
+            // if the pair isnt a link the closest match is searched for
             List<AncillaryNode<?>> aAnc = pair.getNodeA().getAncillaries();
             List<AncillaryNode<?>> bAnc = pair.getNodeB().getAncillaries();
             if(aAnc == null || aAnc.isEmpty()) return;
             if(bAnc == null || bAnc.isEmpty()) return;
             for(AncillaryNode<?> an : aAnc) {
-                Griddable<?> aSource = GridTracking.getSource(an);
+                Griddable<?> aSource = GridTracking.getReferentOrThrow(an);
                 GridUUID<?> aID = GridTracking.getAddress(aSource, an);
                 for(AncillaryNode<?> bn : bAnc) {
                     AncillaryPair removed = grid.lookup().pop(grid, an, bn);
                     if(removed == null) continue;
                     removed.MNADeallocate(grid, domain);
-                    if(removed instanceof Disposable dp)
-                        dp.dispose();
-                    Griddable<?> bSource = GridTracking.getSource(bn);
+                    Griddable<?> bSource = GridTracking.getReferentOrThrow(bn);
                     GridUUID<?> bID = GridTracking.getAddress(bSource, bn);
                     runner.targeting(aSource, bSource)
                         .withArguments(aID, bID)
                         .executeOnClients();
+                    if(removed instanceof Disposable dp)
+                        dp.dispose();
                 }
             }
         }
@@ -270,19 +285,23 @@ public class TopologyProcessQueue {
         }
 
         private void reduceSingleDomain(ServerGrid grid, GridDomain domain, int idx) {
-            List<GridDomain> reduceResult = domain.splitDiscontinuities();
-            if(reduceResult.isEmpty()) {
-                domain.clear();
-                grid.domains().remove(idx);
-                for(int x = idx; idx < grid.domains().size(); x++)
-                    grid.domains().get(x).markDirty();
+            List<GridDomain> reduceResult = domain.deriveFromSplits(grid.getWorld());
+            domain.clear();
+            if(reduceResult.size() == 1) {
+                grid.domains().set(idx, reduceResult.get(1));
                 return;
             }
-            grid.domains().remove(idx);
-            for(GridDomain reducedDomain : reduceResult) {
-                grid.domains().add(reducedDomain);
-                reducedDomain.markDirty();
+            if(reduceResult.size() > 1) {
+                grid.domains().set(idx, reduceResult.get(1));
+                for(int x = 1; x < reduceResult.size(); x++) {
+                    GridDomain reducedDomain = reduceResult.get(x);
+                    grid.domains().add(reducedDomain);
+                }
             }
+            grid.domains().remove(idx);
+            // if the domain was removed, all subsequent domains have their nodal indices updated
+            for(int x = idx; idx < grid.domains().size(); x++)
+                grid.domains().get(x).markDirty();
         }
 
 

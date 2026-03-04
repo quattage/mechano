@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.grid.GridTracking;
 import com.quattage.mechano.api.grid.GridTracking.ComponentHierarchy;
 import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
 import com.quattage.mechano.api.grid.Griddable;
@@ -20,7 +21,7 @@ import com.quattage.mechano.foundation.Disposable;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-public interface Node extends CircuitComponent, Disposable, HierarchicalConstruct, TerminalProvider, SourceProvider {
+public abstract class Node implements CircuitComponent, Disposable, HierarchicalConstruct, TerminalProvider, SourceProvider {
 
     /**
      * Gets the node that has the lower merge priority between
@@ -28,7 +29,7 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
      * merge priority should take precedence over nodes
      * with a higher merge priority.
      */
-    static Node choosePrimary(Node a, Node b) {
+    public static Node choosePrimary(Node a, Node b) {
         if(a == null && b == null) return null;
         if(a != null && b == null) return a;
         if(b != null && a == null) return b;
@@ -41,28 +42,29 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         return System.identityHashCode(a) > System.identityHashCode(b) ? b : a;
     }
 
-    boolean localAttach(Terminal pin);
-    boolean localAttach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
-    boolean localDetach(Terminal pin);
-    boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
+    public abstract boolean localAttach(Terminal pin);
+    public abstract boolean localAttach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
+    public abstract boolean localDetach(Terminal pin);
+    public abstract boolean localDetach(@Nullable Griddable<?> source, AncillaryNode<?> jack);
 
-    void setDomainIndex(int domainIndex);
-    void markGrounded(boolean isGrounded);
-    default void markGrounded() {
+    public abstract void setDomainIndex(int domainIndex);
+    public abstract void markGrounded(boolean isGrounded);
+    
+    public void markGrounded() {
         markGrounded(true);
     }
 
-    List<AncillaryNode<?>> getAncillaries();
+    public abstract List<AncillaryNode<?>> getAncillaries();
 
-    default boolean hasAncillaries() {
+    public boolean hasAncillaries() {
         return getAncillaries() != null && getAncillaries().size() > 0;
     }
 
-    default boolean has(AncillaryNode<?> ancillary) {
+    public boolean has(AncillaryNode<?> ancillary) {
         return indexOf(ancillary) >= 0;
     }
 
-    default int indexOf(AncillaryNode<?> ancillary) {
+    public int indexOf(AncillaryNode<?> ancillary) {
         List<AncillaryNode<?>> ancillaries = getAncillaries();
         if(ancillaries == null || ancillaries.isEmpty())
             return -1;
@@ -70,34 +72,36 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
     }
 
     @Override
-    default void saturate() {
+    public void saturate() {
         forEachTerminal(Terminal::saturate);
     }
 
     @Override
-    default void reset() {
+    public void reset() {
         forEachTerminal(Terminal::reset);
     }
 
     @Override
-    default void forEachNode(Consumer<Node> cons) {
+    public void forEachNode(Consumer<Node> cons) {
         cons.accept(this);
     }
 
     @Override
-    default ComponentHierarchy getHierarchyType() {
+    public ComponentHierarchy getHierarchyType() {
         return ComponentHierarchy.NODE;
     }
 
 
     @Override
-    default int getMergePriority() {
-        HierarchicalConstruct superparent = getSuperparent();
-        return superparent.getMergePriority();
+    public int getMergePriority() {
+        HierarchicalConstruct superparent = GridTracking.findSuperparent(this);
+        return superparent == null || superparent instanceof Node
+            ? getHierarchyType().getMergePriority()
+            : superparent.getMergePriority();
     }
 
     @Override
-    default int indexOfChild(HierarchicalConstruct child) {
+    public int indexOfChild(HierarchicalConstruct child) {
         if(child.getHierarchyType() == ComponentHierarchy.ANCILLARY && hasAncillaries())
             return getAncillaries().indexOf(child);
         if(child.getHierarchyType() == ComponentHierarchy.TERMINAL && hasTerminals())
@@ -105,7 +109,7 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         return -1;
     }
 
-    public static class JointNode implements Node {
+    public static class JointNode extends Node {
 
         private String componentID;
         private HierarchicalConstruct parent;
@@ -207,13 +211,10 @@ public interface Node extends CircuitComponent, Disposable, HierarchicalConstruc
         }
 
         @Override
-        public GridReferent<?> getProviderSource() {
-            if(hasAncillaries()) {
-                AncillaryNode<?> first = ancillaries.getFirst();
-                if(first != null) return first.getProviderSource();
-            }
-            HierarchicalConstruct superparent = getSuperparent();
-            return superparent instanceof GridReferent<?> gr ? gr : null;
+        public GridReferent<?> getReferent() {
+            if(!hasAncillaries()) return null;
+            AncillaryNode<?> first = ancillaries.getFirst();
+            return first == null ? null : first.getReferent();
         }
 
         @Override

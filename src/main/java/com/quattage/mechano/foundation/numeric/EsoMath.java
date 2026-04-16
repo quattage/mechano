@@ -1,5 +1,10 @@
 package com.quattage.mechano.foundation.numeric;
 
+import java.util.Collection;
+import java.util.Map;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.Vec3i;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -110,6 +115,30 @@ public class EsoMath {
 
     public static short toShortClamped(long x) {
         return (short)Mth.clamp(x, Short.MIN_VALUE, Short.MAX_VALUE);
+    }
+
+    public static <T extends Object, R extends Collection<T>> R selectiveMerge(@Nullable R a, @Nullable R b) {
+        if(a == null && b != null) return b;
+        if(b == null && a != null) return a;
+        if(a == null && b == null) return null;
+        if(a.size() < b.size()) {
+            b.addAll(a);
+            return b;
+        }
+        a.addAll(b);
+        return a;
+    }
+
+    public static <T extends Object, K extends Object, R extends Map<T, K>> R selectiveMerge(@Nullable R a, @Nullable R b) {
+        if(a == null && b != null) return b;
+        if(b == null && a != null) return a;
+        if(a == null && b == null) return null;
+        if(a.size() < b.size()) {
+            b.putAll(a);
+            return b;
+        }
+        a.putAll(b);
+        return a;
     }
 }
 

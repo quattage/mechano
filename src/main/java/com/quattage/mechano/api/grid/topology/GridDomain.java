@@ -23,7 +23,7 @@ import net.minecraft.world.level.LevelReader;
 public class GridDomain {
 
     private @Nullable Node referenceNode;
-    private MNAIndexer indexer = new MNAIndexer();
+    private NetlistIndexer indexer = new NetlistIndexer();
     private NodeUnionSet netlist = new NodeUnionSet();
 
     private @Nullable DMatrixSparseCSC matrixA;
@@ -36,7 +36,7 @@ public class GridDomain {
         Objects.requireNonNull(other);
         if(this == other) return;
         this.netlist = NodeUnionSet.concatenate(this.netlist, other.netlist);
-        this.indexer = MNAIndexer.concatenate(this.indexer, other.indexer);
+        this.indexer = NetlistIndexer.concatenate(this.indexer, other.indexer);
         this.referenceNode = null;
         other.clear();
         markDirty();
@@ -111,7 +111,7 @@ public class GridDomain {
         return netlist;
     }
 
-    public MNAIndexer indexer() {
+    public NetlistIndexer indexer() {
         return indexer;
     }
 

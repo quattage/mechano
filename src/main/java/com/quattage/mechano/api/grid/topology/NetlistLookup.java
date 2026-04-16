@@ -145,6 +145,14 @@ public abstract class NetlistLookup<T> {
         return links == null ? 0 : links.size();
     }
 
+    public int deepSize() {
+        if(isEmpty()) return 0;
+        int out = 0;
+        for(List<AncillaryPair> linksAt : links.values())
+            out += linksAt.size();
+        return out;
+    }
+
     public boolean isEmpty() {
         return size() <= 0;
     }

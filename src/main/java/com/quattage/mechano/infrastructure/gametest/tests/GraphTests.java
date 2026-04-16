@@ -333,8 +333,11 @@ public class GraphTests {
         AncillaryPair linkA = test.generateUnion(bp);
         AncillaryPair linkB = test.generateUnion(bp.offset(0, 0, 4));
         AncillaryPair linkC = test.generateUnion(bp.offset(0, 0, 8));
+        AncillaryPair linkD = test.generateUnion(bp.offset(0, 0, 12));
+        
+        test.assertValueEqual(test.getGrid().domains().size(), 4, "domain count");
+        test.assertValueEqual(test.getGrid().lookup().deepSize(), 8, "lookup size");
 
-        test.assertValueEqual(test.getGrid().domains().size(), 3, "domain count");
         for(int x = 0; x < test.getGrid().domains().size(); x++) {
             GridDomain domain = test.getGrid().domains().get(x);
             String didx = "domain " + x;
@@ -344,22 +347,37 @@ public class GraphTests {
             test.assertValueEqual(domain.indexer().nodeCount(), 2, didx + " indexer node count");
             GraphTests.assertDomainValid(test, domain, x);
         }
-
         
+        AncillaryPair linkAB = test.generateUnion(linkA.getEndAncillary(), linkB.getStartAncillary());
+        test.assertValueEqual(test.getGrid().domains().size(), 3, "domain count");
+        test.assertValueEqual(test.getGrid().lookup().deepSize(), 10, "lookup size");
+        
+        AncillaryPair linkCD = test.generateUnion(linkC.getEndAncillary(), linkD.getStartAncillary());
+        test.assertValueEqual(test.getGrid().domains().size(), 2, "domain count");
+        test.assertValueEqual(test.getGrid().lookup().deepSize(), 12, "lookup size");
 
-        test.assertValueEqual(test.getGrid().lookup().size(), 6, "lookup size");
+        for(int x = 0; x < test.getGrid().domains().size(); x++) {
+            GridDomain domain = test.getGrid().domains().get(x);
+            String didx = "domain " + x;
+            test.assertValueEqual(domain.netlist().size(), 1, didx + " transitive size");
+            test.assertValueEqual(domain.netlist().deepSize(), 4, didx + " deep size");
+            test.assertValueEqual(domain.indexer().sourceCount(), 0, didx + " indexer source count");
+            test.assertValueEqual(domain.indexer().nodeCount(), 4, didx + " indexer node count");
+            GraphTests.assertDomainValid(test, domain, x);
+        }
+
         test.succeed();
     }
 
     private static void assertDomainValid(MechanoGameTestHelper test, GridDomain domain, int index) {
         try {
             domain.netlist().forEachTransitive((head, branch) -> {
-                test.assertValueEqual(head.getDomainIndex(), index, " domain index @ node #" + System.identityHashCode(head));
+                test.assertValueEqual(head.getDomainIndex(), index, " domain index @ head node #" + System.identityHashCode(head));
                 int headIndex = domain.indexer().get(head);
-                test.assertValueEqual(headIndex, 0, " nodal index @ node #" + System.identityHashCode(head));
+                test.assertValueEqual(headIndex, 0, " nodal index @ head node #" + System.identityHashCode(head));
                 branch.forEach(leaf -> {
-                    test.assertValueEqual(leaf.getDomainIndex(), index, " domain index @ node #" + System.identityHashCode(leaf));
-                    test.assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ node #" + System.identityHashCode(leaf));
+                    test.assertValueEqual(leaf.getDomainIndex(), index, " domain index @ leaf node #" + System.identityHashCode(leaf));
+                    test.assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ leaf node #" + System.identityHashCode(leaf));
                 });
             });
         } catch (IllegalStateException e) {

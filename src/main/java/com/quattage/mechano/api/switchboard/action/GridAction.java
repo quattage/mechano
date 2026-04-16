@@ -142,7 +142,7 @@ public enum GridAction implements StringRepresentable {
         if(args == null) args = new Object[0];
         if(task == null) return this;
         if(trackers.isEmpty())
-            grid.warn("Skipped broadcasting " + this + " because no clients are tracking this change.");
+            grid.debug("Skipped broadcasting " + this + " because no clients are tracking this change.");
         return broadcastBelligerent(grid, trackers, task.validateArguments(false, args));
     }
 

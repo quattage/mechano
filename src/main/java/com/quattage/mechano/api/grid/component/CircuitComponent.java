@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 
 import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.MNAIndexer;
+import com.quattage.mechano.api.grid.topology.NetlistIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 
@@ -67,15 +67,15 @@ public interface CircuitComponent {
     void reset();
 
     /**
-     * Allocates space in the {@link MNAIndexer} belonging to the
+     * Allocates space in the {@link NetlistIndexer} belonging to the
      * given {@link ServerGrid} to store this component and/or any 
      * sub-components, so long as this object or its compositional 
      * children inherit from the {@link StampingComponent}
      * interface. Implementations must make at least one call to 
-     * {@link MNAIndexer#add}. If this object does not push any 
+     * {@link NetlistIndexer#add}. If this object does not push any 
      * changes to the grid as a result of this call, a warning will 
      * be printed to the console.
-     * @param grid to pull the {@link MNAIndexer indexer} from
+     * @param grid to pull the {@link NetlistIndexer indexer} from
      * @see #MNADeallocate
      */
     default void MNAAllocate(ServerGrid grid, GridDomain domain) {
@@ -85,11 +85,11 @@ public interface CircuitComponent {
     /**
      * Removes any existing mappings (to this component and/or any 
      * sub-components) from the given {@link ServerGrid}'s 
-     * {@link MNAIndexer}.
+     * {@link NetlistIndexer}.
      * If this object does not push any 
      * changes to the grid as a result of this call, a warning will 
      * be printed to the console.
-     * @param grid to pull the {@link MNAIndexer indexer} from
+     * @param grid to pull the {@link NetlistIndexer indexer} from
      * @see #MNAAllocate
      */
     default void MNADeallocate(ServerGrid grid, GridDomain domain) {

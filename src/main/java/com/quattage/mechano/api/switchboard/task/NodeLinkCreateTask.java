@@ -173,7 +173,7 @@ public class NodeLinkCreateTask implements ActionTask {
         if(a == b) return grid.domains().get(a);
         GridDomain aD = grid.domains().get(a);
         GridDomain bD = grid.domains().remove(b);
-        for(int x = b; b < grid.domains().size(); x++)
+        for(int x = b; x < grid.domains().size(); x++)
             grid.domains().get(x).markDirty();
         aD.mergeWith(bD, b);
         return aD;

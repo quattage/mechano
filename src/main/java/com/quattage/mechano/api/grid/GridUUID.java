@@ -232,8 +232,7 @@ public abstract class GridUUID<T extends GridUUID<T>> implements GridReferent<T>
 
         @Override
         public GridReferent<?> getReferent() {
-            Mechano.LOGGER.warn("Attempted to get a provider source from a UUID without a reference to the world. This call will not do anything and immediatley return null.");
-            return null;
+            throw new UnsupportedOperationException("Querying VoxelUUIDs for their source requires a level instance!");
         }
 
         @Override

@@ -194,11 +194,14 @@ public enum GridTracking {
      * in favour of {@link #getAddress(GridReferent, HierarchicalConstruct) 
      * the overload} that takes a manually-supplied parent object.
      * @param obj The component to get a bound UUID for
-     * @param world Optional, but you should provide it if you have one. This 
-     * is used when necessary to look up {@link GridReferent} data attached to
-     * or existing within the level. These lookups are usually skipped, but
-     * may be necessary depending on the type of referent that <code>component</code>
-     * belongs to.
+     * @param world Optional, but you should provide it if you have access to 
+     * one where you're calling this method. This level instance is used only 
+     * when absolutely necessary to look up {@link GridReferent} data attached 
+     * to or existing within the level. These lookups are usually skipped for 
+     * optimization purposes and beccause the {@link HierarchicalConstruct}
+     * makes this convenient, but providing a level instance may be necessary 
+     * for acquiring components attached to some types of referents.
+     * 
      * @return a new {@link GridUUID} instance that points to <code>component</code>
      * @throws ComponentNotFoundException if <code>obj</code> has no valid {@link GridReferent} in its parental hierarchy
      * @throws NullPointerException if <code>obj</code> is null or grid referent that owns <code>obj</code> failed to provide a valid UUID
@@ -206,12 +209,8 @@ public enum GridTracking {
      */
     public static GridUUID<?> getAddress(HierarchicalConstruct obj) {
         Objects.requireNonNull(obj);
-        GridUUID<?> rawID;
-        if(obj instanceof GridReferent gr) {
-            rawID = GridTracking.getAddress(gr);
-            obj.bindUUID(rawID);
-            return rawID;
-        }
+        if(obj instanceof GridReferent gr)
+            return GridTracking.getAddress(gr.getReferent(), obj);
         LevelReader world = obj instanceof WorldlyObject wrl ? wrl.getWorld() : null;
         Griddable<?> owner = GridTracking.getReferentOrThrow(world, obj);
         return GridTracking.getAddress(owner, obj);
@@ -344,7 +343,7 @@ public enum GridTracking {
         for(ServerPlayer sp : world.getServer().getPlayerList().getPlayers()) {
             for(GridReferent<?> obj : objs) {
                 if(!obj.isBeingTrackedBy(sp)) continue;
-                Griddable<?> owner = GridTracking.getReferentOrThrow(obj);
+                Griddable<?> owner = GridTracking.getReferentOrThrow(world, obj);
                 if(owner != null && owner.isBeingTrackedBy(sp)) {
                     senders.add(sp);
                     break;

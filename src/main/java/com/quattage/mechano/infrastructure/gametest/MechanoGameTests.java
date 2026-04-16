@@ -73,9 +73,8 @@ public class MechanoGameTests {
 			throw new IllegalArgumentException("GameTest Method '" + name + "' may only take one MechanoGameTestHelper parameter!");
 
         Repeat repeat = method.getAnnotation(Repeat.class);
-        int repeats = repeat == null ? 1 : Math.max(0, repeat.iterations());
-
         PrintGridAfter dump = method.getAnnotation(PrintGridAfter.class);
+        int repeats = repeat == null ? 1 : Math.max(0, repeat.iterations());
 
         String templateName = gt.template();
         if(templateName == null || templateName.isBlank()) templateName = "empty";

@@ -12,7 +12,7 @@ import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
 import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.MNAIndexer;
+import com.quattage.mechano.api.grid.topology.NetlistIndexer;
 import com.quattage.mechano.api.grid.topology.NodeUnionSet;
 import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
@@ -138,7 +138,7 @@ public class TransmitterType {
          * {@link AncillaryNode ancillaries} - <code>startAncillary</code> and
          * <code>endAncillary</code>. Within the scope of this function, you are permitted to make 
          * any changes to the {@link ServerGrid grid} you'd like, including 
-         * {@link NodeUnionSet topological alterations} and {@link MNAIndexer stamper assertions}.
+         * {@link NodeUnionSet topological alterations} and {@link NetlistIndexer stamper assertions}.
          * <h3>with great power comes great oh no i broke it</h3>
          * There are no guardrails here; you have direct access to the grid's topology! Be careful
          * not to perform destructive operations that destabilize the grid.

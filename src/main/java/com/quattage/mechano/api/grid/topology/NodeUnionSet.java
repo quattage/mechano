@@ -671,7 +671,7 @@ public class NodeUnionSet {
         return out;
     }
 
-    private String summarizeNode(@Nullable Node node, MNAIndexer indexer) {
+    private String summarizeNode(@Nullable Node node, NetlistIndexer indexer) {
         return node == null ? "n/a" : "'" + node.getComponentID() + "' (" + indexer.get(node) + ",  #" + node.hashCode() + ")";
     }
 }

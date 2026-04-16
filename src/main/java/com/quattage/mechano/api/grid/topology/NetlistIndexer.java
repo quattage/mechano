@@ -9,6 +9,7 @@ import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.component.StampingComponent;
 import com.quattage.mechano.api.grid.component.StampingComponent.StampsDynamically;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
+import com.quattage.mechano.foundation.numeric.EsoMath;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -18,38 +19,23 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * analysis (MNA) as {@link StampingComponent} instances allocate their own space in 
  * the B vector.
  */
-public class MNAIndexer implements StampsDynamically {
+public class NetlistIndexer implements StampsDynamically {
     
     private @Nullable Set<StampingComponent> allStampers;
     private @Nullable Object2IntOpenHashMap<StampsDynamically> sourceIndices;
     private @Nullable Object2IntOpenHashMap<Node> nodeIndices;
     private int cursor;
 
-    public static MNAIndexer concatenate(MNAIndexer a, MNAIndexer b) {
-        if(a.allStampers.size() > b.allStampers.size()) {
-            a.allStampers.addAll(b.allStampers);
-            if(b.sourceIndices != null) {
-                a.getSourceIndices().ensureCapacity(a.sourceIndices.size() + b.sourceIndices.size());
-                for(StampsDynamically sd : b.sourceIndices.keySet())
-                    a.add(sd);
-
-            }
-            a.nodeIndices = null;
-            b.clear();
-            return a;
-        }
-        b.allStampers.addAll(a.allStampers);
-        if(a.sourceIndices != null) {
-        b.getSourceIndices().ensureCapacity(a.sourceIndices.size() + b.sourceIndices.size());
-            for(StampsDynamically sd : a.sourceIndices.keySet())
-                b.add(sd);
-        }
-        b.nodeIndices = null;
-        a.clear();
-        return b;
+    public static NetlistIndexer concatenate(NetlistIndexer a, NetlistIndexer b) {
+        a.allStampers = EsoMath.selectiveMerge(a.allStampers, b.allStampers);
+        a.sourceIndices = EsoMath.selectiveMerge(a.sourceIndices, b.sourceIndices);
+        a.nodeIndices = null; // all nodal indices are assumed to be outdated and need to be reapplied
+        a.cursor += b.cursor;
+        b.clear();
+        return a;
     }
 
-    public MNAIndexer() {}
+    public NetlistIndexer() {}
 
     public void add(StampingComponent component) {
         if(!getStampers().add(component) || !(component instanceof StampsDynamically sd)) 

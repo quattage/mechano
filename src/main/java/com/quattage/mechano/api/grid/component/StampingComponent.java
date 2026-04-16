@@ -14,7 +14,7 @@ import com.quattage.mechano.api.grid.HierarchicalConstruct;
 import com.quattage.mechano.api.grid.HierarchicalConstruct.TerminalProvider;
 import com.quattage.mechano.api.grid.solver.NodalSolver;
 import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.MNAIndexer;
+import com.quattage.mechano.api.grid.topology.NetlistIndexer;
 import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.api.grid.topology.landmark.Terminal;
 
@@ -280,7 +280,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
 
     /**
      * Indicates that implementing {@link StampingComponent stampers}
-     * allocate additional doubles in the {@link MNAIndexer} or need 
+     * allocate additional doubles in the {@link NetlistIndexer} or need 
      * to resolve some time-varied value each tick. This interface is 
      * not needed for simple components (e.g. resistors) that aren't 
      * current-dependent.
@@ -290,7 +290,7 @@ public abstract class StampingComponent extends DiscreteComponent implements Ter
          * This method is essentially a "score" for how complex
          * this component is when {@link StampingComponent#stampDynamic stamping dynamically}. <p>
          * @return The number of additional doubles to allocate in
-         * the {@link MNAIndexer} to be flushed into the B vector.
+         * the {@link NetlistIndexer} to be flushed into the B vector.
          */
         int getAllocations();
 

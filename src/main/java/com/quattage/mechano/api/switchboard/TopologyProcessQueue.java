@@ -183,7 +183,7 @@ public class TopologyProcessQueue {
                 return;
             }
             int idx = node.getDomainIndex();
-            if(idx < 0) throw new IllegalArgumentException("Failed to mark " + node + " for invalid domain index " + idx);
+            if(idx < 0) return;
             Removal at = removals.get(idx);
             if(at == null) {
                 at = new Removal();
@@ -197,7 +197,7 @@ public class TopologyProcessQueue {
             assertNotDisposed();
             Objects.requireNonNull(link);
             int idx = link.getNodeA().getDomainIndex();
-            if(idx < 0) throw new IllegalArgumentException("Failed to mark " + link + " for invalid domain index " + idx);
+            if(idx < 0) return;
             Removal at = removals.get(idx);
             if(at == null) {
                 at = new Removal();

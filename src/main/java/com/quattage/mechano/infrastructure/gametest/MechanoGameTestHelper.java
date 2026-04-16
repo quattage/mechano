@@ -212,8 +212,8 @@ public class MechanoGameTestHelper extends GameTestHelper {
     /**
      * Places two connectors and attaches them together using
      * {@link MechanoTransmitters#PERFECT_CONDUCTOR}
-     * @param bp
-     * @return
+     * @param bp An arbitrary position to use when placing connectors
+     * @return A new {@link AncillaryPair} that's already been added to the grid
      */
     public AncillaryPair generateUnion(BlockPos bp) {
 
@@ -255,10 +255,10 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return link;
     }
 
-    public AncillaryPair createUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
-        
-        failIfNull(startNode, "No start node was provided");
-        failIfNull(endNode, "No end node was provided");
+    public AncillaryPair generateUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
+
+        failIfNull(startNode);
+        failIfNull(endNode);
         GridUUID<?> startID = GridTracking.getAddress((HierarchicalConstruct)startNode);
         GridUUID<?> endID = GridTracking.getAddress((HierarchicalConstruct)endNode);
 
@@ -268,12 +268,13 @@ public class MechanoGameTestHelper extends GameTestHelper {
                 runner.withArguments(  
                     startID, 
                     endID, 
-                    MechanoTransmitters.HOOKUP.get(), 
+                    MechanoTransmitters.PERFECT_CONDUCTOR.get(), 
                     makeMockPlayer(GameType.CREATIVE).getUUID()
                 );
             }
         );
 
+        tickGrid();
         AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
         failIfNull(link, "Couldn't re-aquire newly created link");
         return link;

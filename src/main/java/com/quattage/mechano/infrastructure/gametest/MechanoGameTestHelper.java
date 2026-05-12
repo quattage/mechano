@@ -3,6 +3,8 @@ package com.quattage.mechano.infrastructure.gametest;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -11,27 +13,27 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.MechanoTransmitters;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.GridDomain;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.GridTracking;
-import com.quattage.mechano.api.grid.GridUUID;
-import com.quattage.mechano.api.grid.GridUUID.UUIDComposite;
-import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.HierarchicalConstruct;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
-import com.quattage.mechano.api.grid.topology.landmark.Terminal;
-import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
-import com.quattage.mechano.api.switchboard.action.ActionTask;
-import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 import com.quattage.mechano.foundation.numeric.EsoMath;
+import com.quattage.mechano.grid.GridTracking;
+import com.quattage.mechano.grid.GridUUID;
+import com.quattage.mechano.grid.GridUUID.UUIDComposite;
+import com.quattage.mechano.grid.Griddable;
+import com.quattage.mechano.grid.GriddableTerminus;
+import com.quattage.mechano.grid.HierarchicalConstruct;
+import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.Node;
+import com.quattage.mechano.grid.topology.NodeUnionSet;
+import com.quattage.mechano.grid.topology.Terminal;
+import com.quattage.mechano.grid.topology.link.AncillaryPair;
 import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
+import com.quattage.mechano.switchboard.action.ActionTask;
+import com.quattage.mechano.switchboard.action.GridAction;
+import com.quattage.mechano.switchboard.action.GridAction.ActionRunner;
 import com.simibubi.create.foundation.mixin.accessor.GameTestHelperAccessor;
 
 import net.minecraft.core.BlockPos;
@@ -124,7 +126,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
     public GridDomain getTestDomain() {
         List<GridDomain> domains = getGrid().domains();
         if(domains.isEmpty())
-            return getGrid().makeFreshDomain();
+            return getGrid().createNewNetlist();
         return domains.getFirst();
     }
 
@@ -209,13 +211,65 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return false;
     }
 
+    public void assertLinkIsValid(AncillaryPair link) { assertLinkIsValid(link, ""); }
+    private void assertLinkIsValid(AncillaryPair link, String clarify) {
+        failIfNull(link, "Can't validate a null link!");
+        String m = "Failed while validating " + link + clarify + "   - ";
+        try { link.validateSelf(); }
+        catch(Exception e) { 
+            e.printStackTrace();
+            fail(m + "This link failed its self-validation checks. (See stacktrace above)");
+        }
+        AncillaryNode<?> start = link.getStartAncillary();
+        AncillaryNode<?> end = link.getEndAncillary();
+        failIfNull(start.getWorld(), m + "The starting node has no world reference!");
+        failIfNull(end.getWorld(), m + "The ending node has no world reference!");
+        if(start.getWorld() != getLevel()) fail(m + "The starting node's world reference isn't the same as the test context! (something wasn't cleared properly between test runs)");
+        if(end.getWorld() != getLevel()) fail(m + "The ending node's world reference isn't the same as the test context! (something wasn't cleared properly between test runs)");
+        Griddable<?> sourceA = link.getSourceA();
+        Griddable<?> sourceB = link.getSourceB();
+        Griddable<?> reaqA = GridTracking.getReferentOrThrow(getLevel(), start.getUUID());
+        Griddable<?> reaqB = GridTracking.getReferentOrThrow(getLevel(), end.getUUID());
+        if(sourceA != reaqA) fail(m + "The starting source couldn't be reached independently!");
+        if(sourceB != reaqB) fail(m + "The ending source couldn't be reached independently!");
+    }
+
+    public void assertLinkIsValidAndExists(AncillaryPair link) { assertLinkIsValidAndExists(link, ""); }
+    public void assertLinkIsValidAndExists(AncillaryPair link, String clarify) {
+        assertLinkIsValid(link, " (" + clarify + ", root acquisition)");
+        AncillaryPair selfLookup = getGrid().lookup().getLink(link.getStartAncillary(), link.getEndAncillary());
+        failIfNull(selfLookup, "Failed while validating link - The forward link couldn't be reacquired from the lookup!");
+        assertLinkIsValid(selfLookup, "(" + clarify + ", self reaquisiton, forward)");
+        selfLookup = getGrid().lookup().getLink(link.getEndAncillary(), link.getStartAncillary());
+        failIfNull(selfLookup, "Failed while validating link - The inverse link couldn't be reacquired from the lookup!");
+        assertLinkIsValid(selfLookup, "(" + clarify + ", self reaquisiton, inverse)");
+    }
+
+    public void assertDomainValid( GridDomain domain, int index) {
+        try {
+            for(Map.Entry<Node, Set<Node>> entry : domain.netlist().transitivity().entrySet()) {
+                Node head = entry.getKey();
+                assertValueEqual(head.getDomainIndex(), index, " domain index @ head node #" + System.identityHashCode(head));
+                int headIndex = domain.indexer().get(head);
+                assertValueEqual(headIndex, 0, " nodal index @ head node #" + System.identityHashCode(head));
+                entry.getValue().forEach(leaf -> {
+                    assertValueEqual(leaf.getDomainIndex(), index, " domain index @ leaf node #" + System.identityHashCode(leaf));
+                    assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ leaf node #" + System.identityHashCode(leaf));
+                });
+            }
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            fail("Encountered exception while traversing " + index + "'s netlist (See stacktrace above)");
+        }
+    }
+
     /**
      * Places two connectors and attaches them together using
      * {@link MechanoTransmitters#PERFECT_CONDUCTOR}
      * @param bp An arbitrary position to use when placing connectors
      * @return A new {@link AncillaryPair} that's already been added to the grid
      */
-    public AncillaryPair generateUnion(BlockPos bp) {
+    public AncillaryPair generateUnion(BlockPos bp, String testName) {
 
         ConnectorBlockEntity cbeA = placeConnector(bp);
         ConnectorBlockEntity cbeB = placeConnector(bp.offset(0, 0, 2));
@@ -251,11 +305,11 @@ public class MechanoGameTestHelper extends GameTestHelper {
 
         tickGrid();
         AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
-        failIfNull(link, "Couldn't re-aquire newly created link");
+        assertLinkIsValidAndExists(link, testName);
         return link;
     }
 
-    public AncillaryPair generateUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode) {
+    public AncillaryPair generateUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode,  String testName) {
 
         failIfNull(startNode);
         failIfNull(endNode);
@@ -274,10 +328,30 @@ public class MechanoGameTestHelper extends GameTestHelper {
             }
         );
 
+        // the grid is ticked manually but technically you could tick the world
+        // via the tester? idk
         tickGrid();
         AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
-        failIfNull(link, "Couldn't re-aquire newly created link");
+        assertLinkIsValidAndExists(link, testName);
         return link;
+    }
+
+    public void verifyGrid(int domainCount, int lookupSize, String verifyName) {
+        assertValueEqual(getGrid().domains().size(), domainCount, "domain count (" + verifyName + ")");
+        assertValueEqual(getGrid().lookup().size(), lookupSize, "lookup size (" + verifyName + ")");
+    }
+
+    public void verifyDomains(int transitiveSize, int deepSize, int sourceCount, int nodeCount, String verifyName) {
+        assertTrue(getGrid().domains().size() >= 1, "Couldn't perform domain verification '" + verifyName + "' because there are no domains to verify.");
+        for(int x = 0; x < getGrid().domains().size(); x++) {
+            GridDomain domain = getGrid().domains().get(x);
+            String didx = "domain " + x;
+            assertValueEqual(domain.netlist().size(), transitiveSize, didx + " transitive size (" + verifyName + ")");
+            assertValueEqual(domain.netlist().size(), deepSize, didx + " deep size (" + verifyName + ")");
+            assertValueEqual(domain.indexer().sourceCount(), sourceCount, didx + " indexer source count (" + verifyName + ")");
+            assertValueEqual(domain.indexer().nodeCount(), nodeCount, didx + " indexer node count (" + verifyName + ")");
+            assertDomainValid(domain, x);
+        }
     }
 
     /**

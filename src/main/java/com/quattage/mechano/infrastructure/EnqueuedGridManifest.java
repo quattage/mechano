@@ -12,8 +12,8 @@ import org.apache.commons.lang3.time.StopWatch;
 
 import com.quattage.mechano.MechanoBuildParameters;
 import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.GridDomain;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.grid.topology.GridDomain;
 import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.infrastructure.ReflectionWizard.DoNotAnalyze;
 
@@ -89,8 +89,7 @@ public class EnqueuedGridManifest implements Disposable {
                 + "API " + MechanoBuildParameters.asString() + "\n"
                 + "requested at [" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()) + "]"
                 + " by '" + (requester == null ? "n/a" : requester.getName().getString()) + "' in " + grid.getDimensionName() + "\n"
-                + "solver method: " + grid.getSolver().describeSelf() + "\n"
-                + "lifecycle status: " + grid.statusHolder() + "\n"
+                + "solver method: " + grid.solver().describeSelf() + "\n"
                 + "--\n";
             if(grid.domains().isEmpty()) out += "empty\n\n";
             else {

@@ -5,20 +5,21 @@ import java.util.function.BiFunction;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.quattage.mechano.api.GridDomain;
 import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.api.catenary.Catenaries.PhysicalMaterial;
-import com.quattage.mechano.api.catenary.Catenaries.Soundscape;
-import com.quattage.mechano.api.catenary.model.CatenaryModelProvider;
-import com.quattage.mechano.api.grid.HierarchicalConstruct;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.NetlistIndexer;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
-import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
-import com.quattage.mechano.api.switchboard.JackSelector;
-import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.catenary.Catenaries.PhysicalMaterial;
+import com.quattage.mechano.catenary.Catenaries.Soundscape;
+import com.quattage.mechano.catenary.CatenaryRenderProperties;
+import com.quattage.mechano.catenary.model.CatenaryModelProvider;
+import com.quattage.mechano.grid.HierarchicalConstruct;
+import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.NetlistIndexer;
+import com.quattage.mechano.grid.topology.Node;
+import com.quattage.mechano.grid.topology.NodeUnionSet;
+import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.switchboard.JackSelector;
+import com.quattage.mechano.switchboard.action.GridAction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 
 import net.minecraft.client.Minecraft;
@@ -103,17 +104,17 @@ public class TransmitterType {
         }
     }
 
-    public static @Nullable CircuitComponent applyUnion(GridDomain domain, UnionFactory factory, @Nullable Object src, AncillaryPair link) {
-        if(domain == null) throw new GridUnionException(src, "domain is null!");
-        if(link == null) throw new GridUnionException(src, "link is null!");
+    public static @Nullable CircuitComponent applyUnion(GridDomain domain, UnionFactory factory, AncillaryPair link) {
+        if(domain == null) throw new GridUnionException(link, "domain is null!");
+        if(link == null) throw new GridUnionException(link, "link is null!");
         CircuitComponent output = null;
         try { output = factory.apply(domain, link); }
         catch (RuntimeException e) { 
             if(e instanceof GridUnionException gue) throw gue;
             e.printStackTrace();
-            throw new GridUnionException(src, "Encountered an error while applying factory! (See exception above)");
+            throw new GridUnionException(link, "Encountered an error while applying factory! (See exception above)");
         }
-        if(output != null && src instanceof HierarchicalConstruct parent && output instanceof HierarchicalConstruct child) 
+        if(output != null && link instanceof HierarchicalConstruct parent && output instanceof HierarchicalConstruct child) 
             child.updateOwnership(parent);
         return output;
     }

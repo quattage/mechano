@@ -5,12 +5,12 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.api.blockEntity.SimpleBlockEntity;
 import com.quattage.mechano.api.blockEntity.SimpleBlockEntity.BERefreshable;
-import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
-import com.quattage.mechano.api.grid.topology.landmark.BlockJack;
 import com.quattage.mechano.foundation.block.CombinedOrientedBlock;
 import com.quattage.mechano.foundation.block.ConnectorHostOverridable;
 import com.quattage.mechano.foundation.block.orientation.CombinedOrientation;
+import com.quattage.mechano.grid.GriddableTerminus;
+import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.BlockJack;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
 import net.minecraft.core.BlockPos;

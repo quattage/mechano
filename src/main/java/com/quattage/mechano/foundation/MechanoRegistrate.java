@@ -1,9 +1,9 @@
 package com.quattage.mechano.foundation;
 
 
-import com.quattage.mechano.api.grid.component.CircuitComponent;
 import com.quattage.mechano.api.transmitter.TransmitterBuilder;
 import com.quattage.mechano.api.transmitter.TransmitterType;
+import com.quattage.mechano.grid.api.component.CircuitComponent;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 import net.minecraft.core.Registry;

@@ -1,6 +1,11 @@
     package com.quattage.mechano.api;
 
-    import java.util.Objects;
+    import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -9,20 +14,23 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.api.grid.Griddable;
-import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.topology.NetlistLookup;
-import com.quattage.mechano.api.grid.topology.landmark.link.ComponentLink;
-import com.quattage.mechano.api.switchboard.action.GridAction;
-import com.quattage.mechano.api.switchboard.action.GridAction.ActionRunner;
 import com.quattage.mechano.api.transmitter.TransmitterType;
+import com.quattage.mechano.foundation.Disposable;
 import com.quattage.mechano.foundation.WorldlyObject;
+import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.grid.topology.link.ComponentLink;
+import com.quattage.mechano.switchboard.action.GridAction;
+import com.quattage.mechano.switchboard.action.GridAction.ActionRunner;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
@@ -42,7 +50,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
      * to the level.
      */
     @EventBusSubscriber
-    public abstract sealed class Grid implements WorldlyObject permits ClientGrid, ServerGrid {
+    public abstract sealed class Grid<T> implements WorldlyObject, Disposable permits ClientGrid, ServerGrid {
     // these words aren't in the bible
 
         protected static final Logger LOGGER = LogUtils.getLogger();
@@ -51,24 +59,29 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         private static WorldlyReference<ServerGrid> weakServerGrid = null;
         private static WorldlyReference<ClientGrid> weakClientGrid = null;
 
-        public static final IAttachmentSerializer<CompoundTag, Grid> SERIALIZER = new IAttachmentSerializer<>() {
+        public static final IAttachmentSerializer<CompoundTag, Grid<?>> SERIALIZER = new IAttachmentSerializer<>() {
             @Override
-            public Grid read(IAttachmentHolder holder, CompoundTag tag, Provider provider) {
+            public Grid<?> read(IAttachmentHolder holder, CompoundTag tag, Provider provider) {
                 if(!(holder instanceof Level world)) {
                     throw new IllegalStateException("Attempted to de-serialize grid attachment from non-level source (" 
                         + (holder == null ? "null" : holder.getClass().getSimpleName()) + ")");
                 }
-                Grid newGrid = Grid.getUnsided(world);
+                Grid<?> newGrid = Grid.ofUnsided(world);
                 newGrid.read(world, tag, provider);
                 return newGrid;
             }
             @Override
-            public @Nullable CompoundTag write(Grid attachment, Provider provider) {
+            public @Nullable CompoundTag write(Grid<?> attachment, Provider provider) {
                 CompoundTag written = new CompoundTag();
                 attachment.write(attachment.getWorld(), written, provider);
                 return written;
             }
         };
+
+        public static @NotNull Grid<?> ofUnsided(LevelReader world) {
+            if(world.isClientSide()) return Grid.client(world);
+            return Grid.server(world);
+        }
 
         /**
          * To be called by internal registries to populate the world with an initial data attachment
@@ -77,8 +90,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
          * @throws IllegalArgumentException if the provided holder isn't compatable (for now, grids can only be attached to levels)
          */
         @ApiStatus.Internal
-        public static Grid createNew(IAttachmentHolder holder) {
-            Grid freshInstance = null;
+        public static Grid<?> ofNew(IAttachmentHolder holder) {
+            Grid<?> freshInstance = null;
             if(holder instanceof Level world) {
                 if(world.isClientSide()) freshInstance = new ClientGrid(world);
                 else freshInstance = new ServerGrid(world);
@@ -89,15 +102,21 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         @SubscribeEvent
-        public static void loadGrid(LevelEvent.Load evt) {
+        public static void onWorldLoad(LevelEvent.Load evt) {
             LevelAccessor world = evt.getLevel();
-            Grid.getUnsided(world).load();
+            Grid.ofUnsided(world).load();
         }
 
         @SubscribeEvent
-        public static void tickGrid(LevelTickEvent.Post evt) {
+        public static void onWorldUnload(LevelEvent.Unload evt) {
+            LevelAccessor world = evt.getLevel();
+            Grid.ofUnsided(world).dispose();
+        }
+
+        @SubscribeEvent
+        public static void onWorldTick(LevelTickEvent.Post evt) {
             Level world = evt.getLevel();
-            Grid.getUnsided(world).tick();
+            Grid.ofUnsided(world).tick();
         }
 
         @SubscribeEvent
@@ -105,24 +124,10 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             Level world = evt.getLevel();
             if(world.isClientSide) return;
             ServerGrid grid = Grid.server(world);
-            grid.lookup().byChunk(evt.getPos()).forEach(pair -> {
+            grid.getLinksByChunk(evt.getPos()).forEach(pair -> {
                 TransmitterType trns = pair instanceof ComponentLink<?> link ? link.getTransmitter() : null;
                 GridAction.TASK_LINK_SYNC.broadcast(grid, new Object[] { pair.getStartID(), pair.getEndID(), trns });
             });
-        }
-
-        @SubscribeEvent
-        public static void unloadGrid(LevelEvent.Unload evt) {
-            LevelAccessor world = evt.getLevel();
-            Grid.getUnsided(world).unload();
-        }
-
-        protected abstract void read(LevelReader world, CompoundTag contents, Provider provider);
-        protected abstract void write(LevelReader world, CompoundTag contents, Provider provider);
-
-        public static @NotNull Grid getUnsided(LevelReader world) {
-            if(world.isClientSide()) return Grid.client(world);
-            return Grid.server(world);
         }
 
         /**
@@ -137,7 +142,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             if(!(world instanceof ServerLevel sl)) throw new IllegalArgumentException("Can't acquire a server-sided dispatcher from non-server world " + world);
             if(Grid.weakServerGrid != null && Grid.weakServerGrid.isAttachedTo(sl))
                 return Grid.weakServerGrid.get();
-            Grid attachment = sl.getData(MechanoData.GRID.get());
+            Grid<?> attachment = sl.getData(MechanoData.GRID.get());
             Grid.weakServerGrid = new WorldlyReference<ServerGrid>((ServerGrid)attachment);
             return Grid.weakServerGrid.get();
         }
@@ -164,7 +169,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             if(!(world instanceof ClientLevel cl)) throw new IllegalArgumentException("Can't acquire a client-sided dispatcher from server-sided world " + world);
             if(Grid.weakClientGrid != null && Grid.weakClientGrid.isAttachedTo(cl))
                 return Grid.weakClientGrid.get();
-            Grid attachment = cl.getData(MechanoData.GRID.get());
+            Grid<?> attachment = cl.getData(MechanoData.GRID.get());
             if(attachment == null) throw new IllegalStateException("Failed to acquire a client-sided dispatcher in" + world);
             Grid.weakClientGrid = new WorldlyReference<ClientGrid>((ClientGrid)attachment);
             return Grid.weakClientGrid.get();
@@ -182,15 +187,85 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         protected final Level world;
+        @Nullable protected Object2ObjectOpenHashMap<T, List<AncillaryPair>> links;
 
         protected Grid(Level world) {
+            Objects.requireNonNull(world);
             this.world = world;
+            this.links = new Object2ObjectOpenHashMap<>();
         }
 
+        protected abstract void read(LevelReader world, CompoundTag contents, Provider provider);
+        protected abstract void write(LevelReader world, CompoundTag contents, Provider provider);
         protected abstract void load();
-        protected abstract void unload();
-        public abstract NetlistLookup<?> lookup();
         public abstract void tick();
+
+        protected abstract GridAction addLink(AncillaryPair link, @Nullable Entity modifier);
+        protected abstract GridAction removeLink(AncillaryPair link, @Nullable Entity modifier);
+        protected abstract Stream<AncillaryPair> getLinksByChunk(ChunkPos pos);
+
+        public @Nullable List<AncillaryPair> getLinksBelongingTo(T lookup) {
+            return links.get(lookup);
+        }
+
+        public @Nullable AncillaryPair getLinkMatching(T start, T end) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(start);
+            if(linksAt == null || linksAt.isEmpty()) return null;
+            for(int x = 0; x < linksAt.size(); x++) {
+                AncillaryPair link = linksAt.get(x);
+                if(link.endsWith(end)) return link;
+            }
+            return null;
+        }
+
+        protected GridAction addLinkAsymmetric(T hash, AncillaryPair link, boolean limit) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(hash);
+            if(linksAt == null) {
+                linksAt = new ArrayList<AncillaryPair>();
+                linksAt.add(link);
+                link.onAddedToGrid(this);
+                links.put(hash, linksAt);
+                return GridAction.RESPONSE_SUCCESS;
+            }
+            if(linksAt.contains(link)) return GridAction.RESPONSE_FAIL_DUPLICATE_ELEMENT;
+            if(limit && linksAt.size() >= AncillaryNode.MAX_SHARED_OCCUPANCY)
+                return GridAction.RESPONSE_FAIL_ELEMENT_FULL;
+            linksAt.add(link);
+            link.onAddedToGrid(this);
+            return GridAction.RESPONSE_SUCCESS;
+        }
+
+        protected GridAction removeLinkAsymmetric(T start, T end) {
+            List<AncillaryPair> linksAt = getLinksBelongingTo(start);
+            if(linksAt == null) return GridAction.RESPONSE_FAIL_START_MISSING;
+            int toRemove = -1;
+            for(int x = 0; x < linksAt.size(); x++) {
+                AncillaryPair link = linksAt.get(x);
+                if(link != null && link.endsWith(end)) {
+                    toRemove = x;
+                    break;
+                }
+            }
+            if(toRemove < 0) return GridAction.RESPONSE_FAIL_END_MISSING;
+            AncillaryPair removed = linksAt.remove(toRemove);
+            if(removed != null) {
+                if(linksAt.isEmpty()) links.remove(start);
+                removed.onRemovedFromGrid(this);
+                return GridAction.RESPONSE_SUCCESS;
+            }
+            return GridAction.RESPONSE_FAIL_MISSING;
+        }
+
+        public void forEachLink(Consumer<AncillaryPair> cons) {
+            if(links.isEmpty()) return;
+            for(Map.Entry<T, List<AncillaryPair>> entry : links.entrySet()) {
+                List<AncillaryPair> links = entry.getValue();
+                if(links == null || links.isEmpty())
+                    continue;
+                for(AncillaryPair link : links)
+                    if(link != null) cons.accept(link);
+            }
+        }
 
         /**
          * Creates a new {@link ActionRunner} bound to this grid
@@ -203,12 +278,9 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
             return new ActionRunner(this, action);
         }
 
-        // TODO replace with onAddedToGrid
-        protected void markTerminus(@Nullable Griddable<?> source, boolean connections) {
-            if(source == null) return;
-            GriddableTerminus gt = source.getTerminus();
-            if(gt == null) return;
-            gt.setHasConnections(connections);
+        @Override
+        public Level getWorld() {
+            return world;
         }
 
         @Override
@@ -217,8 +289,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
         }
 
         @Override
-        public Level getWorld() {
-            return world;
+        public boolean hasBeenDisposed() {
+            return links == null;
         }
 
         @Override

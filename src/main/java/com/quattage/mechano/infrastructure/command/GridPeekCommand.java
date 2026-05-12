@@ -2,7 +2,7 @@ package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.switchboard.action.GridAction;
+import com.quattage.mechano.switchboard.action.GridAction;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;

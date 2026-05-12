@@ -1,6 +1,7 @@
 package com.quattage.mechano.api;
 
 import java.util.OptionalDouble;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -10,10 +11,12 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.quattage.mechano.api.grid.HierarchicalConstruct.GridReferent;
-import com.quattage.mechano.api.grid.topology.NetlistLookup.ClientNetlistLookup;
-import com.quattage.mechano.api.grid.topology.landmark.AncillaryNode;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
+import com.quattage.mechano.grid.GridUUID;
+import com.quattage.mechano.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.switchboard.action.GridAction;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -24,12 +27,13 @@ import net.minecraft.client.renderer.debug.DebugRenderer;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 
-public final class ClientGrid extends Grid {
+public final class ClientGrid extends Grid<GridUUID<?>> {
 
-    protected final ClientNetlistLookup lookup = new ClientNetlistLookup();
     private static LinkDebugRenderer debugger;
 
     public static LinkDebugRenderer getDebugger() {
@@ -57,18 +61,35 @@ public final class ClientGrid extends Grid {
     }
 
     @Override
-    protected void unload() {
-        lookup.reset();
-    }
-
-    @Override
-    public ClientNetlistLookup lookup() {
-        return lookup;
+    public void dispose() {
+        links = null;
     }
 
     @Override
     public void tick() {
         // warn("LINKS: \n " + linksAsString());
+    }
+
+    @Override
+    protected GridAction addLink(AncillaryPair link, @Nullable Entity modifier) {
+        GridAction output = super.addLinkAsymmetric(link.getStartID().copyAndClearBindings(), link, false);
+        if(output.getActionType().indicatesSuccess())
+            super.addLinkAsymmetric(link.getEndID().copyAndClearBindings(), link.flippedCopy(), false);
+        else warn("Failed to add link " + link + " - response returned " + output);
+        return output;
+    }
+
+    @Override
+    protected GridAction removeLink(AncillaryPair link, @Nullable Entity modifier) {
+        super.removeLinkAsymmetric(link.getStartID().copyAndClearBindings(), link.getEndID());
+        return super.removeLinkAsymmetric(link.getEndID().copyAndClearBindings(), link.getStartID());
+    }
+
+    @Override
+    protected Stream<AncillaryPair> getLinksByChunk(ChunkPos pos) {
+        // for now we don't store links per chunk on the client since that data isn't needed
+        // TODO this probably doesnt need to be an abstract method in the grid object but its here to remind me to deal with this later
+        return Stream.empty();
     }
 
     public static class LinkDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
@@ -109,7 +130,7 @@ public final class ClientGrid extends Grid {
         public void render(PoseStack matrixStack, MultiBufferSource bufferSource, double camX, double camY, double camZ) {
             if(!enabled) return;
             ClientGrid grid = Grid.client(minecraft.player);
-            grid.lookup.forEachLink(link -> 
+            grid.forEachLink(link -> 
                 drawSingle(matrixStack, bufferSource, link.getStartAncillary(), link.getEndAncillary(), camX, camY, camZ)
             );
         }

@@ -99,16 +99,18 @@ public class MechanoGameTests {
         return gth -> {
             MechanoGameTestHelper mgth = gth instanceof MechanoGameTestHelper mgthh ? mgthh : MechanoGameTestHelper.of(gth);
             for(int x = 0; x < repeats; x++) {
-                try { 
+                try {
                     mgth.getGrid().load();
+                    // mgth.getGrid().debug("Loading grid '" + mgth.getGrid().getDimensionName() + "' in gametest context");
                     method.invoke(null, mgth);
                     if(dump != null && (!dump.requireSuccess() || mgth.testInfo.hasSucceeded()))
                         mgth.dumpGrid(method.getName());
                     mgth.getGrid().unload();
+                    // mgth.getGrid().debug("Unloading grid '" + mgth.getGrid().getDimensionName() + "' from gametest");
                 }
                 catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException("Something went wrong while invoking " + method.getName() + " from the game tester", e);
-                } 
+                }
             }
         };
     }

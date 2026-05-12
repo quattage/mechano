@@ -1,10 +1,10 @@
 package com.quattage.mechano.content.creative;
 
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.api.grid.component.CircuitFactory;
-import com.quattage.mechano.api.grid.component.impl.InfiniteVoltageSource;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
 import com.quattage.mechano.foundation.block.orientation.Relative;
+import com.quattage.mechano.grid.api.InfiniteVoltageSource;
+import com.quattage.mechano.grid.api.component.CircuitFactory;
+import com.quattage.mechano.grid.topology.Node;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;

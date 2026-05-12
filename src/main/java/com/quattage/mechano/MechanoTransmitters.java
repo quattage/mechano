@@ -1,9 +1,9 @@
 
 package com.quattage.mechano;
 
-import com.quattage.mechano.api.catenary.Catenaries;
 import com.quattage.mechano.api.transmitter.TransmitterEntry;
 import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
+import com.quattage.mechano.catenary.Catenaries;
 
 import net.neoforged.bus.api.IEventBus;
 

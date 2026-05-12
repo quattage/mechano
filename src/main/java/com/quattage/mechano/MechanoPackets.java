@@ -4,8 +4,8 @@ package com.quattage.mechano;
 
 import java.util.Locale;
 
-import com.quattage.mechano.api.switchboard.GridActionC2SPacket;
-import com.quattage.mechano.api.switchboard.GridActionS2CPacket;
+import com.quattage.mechano.switchboard.GridActionC2SPacket;
+import com.quattage.mechano.switchboard.GridActionS2CPacket;
 
 import net.createmod.catnip.net.base.BasePacketPayload;
 import net.createmod.catnip.net.base.CatnipPacketRegistry;

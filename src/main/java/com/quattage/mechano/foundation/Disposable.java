@@ -2,7 +2,7 @@ package com.quattage.mechano.foundation;
 
 public interface Disposable {
 
-    static void dispose(Object obj) {
+    static void disposeOf(Object obj) {
         if(obj instanceof Disposable dobj) dobj.dispose();
     }
 
@@ -17,5 +17,12 @@ public interface Disposable {
 
     void dispose();
 
+    /**
+     * Indicates whether or not a disposable object has been disposed of.
+     * Implementations may return <code>true</code> here to indicate that 
+     * this object is still usable.
+     * @return <code>false</code> if this object can't be used because it has
+     * been disposed of.
+     */
     boolean hasBeenDisposed();
 }

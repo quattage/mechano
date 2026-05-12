@@ -5,5 +5,6 @@
     "java.dependency.packagePresentation": "hierarchical",
     "java.compile.nullAnalysis.mode": "disabled",
     "java.format.settings.url": "eclipse-formatter.xml",
-    "editor.inlayHints.enabled": "off"
+    "editor.inlayHints.enabled": "off",
+    "markdown.validate.enabled": true
 }

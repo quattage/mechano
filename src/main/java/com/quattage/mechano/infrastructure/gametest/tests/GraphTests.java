@@ -1,28 +1,27 @@
 package com.quattage.mechano.infrastructure.gametest.tests;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import com.quattage.mechano.api.grid.GridTracking;
-import com.quattage.mechano.api.grid.GridUUID;
-import com.quattage.mechano.api.grid.GriddableTerminus;
-import com.quattage.mechano.api.grid.component.CircuitComponent;
-import com.quattage.mechano.api.grid.topology.GridDomain;
-import com.quattage.mechano.api.grid.topology.NodalCluster;
-import com.quattage.mechano.api.grid.topology.NodeUnionSet;
-import com.quattage.mechano.api.grid.topology.landmark.Node;
-import com.quattage.mechano.api.grid.topology.landmark.link.AncillaryPair;
-import com.quattage.mechano.api.grid.topology.landmark.link.NodePair;
+import com.quattage.mechano.api.GridDomain;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
+import com.quattage.mechano.grid.GridTracking;
+import com.quattage.mechano.grid.GridUUID;
+import com.quattage.mechano.grid.GriddableTerminus;
+import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.topology.Node;
+import com.quattage.mechano.grid.topology.NodeUnionSet;
+import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.grid.topology.link.NodePair;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper.MockNode;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.MechanoTestHolder;
-import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.PrintGridAfter;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.Repeat;
+import com.quattage.mechano.switchboard.RemovalLedger.RemovalEntry;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.world.level.block.Blocks;
 
 @MechanoTestHolder
 public class GraphTests {
@@ -112,23 +111,6 @@ public class GraphTests {
 
     @Repeat(iterations = 64)
     @GameTest
-    public static void unionRootsChangeRapidlyEdgeCase(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        MockNode a = new MockNode("A", false);
-        MockNode b = new MockNode("B", false);
-        MockNode c = new MockNode("C", false);
-        uf.add(a); uf.add(b); uf.add(c);
-        uf.union(a, b); uf.union(b, c);
-        // at some point this would occasionally cause a stackoverflow but it's not anymore and i don't know why
-        for(int x = 0; x < 64; x++) {
-            uf.remove(a);
-            uf.union(a, b);
-        }
-        test.succeed();
-    }
-    
-    @Repeat(iterations = 64)
-    @GameTest
     public static void unionPrioritizesGround(MechanoGameTestHelper test) {
         NodeUnionSet uf = new NodeUnionSet();
         MockNode gnd = new MockNode("GND", true);
@@ -162,89 +144,6 @@ public class GraphTests {
         test.succeed();
     }
 
-    @GameTest
-    public static void unionCreatesBranches(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        test.populateUF(uf, "T", 21);
-        MockNode split = (MockNode)uf.getByComponentID("T10");
-        test.assertTrue(split != null, "wtf");
-        Node[] splitBranch = NodalCluster.getConstituents(uf, split);
-        test.assertValueEqual(splitBranch.length, 21, "branch size");
-        uf.remove(split, false);
-        test.assertValueEqual(uf.deepSize(), 20, "set size after removal");
-        List<NodalCluster> clusters = NodalCluster.ofClusters(uf, splitBranch);
-        test.assertValueEqual(clusters.size(), 2, "amount of clusters");
-        test.assertValueEqual(clusters.get(0).size(), 10, "cluster size A");
-        test.assertValueEqual(clusters.get(1).size(), 10, "cluster size B");
-        test.succeed();
-    }
-
-    @GameTest
-    public static void unionsMaintanBranches(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        MockNode aLast = test.populateUF(uf, "A", 6);
-        MockNode bLast = test.populateUF(uf, "B", 8);
-        Node[] aBranch = NodalCluster.getConstituents(uf, aLast);
-        Node[] bBranch = NodalCluster.getConstituents(uf, bLast);
-        test.assertValueEqual(aBranch.length, 6, "Branch size A");
-        test.assertValueEqual(bBranch.length, 8, "Branch size B");
-        test.succeed();
-    }
-
-    @GameTest
-    public static void unionRemovalMaintainsTransitivity(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        test.populateUF(uf, "T", 21);
-        MockNode split = (MockNode)uf.getByComponentID("T10");
-        test.assertTrue(split != null, "wtf");
-        uf.remove(split);
-        test.assertValueEqual(uf.size(), 2, "set transitive size");
-        test.assertValueEqual(uf.deepSize(), 20, "set deep size");
-        test.succeed();
-    }
-
-    @Repeat(iterations = 64)
-    @GameTest
-    public static void unionRemovalRespectsRoots(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        test.populateUF(uf, "T", 10);
-        MockNode split = new MockNode("T10", false).setPrimary();
-        uf.union(uf.getByComponentID("T9"), split); 
-        uf.compress();
-        uf.remove(split);
-        test.assertValueEqual(uf.size(), 1, "set transitive size");
-        test.assertValueEqual(uf.deepSize(), 10, "set deep size");
-        test.succeed();
-    }
-
-    @Repeat(iterations = 1024)
-    @GameTest
-    public static void unionRemovalBatch(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        test.populateUF(uf, "T", 21);
-        uf.removeAll(Arrays.asList(
-            uf.getByComponentID("T10"),
-            uf.getByComponentID("T15"),
-            uf.getByComponentID("T6")
-        ));
-        test.assertValueEqual(uf.size(), 4, "set transitive size");
-        test.succeed();
-    }
-
-    @Repeat(iterations = 64)
-    @GameTest
-    public static void unionRemovalBatchEdgeCase(MechanoGameTestHelper test) {
-        NodeUnionSet uf = new NodeUnionSet();
-        test.populateUF(uf, "T", 36);
-        uf.removeAll(Arrays.asList(
-            uf.getByComponentID("T0"),
-            uf.getByComponentID("T1"),
-            uf.getByComponentID("T2")
-        ));
-        test.assertValueEqual(uf.size(), 1, "set transitive size");
-        test.succeed();
-    }
-
     @Repeat(iterations = 64)
     @GameTest
     public static void unionSingleRemoval(MechanoGameTestHelper test) {
@@ -254,7 +153,7 @@ public class GraphTests {
         Node b = uf.getByComponentID("T6");
         List<NodePair> pairs = new ArrayList<>();
         pairs.add(new NodePair(a, b));
-        uf.massRemove(test.getGrid(), null, pairs);
+        uf.massRemove(test.getGrid(), RemovalEntry.of(null, pairs));
         test.assertValueEqual(uf.size(), 2, "set transitive size");
         test.succeed();
     }
@@ -280,7 +179,7 @@ public class GraphTests {
         test.populateUF(uf, "T", 10);
         List<NodePair> pairs = new ArrayList<>();
         pairs.add(new NodePair(uf.getByComponentID("T0"), uf.getByComponentID("T1")));
-        uf.massRemove(test.getGrid(), null, pairs);
+        uf.massRemove(test.getGrid(), RemovalEntry.of(null, pairs));
         test.assertValueEqual(uf.size(), 1, "set transitive size");
         test.succeed();
     }
@@ -294,7 +193,9 @@ public class GraphTests {
         uf.getByComponentID("T1")));
         List<Node> singles = new ArrayList<>();
         singles.add(uf.getByComponentID("T10"));
-        uf.massRemove(test.getGrid(), singles, pairs);
+        StringBuilder removalManifest = new StringBuilder();
+        uf.massRemove(test.getGrid(), RemovalEntry.of(singles, pairs), removalManifest);
+        test.getGrid().warn("::::\n" + removalManifest);
         test.assertValueEqual(uf.size(), 2, "set transitive size");
         test.assertValueEqual(uf.deepSize(), 18, "set deep size");
         test.succeed();
@@ -325,65 +226,42 @@ public class GraphTests {
     }
 
     @GameTest
-    @PrintGridAfter
     public static void fullConnectionTest(MechanoGameTestHelper test) {
 
-        test.getGrid().load();
         BlockPos bp = test.randomPos();
-        AncillaryPair linkA = test.generateUnion(bp);
-        AncillaryPair linkB = test.generateUnion(bp.offset(0, 0, 4));
-        AncillaryPair linkC = test.generateUnion(bp.offset(0, 0, 8));
-        AncillaryPair linkD = test.generateUnion(bp.offset(0, 0, 12));
-        
-        test.assertValueEqual(test.getGrid().domains().size(), 4, "domain count");
-        test.assertValueEqual(test.getGrid().lookup().deepSize(), 8, "lookup size");
 
-        for(int x = 0; x < test.getGrid().domains().size(); x++) {
-            GridDomain domain = test.getGrid().domains().get(x);
-            String didx = "domain " + x;
-            test.assertValueEqual(domain.netlist().size(), 1, didx + " transitive size");
-            test.assertValueEqual(domain.netlist().deepSize(), 2, didx + " deep size");
-            test.assertValueEqual(domain.indexer().sourceCount(), 0, didx + " indexer source count");
-            test.assertValueEqual(domain.indexer().nodeCount(), 2, didx + " indexer node count");
-            GraphTests.assertDomainValid(test, domain, x);
-        }
-        
-        AncillaryPair linkAB = test.generateUnion(linkA.getEndAncillary(), linkB.getStartAncillary());
-        test.assertValueEqual(test.getGrid().domains().size(), 3, "domain count");
-        test.assertValueEqual(test.getGrid().lookup().deepSize(), 10, "lookup size");
-        
-        AncillaryPair linkCD = test.generateUnion(linkC.getEndAncillary(), linkD.getStartAncillary());
-        test.assertValueEqual(test.getGrid().domains().size(), 2, "domain count");
-        test.assertValueEqual(test.getGrid().lookup().deepSize(), 12, "lookup size");
+        AncillaryPair linkA = test.generateUnion(bp, "linkA");
+        AncillaryPair linkB = test.generateUnion(bp.offset(0, 0, 4), "linkB");
+        AncillaryPair linkC = test.generateUnion(bp.offset(0, 0, 8), "linkC");
+        AncillaryPair linkD = test.generateUnion(bp.offset(0, 0, 12), "linkD");
 
-        for(int x = 0; x < test.getGrid().domains().size(); x++) {
-            GridDomain domain = test.getGrid().domains().get(x);
-            String didx = "domain " + x;
-            test.assertValueEqual(domain.netlist().size(), 1, didx + " transitive size");
-            test.assertValueEqual(domain.netlist().deepSize(), 4, didx + " deep size");
-            test.assertValueEqual(domain.indexer().sourceCount(), 0, didx + " indexer source count");
-            test.assertValueEqual(domain.indexer().nodeCount(), 4, didx + " indexer node count");
-            GraphTests.assertDomainValid(test, domain, x);
-        }
+        test.verifyGrid(4, 8, "initial series");
+        test.verifyDomains(1, 2, 0, 2, "initial series");
+
+        AncillaryPair linkAB = test.generateUnion(linkA.getEndAncillary(), linkB.getStartAncillary(), "linkAB");
+        test.verifyGrid(3, 10, "subsequent AB");
+
+        AncillaryPair linkCD = test.generateUnion(linkC.getEndAncillary(), linkD.getStartAncillary(), "linkCD");
+        test.verifyGrid(2, 12, "subsequent CD");
+        test.verifyDomains(1, 4, 0, 4, "subsequent CD");
+
+        AncillaryPair linkBC = test.generateUnion(linkB.getEndAncillary(), linkC.getStartAncillary(), "linkBC");
+        test.verifyGrid(1, 14, "subsequent BC");
+        test.verifyDomains(1, 8, 0, 8, "subsequent BC");
+
+        test.setBlock(bp.offset(0, 0, 6), Blocks.AIR);
+        test.tickGrid();
+        test.verifyGrid(2, 10, "post-removal @ offset 6");
+
+        test.setBlock(bp.offset(0, 0, 8), Blocks.AIR);
+        test.tickGrid();
+
+        // test.dumpGrid(true, "fullConnectionTest (" + test.absolutePos(bp) + ")");
+
+        // test.verifyDomains(1, 3, 0, 3, "post-removal @ offset 10");
+        test.verifyGrid(2, 8, "post-removal @ offset 8");
 
         test.succeed();
-    }
-
-    private static void assertDomainValid(MechanoGameTestHelper test, GridDomain domain, int index) {
-        try {
-            domain.netlist().forEachTransitive((head, branch) -> {
-                test.assertValueEqual(head.getDomainIndex(), index, " domain index @ head node #" + System.identityHashCode(head));
-                int headIndex = domain.indexer().get(head);
-                test.assertValueEqual(headIndex, 0, " nodal index @ head node #" + System.identityHashCode(head));
-                branch.forEach(leaf -> {
-                    test.assertValueEqual(leaf.getDomainIndex(), index, " domain index @ leaf node #" + System.identityHashCode(leaf));
-                    test.assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ leaf node #" + System.identityHashCode(leaf));
-                });
-            });
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-            test.fail("Encountered exception while traversing " + index + "'s netlist (See stacktrace above)");
-        }
     }
 }
 

@@ -5,12 +5,14 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.Griddable;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.quattage.mechano.foundation.numeric.VectorOperations.Ray;
-import com.quattage.mechano.grid.Griddable;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
 
@@ -49,6 +51,11 @@ public class GridPeekTask implements ActionTask {
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
         return GridAction.TASK_GRID_PEEK;
+    }
+
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     @Override

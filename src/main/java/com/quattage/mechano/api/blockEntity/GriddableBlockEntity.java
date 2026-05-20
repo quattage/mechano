@@ -6,20 +6,20 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.Griddable;
+import com.quattage.mechano.api.GriddableTerminus;
 import com.quattage.mechano.foundation.block.orientation.DirectionTransformer;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.grid.GridTracking;
 import com.quattage.mechano.grid.GridTracking.ComponentHierarchy;
-import com.quattage.mechano.grid.GridUUID.UUIDComposite;
-import com.quattage.mechano.grid.GridUUID.VoxelUUID;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.GriddableTerminus;
-import com.quattage.mechano.grid.HierarchicalConstruct;
-import com.quattage.mechano.grid.api.component.Circuit;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
-import com.quattage.mechano.grid.api.component.CircuitFactory;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.AncillaryPair;
+import com.quattage.mechano.grid.topology.Circuit;
+import com.quattage.mechano.grid.topology.CircuitFactory;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.GridUUID.UUIDComposite;
+import com.quattage.mechano.grid.topology.core.GridUUID.VoxelUUID;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import net.minecraft.core.BlockPos;
@@ -87,7 +87,7 @@ public abstract class GriddableBlockEntity extends SimpleBlockEntity implements 
         ServerGrid grid = Grid.server(world);
         for(AncillaryPair pair : adjs) {
             pair.validateSelf();
-            grid.addLinkDeferred(pair, null);
+            grid.addLink(pair, null);
         }
     }
 

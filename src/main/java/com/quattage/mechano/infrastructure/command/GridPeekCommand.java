@@ -1,7 +1,7 @@
 package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import net.minecraft.commands.CommandSourceStack;
@@ -20,7 +20,7 @@ public class GridPeekCommand {
                         source.sendFailure(Component.literal("Couldn't peek from non-player source"));
                         return 1;
                     }
-                    Grid.server(sp).initiateTask(GridAction.TASK_GRID_PEEK).executeAs(sp);
+                    Grid.server(sp.level()).initiateTask(GridAction.TASK_GRID_PEEK).executeAs(sp);
                     return 1;
                 });
     }

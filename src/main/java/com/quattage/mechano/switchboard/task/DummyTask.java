@@ -2,12 +2,15 @@ package com.quattage.mechano.switchboard.task;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.world.entity.Entity;
 
 public class DummyTask implements ActionTask {
 
@@ -32,8 +35,12 @@ public class DummyTask implements ActionTask {
     }
 
     @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return GridAction.RESPONSE_SUCCESS;
+    }
+
+    @Override
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
         return GridAction.RESPONSE_SUCCESS;
     }
-    
 }

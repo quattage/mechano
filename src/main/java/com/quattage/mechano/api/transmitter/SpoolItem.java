@@ -8,16 +8,16 @@ import org.jetbrains.annotations.Nullable;
 import com.quattage.mechano.Mechano;
 import com.quattage.mechano.MechanoClientEvents;
 import com.quattage.mechano.MechanoData;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.api.Griddable;
 import com.quattage.mechano.api.transmitter.TransmitterType.TransmitterProvider;
 import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.MapLikeItemHoldable;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
 import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.GridUUID;
 import com.quattage.mechano.switchboard.JackSelector;
 import com.quattage.mechano.switchboard.action.GridAction;
 
@@ -88,7 +88,7 @@ public abstract class SpoolItem extends Item implements TransmitterProvider, Lef
         if(usedHand != InteractionHand.MAIN_HAND || !JackSelector.getInstance().hasSelection()) 
             return InteractionResultHolder.fail(JackSelector.getInstance().getHeldCircuitProvider(player));
         ItemStack stack = JackSelector.getInstance().getHeldCircuitProvider(player);
-        ClientGrid grid = Grid.client(player);
+        ClientGrid grid = Grid.client(player.level());
         if(!stack.has(MechanoData.UUID))
             return handleFirstRightClick(grid, player, stack, JackSelector.getInstance().target());
         return handleSecondRightClick(grid, player, stack, JackSelector.getInstance().target());

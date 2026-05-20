@@ -3,8 +3,8 @@ package com.quattage.mechano.switchboard;
 import java.util.Objects;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.Grid;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.ActionType.GridActionDecodeException;
 import com.quattage.mechano.switchboard.action.ActionType.GridActionEncodeException;
@@ -65,7 +65,7 @@ public class GridActionC2SPacket implements ServerboundPacketPayload {
     @OnlyIn(Dist.CLIENT)
     public void handle(ServerPlayer player) {
         ActionTask task = action.getTask();
-        ServerGrid grid = Grid.server(player);
+        ServerGrid grid = Grid.server(player.level());
         GridAction result = task.executeAsServer(grid, args);
         if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + " in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(args) + "\n\n** Result: \n(" + result.asResource() + ")");
     }

@@ -7,19 +7,16 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.GridDomain;
-import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.api.transmitter.TransmitterType;
-import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
+import com.quattage.mechano.grid.ClientGrid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.solver.ConvergenceStatus;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.grid.topology.AncillaryNode;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
-import com.quattage.mechano.grid.topology.link.ComponentLink;
+import com.quattage.mechano.grid.topology.AncillaryPair;
+import com.quattage.mechano.grid.topology.ComponentLink;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
 import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
@@ -100,11 +97,16 @@ public class NodeLinkCreateTask implements ActionTask {
             ? new AncillaryPair(startID, startNode, endID, endNode) 
             : new ComponentLink<>(trns, startID, startNode, endID, endNode);
         Entity caller = args[3] == null ? null : ((ServerLevel)grid.getWorld()).getEntity((UUID)args[3]);
-        args[4] = grid.addLinkDeferred(newLink, caller);
+        args[4] = grid.addLink(newLink, caller);
         Set<ServerPlayer> trackers = GridTracking.collectPlayersTracking((ServerLevel) grid.getWorld(), startID, endID);
         if(caller instanceof ServerPlayer sp) trackers.add(sp);
         // GridAction.TASK_LINK_CREATE.broadcastBelligerent(grid, trackers, args);  
         return (GridAction)args[4];
+    }
+
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return grid.createLinkDeferred(reference.asAncillaryPair(), caller);
     }
 
     @Override
@@ -120,62 +122,15 @@ public class NodeLinkCreateTask implements ActionTask {
         AncillaryPair newLink = trns == null 
             ? new AncillaryPair(startID, startNode, endID, endNode) 
             : new ComponentLink<>(trns, startID, startNode, endID, endNode);
-        args[4] = grid.lookup().add(grid, newLink);
+        args[4] = grid.addLink(newLink, self());
         UUID uuid = (UUID)args[3];
+        LocalPlayer lp = self();
         if(uuid != null) {
-            LocalPlayer lp = self();
-            if(lp.getUUID().equals(uuid))
-                clientSelfHandle(lp, grid, (GridAction) args[4]);
+            if(lp.getUUID().equals(uuid) && ((GridAction)args[4]).getActionType().isConsumed())
+                SpoolItem.wipeData(lp, true);
         }
-        return GridAction.RESPONSE_SUCCESS;
+        return grid.addLink(newLink, lp);
     }
 
-    /**
-     * Unique logic executed only by the client that requested the execution of this task
-     * (assuming one exists - the sender's UUID is allowed to be null when passed to this 
-     * task, so this method won't be called if this task wasn't requested by a player)
-     */
-    @OnlyIn(Dist.CLIENT)
-    protected void clientSelfHandle(LocalPlayer player, ClientGrid grid, GridAction serverResult) {
-        if(serverResult.getActionType().isConsumed()) 
-            SpoolItem.wipeData(player, true);
-    }
-
-    @Override
-    public GridAction executeTopological(ServerGrid grid, RemovalLedger removals, Object[] args) {
-        AncillaryPair link = (AncillaryPair) args[0];
-        Griddable<?> startSource = GridTracking.getReferentOrThrow(link.getStartAncillary());
-        Griddable<?> endSource =  GridTracking.getReferentOrThrow(link.getEndAncillary());
-        GridDomain domain = getDomain(grid, link.getStartNode().getDomainIndex(), link.getEndNode().getDomainIndex());
-        if(link instanceof ComponentLink<?> cl) {
-            cl.makeComponent(domain);
-            grid.initiateTask(GridAction.TASK_LINK_CREATE)
-                .targeting(startSource, endSource)
-                .withArguments(link.getStartID(), link.getEndID(), cl.getTransmitter(), args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
-                .executeOnClients();
-        } else {
-            UnionFactory.perfectConductor(domain, link);
-            grid.initiateTask(GridAction.TASK_LINK_CREATE)
-                .targeting(startSource, endSource)
-                .withArguments(link.getStartID(), link.getEndID(), null, args[1] == null ? null : ((Entity)args[1]).getUUID(), null)
-                .executeOnClients();
-        }
-        link.MNAAllocate(domain);
-        grid.lookup().add(grid, link);
-        domain.solver().setStatus(ConvergenceStatus.CHANGES_QUEUED);
-        return GridAction.RESPONSE_SUCCESS;
-    }
-
-    private GridDomain getDomain(ServerGrid grid, int a, int b) {
-        if(a < 0 && b >= 0) return grid.domains().get(b);
-        if(b < 0 && a >= 0) return grid.domains().get(a);
-        if(b < 0 && a < 0) return grid.createNewNetlist();
-        if(a == b) return grid.domains().get(a);
-        GridDomain aD = grid.domains().get(a);
-        GridDomain bD = grid.domains().remove(b);
-        // for(int x = b; x < grid.domains().size(); x++)
-        //     grid.domains().get(x).solver().set(ConvergenceState.CHANGES_QUEUED);
-        aD.mergeWith(bD);
-        return aD;
-    }
+    
 }

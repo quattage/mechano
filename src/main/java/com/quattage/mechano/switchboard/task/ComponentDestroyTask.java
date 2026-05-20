@@ -2,11 +2,13 @@ package com.quattage.mechano.switchboard.task;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
 import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.GridAction;
+
+import net.minecraft.world.entity.Entity;
 
 public class ComponentDestroyTask extends DummyTask {
 
@@ -18,9 +20,13 @@ public class ComponentDestroyTask extends DummyTask {
     }
 
     @Override
-    public GridAction executeTopological(ServerGrid grid, RemovalLedger removals, Object[] args) {
-        CircuitComponent toDestroy = (CircuitComponent) args[0];
-        toDestroy.forEachNode(node -> removals.mark(node));
+    public GridAction executeAsServer(ServerGrid grid, Object... args) {
+        return GridAction.RESPONSE_SUCCESS;
+    }
+
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated,  MutableComponentReference reference, @Nullable Entity caller) {
+        grid.removeComponentDeferred(reference.asComponent(), outdated);
         return GridAction.RESPONSE_SUCCESS;
     }
 }

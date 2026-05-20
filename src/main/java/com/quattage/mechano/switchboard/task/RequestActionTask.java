@@ -7,17 +7,20 @@ import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.ClientGrid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -77,6 +80,11 @@ public class RequestActionTask implements ActionTask {
         GridAction result = task.executeAsServer(grid, taskArgs).broadcast(grid, trackers, taskArgs);
         if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + "(REQUEST) in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(taskArgs) + "\n\n** Result: \n(" + result.asResource() + ")");
         return result;
+    }
+
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     @Override

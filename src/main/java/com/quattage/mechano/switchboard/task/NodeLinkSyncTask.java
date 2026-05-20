@@ -3,18 +3,21 @@ package com.quattage.mechano.switchboard.task;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.api.transmitter.TransmitterType;
+import com.quattage.mechano.grid.ClientGrid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.grid.topology.AncillaryNode;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
-import com.quattage.mechano.grid.topology.link.ComponentLink;
+import com.quattage.mechano.grid.topology.AncillaryPair;
+import com.quattage.mechano.grid.topology.ComponentLink;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.world.entity.Entity;
 
 public class NodeLinkSyncTask implements ActionTask {
 
@@ -50,7 +53,12 @@ public class NodeLinkSyncTask implements ActionTask {
 
     @Override
     public GridAction executeAsServer(int attempt, ServerGrid grid, Object... args) {
-        throw new UnsupportedOperationException("link syncing isn't executable on the server");
+        return GridAction.RESPONSE_SUCCESS;
+    }
+
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     @Override
@@ -67,6 +75,6 @@ public class NodeLinkSyncTask implements ActionTask {
             : new ComponentLink<>(trns, startID, startNode, endID, endNode);
         if(newLink instanceof ComponentLink<?> cl)
             cl.saturateCatenary();
-        return grid.lookup().add(grid, newLink);
+        return grid.addLink(newLink, null);
     }
 }

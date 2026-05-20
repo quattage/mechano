@@ -1,14 +1,17 @@
 package com.quattage.mechano.switchboard.task;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
+import org.jetbrains.annotations.Nullable;
+
+import com.quattage.mechano.grid.ClientGrid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
 import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.GridAction;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.world.entity.Entity;
 
 public class NodeLinkDestroyTask extends NodeLinkCreateTask {
 
@@ -35,18 +38,20 @@ public class NodeLinkDestroyTask extends NodeLinkCreateTask {
     }
 
     @Override
-    public GridAction executeAsClient(ClientGrid grid, Object... args) {
-        GridUUID<?> startID = (GridUUID<?>)args[0];
-        GridUUID<?> endID = (GridUUID<?>)args[1];
-        grid.lookup().removeAsymmetric(grid, startID.copyAndClearBindings(), endID);
-        GridAction eR = grid.lookup().removeAsymmetric(grid, endID.copyAndClearBindings(), startID);
-        return eR;
+    public GridAction executeAsServer(ServerGrid grid, Object... args) {
+        return GridAction.RESPONSE_SUCCESS;
     }
 
     @Override
-    public GridAction executeTopological(ServerGrid grid, RemovalLedger removals, Object[] args) {
-        AncillaryPair link = (AncillaryPair) args[0];
-        removals.mark(link);
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        outdated.mark(grid, reference.asNodePair());
         return GridAction.RESPONSE_SUCCESS;
+    }
+
+    @Override
+    public GridAction executeAsClient(ClientGrid grid, Object... args) {
+        GridUUID<?> startID = (GridUUID<?>)args[0];
+        GridUUID<?> endID = (GridUUID<?>)args[1];
+        return grid.removeLink(startID.copyAndClearBindings(), endID, null);
     }
 }

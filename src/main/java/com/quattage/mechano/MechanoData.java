@@ -5,9 +5,9 @@ package com.quattage.mechano;
 
 import java.util.function.Supplier;
 
-import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
+import com.quattage.mechano.grid.topology.core.GridUUID;
 
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -26,10 +26,10 @@ public class MechanoData {
     public static final DeferredRegister.DataComponents COMPONENT_REGISTRY = DeferredRegister.createDataComponents(
         Registries.DATA_COMPONENT_TYPE, Mechano.ID);
 
-    public static final Supplier<AttachmentType<Grid>> GRID
+    public static final Supplier<AttachmentType<Grid<?>>> GRID
         = MechanoData.ATTACHMENT_REGISTRY.register(
             Mechano.ID + "_grid", () -> AttachmentType
-                .builder(Grid::ofNew)
+                .<Grid<?>>builder(Grid::attachTo)
                 .serialize(Grid.SERIALIZER)
                 .build()
     );
@@ -39,7 +39,6 @@ public class MechanoData {
             "grid_identifier",
             b -> b.persistent(GridTracking.UUID_CODEC).networkSynchronized(GridTracking.UUID_STREAM_CODEC)
     );
-
 
     public static void register(IEventBus modBus) {
         MechanoData.ATTACHMENT_REGISTRY.register(modBus);

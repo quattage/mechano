@@ -4,9 +4,9 @@ import com.quattage.mechano.MechanoData;
 import com.quattage.mechano.MechanoItems;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
 import com.quattage.mechano.grid.topology.AncillaryNode;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.GridUUID;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTestHelper;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.MechanoTestHolder;
 import com.quattage.mechano.infrastructure.gametest.MechanoGameTests.Repeat;
@@ -51,7 +51,12 @@ public class PersistenceTests {
     @GameTest
     public static void uuidIsLocatable(MechanoGameTestHelper test) {
         GriddableBlockEntity gbe = test.placeConnector(test.randomPos());
-        AncillaryNode<?> node = gbe.getTerminus().getAncillary();
+        AncillaryNode<?> node = null;
+        try { node = gbe.getTerminus().getAncillary(); }
+        catch(Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
         test.failIfNull(node, "connector failed to provide a default ancillary");
         GridUUID<?> id = GridTracking.getAddress(gbe, node);
         if(!id.hasBindings()) test.fail("The returned UUID has no bindings!");

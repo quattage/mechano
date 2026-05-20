@@ -1,8 +1,8 @@
 package com.quattage.mechano.infrastructure.command;
 
 import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.Grid;
+import com.quattage.mechano.grid.ServerGrid;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,8 +20,8 @@ public class GridManifestCommand {
                         source.sendFailure(Component.literal("Couldn't dump from non-player source"));
                         return 1;
                     }
-                    ServerGrid grid = Grid.server(sp);
-                    grid.enqueueManifest(sp);
+                    ServerGrid grid = Grid.server(sp.level());
+                    grid.makeManifestAsync(sp);
                     return 1;
                 });
     }

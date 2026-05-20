@@ -26,7 +26,7 @@ public class CatenaryRenderProperties {
     private @Nullable ResourceLocation atlasLocation;
     private @Nullable ResourceLocation textureLocation;
 
-    protected CatenaryRenderProperties(ResourceLocation textureLocation) {
+    public CatenaryRenderProperties(ResourceLocation textureLocation) {
         Objects.requireNonNull(textureLocation);
         this.textureLocation = textureLocation;
         this.materialGetter = Catenaries.renderPipeline().SOLID_MATERIAL;

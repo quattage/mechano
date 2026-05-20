@@ -2,27 +2,20 @@ package com.quattage.mechano.switchboard;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.GridDomain;
-import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.foundation.Disposable;
-import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.solver.ConvergenceStatus;
-import com.quattage.mechano.grid.topology.AncillaryNode;
-import com.quattage.mechano.grid.topology.Node;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
-import com.quattage.mechano.grid.topology.link.NodePair;
-import com.quattage.mechano.switchboard.action.GridAction;
-import com.quattage.mechano.switchboard.action.GridAction.ActionRunner;
+import com.quattage.mechano.grid.Netlist;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.grid.topology.core.Node;
+import com.quattage.mechano.grid.topology.core.NodePair;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
@@ -34,10 +27,18 @@ public class RemovalLedger implements Disposable {
         removals = new Int2ObjectOpenHashMap<>();
     }
 
-    public void mark(Node node) {
+    public void mark(ServerGrid grid, MutableComponentReference audit) {
+        assertNotDisposed();
+        Objects.requireNonNull(audit);
+        if(audit.isNode()) mark(grid, audit.asNode());
+        else if(audit.isNodePair()) mark(grid, audit.asNodePair());
+        throw new IllegalArgumentException("Can't mark " + grid.describe(audit) + " in removal ledger, since this reference's type is not allowed.");
+    }
+
+    public void mark(ServerGrid grid, Node node) {
         assertNotDisposed();
         Objects.requireNonNull(node);
-        int idx = node.getDomainIndex();
+        int idx = grid.indexOf(node);
         if(idx < 0) return;
         RemovalEntry at = removals.get(idx);
         if(at == null) {
@@ -48,10 +49,10 @@ public class RemovalLedger implements Disposable {
         return;
     }
 
-    public void mark(NodePair link) {
+    public void mark(ServerGrid grid, NodePair link) {
         assertNotDisposed();
         Objects.requireNonNull(link);
-        int idx = link.getNodeA().getDomainIndex();
+        int idx = grid.indexOf(link);
         if(idx < 0) return;
         RemovalEntry at = removals.get(idx);
         if(at == null) {
@@ -62,61 +63,22 @@ public class RemovalLedger implements Disposable {
         return;
     }
 
-    public void apply(ServerGrid grid) {
-        assertNotDisposed();
-        final Int2ObjectOpenHashMap<GridDomain> toReduce = new Int2ObjectOpenHashMap<>(removals.size());
-        for(Map.Entry<Integer, RemovalEntry> entry : removals.int2ObjectEntrySet()) {
-            GridDomain domain = grid.getDomain(entry.getKey());
-            boolean wasReduced = entry.getValue().process(grid, domain);
-            if(!wasReduced) continue;
-            domain.solver().setStatus(ConvergenceStatus.CHANGES_QUEUED);
-            toReduce.put((int)entry.getKey(), domain);
-        }
-        for(Map.Entry<Integer, GridDomain> entry : toReduce.int2ObjectEntrySet()) {
-            reduceSingleDomain(grid, entry.getValue(), entry.getKey());
-        }
-        Disposable.disposeOf(this);
-    }
-
-    private void reduceSingleDomain(ServerGrid grid, GridDomain domain, int idx) {
-        List<GridDomain> reduceResult = domain.deriveFromSplits();
-        int clusterCount = reduceResult.size();
-        if(clusterCount == 1) {
-            GridDomain newResult = reduceResult.get(0);
-            grid.domains().set(idx, newResult);
-            if(newResult != domain) Disposable.disposeOf(domain);
-            return;
-        }
-        if(clusterCount > 1) {
-            grid.domains().set(idx, reduceResult.get(0));
-            for(int x = 1; x < reduceResult.size(); x++) {
-                GridDomain reducedDomain = reduceResult.get(x);
-                if(reducedDomain.netlist().isEmpty())
-                    throw new IllegalStateException("Attempted to add a reduced domain containing an empty netlist");
-                reducedDomain.solver().setStatus(ConvergenceStatus.CHANGES_QUEUED);
-                int destination = idx + x;
-                if(destination < grid.domains().size())
-                    grid.domains().add(destination, reducedDomain);
-                else grid.domains().add(reducedDomain);
-            }
-        }
-        else {
-            GridDomain removed = grid.domains().remove(idx);
-            Disposable.disposeOf(removed);
-        }
-    }
-
     @Override
     public void dispose() {
         assertNotDisposed();
-        for(RemovalEntry entry : removals.values())
-            entry.dispose();
         removals = null;
     }
 
     @Override
     public boolean hasBeenDisposed() {
         return removals == null;
+    }
+
+
+    public void forEach(BiConsumer<Integer, RemovalEntry> cons) {
+        Objects.requireNonNull(cons);
+        for(Map.Entry<Integer, RemovalEntry> entry : removals.int2ObjectEntrySet())
+            cons.accept(entry.getKey(), entry.getValue());
     }
 
     public static class RemovalEntry implements Disposable {
@@ -182,6 +144,19 @@ public class RemovalLedger implements Disposable {
             return nodes != null && !nodes.isEmpty();
         }
 
+        public int nodeCount() {
+            return nodes == null ? 0 : nodes.size();
+        }
+
+        public int unionCount() {
+            return unions == null ? 0 : unions.size();
+        }
+
+        public boolean contains(Node node) {
+            if(!containsNodes() || node == null) return false;
+            return nodes.contains(node);
+        }
+
         public void forEachNode(Consumer<Node> cons) {
             if(!containsNodes()) return;
             for(Node n : nodes)
@@ -222,91 +197,30 @@ public class RemovalLedger implements Disposable {
             return unions == null || nodes == null;
         }
 
-        public boolean process(ServerGrid grid, GridDomain domain) {
-            if(hasBeenDisposed() || isEmpty()) {
-                grid.warn("Skipped processing an empty removal entry");
-                Disposable.disposeOf(this);
-                return false;
-            }
-            int preSize = domain.netlist().size();
+        public boolean process(ServerGrid grid, Netlist netlist) {
+            return false;
+            // if(hasBeenDisposed() || isEmpty()) {
+            //     grid.warn("Skipped processing an empty removal entry");
+            //     Disposable.disposeOf(this);
+            //     return false;
+            // }
+            // int preSize = netlist.netlist().size();
 
-            StringBuilder removalManifest = new StringBuilder();
-            domain.netlist().massRemove(grid, this, removalManifest);
-            // grid.warn("::::\n" + removalManifest);
+            // StringBuilder removalManifest = new StringBuilder();
+            // netlist.netlist().massRemove(grid, this, removalManifest);
+            // // grid.warn("::::\n" + removalManifest);
             
-            ActionRunner runner = grid.initiateTask(GridAction.TASK_LINK_DESTROY);
-            for(NodePair pair : unions) deleteLink(domain, runner, pair);
-            for(Node node : nodes) deleteNode(domain, node);
-            if(domain.netlist().size() > preSize) {
-                throw new IllegalStateException("netlist grew in size after removal (" + preSize + " -> " 
-                    + domain.netlist().size() + ") (how the hell did this happen lmao)");
-            }
-            Disposable.disposeOf(this);
-            return domain.netlist().size() != preSize;
+            // ActionRunner runner = grid.initiateTask(GridAction.TASK_LINK_DESTROY);
+            // for(NodePair pair : unions) deleteLink(netlist, runner, pair);
+            // for(Node node : nodes) deleteNode(netlist, node);
+            // if(netlist.netlist().size() > preSize) {
+            //     throw new IllegalStateException("netlist grew in size after removal (" + preSize + " -> " 
+            //         + netlist.netlist().size() + ") (how the hell did this happen lmao)");
+            // }
+            // Disposable.disposeOf(this);
+            // return netlist.netlist().size() != preSize;
         }
 
-        private void deleteLink(GridDomain domain, ActionRunner runner, NodePair pair) {
-            // if the pair is a link it is deleted straight away
-            if(pair instanceof AncillaryPair link) {
-                GridAction removal = domain.getHostGrid().remove(domain.getHostGrid(), link);
-                link.MNADeallocate(domain);
-                AncillaryNode<?> start = link.getStartAncillary(), end = link.getEndAncillary();
-                start.setDomainIndex(-2);
-                end.setDomainIndex(-2);
-                Griddable<?> ss = GridTracking.getReferentOrThrow(start), es = GridTracking.getReferentOrThrow(end);
-                runner.targeting(ss, es)
-                    .withArguments(
-                        GridTracking.getAddress(ss, start), 
-                        GridTracking.getAddress(es, end)
-                    ).executeOnClients();
-                if(!removal.getActionType().indicatesSuccess()) {
-                    domain.getHostGrid().error("Failed to delete link via direct acquisition (" + pair 
-                        + ") - No active ancillary pair sharing these mappings could be located in the grid.");
-                }
-                Disposable.disposeOf(link);
-                return;
-            }
-            // if the pair isnt a link the closest match is searched for
-            List<AncillaryNode<?>> aAnc = pair.getNodeA().getAncillaries();
-            List<AncillaryNode<?>> bAnc = pair.getNodeB().getAncillaries();
-            if(aAnc == null || aAnc.isEmpty()) {
-                domain.getHostGrid().error("Skipped deleting link " + pair + " - The starting node in this pair had no ancillaries to search from.");
-                return;
-            }
-            if(bAnc == null || bAnc.isEmpty()) {
-                domain.getHostGrid().error("Skipped deleting link " + pair + " - The ending node in this pair had no ancillaries to search from.");
-                return;
-            }
-            for(AncillaryNode<?> an : aAnc) {
-                Griddable<?> aSource = GridTracking.getReferentOrThrow(an);
-                GridUUID<?> aID = GridTracking.getAddress(aSource, an);
-                for(AncillaryNode<?> bn : bAnc) {
-                    AncillaryPair removed = domain.getHostGrid().lookup().pop(domain.getHostGrid(), an, bn);
-                    if(removed == null) continue;
-                    removed.MNADeallocate(domain);
-                    removed.getStartAncillary().setDomainIndex(-2);
-                    removed.getEndAncillary().setDomainIndex(-2);
-                    Griddable<?> bSource = GridTracking.getReferentOrThrow(bn);
-                    GridUUID<?> bID = GridTracking.getAddress(bSource, bn);
-                    runner.targeting(aSource, bSource)
-                        .withArguments(aID, bID)
-                        .executeOnClients();
-                    Disposable.disposeOf(removed);
-                }
-            }
-        }
-
-        private void deleteNode(GridDomain domain, Node node) {
-            if(node instanceof AncillaryNode anc) 
-                domain.getHostGrid().removeLinkDeferred(anc);
-            node.forEachTerminal(terminal -> {
-                terminal.MNADeallocate(domain);
-                Disposable.disposeOf(terminal);
-            });
-            node.MNADeallocate(domain);
-            domain.indexer().remove(node);
-            Disposable.disposeOf(node);
-        }
 
         @Override
         public String toString() {

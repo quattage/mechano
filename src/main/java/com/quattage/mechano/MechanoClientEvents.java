@@ -1,6 +1,5 @@
 package com.quattage.mechano;
 
-import com.quattage.mechano.api.ClientGrid;
 import com.quattage.mechano.api.transmitter.SpoolItem;
 import com.quattage.mechano.catenary.model.CatenaryModel;
 import com.quattage.mechano.catenary.model.CatenaryModelProvider;
@@ -8,6 +7,7 @@ import com.quattage.mechano.foundation.LeftClickCapturable;
 import com.quattage.mechano.foundation.item.MechanoItemProperties;
 import com.quattage.mechano.foundation.item.MechanoItemProperties.SpoolFullnessProperty;
 import com.quattage.mechano.foundation.mixin.client.accessor.RenderBuffersAccessor;
+import com.quattage.mechano.grid.ClientGrid;
 import com.quattage.mechano.switchboard.JackSelector;
 
 import net.minecraft.client.Minecraft;

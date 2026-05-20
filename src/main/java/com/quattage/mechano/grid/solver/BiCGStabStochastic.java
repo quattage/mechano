@@ -5,6 +5,8 @@ import java.util.Random;
 import org.ejml.dense.row.CommonOps_DDRM;
 import org.ejml.dense.row.RandomMatrices_DDRM;
 
+import com.quattage.mechano.grid.Netlist;
+
 public class BiCGStabStochastic extends BiCGStab {
 
     private Random random;
@@ -17,8 +19,8 @@ public class BiCGStabStochastic extends BiCGStab {
     }
 
     @Override
-    public void initialize(NodalSolver solver) {
-        super.initialize(solver);
+    public void initialize(Netlist netlist) {
+        super.initialize(netlist);
         random = new Random();
     }
 

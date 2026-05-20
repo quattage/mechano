@@ -10,18 +10,18 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.quattage.mechano.api.GridDomain;
+import com.quattage.mechano.api.Griddable;
 import com.quattage.mechano.foundation.WorldlyObject;
 import com.quattage.mechano.foundation.numeric.VectorOperations;
 import com.quattage.mechano.grid.GridTracking;
 import com.quattage.mechano.grid.GridTracking.ComponentHierarchy;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.GridUUID.UUIDComposite;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.HierarchicalConstruct;
-import com.quattage.mechano.grid.HierarchicalConstruct.GridReferent;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
-import com.quattage.mechano.grid.api.component.CircuitFactory;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.GridUUID.UUIDComposite;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.grid.topology.core.Node;
+import com.quattage.mechano.grid.topology.core.Terminal;
 
 import net.createmod.catnip.outliner.Outliner;
 import net.createmod.catnip.theme.Color;
@@ -92,18 +92,6 @@ public abstract class AncillaryNode<T extends GridUUID<T>> extends Node implemen
     public Terminal[] getTerminals() {
         assertAttached();
         return parent.getTerminals();
-    }
-
-    @Override
-    public int getDomainIndex() {
-        assertAttached();
-        return parent.getDomainIndex();
-    }
-
-    @Override
-    public void setDomainIndex(int domainIndex) {
-        assertAttached();
-        parent.setDomainIndex(domainIndex);
     }
 
     /**
@@ -275,22 +263,6 @@ public abstract class AncillaryNode<T extends GridUUID<T>> extends Node implemen
     public void reset() {
         assertAttached();
         parent.reset();
-    }
-
-    @Override
-    public void MNAAllocate(GridDomain domain) {
-        if(source == null) throw new NullPointerException("Failed to allocate " + this + " - This node's source is null!");
-        CircuitComponent component = source.getComponent();
-        if(component == null) throw new NullPointerException("Failed to allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
-        component.MNAAllocate(domain);
-    }
-
-    @Override
-    public void MNADeallocate(GridDomain domain) {
-        if(source == null) throw new NullPointerException("Failed to de-allocate " + this + " - This node's source is null!");
-        CircuitComponent component = source.getComponent();
-        if(component == null) throw new NullPointerException("Failed to de-allocate " + this + " - Source (" + source + ") failed to supply a component to allocate!");
-        component.MNADeallocate( domain);
     }
 
     @Override

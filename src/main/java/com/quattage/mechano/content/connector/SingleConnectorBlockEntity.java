@@ -1,8 +1,8 @@
 package com.quattage.mechano.content.connector;
 
 import com.quattage.mechano.foundation.block.orientation.Relative;
-import com.quattage.mechano.grid.api.component.CircuitFactory;
-import com.quattage.mechano.grid.topology.Node;
+import com.quattage.mechano.grid.topology.CircuitFactory;
+import com.quattage.mechano.grid.topology.core.Node;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;

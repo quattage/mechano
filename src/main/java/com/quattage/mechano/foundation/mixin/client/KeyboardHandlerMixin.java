@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ClientGrid.LinkDebugRenderer;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.ClientGrid.LinkDebugRenderer;
 
 import net.minecraft.client.KeyboardHandler;
 

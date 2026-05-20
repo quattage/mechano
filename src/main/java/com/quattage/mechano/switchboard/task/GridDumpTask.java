@@ -4,8 +4,10 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
+import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
 
@@ -13,6 +15,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -39,11 +42,16 @@ public class GridDumpTask implements ActionTask {
         // ServerPlayer sp = grid.getServer().getPlayerList().getPlayer((UUID)args[0]);
         return GridAction.TASK_GRID_DUMP;
     }
+    
+    @Override
+    public GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller) {
+        return GridAction.RESPONSE_SUCCESS;
+    }
 
     @Override
     @OnlyIn(Dist.CLIENT)
     public GridAction executeAsClient(int attempt, ClientGrid grid, Object... args) {
-        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid.lookup() + "\n--").withStyle(ChatFormatting.GRAY);
+        MutableComponent message = Component.literal("-- Client-sided dump:\n" + grid + "\n--").withStyle(ChatFormatting.GRAY);
         self().sendSystemMessage(message);
         return GridAction.RESPONSE_SUCCESS;
     }

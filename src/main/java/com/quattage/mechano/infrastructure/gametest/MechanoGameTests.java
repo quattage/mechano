@@ -16,8 +16,7 @@ import java.util.stream.Stream;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.ServerGrid;
-import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.infrastructure.ReflectionWizard;
 
 import net.minecraft.gametest.framework.GameTest;
@@ -105,7 +104,7 @@ public class MechanoGameTests {
                     method.invoke(null, mgth);
                     if(dump != null && (!dump.requireSuccess() || mgth.testInfo.hasSucceeded()))
                         mgth.dumpGrid(method.getName());
-                    mgth.getGrid().unload();
+                    mgth.getGrid().dispose();
                     // mgth.getGrid().debug("Unloading grid '" + mgth.getGrid().getDimensionName() + "' from gametest");
                 }
                 catch (IllegalAccessException | InvocationTargetException e) {

@@ -6,15 +6,17 @@ import java.util.UUID;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.Grid;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.MutableComponentReference;
 import com.quattage.mechano.switchboard.RemovalLedger;
 import com.quattage.mechano.switchboard.action.GridAction.GridActionTaskArgumentParseException;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -68,6 +70,8 @@ public interface ActionTask {
     @ApiStatus.NonExtendable
     default GridAction executeAsServer(ServerGrid grid, Object... args) { return executeAsServer(0, grid, args); }
 
+    GridAction executeDeferred(ServerGrid grid, RemovalLedger outdated, MutableComponentReference reference, @Nullable Entity caller);
+
     /**
      * The logic contained within this method is run once per task and shouldn't access or store
      * any non-static variables within the scope of this class. <p>
@@ -98,29 +102,13 @@ public interface ActionTask {
 
 
     /**
-     * This method is guaranteed to be called at the right time 
-     * to avoid concurrent modifications to the ServerGrid's 
-     * topology. Any tasks that directly modify the indexer, 
-     * netlist, vectors, or component states must defer their 
-     * implementations to this method, rather than directly in
-     * {@link #executeAsServer}
-     * @param grid to operate within
-     * @param removals A container to mark nodes and links for removal - The grid will handle removing them for you
-     * @param args Any number of wrapped arguments
-     * @return A {@link GridAction action} to indicate the success/failure of this execution
-     */
-    default GridAction executeTopological(ServerGrid grid, RemovalLedger removals, Object[] args) {
-        return GridAction.NONE;
-    }
-
-    /**
      * Log a message associated with this task's execution. Implementations 
      * or API users may call this method to print debug messages.
      * @param grid Grid to log for
      * @param attempt The attempt # of this execution (Optional, defaults to <code>-1</code>)
      * @param args The arguments that were used
      */
-    default void logExecution(Grid grid, Object... args) {
+    default void logExecution(Grid<?> grid, Object... args) {
         logExecution(grid, -1, args);
     }
 
@@ -131,7 +119,7 @@ public interface ActionTask {
      * @param attempt The attempt # of this execution (Optional, defaults to <code>-1</code>)
      * @param args The arguments that were used
      */
-    default void logExecution(Grid grid, int attempt, Object... args) {
+    default void logExecution(Grid<?> grid, int attempt, Object... args) {
         Objects.requireNonNull(grid);
         String summary = collectArgsAsString(args);
         grid.info("executing '" + this.getClass().getSimpleName() + "'" + (attempt > 0 ? ", attempt " 
@@ -159,4 +147,7 @@ public interface ActionTask {
         if(mc.player == null) throw new NullPointerException("LocalPlayer is not reachable in the current context.");
         return mc.player;
     }
+
+    // this sucks but idk man
+    
 }

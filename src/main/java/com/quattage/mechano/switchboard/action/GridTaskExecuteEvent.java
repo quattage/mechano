@@ -1,8 +1,8 @@
 package com.quattage.mechano.switchboard.action;
 
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.Grid;
+import com.quattage.mechano.grid.ServerGrid;
 
 import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.ICancellableEvent;

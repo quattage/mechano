@@ -3,8 +3,8 @@ package com.quattage.mechano.switchboard;
 import java.util.Objects;
 
 import com.quattage.mechano.MechanoPackets;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.ActionType.GridActionDecodeException;
 import com.quattage.mechano.switchboard.action.ActionType.GridActionEncodeException;
@@ -63,7 +63,7 @@ public record GridActionS2CPacket(GridAction action, Object[] args) implements C
     @OnlyIn(Dist.CLIENT)
     public void handle(LocalPlayer player) {
         ActionTask task = action.getTask();
-        ClientGrid grid = Grid.client(player);
+        ClientGrid grid = Grid.client(player.level());
         GridAction result = task.executeAsClient(grid, args);
         if(GridAction.VERBOSE_LOGS) grid.debug("Handled " + action + " in " + grid.getDimensionName() + ":\n\n**Arguments: \n" + task.collectArgsAsString(args) + "\n\n** Result: \n(" + result.asResource() + ")");
     }

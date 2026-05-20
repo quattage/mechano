@@ -12,13 +12,13 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.Mechano;
-import com.quattage.mechano.api.ClientGrid;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.Griddable;
+import com.quattage.mechano.grid.ClientGrid;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.HierarchicalConstruct.GridReferent;
+import com.quattage.mechano.grid.ServerGrid;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct.GridReferent;
 import com.quattage.mechano.switchboard.GridActionC2SPacket;
 import com.quattage.mechano.switchboard.GridActionS2CPacket;
 import com.quattage.mechano.switchboard.task.ComponentDestroyTask;
@@ -280,16 +280,16 @@ public enum GridAction implements StringRepresentable {
         return Mechano.asResource(this.getSerializedName());
     }
 
-    public static class ActionRunner implements Supplier<GridAction> {
+    public static class ActionSync implements Supplier<GridAction> {
 
-        private Grid grid;
+        private Grid<?> grid;
         private GridAction action;
         private Object[] args = new Object[0];
         private GridReferent<?>[] trackers = new GridReferent<?>[0];
 
-        public ActionRunner() {}
+        public ActionSync() {}
 
-        public ActionRunner(Grid grid, GridAction action) {
+        public ActionSync(Grid<?> grid, GridAction action) {
             Objects.requireNonNull(grid);
             if(action == null) 
                 throw new NullPointerException("Error creating TaskRunner from " + grid + " - The provided task is null!");
@@ -299,13 +299,13 @@ public enum GridAction implements StringRepresentable {
             this.action = action;
         }
 
-        public ActionRunner in(Grid grid) {
+        public ActionSync in(Grid<?> grid) {
             Objects.requireNonNull(grid);
             this.grid = grid;
             return this;
         }
 
-        public ActionRunner action(GridAction action) {
+        public ActionSync action(GridAction action) {
             if(action == null) 
                 throw new NullPointerException("Error configuring TaskRunner from " + grid + " - The provided task is null!");
             if(!action.isTask()) 
@@ -322,7 +322,7 @@ public enum GridAction implements StringRepresentable {
          * @param trackers varargs array of {@link TrackedObject TrackedObjects}
          * @return This ActionRunner for chaining
          */
-        public ActionRunner targeting(GridReferent<?>... trackers) {
+        public ActionSync targeting(GridReferent<?>... trackers) {
             Objects.requireNonNull(trackers);
             this.trackers = trackers;
             return this;
@@ -336,7 +336,7 @@ public enum GridAction implements StringRepresentable {
          * @param trackers collection of {@link TrackedObject TrackedObjects}
          * @return This ActionRunner for chaining
          */
-        public ActionRunner from(Collection<GridReferent<?>> trackers) {
+        public ActionSync from(Collection<GridReferent<?>> trackers) {
             Objects.requireNonNull(trackers);
             this.trackers = trackers.toArray(new GridReferent<?>[trackers.size()]);
             return this;
@@ -348,7 +348,7 @@ public enum GridAction implements StringRepresentable {
          * @param args varargs array of objects
          * @return This ActionRunner for chaining
          */
-        public ActionRunner withArguments(Object... args) {
+        public ActionSync withArguments(Object... args) {
             Objects.requireNonNull(args);
             this.args = args;
             return this;
@@ -360,7 +360,7 @@ public enum GridAction implements StringRepresentable {
          * @param args collection of objects
          * @return This ActionRunner for chaining
          */
-        public ActionRunner withArguments(Collection<Object> args) {
+        public ActionSync withArguments(Collection<Object> args) {
             Objects.requireNonNull(args);
             this.args = args.toArray(new Object[args.size()]);
             return this;

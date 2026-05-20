@@ -2,9 +2,9 @@
 package com.quattage.mechano.api.blockEntity.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.quattage.mechano.api.Griddable;
+import com.quattage.mechano.api.GriddableTerminus;
 import com.quattage.mechano.api.blockEntity.GriddableBlockEntity;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.GriddableTerminus;
 import com.quattage.mechano.grid.topology.AncillaryNode;
 import com.quattage.mechano.switchboard.JackSelector;
 

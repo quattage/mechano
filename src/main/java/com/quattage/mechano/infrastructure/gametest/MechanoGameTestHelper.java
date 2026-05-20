@@ -3,8 +3,6 @@ package com.quattage.mechano.infrastructure.gametest;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -12,28 +10,26 @@ import org.jetbrains.annotations.Nullable;
 
 import com.quattage.mechano.MechanoBlocks;
 import com.quattage.mechano.MechanoTransmitters;
-import com.quattage.mechano.api.Grid;
-import com.quattage.mechano.api.GridDomain;
-import com.quattage.mechano.api.ServerGrid;
+import com.quattage.mechano.api.Griddable;
+import com.quattage.mechano.api.GriddableTerminus;
 import com.quattage.mechano.content.connector.ConnectorBlockEntity;
 import com.quattage.mechano.foundation.numeric.Bifrucated64;
 import com.quattage.mechano.foundation.numeric.EsoMath;
+import com.quattage.mechano.grid.Grid;
 import com.quattage.mechano.grid.GridTracking;
-import com.quattage.mechano.grid.GridUUID;
-import com.quattage.mechano.grid.GridUUID.UUIDComposite;
-import com.quattage.mechano.grid.Griddable;
-import com.quattage.mechano.grid.GriddableTerminus;
-import com.quattage.mechano.grid.HierarchicalConstruct;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.Netlist;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.grid.topology.AncillaryNode;
-import com.quattage.mechano.grid.topology.Node;
-import com.quattage.mechano.grid.topology.NodeUnionSet;
-import com.quattage.mechano.grid.topology.Terminal;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
-import com.quattage.mechano.infrastructure.EnqueuedGridManifest;
+import com.quattage.mechano.grid.topology.AncillaryPair;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.GridUUID;
+import com.quattage.mechano.grid.topology.core.GridUUID.UUIDComposite;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct;
+import com.quattage.mechano.grid.topology.core.Node;
+import com.quattage.mechano.grid.topology.core.Terminal;
 import com.quattage.mechano.switchboard.action.ActionTask;
 import com.quattage.mechano.switchboard.action.GridAction;
-import com.quattage.mechano.switchboard.action.GridAction.ActionRunner;
+import com.quattage.mechano.switchboard.action.GridAction.ActionSync;
 import com.simibubi.create.foundation.mixin.accessor.GameTestHelperAccessor;
 
 import net.minecraft.core.BlockPos;
@@ -66,18 +62,12 @@ public class MechanoGameTestHelper extends GameTestHelper {
         }
     }
 
-    public MockNode populateUF(NodeUnionSet uf, String prefix, int length) {
-        MockNode prev = null;
-        for(int x = 0; x < length; x++) {
-            MockNode node = new MockNode(prefix + x, false);
-            if(prev != null) uf.union(prev, node);
-            prev = node;
-        }
-        return prev;
-    }
-
     public void tickGrid() {
-        getGrid().tick();
+        try { getGrid().tick(); }
+        catch(Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public void dumpGrid() {
@@ -94,7 +84,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
 
     public String dumpGrid(boolean log, String clarify) {
         String output = "[Empty]";
-        try { output = EnqueuedGridManifest.getImmediately(getGrid()); }
+        try { output = getGrid().makeManifest(); }
         catch (Exception e) {
             e.printStackTrace();
             fail("Grid manifest acquisition failed to resolve (See stacktrace above)");
@@ -104,30 +94,27 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return output;
     }
 
+    public void dumpActionLog() {
+        getGrid().warn("dumped action log:\n" + ServerGrid.ACTION_LOG + "\n");
+    }
+
     public ServerGrid getGrid() {
         return Grid.server(getLevel());
     }
 
-    public void runTaskOrFail(GridAction action, Consumer<ActionRunner> runnerCons) {
+    public void runTaskOrFail(GridAction action, Consumer<ActionSync> runnerCons) {
         failIfNull(action, "Failed while running grid task - The provided action is null!");
         assertTrue(action.isTask(), "Failed while running grid task - The provided action is not a task!");
         failIfNull(runnerCons, "Failed while running grid task - The provided runner consumer is null!");
-        ActionRunner runner = getGrid().initiateTask(action);
-        failIfNull(runner, "Failed while running grid task - The action '" + action + "' couldn't provide an action runner!");
-        runnerCons.accept(runner);
+        ActionSync synchronizer = getGrid().initiateTask(action);
+        failIfNull(synchronizer, "Failed while running grid task - The action '" + action + "' couldn't provide an action runner!");
+        runnerCons.accept(synchronizer);
         getGrid().debug("Running grid task " + action);
-        try { runner.executeImmediately(); } 
+        try { synchronizer.executeImmediately(); } 
         catch(Exception e) {
             e.printStackTrace();
             fail("Failed while running grid task '" + action + "' (See stacktrace above)");
         }
-    }
-
-    public GridDomain getTestDomain() {
-        List<GridDomain> domains = getGrid().domains();
-        if(domains.isEmpty())
-            return getGrid().createNewNetlist();
-        return domains.getFirst();
     }
 
     public GriddableTerminus getTerminus(Griddable<?> source) {
@@ -157,11 +144,11 @@ public class MechanoGameTestHelper extends GameTestHelper {
         BlockPos abs = absolutePos(pos);
         abs = new BlockPos(abs.getX(), Mth.clamp(abs.getY(), -60, 256), abs.getZ());
         boolean blockSet = getLevel().setBlock(abs, MechanoBlocks.CONNECTOR_SINGLE.getDefaultState(), 3);
-        if(!blockSet) throw new GameTestAssertException("Block at " + pos + "(" + abs + ") resulted in no change!");
+        if(!blockSet) throw new GameTestAssertException("Placing a connector at " + pos + " (" + abs + ") resulted in no change!");
         BlockEntity be = getLevel().getBlockEntity(abs);
         if(!(be instanceof ConnectorBlockEntity cbe))
             throw new GameTestAssertException("Connector BlockEntity couldn't be acquired at " + pos);
-        Grid grid = Grid.server(getLevel());
+        Grid<?> grid = Grid.server(getLevel());
         assertTrue(GridTracking.isReachable(grid.getWorld(), cbe), "ConnectorBlockEntity couldn't be reached by active grid.");
         return cbe;
     }
@@ -211,9 +198,8 @@ public class MechanoGameTestHelper extends GameTestHelper {
         return false;
     }
 
-    public void assertLinkIsValid(AncillaryPair link) { assertLinkIsValid(link, ""); }
     private void assertLinkIsValid(AncillaryPair link, String clarify) {
-        failIfNull(link, "Can't validate a null link!");
+        failIfNull(link, "Can't validate a null link!" + clarify);
         String m = "Failed while validating " + link + clarify + "   - ";
         try { link.validateSelf(); }
         catch(Exception e) { 
@@ -234,33 +220,14 @@ public class MechanoGameTestHelper extends GameTestHelper {
         if(sourceB != reaqB) fail(m + "The ending source couldn't be reached independently!");
     }
 
-    public void assertLinkIsValidAndExists(AncillaryPair link) { assertLinkIsValidAndExists(link, ""); }
-    public void assertLinkIsValidAndExists(AncillaryPair link, String clarify) {
-        assertLinkIsValid(link, " (" + clarify + ", root acquisition)");
-        AncillaryPair selfLookup = getGrid().lookup().getLink(link.getStartAncillary(), link.getEndAncillary());
-        failIfNull(selfLookup, "Failed while validating link - The forward link couldn't be reacquired from the lookup!");
+    public void assertLinkIsValidAndExists(@Nullable AncillaryPair link, String clarify) {
+        assertLinkIsValid(link, " (" + clarify + ", root acquisition, forward)");
+        AncillaryPair selfLookup = getGrid().getLinkMatching(link.getStartAncillary(), link.getEndAncillary());
+        failIfNull(selfLookup, "Failed while validating link - The forward link couldn't be reacquired from the lookup! (" + clarify + ")");
         assertLinkIsValid(selfLookup, "(" + clarify + ", self reaquisiton, forward)");
-        selfLookup = getGrid().lookup().getLink(link.getEndAncillary(), link.getStartAncillary());
-        failIfNull(selfLookup, "Failed while validating link - The inverse link couldn't be reacquired from the lookup!");
+        selfLookup = getGrid().getLinkMatching(link.getEndAncillary(), link.getStartAncillary());
+        failIfNull(selfLookup, "Failed while validating link - The inverse link couldn't be reacquired from the lookup! (" + clarify + ")");
         assertLinkIsValid(selfLookup, "(" + clarify + ", self reaquisiton, inverse)");
-    }
-
-    public void assertDomainValid( GridDomain domain, int index) {
-        try {
-            for(Map.Entry<Node, Set<Node>> entry : domain.netlist().transitivity().entrySet()) {
-                Node head = entry.getKey();
-                assertValueEqual(head.getDomainIndex(), index, " domain index @ head node #" + System.identityHashCode(head));
-                int headIndex = domain.indexer().get(head);
-                assertValueEqual(headIndex, 0, " nodal index @ head node #" + System.identityHashCode(head));
-                entry.getValue().forEach(leaf -> {
-                    assertValueEqual(leaf.getDomainIndex(), index, " domain index @ leaf node #" + System.identityHashCode(leaf));
-                    assertValueEqual(domain.indexer().get(leaf), headIndex, " nodal index @ leaf node #" + System.identityHashCode(leaf));
-                });
-            }
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-            fail("Encountered exception while traversing " + index + "'s netlist (See stacktrace above)");
-        }
     }
 
     /**
@@ -270,7 +237,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
      * @return A new {@link AncillaryPair} that's already been added to the grid
      */
     public AncillaryPair generateUnion(BlockPos bp, String testName) {
-
         ConnectorBlockEntity cbeA = placeConnector(bp);
         ConnectorBlockEntity cbeB = placeConnector(bp.offset(0, 0, 2));
 
@@ -304,13 +270,12 @@ public class MechanoGameTestHelper extends GameTestHelper {
         );
 
         tickGrid();
-        AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
+        AncillaryPair link = getGrid().getLinkMatching(startNode, endNode);
         assertLinkIsValidAndExists(link, testName);
         return link;
     }
 
     public AncillaryPair generateUnion(AncillaryNode<?> startNode, AncillaryNode<?> endNode,  String testName) {
-
         failIfNull(startNode);
         failIfNull(endNode);
         GridUUID<?> startID = GridTracking.getAddress((HierarchicalConstruct)startNode);
@@ -331,26 +296,25 @@ public class MechanoGameTestHelper extends GameTestHelper {
         // the grid is ticked manually but technically you could tick the world
         // via the tester? idk
         tickGrid();
-        AncillaryPair link = getGrid().lookup().getLink(startNode, endNode);
+        AncillaryPair link = getGrid().getLinkMatching(startNode, endNode);
         assertLinkIsValidAndExists(link, testName);
         return link;
     }
 
-    public void verifyGrid(int domainCount, int lookupSize, String verifyName) {
-        assertValueEqual(getGrid().domains().size(), domainCount, "domain count (" + verifyName + ")");
-        assertValueEqual(getGrid().lookup().size(), lookupSize, "lookup size (" + verifyName + ")");
+    public void verifyGrid(int netlistCount, int lookupSize, String verifyName) {
+        assertValueEqual(getGrid().netlistCount(), netlistCount, "netlist count (" + verifyName + ")");
+        assertValueEqual(getGrid().linkCount(), lookupSize, "lookup size (" + verifyName + ")");
     }
 
     public void verifyDomains(int transitiveSize, int deepSize, int sourceCount, int nodeCount, String verifyName) {
-        assertTrue(getGrid().domains().size() >= 1, "Couldn't perform domain verification '" + verifyName + "' because there are no domains to verify.");
-        for(int x = 0; x < getGrid().domains().size(); x++) {
-            GridDomain domain = getGrid().domains().get(x);
-            String didx = "domain " + x;
-            assertValueEqual(domain.netlist().size(), transitiveSize, didx + " transitive size (" + verifyName + ")");
-            assertValueEqual(domain.netlist().size(), deepSize, didx + " deep size (" + verifyName + ")");
-            assertValueEqual(domain.indexer().sourceCount(), sourceCount, didx + " indexer source count (" + verifyName + ")");
-            assertValueEqual(domain.indexer().nodeCount(), nodeCount, didx + " indexer node count (" + verifyName + ")");
-            assertDomainValid(domain, x);
+        assertTrue(getGrid().netlists().size() >= 1, "Couldn't perform netlist verification '" + verifyName + "' because there are no netlists to verify.");
+        for(int x = 0; x < getGrid().netlists().size(); x++) {
+            Netlist netlist = getGrid().netlists().get(x);
+            String didx = "netlist " + x;
+            assertValueEqual(netlist.transitiveSize(), transitiveSize, didx + " transitive size (" + verifyName + ")");
+            assertValueEqual(netlist.deepSize(), deepSize, didx + " deep size (" + verifyName + ")");
+            assertValueEqual(netlist.sourceCount(), sourceCount, didx + " indexer source count (" + verifyName + ")");
+            assertValueEqual(netlist.nodeCount(), nodeCount, didx + " indexer node count (" + verifyName + ")");
         }
     }
 
@@ -417,7 +381,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
         private final String id;
         private final boolean isGrounded;
         private boolean isMP = false;
-        private int domainIndex = -2;
+        private int netlistIndex = -2;
 
         public MockNode(String id, boolean isGrounded) {
             this.id = id;
@@ -471,7 +435,7 @@ public class MechanoGameTestHelper extends GameTestHelper {
 
         @Override
         public void dispose() {
-            domainIndex = -2;
+            netlistIndex = -2;
         }
 
         @Override
@@ -502,16 +466,6 @@ public class MechanoGameTestHelper extends GameTestHelper {
         @Override
         public GridReferent<?> getReferent() {
             return null;
-        }
-
-        @Override
-        public int getDomainIndex() {
-            return domainIndex;
-        }
-
-        @Override
-        public void setDomainIndex(int domainIndex) {
-            this.domainIndex = domainIndex;
         }
     }
 }

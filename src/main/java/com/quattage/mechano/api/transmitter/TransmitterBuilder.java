@@ -4,7 +4,7 @@ import com.quattage.mechano.api.transmitter.TransmitterType.UnionFactory;
 import com.quattage.mechano.catenary.Catenaries.PhysicalMaterial;
 import com.quattage.mechano.catenary.Catenaries.Soundscape;
 import com.quattage.mechano.catenary.CatenaryRenderProperties;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.AbstractBuilder;
 import com.tterrag.registrate.builders.BuilderCallback;

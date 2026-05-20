@@ -5,19 +5,17 @@ import java.util.function.BiFunction;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.quattage.mechano.api.GridDomain;
-import com.quattage.mechano.api.ServerGrid;
 import com.quattage.mechano.catenary.Catenaries.PhysicalMaterial;
 import com.quattage.mechano.catenary.Catenaries.Soundscape;
 import com.quattage.mechano.catenary.CatenaryRenderProperties;
 import com.quattage.mechano.catenary.model.CatenaryModelProvider;
-import com.quattage.mechano.grid.HierarchicalConstruct;
-import com.quattage.mechano.grid.api.component.CircuitComponent;
+import com.quattage.mechano.grid.Netlist;
+import com.quattage.mechano.grid.ServerGrid;
 import com.quattage.mechano.grid.topology.AncillaryNode;
-import com.quattage.mechano.grid.topology.NetlistIndexer;
-import com.quattage.mechano.grid.topology.Node;
-import com.quattage.mechano.grid.topology.NodeUnionSet;
-import com.quattage.mechano.grid.topology.link.AncillaryPair;
+import com.quattage.mechano.grid.topology.AncillaryPair;
+import com.quattage.mechano.grid.topology.core.CircuitComponent;
+import com.quattage.mechano.grid.topology.core.HierarchicalConstruct;
+import com.quattage.mechano.grid.topology.core.Node;
 import com.quattage.mechano.switchboard.JackSelector;
 import com.quattage.mechano.switchboard.action.GridAction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
@@ -104,11 +102,11 @@ public class TransmitterType {
         }
     }
 
-    public static @Nullable CircuitComponent applyUnion(GridDomain domain, UnionFactory factory, AncillaryPair link) {
-        if(domain == null) throw new GridUnionException(link, "domain is null!");
+    public static @Nullable CircuitComponent applyUnion(Netlist netlist, UnionFactory factory, AncillaryPair link) {
+        if(netlist == null) throw new GridUnionException(link, "netlist is null!");
         if(link == null) throw new GridUnionException(link, "link is null!");
         CircuitComponent output = null;
-        try { output = factory.apply(domain, link); }
+        try { output = factory.apply(netlist, link); }
         catch (RuntimeException e) { 
             if(e instanceof GridUnionException gue) throw gue;
             e.printStackTrace();
@@ -120,17 +118,17 @@ public class TransmitterType {
     }
 
     @FunctionalInterface
-    public interface UnionFactory extends BiFunction<GridDomain, AncillaryPair, CircuitComponent>{
+    public interface UnionFactory extends BiFunction<Netlist, AncillaryPair, CircuitComponent>{
 
         /**
          * A shorthanded {@link UnionFactory} substitute for unions that represent
          * perfect conductors. (e.g. a wire with no resistence.)
-         * @param domain Domain to append the link to
+         * @param netlist Domain to append the link to
          * @param link The link to union
          * @return <code>null,</code> since a perfect union doesn't have a component associated with it.
          */
-        static CircuitComponent perfectConductor(GridDomain domain, AncillaryPair link) {
-            domain.netlist().union(link.getStartNode(), link.getEndNode());
+        static CircuitComponent perfectConductor(Netlist netlist, AncillaryPair link) {
+            netlist.union(link.getStartNode(), link.getEndNode());
             return null;
         }
 
@@ -143,13 +141,13 @@ public class TransmitterType {
          * <h3>with great power comes great oh no i broke it</h3>
          * There are no guardrails here; you have direct access to the grid's topology! Be careful
          * not to perform destructive operations that destabilize the grid.
-         * @param domain {@link GridDomain} which provides access to,the netlist to be modified
+         * @param netlist {@link Netlist} which provides access to,the netlist to be modified
          * @param link the link which contains the start and end points
          * @return Any {@link CircuitComponent} instance, or <code>null</code> if this union did not result 
          * in the creation of a discrete component.
          */
         @Override 
-        @Nullable CircuitComponent apply(GridDomain domain, AncillaryPair link);
+        @Nullable CircuitComponent apply(Netlist netlist, AncillaryPair link);
     }
 
     public interface TransmitterProvider {
